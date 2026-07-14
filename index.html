@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Prevención de Riesgos — LST</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="logo.png">
+<link rel="apple-touch-icon" href="logo.png">
+<meta name="theme-color" content="#1f6b39">
+<link rel="stylesheet" href="style.css">
+<style>
+  .header--pr { background: radial-gradient(ellipse 320px 140px at 30% -40%, rgba(255,255,255,0.16), transparent 60%), linear-gradient(135deg, #1f6b39 0%, #2f8a4d 55%, #6fcf8b 100%); box-shadow: 0 2px 10px rgba(47,138,77,0.25); }
+  .firma-box { background:#fff; border:1.5px dashed var(--line); border-radius:12px; overflow:hidden; margin-bottom:8px; }
+  #firma-canvas { width:100%; height:180px; touch-action:none; display:block; background:#fff; }
+  .firma-actions { display:flex; justify-content:flex-end; margin-bottom:14px; }
+  .firma-actions button { font-size:12px; color:var(--accent); font-weight:600; padding:4px 8px; }
+  .alerta-charla-box { background:#fff3e0; border:1px solid #ffcc80; border-radius:14px; padding:20px; text-align:center; margin: 10px 0 20px; }
+  .alerta-charla-icon { font-size:40px; margin-bottom:10px; }
+  .alerta-charla-tema { font-size:18px; font-weight:800; color:#c65e00; margin: 6px 0 2px; }
+  .mas-list .card { cursor:pointer; }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen" class="login-screen">
+  <div class="login-box">
+    <div class="entry-logo-wrap"><img src="logo.png" alt="LST" class="login-logo"></div>
+    <div class="login-title">Prevención de Riesgos</div>
+    <div class="login-sub">Constructora LST</div>
+    <button class="login-btn" onclick="signIn()">Iniciar sesión con Google</button>
+    <div class="login-hint">Usa tu cuenta corporativa autorizada</div>
+  </div>
+</div>
+
+<!-- APP PRINCIPAL -->
+<div id="main" class="main hidden">
+  <div class="header header--pr">
+    <img src="logo-white.png" class="header-logo" alt="LST">
+    <div class="header-center">
+      <div class="header-title">Prevención de Riesgos</div>
+      <div class="header-sub" id="chip-email"></div>
+    </div>
+    <div class="header-btn" onclick="cargarTodo()">⟳</div>
+  </div>
+
+  <div class="pages" id="pages">
+
+    <!-- INICIO -->
+    <div class="page active" id="page-inicio">
+      <div class="stats-row">
+        <div class="stat blue" onclick="irPagina('trabajadores')"><div class="stat-n" id="dash-trabajadores">0</div><div class="stat-l">Trabajadores</div></div>
+        <div class="stat amber" onclick="irPagina('inspecciones')"><div class="stat-n" id="dash-inspecciones">0</div><div class="stat-l">Inspecc. abiertas</div></div>
+        <div class="stat red" onclick="irPagina('incidentes')"><div class="stat-n" id="dash-incidentes">0</div><div class="stat-l">Incidentes abiertos</div></div>
+        <div class="stat green" onclick="irPagina('charlas')"><div class="stat-n" id="dash-charlas">0</div><div class="stat-l">Charlas pendientes</div></div>
+      </div>
+
+      <div class="sec-label">Módulos</div>
+      <div class="modulos-lista">
+        <div class="modulo-card" onclick="irPagina('inspecciones')">
+          <div class="modulo-icon modulo-icon--flota">🔍</div>
+          <div class="modulo-info"><div class="modulo-nombre">Inspecciones</div><div class="modulo-desc">Con foto y alerta de charla automática</div></div>
+        </div>
+        <div class="modulo-card" onclick="irPagina('incidentes')">
+          <div class="modulo-icon modulo-icon--and">⚠️</div>
+          <div class="modulo-info"><div class="modulo-nombre">Incidentes y Accidentes</div><div class="modulo-desc">Registro con evidencia fotográfica</div></div>
+        </div>
+        <div class="modulo-card" onclick="irPagina('procedimientos')">
+          <div class="modulo-icon modulo-icon--cont">📄</div>
+          <div class="modulo-info"><div class="modulo-nombre">Procedimientos de Trabajo Seguro</div><div class="modulo-desc">PTS vigentes de la obra</div></div>
+        </div>
+        <div class="modulo-card" onclick="irPagina('epp')">
+          <div class="modulo-icon modulo-icon--mov">🦺</div>
+          <div class="modulo-info"><div class="modulo-nombre">Entrega de EPP</div><div class="modulo-desc">Con firma digital del trabajador</div></div>
+        </div>
+        <div class="modulo-card" onclick="irPagina('trabajadores')">
+          <div class="modulo-icon modulo-icon--inv">👷</div>
+          <div class="modulo-info"><div class="modulo-nombre">Trabajadores</div><div class="modulo-desc">Nómina de la obra</div></div>
+        </div>
+        <div class="modulo-card" onclick="irPagina('charlas')">
+          <div class="modulo-icon modulo-icon--flota">💬</div>
+          <div class="modulo-info"><div class="modulo-nombre">Charlas de Seguridad</div><div class="modulo-desc">Alertas generadas por inspecciones</div></div>
+        </div>
+      </div>
+
+      <div class="sec-label" style="margin-top:24px;">Sesión</div>
+      <button class="action-btn" onclick="signOut()">Cerrar sesión</button>
+    </div>
+
+    <!-- INSPECCIONES -->
+    <div class="page" id="page-inspecciones">
+      <div class="sec-label">Inspecciones</div>
+      <div id="lista-inspecciones"></div>
+    </div>
+
+    <!-- INCIDENTES -->
+    <div class="page" id="page-incidentes">
+      <div class="sec-label">Incidentes y Accidentes</div>
+      <div id="lista-incidentes"></div>
+    </div>
+
+    <!-- PROCEDIMIENTOS -->
+    <div class="page" id="page-procedimientos">
+      <div class="sec-label">Procedimientos de Trabajo Seguro</div>
+      <div id="lista-procedimientos"></div>
+    </div>
+
+    <!-- EPP -->
+    <div class="page" id="page-epp">
+      <div class="sec-label">Entrega de EPP</div>
+      <div id="lista-epp"></div>
+    </div>
+
+    <!-- TRABAJADORES -->
+    <div class="page" id="page-trabajadores">
+      <div class="sec-label">Trabajadores</div>
+      <div id="lista-trabajadores"></div>
+    </div>
+
+    <!-- CHARLAS -->
+    <div class="page" id="page-charlas">
+      <div class="sec-label">Charlas de Seguridad</div>
+      <div id="lista-charlas"></div>
+    </div>
+
+  </div>
+
+  <!-- FAB agregar (contextual) -->
+  <div class="fab-btn hidden" id="fab-add">+</div>
+
+  <!-- NAV INFERIOR -->
+  <div class="nav">
+    <div class="nav-item active" data-pag="inicio" onclick="irPagina('inicio')"><div class="nv-ic">🏠</div><div class="nv-lb">Inicio</div></div>
+    <div class="nav-item" data-pag="inspecciones" onclick="irPagina('inspecciones')"><div class="nv-ic">🔍</div><div class="nv-lb">Inspecc.</div></div>
+    <div class="nav-item" data-pag="incidentes" onclick="irPagina('incidentes')"><div class="nv-ic">⚠️</div><div class="nv-lb">Incident.</div></div>
+    <div class="nav-item" data-pag="epp" onclick="irPagina('epp')"><div class="nv-ic">🦺</div><div class="nv-lb">EPP</div></div>
+    <div class="nav-item" data-pag="mas" onclick="irPagina('trabajadores')"><div class="nv-ic">☰</div><div class="nv-lb">Más</div></div>
+  </div>
+</div>
+
+<!-- ===== PANEL: Nuevo Trabajador ===== -->
+<div class="panel hidden" id="panel-form-trabajador">
+  <div class="panel-bar"><div class="pnl-back" onclick="closePanel('panel-form-trabajador')">‹ Volver</div><div class="pnl-title">Nuevo trabajador</div><div></div></div>
+  <div class="panel-body">
+    <form id="form-trabajador" onsubmit="guardarTrabajador(event)">
+      <div class="form-group"><label>Nombre completo</label><input name="nombre" required></div>
+      <div class="form-group"><label>RUT</label><input name="rut" required placeholder="12.345.678-9"></div>
+      <div class="form-group"><label>Cargo</label><input name="cargo" required></div>
+      <div class="form-group"><label>Empresa / Contratista</label><input name="empresa" required value="Constructora LST"></div>
+      <div class="form-group"><label>Fecha de ingreso</label><input type="date" name="fechaIngreso"></div>
+      <div class="form-group"><label>Estado</label>
+        <select name="estado"><option>Activo</option><option>Inactivo</option></select>
+      </div>
+      <div class="form-group">
+        <label>Foto (opcional)</label>
+        <label class="upload-label">📷 Tomar / subir foto<input type="file" name="foto" accept="image/*" capture="environment" style="display:none" onchange="this.previousSibling ? null : null; this.parentElement.classList.add('selected')"></label>
+      </div>
+      <button class="btn-add" type="submit">Guardar trabajador</button>
+    </form>
+  </div>
+</div>
+
+<!-- ===== PANEL: Nueva Inspección ===== -->
+<div class="panel hidden" id="panel-form-inspeccion">
+  <div class="panel-bar"><div class="pnl-back" onclick="closePanel('panel-form-inspeccion')">‹ Volver</div><div class="pnl-title">Nueva inspección</div><div></div></div>
+  <div class="panel-body">
+    <form id="form-inspeccion" onsubmit="guardarInspeccion(event)">
+      <div class="form-group"><label>Fecha</label><input type="date" name="fecha" required></div>
+      <div class="form-group"><label>Tipo de inspección</label>
+        <select name="tipo" required>
+          <option>Inspección planeada</option><option>Inspección de EPP</option>
+          <option>Inspección de andamios</option><option>Inspección de extintores</option>
+          <option>Inspección de orden y limpieza</option><option>Otra</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Área / Lugar</label><input name="area" required></div>
+      <div class="form-group"><label>Inspector</label><input name="inspector" required></div>
+      <div class="form-group"><label>Tema / Categoría</label><select name="tema" id="sel-tema-inspeccion" required></select></div>
+      <div class="form-group"><label>Hallazgos</label><textarea name="hallazgos" required></textarea></div>
+      <div class="form-group"><label>Nivel de riesgo</label>
+        <select name="riesgo" required><option>Bajo</option><option>Medio</option><option>Alto</option></select>
+      </div>
+      <div class="form-group"><label>Acción correctiva sugerida</label><textarea name="accion"></textarea></div>
+      <div class="form-group">
+        <label>Foto de registro</label>
+        <label class="upload-label" onclick="event.currentTarget.classList.add('selected')">📷 Tomar / subir foto<input type="file" name="foto" accept="image/*" capture="environment" style="display:none"></label>
+      </div>
+      <button class="btn-add" type="submit">Guardar inspección</button>
+    </form>
+  </div>
+</div>
+
+<!-- ===== MODAL: Alerta de charla generada ===== -->
+<div class="panel hidden" id="modal-alerta-charla">
+  <div class="panel-bar"><div></div><div class="pnl-title">Alerta generada</div><div class="pnl-back" onclick="closePanel('modal-alerta-charla')">Cerrar</div></div>
+  <div class="panel-body">
+    <div class="alerta-charla-box">
+      <div class="alerta-charla-icon">📢</div>
+      <div>Se recomienda realizar una <b>charla de seguridad</b> sobre:</div>
+      <div class="alerta-charla-tema" id="alerta-charla-tema"></div>
+      <div style="font-size:12px;color:#888;">Área: <span id="alerta-charla-area"></span></div>
+    </div>
+    <p style="font-size:13px;color:#666;text-align:center;">Esta charla quedó registrada como <b>Pendiente</b> en el módulo "Charlas de Seguridad".</p>
+    <button class="btn-add" onclick="closePanel('modal-alerta-charla'); irPagina('charlas');">Ver charlas pendientes</button>
+  </div>
+</div>
+
+<!-- ===== PANEL: Nuevo Incidente/Accidente ===== -->
+<div class="panel hidden" id="panel-form-incidente">
+  <div class="panel-bar"><div class="pnl-back" onclick="closePanel('panel-form-incidente')">‹ Volver</div><div class="pnl-title">Nuevo incidente</div><div></div></div>
+  <div class="panel-body">
+    <form id="form-incidente" onsubmit="guardarIncidente(event)">
+      <div class="form-group"><label>Fecha</label><input type="date" name="fecha" required></div>
+      <div class="form-group"><label>Tipo</label>
+        <select name="tipo" required><option>Casi Accidente</option><option>Incidente</option><option>Accidente Leve</option><option>Accidente Grave</option><option>Accidente Fatal</option></select>
+      </div>
+      <div class="form-group"><label>Trabajador involucrado</label><select name="trabajador" id="sel-trabajador-incidente"></select></div>
+      <div class="form-group"><label>Área</label><input name="area" required></div>
+      <div class="form-group"><label>Descripción</label><textarea name="descripcion" required></textarea></div>
+      <div class="form-group"><label>Causas</label><textarea name="causas"></textarea></div>
+      <div class="form-group"><label>Gravedad</label>
+        <select name="gravedad" required><option>Leve</option><option>Grave</option><option>Fatal</option><option>Sin lesión</option></select>
+      </div>
+      <div class="form-group"><label>Acciones correctivas</label><textarea name="accion"></textarea></div>
+      <div class="form-group">
+        <label>Foto de registro</label>
+        <label class="upload-label" onclick="event.currentTarget.classList.add('selected')">📷 Tomar / subir foto<input type="file" name="foto" accept="image/*" capture="environment" style="display:none"></label>
+      </div>
+      <button class="btn-add" type="submit">Guardar registro</button>
+    </form>
+  </div>
+</div>
+
+<!-- ===== PANEL: Nuevo Procedimiento ===== -->
+<div class="panel hidden" id="panel-form-procedimiento">
+  <div class="panel-bar"><div class="pnl-back" onclick="closePanel('panel-form-procedimiento')">‹ Volver</div><div class="pnl-title">Nuevo procedimiento</div><div></div></div>
+  <div class="panel-body">
+    <form id="form-procedimiento" onsubmit="guardarProcedimiento(event)">
+      <div class="form-group"><label>Código</label><input name="codigo" required placeholder="PTS-001"></div>
+      <div class="form-group"><label>Nombre del procedimiento</label><input name="nombre" required></div>
+      <div class="form-group"><label>Área / Actividad</label><input name="area" required></div>
+      <div class="form-group"><label>Versión</label><input name="version" value="1"></div>
+      <div class="form-group"><label>Fecha de emisión</label><input type="date" name="fechaEmision"></div>
+      <div class="form-group">
+        <label>Documento (PDF)</label>
+        <label class="upload-label" onclick="event.currentTarget.classList.add('selected')">📄 Subir archivo<input type="file" name="archivo" accept="application/pdf,image/*" style="display:none"></label>
+      </div>
+      <button class="btn-add" type="submit">Guardar procedimiento</button>
+    </form>
+  </div>
+</div>
+
+<!-- ===== PANEL: Entrega de EPP ===== -->
+<div class="panel hidden" id="panel-form-epp">
+  <div class="panel-bar"><div class="pnl-back" onclick="closePanel('panel-form-epp')">‹ Volver</div><div class="pnl-title">Entrega de EPP</div><div></div></div>
+  <div class="panel-body">
+    <form id="form-epp" onsubmit="guardarEpp(event)">
+      <div class="form-group"><label>Fecha</label><input type="date" name="fecha" required></div>
+      <div class="form-group"><label>Trabajador</label><select name="trabajador" id="sel-trabajador-epp" required></select></div>
+      <div class="form-group"><label>EPP entregado</label><select name="epp" id="sel-epp-item" required></select></div>
+      <div class="form-group"><label>Cantidad</label><input type="number" name="cantidad" value="1" min="1"></div>
+      <div class="form-group"><label>Responsable de la entrega</label><input name="responsable" placeholder="Se usará tu correo si lo dejas vacío"></div>
+      <div class="form-group">
+        <label>Firma del trabajador</label>
+        <div class="firma-box"><canvas id="firma-canvas"></canvas></div>
+        <div class="firma-actions"><button type="button" onclick="limpiarFirma()">Borrar firma</button></div>
+      </div>
+      <button class="btn-add" type="submit">Guardar entrega</button>
+    </form>
+  </div>
+</div>
+
+<div class="toast hidden" id="toast"></div>
+
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="config.js"></script>
+<script src="app.js"></script>
+<script>
+  function irPagina(nombre) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    const map = { inicio:'page-inicio', inspecciones:'page-inspecciones', incidentes:'page-incidentes',
+      procedimientos:'page-procedimientos', epp:'page-epp', trabajadores:'page-trabajadores', charlas:'page-charlas' };
+    document.getElementById(map[nombre] || 'page-inicio').classList.add('active');
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    const navTarget = ['inicio','inspecciones','incidentes','epp'].includes(nombre) ? nombre : 'mas';
+    const navEl = document.querySelector(`.nav-item[data-pag="${navTarget}"]`);
+    if (navEl) navEl.classList.add('active');
+
+    const fab = document.getElementById('fab-add');
+    const acciones = {
+      inspecciones: abrirFormInspeccion, incidentes: abrirFormIncidente,
+      procedimientos: abrirFormProcedimiento, epp: abrirFormEpp, trabajadores: abrirFormTrabajador,
+    };
+    if (acciones[nombre]) { fab.classList.remove('hidden'); fab.onclick = acciones[nombre]; }
+    else { fab.classList.add('hidden'); }
+  }
+</script>
+</body>
+</html>

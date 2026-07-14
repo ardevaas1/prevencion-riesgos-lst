@@ -1,0 +1,13 @@
+{
+  "name": "LST Prevención de Riesgos",
+  "short_name": "LST Prevención",
+  "description": "Gestión de prevención de riesgos Constructora LST",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1f6b39",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "logo.png", "sizes": "192x192", "type": "image/png" }
+  ]
+}
