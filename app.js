@@ -375,6 +375,7 @@ const ICONS = {
   documento: '<svg viewBox="0 0 24 24" fill="none"><path d="M7 3h7l4 4v14H7Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M14 3v4h4" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>',
   firma: '<svg viewBox="0 0 24 24" fill="none"><path d="M4 17c2.5-1 4.5-1 6.5 0s4.5 1 6.5 0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M6 13.5 15 4.5a1.7 1.7 0 0 1 2.4 2.4L8.4 15.9l-3 0.7.6-3.1Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg>',
   obra: '<svg viewBox="0 0 24 24" fill="none"><path d="M4 21V8l6-4 6 4v13" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M14 21v-7h6v7" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 10h.01M12 10h.01M8 14h.01M12 14h.01M8 18h.01M12 18h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+  lupa: '<svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
 };
 function ic(name, size) { return ICONS[name].replace('<svg ', `<svg style="width:${size||14}px;height:${size||14}px;vertical-align:-3px;flex-shrink:0" `); }
 
@@ -649,9 +650,18 @@ function renderEstadisticasSeguridad() {
 // ============================================================
 // MÓDULO: TRABAJADORES
 // ============================================================
+let filtroTrabajadores = '';
+function onBuscarTrabajadores(v) {
+  filtroTrabajadores = (v || '').trim().toLowerCase();
+  renderTrabajadores();
+}
 function renderTrabajadores() {
-  const activos = [...allTrabajadores].reverse();
-  if (activos.length === 0) { setListHTML('trabajadores', emptyState('Sin trabajadores', 'Agrega el primer trabajador')); return; }
+  let activos = [...allTrabajadores].reverse();
+  if (filtroTrabajadores) {
+    activos = activos.filter(t => [t.nombre, t.rut, t.cargo, t.empresa, t.obra]
+      .some(v => (v || '').toLowerCase().includes(filtroTrabajadores)));
+  }
+  if (activos.length === 0) { setListHTML('trabajadores', emptyState(filtroTrabajadores ? 'Sin resultados' : 'Sin trabajadores', filtroTrabajadores ? 'Prueba con otro nombre, RUT o cargo' : 'Agrega el primer trabajador')); return; }
   setListHTML('trabajadores', activos.map(t => `
     <div class="card card--default" onclick="abrirFichaTrabajador('${esc(t.nombre).replace(/'/g,"\\'")}')">
       <div class="card-icon modulo-icon--inv">${ic('trabajadores',18)}</div>
