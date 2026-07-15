@@ -86,6 +86,12 @@ valores ya usados en Trabajadores/Inspecciones/Incidentes, igual que el
 patrón de "+ Escribir otro tipo..." de EPP (`opcionesObraSelectHTML` en
 `app.js`) — cada Inspección e Incidente tiene su propia Obra (independiente
 de la obra del trabajador), porque un trabajador puede rotar entre obras.
+Ojo: si el select solo tiene la opción "+ Escribir otra obra..." (porque
+todavía no hay ninguna Obra cargada en el Sheet), el navegador la deja
+seleccionada por defecto sin disparar `onchange` — por eso `abrirForm*`
+llama a `onCambioObraSelect(...)` a mano justo después de rellenar el
+select, para que el input de texto quede visible desde el principio en
+vez de esperar un cambio que nunca ocurre.
 
 ## Módulos de la app
 
@@ -117,6 +123,12 @@ de la obra del trabajador), porque un trabajador puede rotar entre obras.
    para adjuntar opcionalmente un **respaldo del cierre** (foto o PDF, sube
    a la misma subcarpeta de Drive `Incidentes-Accidentes`) — columna
    `Respaldo Cierre` (N) en la pestaña INCIDENTES del Sheet.
+   La tarjeta de la lista muestra solo lo esencial (tipo, trabajador, fecha,
+   área, gravedad, estado); al tocarla se abre una **ficha de detalle**
+   (`abrirDetalleIncidente` en `app.js`, panel `panel-detalle-incidente`)
+   con todos los campos — descripción, causas, obra, días perdidos, acciones
+   correctivas, fecha de registro, quién lo reportó, foto y respaldo — y ahí
+   vive el botón "Cerrar caso" (se sacó de la tarjeta de la lista).
 3. **Procedimientos de Trabajo Seguro** — sube PDF a Drive.
 4. **Entrega de EPP** — **checklist tipo menú**: se muestran todos los tipos
    de EPP con checkbox + cantidad al lado, se marcan los que correspondan
@@ -179,6 +191,13 @@ trabajador involucrado), pero las Horas Hombre se calculan agrupando
 Trabajadores por su propia Obra — o sea, la Obra de un trabajador y la Obra
 de un incidente son campos independientes que hay que llenar por separado.
 
+Los 3 índices se muestran como **gráfico de barras** (`graficoIndice` en
+`app.js`), comparando el acumulado del año actual contra el mismo período
+(1 de enero → hoy) del año anterior — barra tenue = año anterior, barra
+sólida = año actual, altura normalizada al mayor de los dos valores.
+`calcularEstadisticasSeguridad(obraSel, offsetAnios)` acepta un offset de
+años para poder calcular ambos períodos con la misma lógica.
+
 ## Decisiones de diseño visuales (por qué se ve como se ve)
 
 - **Color principal:** `#e58d17` (naranjo/amarillo vivo), con `--accent-dark:
@@ -191,6 +210,11 @@ de un incidente son campos independientes que hay que llenar por separado.
   mov/inv`, heredadas de Flota) — el cliente prefirió esto a que todos fueran
   del mismo color. Los íconos dentro son **blancos** (`color:#fff` en
   `.modulo-icon`) para contraste.
+- Las tarjetas de las listas (Trabajadores, Inspecciones, Incidentes,
+  Procedimientos, EPP, Charlas) reutilizan ese mismo ícono + color por
+  módulo dentro de un cuadrado `.card-icon` (36px, antes solo se usaba en
+  Flota y quedaba sin usar acá) — cada tarjeta ahora se ve como una mini
+  versión de su tile de Inicio en vez de solo texto plano.
 - **Sin emojis en ningún lado** — todos los íconos son SVG de línea estilo
   Flota (`stroke="currentColor"`, viewBox 24x24, sin relleno), definidos como
   constantes `ICONS` en `app.js` + inline en `index.html`.

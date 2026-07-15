@@ -562,11 +562,16 @@ function onCambioObraDashboard() {
 function esAccidenteConTiempoPerdido(inc) {
   return inc.tipo === 'Accidente Leve' || inc.tipo === 'Accidente Grave' || inc.tipo === 'Accidente Fatal';
 }
-function calcularEstadisticasSeguridad(obraSel) {
-  const hoy = new Date();
-  const inicioPeriodo = new Date(hoy.getFullYear(), 0, 1);
-  const inicioPeriodoStr = `${hoy.getFullYear()}-01-01`;
-  const hoyStr = hoyISO();
+function fechaISO(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+// offsetAnios permite calcular el mismo período (1 de enero → hoy) de un año anterior,
+// para comparar el año actual contra el mismo punto del año pasado (año vs año).
+function calcularEstadisticasSeguridad(obraSel, offsetAnios = 0) {
+  const hoyReal = new Date();
+  const anio = hoyReal.getFullYear() - offsetAnios;
+  const hoy = new Date(anio, hoyReal.getMonth(), hoyReal.getDate());
+  const inicioPeriodo = new Date(anio, 0, 1);
+  const inicioPeriodoStr = `${anio}-01-01`;
+  const hoyStr = fechaISO(hoy);
 
   const trabajadoresObra = allTrabajadores.filter(t => obraSel === 'todas' || t.obra === obraSel);
   let horasHombre = 0, sinContrato = 0;
@@ -596,10 +601,33 @@ function calcularEstadisticasSeguridad(obraSel) {
     indiceGravedad: horasHombre > 0 ? (diasPerdidos / horasHombre) * 1000000 : 0,
   };
 }
+// Tarjeta de índice con gráfico de barras comparando el mismo período del
+// año anterior contra el año actual (en vez de solo mostrar el número).
+function graficoIndice(nombre, color, valorActual, valorPrev, anioActual, formato) {
+  const max = Math.max(valorActual, valorPrev, 0.0001);
+  const hActual = Math.max(6, Math.round((valorActual / max) * 100));
+  const hPrev = Math.max(6, Math.round((valorPrev / max) * 100));
+  return `
+    <div class="indice-card">
+      <div class="indice-nombre">${nombre}</div>
+      <div class="indice-valor ${color}">${formato(valorActual)}</div>
+      <div class="indice-chart">
+        <div class="indice-bar-col">
+          <div class="indice-bar-track"><div class="indice-bar ${color}" style="height:${hPrev}%"></div></div>
+          <span class="indice-bar-y">${anioActual - 1}</span>
+        </div>
+        <div class="indice-bar-col">
+          <div class="indice-bar-track"><div class="indice-bar ${color} indice-bar--actual" style="height:${hActual}%"></div></div>
+          <span class="indice-bar-y">${anioActual}</span>
+        </div>
+      </div>
+    </div>`;
+}
 function renderEstadisticasSeguridad() {
   const obras = opcionesObrasDisponibles();
   if (obraDashboardSel !== 'todas' && !obras.includes(obraDashboardSel)) obraDashboardSel = 'todas';
-  const st = calcularEstadisticasSeguridad(obraDashboardSel);
+  const st = calcularEstadisticasSeguridad(obraDashboardSel, 0);
+  const stPrev = calcularEstadisticasSeguridad(obraDashboardSel, 1);
 
   setListHTML('stats-seguridad', `
     <div class="stats-obra-bar">${ic('obra',16)}
@@ -608,12 +636,12 @@ function renderEstadisticasSeguridad() {
         ${obras.map(o => `<option ${o===obraDashboardSel?'selected':''}>${esc(o)}</option>`).join('')}
       </select>
     </div>
-    <div class="stats-row stats-row--indices">
-      <div class="stat blue"><div class="stat-n">${st.tasaAccidentabilidad.toFixed(1)}%</div><div class="stat-l">Tasa Accidentabilidad</div></div>
-      <div class="stat amber"><div class="stat-n">${Math.round(st.indiceFrecuencia)}</div><div class="stat-l">Índice Frecuencia</div></div>
-      <div class="stat red"><div class="stat-n">${Math.round(st.indiceGravedad)}</div><div class="stat-l">Índice Gravedad</div></div>
+    <div class="indices-grid">
+      ${graficoIndice('Tasa Accidentabilidad', 'blue', st.tasaAccidentabilidad, stPrev.tasaAccidentabilidad, st.anio, v => v.toFixed(1)+'%')}
+      ${graficoIndice('Índice Frecuencia', 'amber', st.indiceFrecuencia, stPrev.indiceFrecuencia, st.anio, v => Math.round(v))}
+      ${graficoIndice('Índice Gravedad', 'red', st.indiceGravedad, stPrev.indiceGravedad, st.anio, v => Math.round(v))}
     </div>
-    <div class="stats-caption">Acumulado ${st.anio} · ${st.nAccidentes} accidente(s) con tiempo perdido · ${Math.round(st.horasHombre).toLocaleString('es-CL')} HH trabajadas (estimadas)</div>
+    <div class="stats-caption">Acumulado ${st.anio} vs. mismo período ${st.anio-1} · ${st.nAccidentes} accidente(s) con tiempo perdido · ${Math.round(st.horasHombre).toLocaleString('es-CL')} HH trabajadas (estimadas)</div>
     ${st.sinContrato > 0 ? `<div class="stats-aviso">${st.sinContrato} trabajador(es) sin fecha de contrato registrada — sus horas no se cuentan en los índices.</div>` : ''}
   `);
 }
@@ -626,11 +654,13 @@ function renderTrabajadores() {
   if (activos.length === 0) { setListHTML('trabajadores', emptyState('Sin trabajadores', 'Agrega el primer trabajador')); return; }
   setListHTML('trabajadores', activos.map(t => `
     <div class="card card--default" onclick="abrirFichaTrabajador('${esc(t.nombre).replace(/'/g,"\\'")}')">
+      <div class="card-icon modulo-icon--inv">${ic('trabajadores',18)}</div>
       <div class="card-body">
         <div class="card-title">${esc(t.nombre)}</div>
         <div class="card-sub">${esc(t.cargo)} · ${esc(t.rut)}</div>
         <div class="badge-row"><span class="badge ${t.estado==='Activo'?'green':'gray'}">${esc(t.estado)}</span>
-        <span class="badge blue">${esc(t.empresa)}</span></div>
+        <span class="badge blue">${esc(t.empresa)}</span>
+        ${t.obra ? `<span class="badge gray">${ic('obra',11)} ${esc(t.obra)}</span>` : ''}</div>
       </div>
       <div class="card-arrow">›</div>
     </div>`).join(''));
@@ -781,8 +811,9 @@ function selectTrabajadoresOptions() {
 function abrirFormTrabajador() {
   const f = document.getElementById('form-trabajador');
   f.reset();
-  document.getElementById('sel-obra-trabajador').innerHTML = opcionesObraSelectHTML('');
-  document.getElementById('input-trabajador-obra-otra').classList.add('hidden');
+  const selObra = document.getElementById('sel-obra-trabajador');
+  selObra.innerHTML = opcionesObraSelectHTML('');
+  onCambioObraSelect(selObra, 'input-trabajador-obra-otra');
   openPanel('panel-form-trabajador');
 }
 async function guardarTrabajador(ev) {
@@ -817,6 +848,7 @@ function renderInspecciones() {
   setListHTML('inspecciones', items.map(i => {
     const meta = NIVELES_RIESGO.find(n=>n.value===i.riesgo) || NIVELES_RIESGO[0];
     return `<div class="card card--default">
+      <div class="card-icon modulo-icon--flota">${ic('inspecciones',18)}</div>
       <div class="card-body">
         <div class="card-title">${esc(i.tipo)} — ${esc(i.area)}</div>
         <div class="card-sub">${esc(i.fecha)} · ${esc(i.inspector)} · Tema: ${esc(i.tema)}</div>
@@ -843,8 +875,9 @@ function abrirFormInspeccion() {
   f.reset();
   f.fecha.value = hoyISO();
   document.getElementById('sel-tema-inspeccion').innerHTML = TEMAS_CHARLA.map(t=>`<option>${t}</option>`).join('');
-  document.getElementById('sel-obra-inspeccion').innerHTML = opcionesObraSelectHTML('');
-  document.getElementById('input-inspeccion-obra-otra').classList.add('hidden');
+  const selObra = document.getElementById('sel-obra-inspeccion');
+  selObra.innerHTML = opcionesObraSelectHTML('');
+  onCambioObraSelect(selObra, 'input-inspeccion-obra-otra');
   openPanel('panel-form-inspeccion');
 }
 async function guardarInspeccion(ev) {
@@ -891,6 +924,7 @@ function renderCharlas() {
   if (items.length === 0) { setListHTML('charlas', emptyState('Sin charlas pendientes', '')); return; }
   setListHTML('charlas', items.map(c => `
     <div class="card card--default">
+      <div class="card-icon modulo-icon--flota">${ic('charlas',18)}</div>
       <div class="card-body">
         <div class="card-title">${esc(c.tema)}</div>
         <div class="card-sub">${esc(c.origen)} · Generada ${esc(c.fecha)}</div>
@@ -917,18 +951,50 @@ function renderIncidentes() {
   const items = [...allIncidentes].reverse();
   if (items.length === 0) { setListHTML('incidentes', emptyState('Sin incidentes registrados', '')); return; }
   setListHTML('incidentes', items.map(i => `
-    <div class="card card--default">
+    <div class="card card--default" onclick="abrirDetalleIncidente(${i.fila})">
+      <div class="card-icon modulo-icon--and">${ic('incidentes',18)}</div>
       <div class="card-body">
-        <div class="card-title">${esc(i.tipo)} — ${esc(i.trabajador)}</div>
-        <div class="card-sub">${esc(i.fecha)} · ${esc(i.area)}</div>
-        <div class="card-sub">${esc(i.descripcion)}</div>
+        <div class="card-title">${esc(i.tipo)}${i.trabajador ? ' — ' + esc(i.trabajador) : ''}</div>
+        <div class="card-sub">${esc(i.fecha)} · ${esc(i.area)}${i.obra ? ' · ' + esc(i.obra) : ''}</div>
         <div class="badge-row"><span class="badge red">${esc(i.gravedad)}</span>
-        <span class="badge ${i.estado==='Cerrado'?'green':'gray'}">${esc(i.estado)}</span>
-        ${i.foto ? `<a href="${esc(i.foto)}" target="_blank" class="badge blue">${ic('camara',12)} Foto</a>` : ''}
-        ${i.respaldo ? `<a href="${esc(i.respaldo)}" target="_blank" class="badge blue">${ic('documento',12)} Respaldo</a>` : ''}</div>
-        ${i.estado !== 'Cerrado' ? `<button class="action-btn" onclick="abrirCerrarIncidente(${i.fila})">Cerrar caso</button>` : ''}
+        <span class="badge ${i.estado==='Cerrado'?'green':'gray'}">${esc(i.estado)}</span></div>
       </div>
+      <div class="card-arrow">›</div>
     </div>`).join(''));
+}
+function abrirDetalleIncidente(fila) {
+  const i = allIncidentes.find(x => x.fila === fila);
+  if (!i) { toast('No se encontró el registro', 'error'); return; }
+  document.getElementById('detalle-incidente-body').innerHTML = `
+    <div class="ficha-hero">
+      <div class="ficha-hero-icon">${ic('incidentes',32)}</div>
+      <div class="ficha-hero-info">
+        <div class="ficha-hero-type">${esc(i.tipo)}</div>
+        <div class="ficha-hero-name">${esc(i.area)}</div>
+      </div>
+    </div>
+    <div class="field-row"><span>Fecha</span><b>${esc(i.fecha)}</b></div>
+    ${i.trabajador ? `<div class="field-row"><span>Trabajador</span><b>${esc(i.trabajador)}</b></div>` : ''}
+    <div class="field-row"><span>Obra</span><b>${esc(i.obra || '—')}</b></div>
+    <div class="field-row"><span>Gravedad</span><span class="badge red">${esc(i.gravedad)}</span></div>
+    <div class="field-row"><span>Días perdidos</span><b>${i.diasPerdidos || 0}</b></div>
+    <div class="field-row"><span>Estado</span><span class="badge ${i.estado==='Cerrado'?'green':'gray'}">${esc(i.estado)}</span></div>
+
+    <div class="sec-label" style="margin-top:20px;">Descripción</div>
+    <div class="card-sub" style="white-space:normal;">${esc(i.descripcion) || '—'}</div>
+
+    ${i.causas ? `<div class="sec-label" style="margin-top:20px;">Causas</div><div class="card-sub" style="white-space:normal;">${esc(i.causas)}</div>` : ''}
+    ${i.accion ? `<div class="sec-label" style="margin-top:20px;">Acciones correctivas</div><div class="card-sub" style="white-space:normal;">${esc(i.accion)}</div>` : ''}
+
+    <div class="sec-label" style="margin-top:20px;">Registro</div>
+    <div class="field-row"><span>Fecha de registro</span><b>${esc(i.fechaRegistro || '—')}</b></div>
+    <div class="field-row"><span>Reportado por</span><b>${esc(i.reportadoPor || '—')}</b></div>
+    ${i.foto ? `<div class="field-row"><span>Foto</span><a href="${esc(i.foto)}" target="_blank" class="badge blue">${ic('camara',12)} Ver foto</a></div>` : ''}
+    ${i.respaldo ? `<div class="field-row"><span>Respaldo de cierre</span><a href="${esc(i.respaldo)}" target="_blank" class="badge blue">${ic('documento',12)} Ver respaldo</a></div>` : ''}
+
+    ${i.estado !== 'Cerrado' ? `<button class="action-btn" onclick="closePanel('panel-detalle-incidente'); abrirCerrarIncidente(${i.fila})">Cerrar caso</button>` : ''}
+  `;
+  openPanel('panel-detalle-incidente');
 }
 function abrirFormIncidente() {
   const f = document.getElementById('form-incidente');
@@ -936,8 +1002,9 @@ function abrirFormIncidente() {
   f.fecha.value = hoyISO();
   document.getElementById('sel-trabajador-incidente').innerHTML =
     '<option value="">— Selecciona (opcional) —</option>' + selectTrabajadoresOptions();
-  document.getElementById('sel-obra-incidente').innerHTML = opcionesObraSelectHTML('');
-  document.getElementById('input-incidente-obra-otra').classList.add('hidden');
+  const selObra = document.getElementById('sel-obra-incidente');
+  selObra.innerHTML = opcionesObraSelectHTML('');
+  onCambioObraSelect(selObra, 'input-incidente-obra-otra');
   openPanel('panel-form-incidente');
 }
 async function guardarIncidente(ev) {
@@ -1067,6 +1134,7 @@ function renderProcedimientos() {
   if (items.length === 0) { setListHTML('procedimientos', emptyState('Sin procedimientos', 'Sube el primer PTS')); return; }
   setListHTML('procedimientos', items.map(p => `
     <div class="card card--default">
+      <div class="card-icon modulo-icon--cont">${ic('procedimientos',18)}</div>
       <div class="card-body">
         <div class="card-title">${esc(p.nombre)}</div>
         <div class="card-sub">${esc(p.codigo)} · v${esc(p.version)} · ${esc(p.area)}</div>
@@ -1127,6 +1195,7 @@ function renderEpp() {
   const items = orden.map(k => grupos[k]).reverse();
   setListHTML('epp', items.map(g => `
     <div class="card card--default">
+      <div class="card-icon modulo-icon--mov">${ic('epp',18)}</div>
       <div class="card-body">
         <div class="card-title">${esc(g.trabajador)}</div>
         <div class="card-sub">${esc(g.fecha)}</div>
