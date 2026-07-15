@@ -169,7 +169,7 @@ estándar de Mutualidad/DS40:
   1.000.000
 
 Se consideran "accidente con tiempo perdido" los Incidentes con tipo
-`Accidente Leve/Grave/Fatal` (no cuentan Casi Accidente ni Incidente).
+`Accidente Leve/Grave/Fatal` (no cuentan Cuasiaccidente ni Incidente).
 "Días perdidos" es el campo manual que se ingresa al registrar el incidente.
 
 **Horas Hombre Trabajadas** se estima a partir de la vigencia del contrato

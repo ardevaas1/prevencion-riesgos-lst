@@ -17,7 +17,7 @@ const NIVELES_RIESGO = [
   { value: 'Medio', color: 'amber' },
   { value: 'Alto',  color: 'red'   },
 ];
-const TIPOS_EVENTO_INC = ['Casi Accidente', 'Incidente', 'Accidente Leve', 'Accidente Grave', 'Accidente Fatal'];
+const TIPOS_EVENTO_INC = ['Cuasiaccidente', 'Incidente', 'Accidente Leve', 'Accidente Grave', 'Accidente Fatal'];
 const EPP_ITEMS = [
   'Casco', 'Lentes de seguridad', 'Guantes', 'Zapatos de seguridad',
   'Chaleco reflectante', 'Protección auditiva', 'Arnés de seguridad',
