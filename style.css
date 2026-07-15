@@ -225,7 +225,26 @@ body.is-offline #app { padding-top: 30px; }
   flex: 1; padding: 9px 12px; border: 1.5px solid var(--line); border-radius: 10px;
   font-size: 13.5px; font-weight: 600; color: var(--ink); background: #fff; font-family: inherit;
 }
-.stats-row--indices { grid-template-columns: repeat(3, 1fr); margin-bottom: 6px; }
+/* Índices como gráfico de barras: año anterior (tenue) vs. año actual (sólido) */
+.indices-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; }
+.indice-card {
+  background: #fff; border-radius: 12px; border: 1px solid var(--line);
+  padding: 10px 6px 8px; text-align: center; display: flex; flex-direction: column; align-items: center;
+}
+.indice-nombre { font-size: 9.5px; color: #888; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; line-height: 1.2; height: 22px; display: flex; align-items: center; }
+.indice-valor { font-size: 19px; font-weight: 700; line-height: 1; margin-bottom: 8px; }
+.indice-valor.blue  { color: #1565c0; }
+.indice-valor.amber { color: #e65100; }
+.indice-valor.red   { color: #c62828; }
+.indice-chart { display: flex; justify-content: center; align-items: flex-end; gap: 10px; }
+.indice-bar-col { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.indice-bar-track { width: 18px; height: 46px; display: flex; align-items: flex-end; background: var(--bg); border-radius: 5px; overflow: hidden; }
+.indice-bar { width: 100%; border-radius: 5px 5px 0 0; opacity: 0.32; transition: height 0.4s ease; }
+.indice-bar--actual { opacity: 1; }
+.indice-bar.blue  { background: #1565c0; }
+.indice-bar.amber { background: #e65100; }
+.indice-bar.red   { background: #c62828; }
+.indice-bar-y { font-size: 9px; color: #999; font-weight: 600; }
 .stats-caption { font-size: 11.5px; color: #888; line-height: 1.4; }
 .stats-aviso {
   font-size: 12px; color: #92400e; background: #fff8e1; border: 1px solid #ffe082;
