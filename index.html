@@ -300,6 +300,21 @@
   </div>
 </div>
 
+<!-- ===== PANEL: Cerrar caso (incidente/accidente) ===== -->
+<div class="panel hidden" id="panel-cerrar-incidente">
+  <div class="panel-bar"><div class="pnl-back" onclick="closePanel('panel-cerrar-incidente')">‹ Volver</div><div class="pnl-title">Cerrar caso</div><div></div></div>
+  <div class="panel-body">
+    <form id="form-cerrar-incidente" onsubmit="guardarCierreIncidente(event)">
+      <input type="hidden" name="fila">
+      <div class="form-group">
+        <label>Respaldo del cierre (opcional)</label>
+        <label class="upload-label" onclick="event.currentTarget.classList.add('selected')"><svg viewBox="0 0 24 24" fill="none" class="inline-ic"><path d="M7 3h7l4 4v14H7Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M14 3v4h4" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg> Subir archivo<input type="file" name="respaldo" accept="application/pdf,image/*" style="display:none"></label>
+      </div>
+      <button class="btn-add" type="submit">Cerrar caso</button>
+    </form>
+  </div>
+</div>
+
 <!-- ===== PANEL: Nuevo Procedimiento ===== -->
 <div class="panel hidden" id="panel-form-procedimiento">
   <div class="panel-bar"><div class="pnl-back" onclick="closePanel('panel-form-procedimiento')">‹ Volver</div><div class="pnl-title">Nuevo procedimiento</div><div></div></div>
