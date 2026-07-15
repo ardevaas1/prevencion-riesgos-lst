@@ -276,16 +276,16 @@ function ic(name, size) { return ICONS[name].replace('<svg ', `<svg style="width
 
 function renderModulosHome() {
   const modulos = [
-    { key: 'inspecciones', nombre: 'Inspecciones', desc: 'Con foto y alerta de charla automática' },
-    { key: 'incidentes', nombre: 'Incidentes y Accidentes', desc: 'Registro con evidencia fotográfica' },
-    { key: 'procedimientos', nombre: 'Procedimientos de Trabajo Seguro', desc: 'PTS vigentes de la obra' },
-    { key: 'epp', nombre: 'Entrega de EPP', desc: 'Con firma digital del trabajador' },
-    { key: 'trabajadores', nombre: 'Trabajadores', desc: 'Nómina de la obra' },
-    { key: 'charlas', nombre: 'Charlas de Seguridad', desc: 'Alertas generadas por inspecciones' },
+    { key: 'inspecciones', nombre: 'Inspecciones', desc: 'Con foto y alerta de charla automática', color: 'flota' },
+    { key: 'incidentes', nombre: 'Incidentes y Accidentes', desc: 'Registro con evidencia fotográfica', color: 'and' },
+    { key: 'procedimientos', nombre: 'Procedimientos de Trabajo Seguro', desc: 'PTS vigentes de la obra', color: 'cont' },
+    { key: 'epp', nombre: 'Entrega de EPP', desc: 'Con firma digital del trabajador', color: 'mov' },
+    { key: 'trabajadores', nombre: 'Trabajadores', desc: 'Nómina de la obra', color: 'inv' },
+    { key: 'charlas', nombre: 'Charlas de Seguridad', desc: 'Alertas generadas por inspecciones', color: 'flota' },
   ];
   setListHTML('modulos-home', modulos.map(m => `
     <div class="modulo-card" onclick="irPagina('${m.key}')">
-      <div class="modulo-icon modulo-icon--pr">${ICONS[m.key]}</div>
+      <div class="modulo-icon modulo-icon--${m.color}">${ICONS[m.key]}</div>
       <div class="modulo-info"><div class="modulo-nombre">${m.nombre}</div><div class="modulo-desc">${m.desc}</div></div>
     </div>`).join(''));
 }
