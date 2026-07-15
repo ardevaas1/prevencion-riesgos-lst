@@ -389,7 +389,7 @@ async function cargarTodo(silencioso) {
     const [trab, insp, inc, proc, epp, charlas] = await Promise.all([
       fetchSheet(`'${CONFIG.SHEET_TRABAJADORES}'!A2:I2000`),
       fetchSheet(`'${CONFIG.SHEET_INSPECCIONES}'!A2:L2000`),
-      fetchSheet(`'${CONFIG.SHEET_INCIDENTES}'!A2:M2000`),
+      fetchSheet(`'${CONFIG.SHEET_INCIDENTES}'!A2:N2000`),
       fetchSheet(`'${CONFIG.SHEET_PROCEDIMIENTOS}'!A2:I2000`),
       fetchSheet(`'${CONFIG.SHEET_EPP}'!A2:I2000`),
       fetchSheet(`'${CONFIG.SHEET_CHARLAS}'!A2:G2000`),
@@ -425,7 +425,7 @@ function rowToInspeccion(r, i) {
 function rowToIncidente(r, i) {
   return { fila: i+2, n: r[0]||'', fecha: r[1]||'', tipo: r[2]||'', trabajador: r[3]||'', area: r[4]||'',
     descripcion: r[5]||'', causas: r[6]||'', gravedad: r[7]||'', foto: r[8]||'', accion: r[9]||'',
-    estado: r[10]||'Abierto', fechaRegistro: r[11]||'', reportadoPor: r[12]||'' };
+    estado: r[10]||'Abierto', fechaRegistro: r[11]||'', reportadoPor: r[12]||'', respaldo: r[13]||'' };
 }
 function rowToProcedimiento(r, i) {
   return { fila: i+2, n: r[0]||'', codigo: r[1]||'', nombre: r[2]||'', area: r[3]||'', version: r[4]||'',
@@ -663,8 +663,9 @@ function renderIncidentes() {
         <div class="card-sub">${esc(i.descripcion)}</div>
         <div class="badge-row"><span class="badge red">${esc(i.gravedad)}</span>
         <span class="badge ${i.estado==='Cerrado'?'green':'gray'}">${esc(i.estado)}</span>
-        ${i.foto ? `<a href="${esc(i.foto)}" target="_blank" class="badge blue">${ic('camara',12)} Foto</a>` : ''}</div>
-        ${i.estado !== 'Cerrado' ? `<button class="action-btn" onclick="marcarIncidenteCerrado(${i.fila})">Cerrar caso</button>` : ''}
+        ${i.foto ? `<a href="${esc(i.foto)}" target="_blank" class="badge blue">${ic('camara',12)} Foto</a>` : ''}
+        ${i.respaldo ? `<a href="${esc(i.respaldo)}" target="_blank" class="badge blue">${ic('documento',12)} Respaldo</a>` : ''}</div>
+        ${i.estado !== 'Cerrado' ? `<button class="action-btn" onclick="abrirCerrarIncidente(${i.fila})">Cerrar caso</button>` : ''}
       </div>
     </div>`).join(''));
 }
@@ -688,10 +689,10 @@ async function guardarIncidente(ev) {
     }
     const trabNombre = f.trabajador.value ? f.trabajador.value.split('|')[0] : '';
     const n = allIncidentes.length + 1;
-    await appendSheet(`'${CONFIG.SHEET_INCIDENTES}'!A:M`, [[
+    await appendSheet(`'${CONFIG.SHEET_INCIDENTES}'!A:N`, [[
       n, f.fecha.value, f.tipo.value, trabNombre, f.area.value, f.descripcion.value,
       f.causas.value, f.gravedad.value, fotoLink, f.accion.value || '', 'Abierto',
-      new Date().toLocaleString('es-CL'), userEmail || ''
+      new Date().toLocaleString('es-CL'), userEmail || '', ''
     ]]);
 
     // Sugerencia automática de charla según lo descrito en el incidente
@@ -711,13 +712,34 @@ async function guardarIncidente(ev) {
     }
   } catch (e) { toast(e.message, 'error'); }
 }
-async function marcarIncidenteCerrado(fila) {
+function abrirCerrarIncidente(fila) {
+  const f = document.getElementById('form-cerrar-incidente');
+  f.reset();
+  f.fila.value = fila;
+  openPanel('panel-cerrar-incidente');
+}
+async function guardarCierreIncidente(ev) {
+  ev.preventDefault();
+  const f = ev.target;
+  const fila = f.fila.value;
   try {
+    let respaldoLink = '';
+    const respaldoFile = f.respaldo.files[0];
+    if (respaldoFile) {
+      const up = await uploadFile(respaldoFile, 'Incidentes-Accidentes', 'respaldo_cierre');
+      respaldoLink = up.link;
+    }
     await ensureToken();
-    const url = `${SHEETS_BASE}/${CONFIG.SHEET_ID}/values/${encodeURIComponent(`'${CONFIG.SHEET_INCIDENTES}'!K${fila}`)}?valueInputOption=USER_ENTERED`;
-    await fetch(url, { method:'PUT', headers:{ 'Content-Type':'application/json', ...authHeader() },
+    const urlEstado = `${SHEETS_BASE}/${CONFIG.SHEET_ID}/values/${encodeURIComponent(`'${CONFIG.SHEET_INCIDENTES}'!K${fila}`)}?valueInputOption=USER_ENTERED`;
+    await fetch(urlEstado, { method:'PUT', headers:{ 'Content-Type':'application/json', ...authHeader() },
       body: JSON.stringify({ values: [['Cerrado']] }) });
+    if (respaldoLink) {
+      const urlRespaldo = `${SHEETS_BASE}/${CONFIG.SHEET_ID}/values/${encodeURIComponent(`'${CONFIG.SHEET_INCIDENTES}'!N${fila}`)}?valueInputOption=USER_ENTERED`;
+      await fetch(urlRespaldo, { method:'PUT', headers:{ 'Content-Type':'application/json', ...authHeader() },
+        body: JSON.stringify({ values: [[respaldoLink]] }) });
+    }
     toast('Caso cerrado ✓', 'ok');
+    closePanel('panel-cerrar-incidente');
     cargarTodo(true);
   } catch (e) { toast(e.message, 'error'); }
 }

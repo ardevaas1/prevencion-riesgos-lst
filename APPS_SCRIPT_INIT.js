@@ -34,7 +34,8 @@ function inicializarPlanilla() {
 
   crearHoja(ss, 'INCIDENTES', [
     'N°', 'Fecha', 'Tipo', 'Trabajador Involucrado', 'Área', 'Descripción', 'Causas',
-    'Gravedad', 'Foto', 'Acciones Correctivas', 'Estado', 'Fecha Registro', 'Reportado Por'
+    'Gravedad', 'Foto', 'Acciones Correctivas', 'Estado', 'Fecha Registro', 'Reportado Por',
+    'Respaldo Cierre'
   ]);
 
   crearHoja(ss, 'PROCEDIMIENTOS', [

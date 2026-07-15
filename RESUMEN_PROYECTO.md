@@ -70,7 +70,12 @@ a futuro para roles admin/prevencionista/viewer, no implementado).
    un riesgo de seguridad/costos. Si en algún momento se quiere una sugerencia
    con LLM real, hay que agregar un backend (Apps Script o Cloud Function)
    que guarde la key del lado del servidor.
-   Tiene botón "Cerrar caso" (Estado Abierto → Cerrado).
+   Tiene botón "Cerrar caso" (Estado Abierto → Cerrado), que abre un panel
+   para adjuntar opcionalmente un **respaldo del cierre** (foto o PDF, sube
+   a la misma subcarpeta de Drive `Incidentes-Accidentes`) — columna nueva
+   `Respaldo Cierre` (N) en la pestaña INCIDENTES del Sheet. Si el Sheet ya
+   existe en producción, hay que agregar el encabezado a mano en la celda
+   N1 (la API lo escribe igual aunque falte, pero para que se vea prolijo).
 3. **Procedimientos de Trabajo Seguro** — sube PDF a Drive.
 4. **Entrega de EPP** — permite **varios ítems en una sola entrega** (carrito:
    agregar ítem + cantidad, repetir, firmar una vez al final → se guardan
