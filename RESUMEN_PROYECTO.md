@@ -20,8 +20,22 @@ repositorio de GitHub **separado**.
   desde el navegador con el token OAuth del usuario (`fetchSheet`,
   `appendSheet` en `app.js`).
 - **Archivos (fotos, firmas, PDFs):** Google Drive API, subida directa
-  multipart desde el navegador (`uploadFile` en `app.js`), a subcarpetas que
-  se crean solas la primera vez que se necesitan.
+  multipart desde el navegador (`uploadFileToFolder` en `app.js`), a
+  subcarpetas que se crean solas la primera vez que se necesitan. Dos formas
+  de resolver la carpeta destino:
+  - `uploadFile(file, nombreModulo, prefijo, ext)` → sube a `Root/{nombreModulo}/`
+    (una carpeta plana por módulo: `Inspecciones`, `Procedimientos`,
+    `Incidentes-Accidentes` cuando el incidente no tiene trabajador asociado).
+  - `uploadFileTrabajador(file, nombreTrabajador, prefijo, ext)` → sube a
+    `Root/Trabajadores/{nombre del trabajador}/`, una **carpeta por
+    trabajador** donde quedan juntos todos sus archivos: foto de perfil,
+    contrato, examen de altura, firmas de EPP, y fotos/respaldo de
+    incidentes cuando el incidente sí tiene un trabajador seleccionado.
+    Decisión explícita para que Drive no se vea desordenado con todo
+    mezclado por tipo de documento en vez de por persona.
+  - Las carpetas antiguas `Trabajadores-Documentos` y `Entrega EPP - Firmas`
+    quedaron en desuso para archivos nuevos (los que ya estaban ahí de antes
+    del cambio NO se movieron, no hay migración automática).
 - El Sheet y la carpeta de Drive son de **otro correo dueño** (no el mismo
   proyecto/cuenta de Google Cloud que Flota) — pero **reutiliza el mismo
   API Key / Client ID de Google Cloud** de la app de Flota (ver

@@ -292,12 +292,18 @@ async function findOrCreateFolder(name, parentId) {
 async function getModuloFolder(nombreModulo) {
   return findOrCreateFolder(nombreModulo, CONFIG.DRIVE_ROOT_FOLDER);
 }
+// Carpeta personal del trabajador (Trabajadores/{nombre}/) — ahí quedan juntos
+// todos sus archivos (foto, contrato, examen de altura, firmas de EPP, etc.)
+// en vez de mezclados con los de todos los demás en carpetas por tipo de dato.
+async function getTrabajadorFolder(nombreTrabajador) {
+  const raiz = await getModuloFolder('Trabajadores');
+  return findOrCreateFolder(nombreTrabajador, raiz);
+}
 
-// Sube un archivo (File o Blob) a una subcarpeta del módulo. Devuelve {id, name, link}
-async function uploadFile(fileOrBlob, nombreModulo, prefixName, ext) {
+// Sube un archivo (File o Blob) a una carpeta de Drive ya resuelta. Devuelve {id, name, link}
+async function uploadFileToFolder(fileOrBlob, folderId, prefixName, ext) {
   await ensureToken();
   toast('Subiendo archivo...');
-  const folderId = await getModuloFolder(nombreModulo);
   const fecha = new Date().toLocaleDateString('es-CL').replace(/\//g, '-');
   const hora = new Date().toTimeString().slice(0,5).replace(':','');
   const extension = ext || (fileOrBlob.name ? fileOrBlob.name.split('.').pop() : 'jpg');
@@ -328,6 +334,16 @@ async function uploadFile(fileOrBlob, nombreModulo, prefixName, ext) {
   const result = await res.json();
   toast('Archivo subido ✓', 'ok');
   return { id: result.id, name: result.name, link: `https://drive.google.com/file/d/${result.id}/view` };
+}
+// Sube un archivo a una subcarpeta del módulo (Root/{nombreModulo}/)
+async function uploadFile(fileOrBlob, nombreModulo, prefixName, ext) {
+  const folderId = await getModuloFolder(nombreModulo);
+  return uploadFileToFolder(fileOrBlob, folderId, prefixName, ext);
+}
+// Sube un archivo a la carpeta personal del trabajador (Root/Trabajadores/{nombre}/)
+async function uploadFileTrabajador(fileOrBlob, nombreTrabajador, prefixName, ext) {
+  const folderId = await getTrabajadorFolder(nombreTrabajador);
+  return uploadFileToFolder(fileOrBlob, folderId, prefixName, ext);
 }
 
 // ── UI helpers ───────────────────────────────────────────────
@@ -713,7 +729,8 @@ async function guardarContrato(ev) {
     let archivoLink = t ? t.contratoArchivo : '';
     const archivoFile = f.archivo.files[0];
     if (archivoFile) {
-      const up = await uploadFile(archivoFile, 'Trabajadores-Documentos', 'contrato_' + (t ? t.nombre.replace(/\s+/g,'_') : fila));
+      const up = t ? await uploadFileTrabajador(archivoFile, t.nombre, 'contrato')
+                   : await uploadFile(archivoFile, 'Trabajadores-Documentos', 'contrato_' + fila);
       archivoLink = up.link;
     }
     await ensureToken();
@@ -744,7 +761,8 @@ async function guardarAltura(ev) {
     let archivoLink = t ? t.alturaArchivo : '';
     const archivoFile = f.archivo.files[0];
     if (archivoFile) {
-      const up = await uploadFile(archivoFile, 'Trabajadores-Documentos', 'examen_altura_' + (t ? t.nombre.replace(/\s+/g,'_') : fila));
+      const up = t ? await uploadFileTrabajador(archivoFile, t.nombre, 'examen_altura')
+                   : await uploadFile(archivoFile, 'Trabajadores-Documentos', 'examen_altura_' + fila);
       archivoLink = up.link;
     }
     await ensureToken();
@@ -774,7 +792,7 @@ async function guardarTrabajador(ev) {
     let fotoLink = '';
     const fotoFile = f.foto.files[0];
     if (fotoFile) {
-      const up = await uploadFile(fotoFile, 'Trabajadores', 'foto_' + f.nombre.value.replace(/\s+/g,'_'));
+      const up = await uploadFileTrabajador(fotoFile, f.nombre.value, 'foto');
       fotoLink = up.link;
     }
     const n = allTrabajadores.length + 1;
@@ -926,13 +944,15 @@ async function guardarIncidente(ev) {
   ev.preventDefault();
   const f = ev.target;
   try {
+    const trabNombre = f.trabajador.value ? f.trabajador.value.split('|')[0] : '';
     let fotoLink = '';
     const fotoFile = f.foto.files[0];
     if (fotoFile) {
-      const up = await uploadFile(fotoFile, 'Incidentes-Accidentes', 'incidente_' + f.area.value.replace(/\s+/g,'_'));
+      const up = trabNombre
+        ? await uploadFileTrabajador(fotoFile, trabNombre, 'incidente_' + f.area.value.replace(/\s+/g,'_'))
+        : await uploadFile(fotoFile, 'Incidentes-Accidentes', 'incidente_' + f.area.value.replace(/\s+/g,'_'));
       fotoLink = up.link;
     }
-    const trabNombre = f.trabajador.value ? f.trabajador.value.split('|')[0] : '';
     const n = allIncidentes.length + 1;
     const obra = valorObra(f.obra, 'input-incidente-obra-otra');
     const diasPerdidos = parseInt(f.diasPerdidos.value, 10) || 0;
@@ -1015,10 +1035,13 @@ async function guardarCierreIncidente(ev) {
   const f = ev.target;
   const fila = f.fila.value;
   try {
+    const inc = allIncidentes.find(x => String(x.fila) === String(fila));
     let respaldoLink = '';
     const respaldoFile = f.respaldo.files[0];
     if (respaldoFile) {
-      const up = await uploadFile(respaldoFile, 'Incidentes-Accidentes', 'respaldo_cierre');
+      const up = (inc && inc.trabajador)
+        ? await uploadFileTrabajador(respaldoFile, inc.trabajador, 'respaldo_cierre')
+        : await uploadFile(respaldoFile, 'Incidentes-Accidentes', 'respaldo_cierre');
       respaldoLink = up.link;
     }
     await ensureToken();
@@ -1208,7 +1231,7 @@ async function guardarEpp(ev) {
     const trabRut = f.trabajador.value.split('|')[1] || '';
     let firmaLink = '';
     if (blob) {
-      const up = await uploadFile(blob, 'Entrega EPP - Firmas', 'firma_' + trabNombre.replace(/\s+/g,'_'), 'png');
+      const up = await uploadFileTrabajador(blob, trabNombre, 'firma', 'png');
       firmaLink = up.link;
     }
     const fechaRegistro = new Date().toLocaleString('es-CL');
