@@ -213,6 +213,36 @@ function toast(msg, type) {
   clearTimeout(el._t);
   el._t = setTimeout(() => el.classList.add('hidden'), 2600);
 }
+// ── Íconos SVG minimalistas (mismo estilo de línea que la app de Flota) ──
+const ICONS = {
+  inspecciones: '<svg viewBox="0 0 24 24" fill="none"><rect x="6" y="4" width="12" height="17" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M9 4V3.5A1.5 1.5 0 0 1 10.5 2h3A1.5 1.5 0 0 1 15 3.5V4" stroke="currentColor" stroke-width="1.7"/><path d="M9 12.5l1.8 1.8L15 10.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 17h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>',
+  incidentes: '<svg viewBox="0 0 24 24" fill="none"><path d="M12 3 2 20h20L12 3Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 9.5v4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="17" r="1" fill="currentColor"/></svg>',
+  procedimientos: '<svg viewBox="0 0 24 24" fill="none"><path d="M7 3h7l4 4v14H7Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M14 3v4h4" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M9.5 12h6M9.5 15.5h6M9.5 8.5h2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>',
+  epp: '<svg viewBox="0 0 24 24" fill="none"><path d="M4 16.5a8 8 0 0 1 16 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M12 6.5v3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><rect x="2" y="16.5" width="20" height="3" rx="1.3" stroke="currentColor" stroke-width="1.7"/></svg>',
+  trabajadores: '<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="7.5" r="3.5" stroke="currentColor" stroke-width="1.8"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+  charlas: '<svg viewBox="0 0 24 24" fill="none"><path d="M4 5h16v11H9l-4 4v-4H4Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 9h8M8 12.3h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
+  camara: '<svg viewBox="0 0 24 24" fill="none"><path d="M4 8a1 1 0 0 1 1-1h2l1.2-2h7.6L17 7h2a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.4" stroke="currentColor" stroke-width="1.7"/></svg>',
+  documento: '<svg viewBox="0 0 24 24" fill="none"><path d="M7 3h7l4 4v14H7Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M14 3v4h4" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>',
+  firma: '<svg viewBox="0 0 24 24" fill="none"><path d="M4 17c2.5-1 4.5-1 6.5 0s4.5 1 6.5 0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M6 13.5 15 4.5a1.7 1.7 0 0 1 2.4 2.4L8.4 15.9l-3 0.7.6-3.1Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg>',
+};
+function ic(name, size) { return ICONS[name].replace('<svg ', `<svg style="width:${size||14}px;height:${size||14}px;vertical-align:-3px;flex-shrink:0" `); }
+
+function renderModulosHome() {
+  const modulos = [
+    { key: 'inspecciones', nombre: 'Inspecciones', desc: 'Con foto y alerta de charla automática' },
+    { key: 'incidentes', nombre: 'Incidentes y Accidentes', desc: 'Registro con evidencia fotográfica' },
+    { key: 'procedimientos', nombre: 'Procedimientos de Trabajo Seguro', desc: 'PTS vigentes de la obra' },
+    { key: 'epp', nombre: 'Entrega de EPP', desc: 'Con firma digital del trabajador' },
+    { key: 'trabajadores', nombre: 'Trabajadores', desc: 'Nómina de la obra' },
+    { key: 'charlas', nombre: 'Charlas de Seguridad', desc: 'Alertas generadas por inspecciones' },
+  ];
+  setListHTML('modulos-home', modulos.map(m => `
+    <div class="modulo-card" onclick="irPagina('${m.key}')">
+      <div class="modulo-icon modulo-icon--pr">${ICONS[m.key]}</div>
+      <div class="modulo-info"><div class="modulo-nombre">${m.nombre}</div><div class="modulo-desc">${m.desc}</div></div>
+    </div>`).join(''));
+}
+
 function setListHTML(name, html) {
   document.querySelectorAll(`[data-list="${name}"]`).forEach(el => el.innerHTML = html);
 }
@@ -358,7 +388,7 @@ function renderInspecciones() {
         <div class="card-sub">${esc(i.fecha)} · ${esc(i.inspector)} · Tema: ${esc(i.tema)}</div>
         <div class="badge-row"><span class="badge ${meta.color}">Riesgo ${esc(i.riesgo)}</span>
         <span class="badge gray">${esc(i.estado)}</span>
-        ${i.foto ? `<a href="${esc(i.foto)}" target="_blank" class="badge blue">📷 Foto</a>` : ''}</div>
+        ${i.foto ? `<a href="${esc(i.foto)}" target="_blank" class="badge blue">${ic('camara',12)} Foto</a>` : ''}</div>
       </div>
     </div>`;
   }).join(''));
@@ -446,7 +476,7 @@ function renderIncidentes() {
         <div class="card-sub">${esc(i.descripcion)}</div>
         <div class="badge-row"><span class="badge red">${esc(i.gravedad)}</span>
         <span class="badge gray">${esc(i.estado)}</span>
-        ${i.foto ? `<a href="${esc(i.foto)}" target="_blank" class="badge blue">📷 Foto</a>` : ''}</div>
+        ${i.foto ? `<a href="${esc(i.foto)}" target="_blank" class="badge blue">${ic('camara',12)} Foto</a>` : ''}</div>
       </div>
     </div>`).join(''));
 }
@@ -493,7 +523,7 @@ function renderProcedimientos() {
         <div class="card-title">${esc(p.nombre)}</div>
         <div class="card-sub">${esc(p.codigo)} · v${esc(p.version)} · ${esc(p.area)}</div>
         <div class="badge-row"><span class="badge ${p.estado==='Vigente'?'green':'gray'}">${esc(p.estado)}</span>
-        ${p.archivo ? `<a href="${esc(p.archivo)}" target="_blank" class="badge blue">📄 Ver documento</a>` : ''}</div>
+        ${p.archivo ? `<a href="${esc(p.archivo)}" target="_blank" class="badge blue">${ic('documento',12)} Ver documento</a>` : ''}</div>
       </div>
     </div>`).join(''));
 }
@@ -535,7 +565,7 @@ function renderEpp() {
       <div class="card-body">
         <div class="card-title">${esc(e.trabajador)}</div>
         <div class="card-sub">${esc(e.fecha)} · ${esc(e.epp)} (${esc(e.cantidad)})</div>
-        <div class="badge-row">${e.firma ? `<a href="${esc(e.firma)}" target="_blank" class="badge blue">✍️ Ver firma</a>` : '<span class="badge gray">Sin firma</span>'}</div>
+        <div class="badge-row">${e.firma ? `<a href="${esc(e.firma)}" target="_blank" class="badge blue">${ic('firma',12)} Ver firma</a>` : '<span class="badge gray">Sin firma</span>'}</div>
       </div>
     </div>`).join(''));
 }
@@ -598,7 +628,7 @@ async function guardarEpp(ev) {
 
 // ── Utilidades ───────────────────────────────────────────────
 function emptyState(title, sub) {
-  return `<div class="empty"><div class="empty-icon">📋</div><div class="empty-title">${esc(title)}</div><div class="empty-sub">${esc(sub)}</div></div>`;
+  return `<div class="empty"><div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" style="width:30px;height:30px"><rect x="6" y="4" width="12" height="17" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M9 4V3.5A1.5 1.5 0 0 1 10.5 2h3A1.5 1.5 0 0 1 15 3.5V4" stroke="currentColor" stroke-width="1.6"/><path d="M9 12h6M9 15.5h6M9 8.5h3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></div><div class="empty-title">${esc(title)}</div><div class="empty-sub">${esc(sub)}</div></div>`;
 }
 function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
@@ -612,6 +642,7 @@ async function arrancarApp() {
   document.getElementById('desktop-main').classList.remove('dt-oculto');
   document.getElementById('chip-email').textContent = userEmail || '';
   document.getElementById('dt-chip-email').textContent = userEmail || '';
+  renderModulosHome();
   await cargarTodo();
 }
 window.addEventListener('DOMContentLoaded', () => {
