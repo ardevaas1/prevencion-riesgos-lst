@@ -20,6 +20,17 @@
   .alerta-charla-icon { display:flex; justify-content:center; color:#c65e00; margin-bottom:10px; }
   .alerta-charla-tema { font-size:18px; font-weight:800; color:#c65e00; margin: 6px 0 2px; }
   .mas-list .card { cursor:pointer; }
+
+  /* ── Animación de aparición al terminar de cargar ── */
+  @keyframes appEnter { from { opacity:0; transform: scale(0.97) translateY(8px); } to { opacity:1; transform: scale(1) translateY(0); } }
+  .app-enter { animation: appEnter .45s cubic-bezier(0.16,1,0.3,1); }
+
+  /* ── Feedback más visible en botones de texto/ícono (antes se sentía
+     "muerto" comparado con las tarjetas grandes) ── */
+  .pnl-back:active, .pnl-action:active { background: var(--neutral-soft); border-radius: 8px; }
+  .nav-item:active { background: var(--neutral-soft); border-radius: 10px; }
+  .desktop-nav-item:active { background: var(--neutral-soft) !important; }
+  .desktop-refresh-btn:active { background: var(--accent-soft) !important; color: var(--accent-dark) !important; }
   .login-spinner { display:flex; justify-content:center; width:100%; padding:13px 0; }
   .login-spinner-ring {
     width:22px; height:22px; border-radius:50%;
@@ -54,6 +65,14 @@
   </div>
 </div>
 
+<!-- SPLASH: pantalla de entrada mientras carga la app -->
+<div id="splash" class="splash hidden">
+  <div class="entry-logo-wrap"><img src="logo-white.png" class="splash-logo" alt="LST"></div>
+  <div class="splash-name">Prevención de Riesgos</div>
+  <div class="splash-bar"><div class="splash-fill" id="splash-progress"></div></div>
+  <div class="splash-hint" id="splash-hint">Conectando...</div>
+</div>
+
 <div id="app">
 
 <!-- APP PRINCIPAL (móvil) -->
@@ -64,7 +83,7 @@
       <div class="header-title">Prevención de Riesgos</div>
       <div class="header-sub" id="chip-email"></div>
     </div>
-    <div class="header-btn" onclick="cargarTodo()">⟳</div>
+    <div class="header-btn" onclick="cargarTodo(true)">↻</div>
   </div>
 
   <div class="pages" id="pages">
@@ -161,7 +180,7 @@
     <button class="desktop-nav-item" data-pag="charlas" onclick="irPagina('charlas')"><span class="dn-ic"><svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px"><path d="M4 5h16v11H9l-4 4v-4H4Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 9h8M8 12.3h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span><span class="dn-lb">Charlas de Seguridad</span></button>
   </div>
   <div class="desktop-sidebar-footer">
-    <button class="desktop-refresh-btn" onclick="cargarTodo()">⟳ Actualizar datos</button>
+    <button class="desktop-refresh-btn" onclick="cargarTodo(true)">↻ Actualizar datos</button>
     <button class="desktop-refresh-btn" style="margin-top:8px;" onclick="signOut()">Cerrar sesión</button>
   </div>
 </div>

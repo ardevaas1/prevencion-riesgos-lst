@@ -252,6 +252,14 @@ async function uploadFile(fileOrBlob, nombreModulo, prefixName, ext) {
 }
 
 // ── UI helpers ───────────────────────────────────────────────
+function splash(pct, hint) {
+  const fill = document.getElementById('splash-progress');
+  if (!fill) return;
+  if (pct > 0) fill.classList.remove('splash-waiting');
+  fill.style.width = pct + '%';
+  if (hint) document.getElementById('splash-hint').textContent = hint;
+}
+
 function toast(msg, type) {
   const el = document.getElementById('toast');
   el.textContent = msg;
@@ -346,9 +354,11 @@ let allProcedimientos = [];
 let allEpp = [];
 let allCharlas = [];
 
-async function cargarTodo() {
-  toast('Cargando datos...');
+async function cargarTodo(silencioso) {
+  if (!silencioso) { splash(20, 'Conectando con Google Sheets...'); }
+  else { toast('Actualizando datos...'); }
   try {
+    if (!silencioso) splash(45, 'Cargando información...');
     const [trab, insp, inc, proc, epp, charlas] = await Promise.all([
       fetchSheet(`'${CONFIG.SHEET_TRABAJADORES}'!A2:I2000`),
       fetchSheet(`'${CONFIG.SHEET_INSPECCIONES}'!A2:L2000`),
@@ -357,6 +367,7 @@ async function cargarTodo() {
       fetchSheet(`'${CONFIG.SHEET_EPP}'!A2:I2000`),
       fetchSheet(`'${CONFIG.SHEET_CHARLAS}'!A2:G2000`),
     ]);
+    if (!silencioso) splash(85, 'Preparando la app...');
     allTrabajadores = trab.map((r,i) => rowToTrabajador(r,i));
     allInspecciones = insp.map((r,i) => rowToInspeccion(r,i));
     allIncidentes = inc.map((r,i) => rowToIncidente(r,i));
@@ -365,8 +376,11 @@ async function cargarTodo() {
     allCharlas = charlas.map((r,i) => rowToCharla(r,i));
     renderDashboard();
     renderTrabajadores(); renderInspecciones(); renderIncidentes(); renderProcedimientos(); renderEpp(); renderCharlas();
+    if (!silencioso) splash(100, '¡Listo!');
+    else toast('Datos actualizados ✓', 'ok');
   } catch (e) {
     console.error(e);
+    if (!silencioso) splash(100, 'Hubo un problema al cargar');
     toast(e.message, 'error');
   }
 }
@@ -452,7 +466,7 @@ async function guardarTrabajador(ev) {
     ]]);
     toast('Trabajador agregado ✓', 'ok');
     closePanel('panel-form-trabajador');
-    cargarTodo();
+    cargarTodo(true);
   } catch (e) { toast(e.message, 'error'); }
 }
 
@@ -507,7 +521,7 @@ async function guardarInspeccion(ev) {
 
     toast('Inspección guardada ✓', 'ok');
     closePanel('panel-form-inspeccion');
-    await cargarTodo();
+    await cargarTodo(true);
     mostrarAlertaCharla(f.tema.value, f.area.value);
   } catch (e) { toast(e.message, 'error'); }
 }
@@ -540,7 +554,7 @@ async function marcarCharlaRealizada(fila) {
     await fetch(url, { method:'PUT', headers:{ 'Content-Type':'application/json', ...authHeader() },
       body: JSON.stringify({ values: [['Realizada', hoyISO()]] }) });
     toast('Charla marcada como realizada ✓', 'ok');
-    cargarTodo();
+    cargarTodo(true);
   } catch (e) { toast(e.message, 'error'); }
 }
 
@@ -589,7 +603,7 @@ async function guardarIncidente(ev) {
     ]]);
     toast('Registro guardado ✓', 'ok');
     closePanel('panel-form-incidente');
-    cargarTodo();
+    cargarTodo(true);
   } catch (e) { toast(e.message, 'error'); }
 }
 
@@ -632,7 +646,7 @@ async function guardarProcedimiento(ev) {
     ]]);
     toast('Procedimiento guardado ✓', 'ok');
     closePanel('panel-form-procedimiento');
-    cargarTodo();
+    cargarTodo(true);
   } catch (e) { toast(e.message, 'error'); }
 }
 
@@ -704,7 +718,7 @@ async function guardarEpp(ev) {
     ]]);
     toast('Entrega registrada ✓', 'ok');
     closePanel('panel-form-epp');
-    cargarTodo();
+    cargarTodo(true);
   } catch (e) { toast(e.message, 'error'); }
 }
 
@@ -719,13 +733,28 @@ function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;',
 // ============================================================
 async function arrancarApp() {
   document.getElementById('login-screen').classList.add('hidden');
-  document.getElementById('main').classList.remove('hidden');
-  document.getElementById('desktop-sidebar').classList.remove('dt-oculto');
-  document.getElementById('desktop-main').classList.remove('dt-oculto');
+  document.getElementById('splash').classList.remove('hidden');
+  document.getElementById('splash-progress').classList.add('splash-waiting');
   document.getElementById('chip-email').textContent = userEmail || '';
   document.getElementById('dt-chip-email').textContent = userEmail || '';
   renderModulosHome();
+
   await cargarTodo();
+
+  // Revela la app con una pequeña animación de aparición, en vez de
+  // que todo salte de golpe apenas termina de cargar
+  const main = document.getElementById('main');
+  const sidebar = document.getElementById('desktop-sidebar');
+  const dtMain = document.getElementById('desktop-main');
+  main.classList.remove('hidden');
+  sidebar.classList.remove('dt-oculto');
+  dtMain.classList.remove('dt-oculto');
+  [main, sidebar, dtMain].forEach(el => el.classList.add('app-enter'));
+  setTimeout(() => [main, sidebar, dtMain].forEach(el => el.classList.remove('app-enter')), 500);
+
+  const splashEl = document.getElementById('splash');
+  splashEl.style.opacity = '0';
+  setTimeout(() => { splashEl.classList.add('hidden'); splashEl.style.opacity = ''; }, 380);
 }
 window.addEventListener('DOMContentLoaded', () => {
   initOAuth();
