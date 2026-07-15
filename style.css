@@ -1429,7 +1429,7 @@ body.is-offline #app { padding-top: 30px; }
 /* ══ FAB BUTTON ══ */
 .fab-btn {
   position: fixed;
-  bottom: 24px; right: 20px;
+  bottom: calc(72px + env(safe-area-inset-bottom)); right: 20px;
   width: 52px; height: 52px;
   border-radius: 50%;
   background: var(--accent);
