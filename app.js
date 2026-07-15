@@ -1210,7 +1210,13 @@ let firmaCtx = null, firmaActiva = false;
 function renderChecklistEpp() {
   document.getElementById('checklist-epp').innerHTML = opcionesEppDisponibles().map(item => `
     <div class="epp-item-row" data-item="${esc(item)}">
-      <label class="epp-item-label"><input type="checkbox" class="epp-item-chk" onchange="onToggleEppItem(this)"> <span>${esc(item)}</span></label>
+      <label class="epp-item-label">
+        <span class="epp-item-checkbox-wrap">
+          <input type="checkbox" class="epp-item-chk" onchange="onToggleEppItem(this)">
+          <span class="epp-item-checkbox"></span>
+        </span>
+        <span>${esc(item)}</span>
+      </label>
       <input type="number" class="epp-item-qty hidden" min="1" value="1">
     </div>`).join('');
 }

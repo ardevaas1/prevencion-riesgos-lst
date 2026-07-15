@@ -552,6 +552,17 @@ body.is-offline #app { padding-top: 30px; }
 .form-group input:focus,
 .form-group select:focus,
 .form-group textarea:focus { border-color: var(--accent); }
+/* Flecha propia en los selects (reemplaza la del sistema operativo, que
+   desentonaba con el resto de íconos de línea dibujados a mano) */
+.form-group select,
+.obra-selector {
+  appearance: none; -webkit-appearance: none; -moz-appearance: none;
+  padding-right: 34px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none'%3E%3Cpath d='M6 9l6 6 6-6' stroke='%235a5f6e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 18px;
+}
 .form-group textarea { min-height: 80px; resize: vertical; line-height: 1.5; }
 .form-group input.input-error,
 .form-group select.input-error,
@@ -597,8 +608,22 @@ body.is-offline #app { padding-top: 30px; }
   padding: 9px 2px; border-bottom: 1px solid #f0f0f0;
 }
 .epp-item-row:last-child { border-bottom: none; }
-.epp-item-label { display: flex; align-items: center; gap: 10px; flex: 1; font-size: 14px; color: var(--ink); cursor: pointer; }
-.epp-item-label input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); flex-shrink: 0; }
+.epp-item-label { display: flex; align-items: center; gap: 12px; flex: 1; font-size: 14px; color: var(--ink); cursor: pointer; padding: 4px 0; }
+.epp-item-checkbox-wrap { position: relative; width: 22px; height: 22px; flex-shrink: 0; }
+.epp-item-checkbox-wrap input[type="checkbox"] {
+  position: absolute; inset: 0; width: 100%; height: 100%; margin: 0;
+  opacity: 0; cursor: pointer; z-index: 1;
+}
+.epp-item-checkbox {
+  position: absolute; inset: 0; border-radius: 6px; border: 1.5px solid var(--line);
+  background: #fff; transition: background 0.15s, border-color 0.15s;
+}
+.epp-item-checkbox-wrap input:checked + .epp-item-checkbox { background: var(--accent); border-color: var(--accent); }
+.epp-item-checkbox-wrap input:checked + .epp-item-checkbox::after {
+  content: ''; position: absolute; width: 6px; height: 11px;
+  border: solid #fff; border-width: 0 2px 2px 0;
+  transform: rotate(45deg); top: 2px; left: 7px;
+}
 .epp-item-qty { width: 60px; padding: 6px 8px; border: 1.5px solid var(--line); border-radius: 8px; font-size: 14px; text-align: center; font-family: inherit; }
 
 /* ── Upload label ── */
