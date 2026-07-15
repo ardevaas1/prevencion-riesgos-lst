@@ -326,8 +326,25 @@
     <form id="form-epp" onsubmit="guardarEpp(event)">
       <div class="form-group"><label>Fecha</label><input type="date" name="fecha" required></div>
       <div class="form-group"><label>Trabajador</label><select name="trabajador" id="sel-trabajador-epp" required></select></div>
-      <div class="form-group"><label>EPP entregado</label><select name="epp" id="sel-epp-item" required></select></div>
-      <div class="form-group"><label>Cantidad</label><input type="number" name="cantidad" value="1" min="1"></div>
+
+      <div class="sec-label" style="margin-top:18px;">Ítems a entregar</div>
+      <div class="form-group">
+        <label>EPP</label>
+        <select id="sel-epp-item" onchange="onCambioEppItem()"></select>
+      </div>
+      <div class="form-group hidden" id="grupo-epp-otro">
+        <label>Especifica el tipo de EPP</label>
+        <input id="input-epp-otro" placeholder="Ej: Guantes dieléctricos">
+      </div>
+      <div class="form-group">
+        <label>Cantidad</label>
+        <input type="number" id="input-epp-cantidad" value="1" min="1">
+      </div>
+      <button class="action-btn" type="button" onclick="agregarItemEpp()">+ Agregar a la entrega</button>
+
+      <div id="carrito-epp" style="margin-top:10px;"></div>
+
+      <div class="sec-label" style="margin-top:18px;">Firma y responsable</div>
       <div class="form-group"><label>Responsable de la entrega</label><input name="responsable" placeholder="Se usará tu correo si lo dejas vacío"></div>
       <div class="form-group">
         <label>Firma del trabajador</label>
@@ -338,6 +355,13 @@
     </form>
   </div>
 </div>
+
+<!-- ===== FICHA: Detalle e historial de trabajador ===== -->
+<div class="panel hidden" id="panel-ficha-trabajador">
+  <div class="panel-bar"><div class="pnl-back" onclick="closePanel('panel-ficha-trabajador')">‹ Volver</div><div class="pnl-title">Ficha del trabajador</div><div></div></div>
+  <div class="panel-body" id="ficha-trabajador-body"></div>
+</div>
+
 
 <div class="toast hidden" id="toast"></div>
 

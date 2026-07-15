@@ -24,6 +24,33 @@ const EPP_ITEMS = [
   'Mascarilla / Respirador', 'Careta facial', 'Ropa de agua', 'Otro'
 ];
 
+// ── Sugerencia automática de charla según el texto del incidente ──────
+// Motor de palabras clave (no llama a una IA externa: conectar una API de
+// IA real desde el navegador expondría la clave a cualquiera que abra el
+// código fuente de la página). Detecta el tema de charla más relacionado
+// analizando la descripción y las causas del incidente.
+const REGLAS_SUGERENCIA_CHARLA = [
+  { tema: 'Orden y limpieza', palabras: ['orden', 'desorden', 'limpieza', 'desorganiz', 'obstru', 'objetos en el paso', 'suciedad'] },
+  { tema: 'Trabajo en altura', palabras: ['altura', 'andamio', 'caida de altura', 'caída de altura', 'escalera', 'techumbre', 'borde', 'baranda'] },
+  { tema: 'Uso correcto de EPP', palabras: ['epp', 'proteccion personal', 'protección personal', 'casco', 'guantes', 'lentes de seguridad', 'sin proteccion', 'sin protección'] },
+  { tema: 'Manejo de herramientas y equipos', palabras: ['herramienta', 'equipo defectuoso', 'maquina', 'máquina', 'corte', 'sierra', 'esmeril', 'taladro'] },
+  { tema: 'Riesgo eléctrico', palabras: ['electric', 'eléctric', 'cortocircuito', 'cable', 'enchufe', 'tablero electrico', 'tablero eléctrico'] },
+  { tema: 'Espacios confinados', palabras: ['espacio confinado', 'confinado', 'ventilacion', 'ventilación', 'pozo', 'camara', 'cámara'] },
+  { tema: 'Izaje de cargas', palabras: ['izaje', 'grua', 'grúa', 'carga suspendida', 'eslinga', 'gancho', 'polipasto'] },
+  { tema: 'Excavaciones y zanjas', palabras: ['excavacion', 'excavación', 'zanja', 'derrumbe', 'entibacion', 'entibación'] },
+  { tema: 'Manejo manual de materiales', palabras: ['manejo manual', 'levant', 'sobreesfuerzo', 'peso', 'postura', 'espalda', 'carga manual'] },
+  { tema: 'Extintores y emergencias', palabras: ['incendio', 'fuego', 'extintor', 'emergencia', 'humo', 'quemadura'] },
+  { tema: 'Señalización y demarcación', palabras: ['señal', 'demarcacion', 'demarcación', 'cinta de seguridad', 'letrero'] },
+  { tema: 'Vehículos y maquinaria', palabras: ['vehiculo', 'vehículo', 'camion', 'camión', 'atropell', 'retroceso', 'maquinaria pesada'] },
+];
+function sugerirTemaCharla(texto) {
+  const t = (texto || '').toLowerCase();
+  for (const regla of REGLAS_SUGERENCIA_CHARLA) {
+    if (regla.palabras.some(p => t.includes(p))) return regla.tema;
+  }
+  return null;
+}
+
 let userEmail = null;
 let userRole  = null; // admin | prevencionista | viewer
 
@@ -433,14 +460,67 @@ function renderTrabajadores() {
   const activos = [...allTrabajadores].reverse();
   if (activos.length === 0) { setListHTML('trabajadores', emptyState('Sin trabajadores', 'Agrega el primer trabajador')); return; }
   setListHTML('trabajadores', activos.map(t => `
-    <div class="card card--default">
+    <div class="card card--default" onclick="abrirFichaTrabajador('${esc(t.nombre).replace(/'/g,"\\'")}')">
       <div class="card-body">
         <div class="card-title">${esc(t.nombre)}</div>
         <div class="card-sub">${esc(t.cargo)} · ${esc(t.rut)}</div>
         <div class="badge-row"><span class="badge ${t.estado==='Activo'?'green':'gray'}">${esc(t.estado)}</span>
         <span class="badge blue">${esc(t.empresa)}</span></div>
       </div>
+      <div class="card-arrow">›</div>
     </div>`).join(''));
+}
+
+function abrirFichaTrabajador(nombre) {
+  const t = allTrabajadores.find(x => x.nombre === nombre);
+  if (!t) { toast('No se encontró el trabajador', 'error'); return; }
+
+  const eppDeEste = allEpp.filter(e => e.trabajador === nombre);
+  const grupos = {};
+  const orden = [];
+  eppDeEste.forEach(e => {
+    const key = e.fecha + '|' + e.firma;
+    if (!grupos[key]) { grupos[key] = { fecha: e.fecha, firma: e.firma, items: [] }; orden.push(key); }
+    grupos[key].items.push(`${e.epp} (${e.cantidad})`);
+  });
+  const entregasHtml = orden.length === 0
+    ? '<div class="card-sub" style="padding:6px 2px;">Sin entregas de EPP registradas.</div>'
+    : orden.reverse().map(k => grupos[k]).map(g => `
+        <div class="field-row">
+          <span>${esc(g.fecha)}<br><span style="color:#888;font-size:12px;">${esc(g.items.join(' · '))}</span></span>
+          ${g.firma ? `<a href="${esc(g.firma)}" target="_blank" class="badge blue">${ic('firma',12)} Firma</a>` : ''}
+        </div>`).join('');
+
+  const incDeEste = allIncidentes.filter(i => i.trabajador === nombre).reverse();
+  const incidentesHtml = incDeEste.length === 0
+    ? '<div class="card-sub" style="padding:6px 2px;">Sin incidentes registrados.</div>'
+    : incDeEste.map(i => `
+        <div class="field-row">
+          <span>${esc(i.fecha)} — ${esc(i.tipo)}<br><span style="color:#888;font-size:12px;">${esc(i.area)}</span></span>
+          <span class="badge ${i.estado==='Cerrado'?'green':'red'}">${esc(i.estado)}</span>
+        </div>`).join('');
+
+  document.getElementById('ficha-trabajador-body').innerHTML = `
+    <div class="ficha-hero">
+      <div class="ficha-hero-icon">${ic('trabajadores',32)}</div>
+      <div class="ficha-hero-info">
+        <div class="ficha-hero-type">${esc(t.cargo)}</div>
+        <div class="ficha-hero-name">${esc(t.nombre)}</div>
+      </div>
+    </div>
+    <div class="field-row"><span>RUT</span><b>${esc(t.rut)}</b></div>
+    <div class="field-row"><span>Empresa / Contratista</span><b>${esc(t.empresa)}</b></div>
+    <div class="field-row"><span>Fecha de ingreso</span><b>${esc(t.fechaIngreso || '—')}</b></div>
+    <div class="field-row"><span>Estado</span><span class="badge ${t.estado==='Activo'?'green':'gray'}">${esc(t.estado)}</span></div>
+    ${t.foto ? `<div class="field-row"><span>Foto</span><a href="${esc(t.foto)}" target="_blank" class="badge blue">${ic('camara',12)} Ver foto</a></div>` : ''}
+
+    <div class="sec-label" style="margin-top:20px;">Historial de EPP entregado</div>
+    ${entregasHtml}
+
+    <div class="sec-label" style="margin-top:20px;">Incidentes relacionados</div>
+    ${incidentesHtml}
+  `;
+  openPanel('panel-ficha-trabajador');
 }
 function selectTrabajadoresOptions() {
   return allTrabajadores.filter(t=>t.estado==='Activo').map(t => `<option value="${esc(t.nombre)}|${esc(t.rut)}">${esc(t.nombre)} — ${esc(t.rut)}</option>`).join('');
@@ -483,11 +563,22 @@ function renderInspecciones() {
         <div class="card-title">${esc(i.tipo)} — ${esc(i.area)}</div>
         <div class="card-sub">${esc(i.fecha)} · ${esc(i.inspector)} · Tema: ${esc(i.tema)}</div>
         <div class="badge-row"><span class="badge ${meta.color}">Riesgo ${esc(i.riesgo)}</span>
-        <span class="badge gray">${esc(i.estado)}</span>
+        <span class="badge ${i.estado==='Cerrada'?'green':'gray'}">${esc(i.estado)}</span>
         ${i.foto ? `<a href="${esc(i.foto)}" target="_blank" class="badge blue">${ic('camara',12)} Foto</a>` : ''}</div>
+        ${i.estado !== 'Cerrada' ? `<button class="action-btn" onclick="marcarInspeccionCerrada(${i.fila})">Cerrar inspección</button>` : ''}
       </div>
     </div>`;
   }).join(''));
+}
+async function marcarInspeccionCerrada(fila) {
+  try {
+    await ensureToken();
+    const url = `${SHEETS_BASE}/${CONFIG.SHEET_ID}/values/${encodeURIComponent(`'${CONFIG.SHEET_INSPECCIONES}'!K${fila}`)}?valueInputOption=USER_ENTERED`;
+    await fetch(url, { method:'PUT', headers:{ 'Content-Type':'application/json', ...authHeader() },
+      body: JSON.stringify({ values: [['Cerrada']] }) });
+    toast('Inspección cerrada ✓', 'ok');
+    cargarTodo(true);
+  } catch (e) { toast(e.message, 'error'); }
 }
 function abrirFormInspeccion() {
   const f = document.getElementById('form-inspeccion');
@@ -543,8 +634,8 @@ function renderCharlas() {
         <div class="card-title">${esc(c.tema)}</div>
         <div class="card-sub">${esc(c.origen)} · Generada ${esc(c.fecha)}</div>
         <div class="badge-row"><span class="badge ${c.estado==='Pendiente'?'amber':'green'}">${esc(c.estado)}</span></div>
+        ${c.estado==='Pendiente' ? `<button class="action-btn" onclick="marcarCharlaRealizada(${c.fila})">Marcar realizada</button>` : ''}
       </div>
-      ${c.estado==='Pendiente' ? `<button class="action-btn" onclick="marcarCharlaRealizada(${c.fila})">Marcar realizada</button>` : ''}
     </div>`).join(''));
 }
 async function marcarCharlaRealizada(fila) {
@@ -571,8 +662,9 @@ function renderIncidentes() {
         <div class="card-sub">${esc(i.fecha)} · ${esc(i.area)}</div>
         <div class="card-sub">${esc(i.descripcion)}</div>
         <div class="badge-row"><span class="badge red">${esc(i.gravedad)}</span>
-        <span class="badge gray">${esc(i.estado)}</span>
+        <span class="badge ${i.estado==='Cerrado'?'green':'gray'}">${esc(i.estado)}</span>
         ${i.foto ? `<a href="${esc(i.foto)}" target="_blank" class="badge blue">${ic('camara',12)} Foto</a>` : ''}</div>
+        ${i.estado !== 'Cerrado' ? `<button class="action-btn" onclick="marcarIncidenteCerrado(${i.fila})">Cerrar caso</button>` : ''}
       </div>
     </div>`).join(''));
 }
@@ -601,8 +693,31 @@ async function guardarIncidente(ev) {
       f.causas.value, f.gravedad.value, fotoLink, f.accion.value || '', 'Abierto',
       new Date().toLocaleString('es-CL'), userEmail || ''
     ]]);
+
+    // Sugerencia automática de charla según lo descrito en el incidente
+    const temaSugerido = sugerirTemaCharla(f.descripcion.value + ' ' + f.causas.value);
+
     toast('Registro guardado ✓', 'ok');
     closePanel('panel-form-incidente');
+    await cargarTodo(true);
+
+    if (temaSugerido) {
+      const nCharla = allCharlas.length + 1;
+      await appendSheet(`'${CONFIG.SHEET_CHARLAS}'!A:G`, [[
+        nCharla, hoyISO(), temaSugerido, 'Incidente #' + n, 'Pendiente', '', ''
+      ]]);
+      cargarTodo(true);
+      mostrarAlertaCharla(temaSugerido, f.area.value);
+    }
+  } catch (e) { toast(e.message, 'error'); }
+}
+async function marcarIncidenteCerrado(fila) {
+  try {
+    await ensureToken();
+    const url = `${SHEETS_BASE}/${CONFIG.SHEET_ID}/values/${encodeURIComponent(`'${CONFIG.SHEET_INCIDENTES}'!K${fila}`)}?valueInputOption=USER_ENTERED`;
+    await fetch(url, { method:'PUT', headers:{ 'Content-Type':'application/json', ...authHeader() },
+      body: JSON.stringify({ values: [['Cerrado']] }) });
+    toast('Caso cerrado ✓', 'ok');
     cargarTodo(true);
   } catch (e) { toast(e.message, 'error'); }
 }
@@ -653,26 +768,83 @@ async function guardarProcedimiento(ev) {
 // ============================================================
 // MÓDULO: ENTREGA DE EPP (con firma)
 // ============================================================
+function opcionesEppDisponibles() {
+  // Catálogo base + cualquier tipo "Otro" que alguien haya escrito antes
+  // (se detecta automáticamente porque ya quedó guardado en entregas previas)
+  const historicos = [...new Set(allEpp.map(e => e.epp).filter(Boolean))];
+  const todos = [...new Set([...EPP_ITEMS.filter(x => x !== 'Otro'), ...historicos])];
+  todos.sort((a, b) => a.localeCompare(b, 'es'));
+  return todos;
+}
+
 function renderEpp() {
-  const items = [...allEpp].reverse();
-  if (items.length === 0) { setListHTML('epp', emptyState('Sin entregas registradas', '')); return; }
-  setListHTML('epp', items.map(e => `
+  if (allEpp.length === 0) { setListHTML('epp', emptyState('Sin entregas registradas', '')); return; }
+  // Agrupa las filas que pertenecen a la misma entrega (misma fecha + trabajador + firma)
+  const grupos = {};
+  const orden = [];
+  allEpp.forEach(e => {
+    const key = e.fecha + '|' + e.trabajador + '|' + e.firma;
+    if (!grupos[key]) { grupos[key] = { fecha: e.fecha, trabajador: e.trabajador, firma: e.firma, items: [] }; orden.push(key); }
+    grupos[key].items.push(`${e.epp} (${e.cantidad})`);
+  });
+  const items = orden.map(k => grupos[k]).reverse();
+  setListHTML('epp', items.map(g => `
     <div class="card card--default">
       <div class="card-body">
-        <div class="card-title">${esc(e.trabajador)}</div>
-        <div class="card-sub">${esc(e.fecha)} · ${esc(e.epp)} (${esc(e.cantidad)})</div>
-        <div class="badge-row">${e.firma ? `<a href="${esc(e.firma)}" target="_blank" class="badge blue">${ic('firma',12)} Ver firma</a>` : '<span class="badge gray">Sin firma</span>'}</div>
+        <div class="card-title">${esc(g.trabajador)}</div>
+        <div class="card-sub">${esc(g.fecha)}</div>
+        <div class="card-sub">${esc(g.items.join(' · '))}</div>
+        <div class="badge-row">${g.firma ? `<a href="${esc(g.firma)}" target="_blank" class="badge blue">${ic('firma',12)} Ver firma</a>` : '<span class="badge gray">Sin firma</span>'}</div>
       </div>
     </div>`).join(''));
 }
-let firmaCtx = null, firmaActiva = false, firmaUltimo = null;
+
+let firmaCtx = null, firmaActiva = false;
+let eppCarrito = [];
+
+function onCambioEppItem() {
+  const sel = document.getElementById('sel-epp-item');
+  document.getElementById('grupo-epp-otro').classList.toggle('hidden', sel.value !== '__otro__');
+}
+
+function agregarItemEpp() {
+  const sel = document.getElementById('sel-epp-item');
+  const cant = parseInt(document.getElementById('input-epp-cantidad').value, 10) || 1;
+  let nombre = sel.value;
+  if (nombre === '__otro__') {
+    nombre = document.getElementById('input-epp-otro').value.trim();
+    if (!nombre) { toast('Escribe el tipo de EPP', 'error'); return; }
+  }
+  eppCarrito.push({ item: nombre, cantidad: cant });
+  document.getElementById('input-epp-otro').value = '';
+  document.getElementById('input-epp-cantidad').value = 1;
+  renderCarritoEpp();
+}
+function quitarItemEpp(idx) {
+  eppCarrito.splice(idx, 1);
+  renderCarritoEpp();
+}
+function renderCarritoEpp() {
+  const cont = document.getElementById('carrito-epp');
+  if (eppCarrito.length === 0) { cont.innerHTML = '<div class="card-sub" style="padding:4px 2px;">Sin ítems agregados todavía.</div>'; return; }
+  cont.innerHTML = eppCarrito.map((it, idx) => `
+    <div class="field-row">
+      <span>${esc(it.item)} <b>× ${it.cantidad}</b></span>
+      <button type="button" onclick="quitarItemEpp(${idx})" style="color:#c62828;font-size:13px;font-weight:600;">Quitar</button>
+    </div>`).join('');
+}
+
 function abrirFormEpp() {
   const f = document.getElementById('form-epp');
   f.reset();
   f.fecha.value = hoyISO();
+  eppCarrito = [];
   document.getElementById('sel-trabajador-epp').innerHTML =
     '<option value="">— Selecciona un trabajador —</option>' + selectTrabajadoresOptions();
-  document.getElementById('sel-epp-item').innerHTML = EPP_ITEMS.map(x=>`<option>${x}</option>`).join('');
+  document.getElementById('sel-epp-item').innerHTML =
+    opcionesEppDisponibles().map(x => `<option>${esc(x)}</option>`).join('') + '<option value="__otro__">+ Escribir otro tipo...</option>';
+  document.getElementById('grupo-epp-otro').classList.add('hidden');
+  renderCarritoEpp();
   openPanel('panel-form-epp');
   setTimeout(initFirmaPad, 80);
 }
@@ -703,6 +875,10 @@ async function guardarEpp(ev) {
   const canvas = document.getElementById('firma-canvas');
   try {
     if (!f.trabajador.value) { toast('Selecciona un trabajador', 'error'); return; }
+    // Si queda algo cargado en el selector sin agregar al carrito, lo agregamos solo
+    if (eppCarrito.length === 0) agregarItemEpp();
+    if (eppCarrito.length === 0) { toast('Agrega al menos un ítem a la entrega', 'error'); return; }
+
     const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
     const trabNombre = f.trabajador.value.split('|')[0];
     const trabRut = f.trabajador.value.split('|')[1] || '';
@@ -711,13 +887,15 @@ async function guardarEpp(ev) {
       const up = await uploadFile(blob, 'Entrega EPP - Firmas', 'firma_' + trabNombre.replace(/\s+/g,'_'), 'png');
       firmaLink = up.link;
     }
-    const n = allEpp.length + 1;
-    await appendSheet(`'${CONFIG.SHEET_EPP}'!A:I`, [[
-      n, f.fecha.value, trabNombre, trabRut, f.epp.value, f.cantidad.value,
-      firmaLink, userEmail || f.responsable.value, new Date().toLocaleString('es-CL')
-    ]]);
-    toast('Entrega registrada ✓', 'ok');
+    const fechaRegistro = new Date().toLocaleString('es-CL');
+    const filas = eppCarrito.map((it, i) => [
+      allEpp.length + 1 + i, f.fecha.value, trabNombre, trabRut, it.item, it.cantidad,
+      firmaLink, userEmail || f.responsable.value, fechaRegistro
+    ]);
+    await appendSheet(`'${CONFIG.SHEET_EPP}'!A:I`, filas);
+    toast(`Entrega registrada ✓ (${filas.length} ítem${filas.length>1?'s':''})`, 'ok');
     closePanel('panel-form-epp');
+    eppCarrito = [];
     cargarTodo(true);
   } catch (e) { toast(e.message, 'error'); }
 }
