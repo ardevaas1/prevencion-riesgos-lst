@@ -20,16 +20,14 @@
   .alerta-charla-tema { font-size:18px; font-weight:800; color:#c65e00; margin: 6px 0 2px; }
   .mas-list .card { cursor:pointer; }
 
-  /* ── Corrección de layout en escritorio ──
-     style.css trae reglas pensadas para el layout de sidebar de la app de
-     Flota (oculta #main desde 900px de ancho). Esta app no usa ese sidebar,
-     así que en vez de esconder #main lo centramos con un ancho máximo tipo
-     "app móvil flotando" en pantallas grandes. */
+  /* ── Versión escritorio: sidebar + panel central ── */
+  .dt-page { padding: 0 24px 24px; overflow-y:auto; }
+  .dt-page .sec-label:first-child { margin-top: 4px; }
   @media (min-width: 900px) {
-    body { background:#e9edf1; min-height:100vh; }
-    #main { display:flex !important; max-width:480px; width:100%; height:100vh; margin:0 auto; box-shadow:0 0 40px rgba(0,0,0,0.10); }
-    .nav { display:flex !important; }
-    #login-screen { max-width:480px; width:100%; margin:0 auto; }
+    #login-screen { width:100%; }
+    .desktop-main-header { display:flex; align-items:center; justify-content:space-between; padding-bottom:16px; }
+    .desktop-main-title { margin-bottom:0; }
+    #dt-fab-add.hidden { display:none; }
   }
 </style>
 </head>
@@ -46,7 +44,9 @@
   </div>
 </div>
 
-<!-- APP PRINCIPAL -->
+<div id="app">
+
+<!-- APP PRINCIPAL (móvil) -->
 <div id="main" class="main hidden">
   <div class="header header--pr">
     <img src="logo-white.png" class="header-logo" alt="LST">
@@ -62,10 +62,10 @@
     <!-- INICIO -->
     <div class="page active" id="page-inicio">
       <div class="stats-row">
-        <div class="stat blue" onclick="irPagina('trabajadores')"><div class="stat-n" id="dash-trabajadores">0</div><div class="stat-l">Trabajadores</div></div>
-        <div class="stat amber" onclick="irPagina('inspecciones')"><div class="stat-n" id="dash-inspecciones">0</div><div class="stat-l">Inspecc. abiertas</div></div>
-        <div class="stat red" onclick="irPagina('incidentes')"><div class="stat-n" id="dash-incidentes">0</div><div class="stat-l">Incidentes abiertos</div></div>
-        <div class="stat green" onclick="irPagina('charlas')"><div class="stat-n" id="dash-charlas">0</div><div class="stat-l">Charlas pendientes</div></div>
+        <div class="stat blue" onclick="irPagina('trabajadores')"><div class="stat-n" data-stat="trabajadores">0</div><div class="stat-l">Trabajadores</div></div>
+        <div class="stat amber" onclick="irPagina('inspecciones')"><div class="stat-n" data-stat="inspecciones">0</div><div class="stat-l">Inspecc. abiertas</div></div>
+        <div class="stat red" onclick="irPagina('incidentes')"><div class="stat-n" data-stat="incidentes">0</div><div class="stat-l">Incidentes abiertos</div></div>
+        <div class="stat green" onclick="irPagina('charlas')"><div class="stat-n" data-stat="charlas">0</div><div class="stat-l">Charlas pendientes</div></div>
       </div>
 
       <div class="sec-label">Módulos</div>
@@ -103,37 +103,37 @@
     <!-- INSPECCIONES -->
     <div class="page" id="page-inspecciones">
       <div class="sec-label">Inspecciones</div>
-      <div id="lista-inspecciones"></div>
+      <div data-list="inspecciones"></div>
     </div>
 
     <!-- INCIDENTES -->
     <div class="page" id="page-incidentes">
       <div class="sec-label">Incidentes y Accidentes</div>
-      <div id="lista-incidentes"></div>
+      <div data-list="incidentes"></div>
     </div>
 
     <!-- PROCEDIMIENTOS -->
     <div class="page" id="page-procedimientos">
       <div class="sec-label">Procedimientos de Trabajo Seguro</div>
-      <div id="lista-procedimientos"></div>
+      <div data-list="procedimientos"></div>
     </div>
 
     <!-- EPP -->
     <div class="page" id="page-epp">
       <div class="sec-label">Entrega de EPP</div>
-      <div id="lista-epp"></div>
+      <div data-list="epp"></div>
     </div>
 
     <!-- TRABAJADORES -->
     <div class="page" id="page-trabajadores">
       <div class="sec-label">Trabajadores</div>
-      <div id="lista-trabajadores"></div>
+      <div data-list="trabajadores"></div>
     </div>
 
     <!-- CHARLAS -->
     <div class="page" id="page-charlas">
       <div class="sec-label">Charlas de Seguridad</div>
-      <div id="lista-charlas"></div>
+      <div data-list="charlas"></div>
     </div>
 
   </div>
@@ -150,6 +150,83 @@
     <div class="nav-item" data-pag="mas" onclick="irPagina('trabajadores')"><div class="nv-ic">☰</div><div class="nv-lb">Más</div></div>
   </div>
 </div>
+
+<!-- ===== SIDEBAR ESCRITORIO ===== -->
+<div class="desktop-sidebar dt-oculto" id="desktop-sidebar">
+  <div class="desktop-sidebar-header">
+    <img src="logo-white.png" alt="LST">
+    <div>
+      <div class="desktop-sidebar-title">Prevención de Riesgos</div>
+      <div class="desktop-sidebar-sub" id="dt-chip-email"></div>
+    </div>
+  </div>
+  <div class="desktop-stats">
+    <div class="desktop-stat blue" onclick="irPagina('trabajadores')"><div class="desktop-stat-n" data-stat="trabajadores">0</div><div class="desktop-stat-l">Trabajadores</div></div>
+    <div class="desktop-stat amber" onclick="irPagina('inspecciones')"><div class="desktop-stat-n" data-stat="inspecciones">0</div><div class="desktop-stat-l">Inspecc. abiertas</div></div>
+    <div class="desktop-stat red" onclick="irPagina('incidentes')"><div class="desktop-stat-n" data-stat="incidentes">0</div><div class="desktop-stat-l">Incidentes</div></div>
+    <div class="desktop-stat green" onclick="irPagina('charlas')"><div class="desktop-stat-n" data-stat="charlas">0</div><div class="desktop-stat-l">Charlas pend.</div></div>
+  </div>
+  <div class="desktop-nav">
+    <button class="desktop-nav-item active" data-pag="inicio" onclick="irPagina('inicio')"><span class="dn-ic">🏠</span><span class="dn-lb">Inicio</span></button>
+    <button class="desktop-nav-item" data-pag="inspecciones" onclick="irPagina('inspecciones')"><span class="dn-ic">🔍</span><span class="dn-lb">Inspecciones</span></button>
+    <button class="desktop-nav-item" data-pag="incidentes" onclick="irPagina('incidentes')"><span class="dn-ic">⚠️</span><span class="dn-lb">Incidentes y Accidentes</span></button>
+    <button class="desktop-nav-item" data-pag="procedimientos" onclick="irPagina('procedimientos')"><span class="dn-ic">📄</span><span class="dn-lb">Procedimientos</span></button>
+    <button class="desktop-nav-item" data-pag="epp" onclick="irPagina('epp')"><span class="dn-ic">🦺</span><span class="dn-lb">Entrega de EPP</span></button>
+    <button class="desktop-nav-item" data-pag="trabajadores" onclick="irPagina('trabajadores')"><span class="dn-ic">👷</span><span class="dn-lb">Trabajadores</span></button>
+    <button class="desktop-nav-item" data-pag="charlas" onclick="irPagina('charlas')"><span class="dn-ic">💬</span><span class="dn-lb">Charlas de Seguridad</span></button>
+  </div>
+  <div class="desktop-sidebar-footer">
+    <button class="desktop-refresh-btn" onclick="cargarTodo()">⟳ Actualizar datos</button>
+    <button class="desktop-refresh-btn" style="margin-top:8px;" onclick="signOut()">Cerrar sesión</button>
+  </div>
+</div>
+
+<!-- ===== PANEL CENTRAL ESCRITORIO ===== -->
+<div class="desktop-main dt-oculto" id="desktop-main">
+  <div class="desktop-main-header">
+    <div class="desktop-main-title" id="dt-page-title">Inicio</div>
+    <button class="btn-add hidden" id="dt-fab-add">+ Agregar</button>
+  </div>
+
+  <div class="dt-page active" id="dt-page-inicio" style="display:flex;">
+    <div class="sec-label">Módulos</div>
+    <div class="modulos-lista">
+      <div class="modulo-card" onclick="irPagina('inspecciones')">
+        <div class="modulo-icon modulo-icon--flota">🔍</div>
+        <div class="modulo-info"><div class="modulo-nombre">Inspecciones</div><div class="modulo-desc">Con foto y alerta de charla automática</div></div>
+      </div>
+      <div class="modulo-card" onclick="irPagina('incidentes')">
+        <div class="modulo-icon modulo-icon--and">⚠️</div>
+        <div class="modulo-info"><div class="modulo-nombre">Incidentes y Accidentes</div><div class="modulo-desc">Registro con evidencia fotográfica</div></div>
+      </div>
+      <div class="modulo-card" onclick="irPagina('procedimientos')">
+        <div class="modulo-icon modulo-icon--cont">📄</div>
+        <div class="modulo-info"><div class="modulo-nombre">Procedimientos de Trabajo Seguro</div><div class="modulo-desc">PTS vigentes de la obra</div></div>
+      </div>
+      <div class="modulo-card" onclick="irPagina('epp')">
+        <div class="modulo-icon modulo-icon--mov">🦺</div>
+        <div class="modulo-info"><div class="modulo-nombre">Entrega de EPP</div><div class="modulo-desc">Con firma digital del trabajador</div></div>
+      </div>
+      <div class="modulo-card" onclick="irPagina('trabajadores')">
+        <div class="modulo-icon modulo-icon--inv">👷</div>
+        <div class="modulo-info"><div class="modulo-nombre">Trabajadores</div><div class="modulo-desc">Nómina de la obra</div></div>
+      </div>
+      <div class="modulo-card" onclick="irPagina('charlas')">
+        <div class="modulo-icon modulo-icon--flota">💬</div>
+        <div class="modulo-info"><div class="modulo-nombre">Charlas de Seguridad</div><div class="modulo-desc">Alertas generadas por inspecciones</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="dt-page" id="dt-page-inspecciones"><div data-list="inspecciones"></div></div>
+  <div class="dt-page" id="dt-page-incidentes"><div data-list="incidentes"></div></div>
+  <div class="dt-page" id="dt-page-procedimientos"><div data-list="procedimientos"></div></div>
+  <div class="dt-page" id="dt-page-epp"><div data-list="epp"></div></div>
+  <div class="dt-page" id="dt-page-trabajadores"><div data-list="trabajadores"></div></div>
+  <div class="dt-page" id="dt-page-charlas"><div data-list="charlas"></div></div>
+</div>
+
+</div><!-- /#app -->
 
 <!-- ===== PANEL: Nuevo Trabajador ===== -->
 <div class="panel hidden" id="panel-form-trabajador">
@@ -289,23 +366,49 @@
 <script src="config.js"></script>
 <script src="app.js"></script>
 <script>
+  const TITULOS_PAGINA = {
+    inicio: 'Inicio', inspecciones: 'Inspecciones', incidentes: 'Incidentes y Accidentes',
+    procedimientos: 'Procedimientos de Trabajo Seguro', epp: 'Entrega de EPP',
+    trabajadores: 'Trabajadores', charlas: 'Charlas de Seguridad',
+  };
+
   function irPagina(nombre) {
+    if (!TITULOS_PAGINA[nombre]) nombre = 'inicio';
+
+    // ── Móvil ──
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     const map = { inicio:'page-inicio', inspecciones:'page-inspecciones', incidentes:'page-incidentes',
       procedimientos:'page-procedimientos', epp:'page-epp', trabajadores:'page-trabajadores', charlas:'page-charlas' };
-    document.getElementById(map[nombre] || 'page-inicio').classList.add('active');
+    document.getElementById(map[nombre]).classList.add('active');
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     const navTarget = ['inicio','inspecciones','incidentes','epp'].includes(nombre) ? nombre : 'mas';
     const navEl = document.querySelector(`.nav-item[data-pag="${navTarget}"]`);
     if (navEl) navEl.classList.add('active');
 
-    const fab = document.getElementById('fab-add');
+    // ── Escritorio ──
+    document.querySelectorAll('.dt-page').forEach(p => { p.classList.remove('active'); p.style.display = 'none'; });
+    const dtPage = document.getElementById('dt-page-' + nombre);
+    if (dtPage) { dtPage.classList.add('active'); dtPage.style.display = 'flex'; }
+    document.querySelectorAll('.desktop-nav-item').forEach(n => n.classList.remove('active'));
+    const dtNavEl = document.querySelector(`.desktop-nav-item[data-pag="${nombre}"]`);
+    if (dtNavEl) dtNavEl.classList.add('active');
+    const dtTitle = document.getElementById('dt-page-title');
+    if (dtTitle) dtTitle.textContent = TITULOS_PAGINA[nombre];
+
+    // ── Botón agregar (ambos layouts) ──
     const acciones = {
       inspecciones: abrirFormInspeccion, incidentes: abrirFormIncidente,
       procedimientos: abrirFormProcedimiento, epp: abrirFormEpp, trabajadores: abrirFormTrabajador,
     };
-    if (acciones[nombre]) { fab.classList.remove('hidden'); fab.onclick = acciones[nombre]; }
-    else { fab.classList.add('hidden'); }
+    const fab = document.getElementById('fab-add');
+    const dtFab = document.getElementById('dt-fab-add');
+    if (acciones[nombre]) {
+      fab.classList.remove('hidden'); fab.onclick = acciones[nombre];
+      dtFab.classList.remove('hidden'); dtFab.onclick = acciones[nombre];
+    } else {
+      fab.classList.add('hidden');
+      dtFab.classList.add('hidden');
+    }
   }
 </script>
 </body>

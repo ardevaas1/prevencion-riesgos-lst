@@ -88,6 +88,8 @@ function signOut() {
   clearToken();
   userEmail = null; userRole = null;
   document.getElementById('main').classList.add('hidden');
+  document.getElementById('desktop-sidebar').classList.add('dt-oculto');
+  document.getElementById('desktop-main').classList.add('dt-oculto');
   document.getElementById('login-screen').classList.remove('hidden');
 }
 
@@ -211,6 +213,12 @@ function toast(msg, type) {
   clearTimeout(el._t);
   el._t = setTimeout(() => el.classList.add('hidden'), 2600);
 }
+function setListHTML(name, html) {
+  document.querySelectorAll(`[data-list="${name}"]`).forEach(el => el.innerHTML = html);
+}
+function setStat(name, value) {
+  document.querySelectorAll(`[data-stat="${name}"]`).forEach(el => el.textContent = value);
+}
 function openPanel(id) { document.getElementById(id).classList.remove('hidden'); }
 function closePanel(id) { document.getElementById(id).classList.add('hidden'); }
 function fmtFecha(d) { return new Date(d).toLocaleDateString('es-CL'); }
@@ -286,20 +294,19 @@ function renderDashboard() {
   const abiertas = allInspecciones.filter(i => i.estado !== 'Cerrada').length;
   const incAbiertos = allIncidentes.filter(i => i.estado !== 'Cerrado').length;
   const charlasPend = allCharlas.filter(c => c.estado === 'Pendiente').length;
-  document.getElementById('dash-trabajadores').textContent = allTrabajadores.filter(t=>t.estado==='Activo').length;
-  document.getElementById('dash-inspecciones').textContent = abiertas;
-  document.getElementById('dash-incidentes').textContent = incAbiertos;
-  document.getElementById('dash-charlas').textContent = charlasPend;
+  setStat('trabajadores', allTrabajadores.filter(t=>t.estado==='Activo').length);
+  setStat('inspecciones', abiertas);
+  setStat('incidentes', incAbiertos);
+  setStat('charlas', charlasPend);
 }
 
 // ============================================================
 // MÓDULO: TRABAJADORES
 // ============================================================
 function renderTrabajadores() {
-  const cont = document.getElementById('lista-trabajadores');
   const activos = [...allTrabajadores].reverse();
-  if (activos.length === 0) { cont.innerHTML = emptyState('Sin trabajadores', 'Agrega el primer trabajador'); return; }
-  cont.innerHTML = activos.map(t => `
+  if (activos.length === 0) { setListHTML('trabajadores', emptyState('Sin trabajadores', 'Agrega el primer trabajador')); return; }
+  setListHTML('trabajadores', activos.map(t => `
     <div class="card card--default">
       <div class="card-body">
         <div class="card-title">${esc(t.nombre)}</div>
@@ -307,7 +314,7 @@ function renderTrabajadores() {
         <div class="badge-row"><span class="badge ${t.estado==='Activo'?'green':'gray'}">${esc(t.estado)}</span>
         <span class="badge blue">${esc(t.empresa)}</span></div>
       </div>
-    </div>`).join('');
+    </div>`).join(''));
 }
 function selectTrabajadoresOptions() {
   return allTrabajadores.filter(t=>t.estado==='Activo').map(t => `<option value="${esc(t.nombre)}|${esc(t.rut)}">${esc(t.nombre)} — ${esc(t.rut)}</option>`).join('');
@@ -341,10 +348,9 @@ async function guardarTrabajador(ev) {
 // MÓDULO: INSPECCIONES (con foto + alerta de charla)
 // ============================================================
 function renderInspecciones() {
-  const cont = document.getElementById('lista-inspecciones');
   const items = [...allInspecciones].reverse();
-  if (items.length === 0) { cont.innerHTML = emptyState('Sin inspecciones', 'Registra la primera inspección'); return; }
-  cont.innerHTML = items.map(i => {
+  if (items.length === 0) { setListHTML('inspecciones', emptyState('Sin inspecciones', 'Registra la primera inspección')); return; }
+  setListHTML('inspecciones', items.map(i => {
     const meta = NIVELES_RIESGO.find(n=>n.value===i.riesgo) || NIVELES_RIESGO[0];
     return `<div class="card card--default">
       <div class="card-body">
@@ -355,7 +361,7 @@ function renderInspecciones() {
         ${i.foto ? `<a href="${esc(i.foto)}" target="_blank" class="badge blue">📷 Foto</a>` : ''}</div>
       </div>
     </div>`;
-  }).join('');
+  }).join(''));
 }
 function abrirFormInspeccion() {
   const f = document.getElementById('form-inspeccion');
@@ -403,10 +409,9 @@ function mostrarAlertaCharla(tema, area) {
 // MÓDULO: CHARLAS (alertas generadas por inspecciones)
 // ============================================================
 function renderCharlas() {
-  const cont = document.getElementById('lista-charlas');
   const items = [...allCharlas].reverse();
-  if (items.length === 0) { cont.innerHTML = emptyState('Sin charlas pendientes', ''); return; }
-  cont.innerHTML = items.map(c => `
+  if (items.length === 0) { setListHTML('charlas', emptyState('Sin charlas pendientes', '')); return; }
+  setListHTML('charlas', items.map(c => `
     <div class="card card--default">
       <div class="card-body">
         <div class="card-title">${esc(c.tema)}</div>
@@ -414,7 +419,7 @@ function renderCharlas() {
         <div class="badge-row"><span class="badge ${c.estado==='Pendiente'?'amber':'green'}">${esc(c.estado)}</span></div>
       </div>
       ${c.estado==='Pendiente' ? `<button class="action-btn" onclick="marcarCharlaRealizada(${c.fila})">Marcar realizada</button>` : ''}
-    </div>`).join('');
+    </div>`).join(''));
 }
 async function marcarCharlaRealizada(fila) {
   try {
@@ -431,10 +436,9 @@ async function marcarCharlaRealizada(fila) {
 // MÓDULO: INCIDENTES Y ACCIDENTES (con foto)
 // ============================================================
 function renderIncidentes() {
-  const cont = document.getElementById('lista-incidentes');
   const items = [...allIncidentes].reverse();
-  if (items.length === 0) { cont.innerHTML = emptyState('Sin incidentes registrados', ''); return; }
-  cont.innerHTML = items.map(i => `
+  if (items.length === 0) { setListHTML('incidentes', emptyState('Sin incidentes registrados', '')); return; }
+  setListHTML('incidentes', items.map(i => `
     <div class="card card--default">
       <div class="card-body">
         <div class="card-title">${esc(i.tipo)} — ${esc(i.trabajador)}</div>
@@ -444,7 +448,7 @@ function renderIncidentes() {
         <span class="badge gray">${esc(i.estado)}</span>
         ${i.foto ? `<a href="${esc(i.foto)}" target="_blank" class="badge blue">📷 Foto</a>` : ''}</div>
       </div>
-    </div>`).join('');
+    </div>`).join(''));
 }
 function abrirFormIncidente() {
   const f = document.getElementById('form-incidente');
@@ -481,10 +485,9 @@ async function guardarIncidente(ev) {
 // MÓDULO: PROCEDIMIENTOS DE TRABAJO SEGURO
 // ============================================================
 function renderProcedimientos() {
-  const cont = document.getElementById('lista-procedimientos');
   const items = [...allProcedimientos].reverse();
-  if (items.length === 0) { cont.innerHTML = emptyState('Sin procedimientos', 'Sube el primer PTS'); return; }
-  cont.innerHTML = items.map(p => `
+  if (items.length === 0) { setListHTML('procedimientos', emptyState('Sin procedimientos', 'Sube el primer PTS')); return; }
+  setListHTML('procedimientos', items.map(p => `
     <div class="card card--default">
       <div class="card-body">
         <div class="card-title">${esc(p.nombre)}</div>
@@ -492,7 +495,7 @@ function renderProcedimientos() {
         <div class="badge-row"><span class="badge ${p.estado==='Vigente'?'green':'gray'}">${esc(p.estado)}</span>
         ${p.archivo ? `<a href="${esc(p.archivo)}" target="_blank" class="badge blue">📄 Ver documento</a>` : ''}</div>
       </div>
-    </div>`).join('');
+    </div>`).join(''));
 }
 function abrirFormProcedimiento() {
   const f = document.getElementById('form-procedimiento');
@@ -525,17 +528,16 @@ async function guardarProcedimiento(ev) {
 // MÓDULO: ENTREGA DE EPP (con firma)
 // ============================================================
 function renderEpp() {
-  const cont = document.getElementById('lista-epp');
   const items = [...allEpp].reverse();
-  if (items.length === 0) { cont.innerHTML = emptyState('Sin entregas registradas', ''); return; }
-  cont.innerHTML = items.map(e => `
+  if (items.length === 0) { setListHTML('epp', emptyState('Sin entregas registradas', '')); return; }
+  setListHTML('epp', items.map(e => `
     <div class="card card--default">
       <div class="card-body">
         <div class="card-title">${esc(e.trabajador)}</div>
         <div class="card-sub">${esc(e.fecha)} · ${esc(e.epp)} (${esc(e.cantidad)})</div>
         <div class="badge-row">${e.firma ? `<a href="${esc(e.firma)}" target="_blank" class="badge blue">✍️ Ver firma</a>` : '<span class="badge gray">Sin firma</span>'}</div>
       </div>
-    </div>`).join('');
+    </div>`).join(''));
 }
 let firmaCtx = null, firmaActiva = false, firmaUltimo = null;
 function abrirFormEpp() {
@@ -606,7 +608,10 @@ function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;',
 async function arrancarApp() {
   document.getElementById('login-screen').classList.add('hidden');
   document.getElementById('main').classList.remove('hidden');
+  document.getElementById('desktop-sidebar').classList.remove('dt-oculto');
+  document.getElementById('desktop-main').classList.remove('dt-oculto');
   document.getElementById('chip-email').textContent = userEmail || '';
+  document.getElementById('dt-chip-email').textContent = userEmail || '';
   await cargarTodo();
 }
 window.addEventListener('DOMContentLoaded', () => {
