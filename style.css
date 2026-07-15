@@ -219,6 +219,19 @@ body.is-offline #app { padding-top: 30px; }
 .stat.red   .stat-n { color: #c62828; }
 .stat.blue  .stat-n { color: #1565c0; }
 
+/* ── Estadísticas de seguridad (selector de obra + índices) ── */
+.stats-obra-bar { display: flex; align-items: center; gap: 8px; color: var(--ink-soft); margin-bottom: 10px; }
+.obra-selector {
+  flex: 1; padding: 9px 12px; border: 1.5px solid var(--line); border-radius: 10px;
+  font-size: 13.5px; font-weight: 600; color: var(--ink); background: #fff; font-family: inherit;
+}
+.stats-row--indices { grid-template-columns: repeat(3, 1fr); margin-bottom: 6px; }
+.stats-caption { font-size: 11.5px; color: #888; line-height: 1.4; }
+.stats-aviso {
+  font-size: 12px; color: #92400e; background: #fff8e1; border: 1px solid #ffe082;
+  border-radius: 8px; padding: 8px 10px; margin-top: 8px; line-height: 1.4;
+}
+
 /* ── Section label ── */
 .sec-label { font-size: 12px; font-weight: 600; color: var(--ink-soft); margin: 16px 0 8px; text-transform: uppercase; letter-spacing: 0.6px; display: flex; align-items: center; gap: 6px; }
 .sec-label:first-child { margin-top: 0; }
@@ -460,6 +473,19 @@ body.is-offline #app { padding-top: 30px; }
 .action-btn { width: 100%; margin-top: 10px; padding: 10px; border-radius: 10px; border: 1.5px solid var(--accent); color: var(--accent); font-size: 13px; font-weight: 600; background: none; }
 .action-btn:active { background: var(--accent-soft); }
 
+/* ── Alerta de charla / plan de acción sugerido ── */
+.alerta-charla-box {
+  background: #fff; border: 1px solid var(--line); border-radius: 14px;
+  padding: 22px 18px; margin-bottom: 14px;
+  display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center;
+}
+.alerta-charla-icon {
+  width: 64px; height: 64px; border-radius: 50%;
+  background: var(--accent-soft); color: var(--accent-dark);
+  display: flex; align-items: center; justify-content: center; margin-bottom: 4px;
+}
+.alerta-charla-tema { font-size: 16px; font-weight: 700; color: var(--ink); }
+
 /* ── Mantención cards ── */
 .mant-card { background: #fff; border-radius: 12px; border: 1px solid var(--line); padding: 12px 14px; margin-bottom: 8px; display: flex; align-items: center; gap: 12px; cursor: pointer; }
 .mant-card:active { background: #f8f9fa; }
@@ -544,6 +570,17 @@ body.is-offline #app { padding-top: 30px; }
 .toast.error { background: #c62828; }
 .toast.ok { background: #2e7d32; }
 @keyframes fadeup { from { opacity:0; transform: translateX(-50%) translateY(8px); } to { opacity:1; transform: translateX(-50%) translateY(0); } }
+
+/* ── Checklist de EPP (Entrega de EPP: varios ítems + cantidad, tipo menú) ── */
+.epp-checklist { display: flex; flex-direction: column; }
+.epp-item-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 9px 2px; border-bottom: 1px solid #f0f0f0;
+}
+.epp-item-row:last-child { border-bottom: none; }
+.epp-item-label { display: flex; align-items: center; gap: 10px; flex: 1; font-size: 14px; color: var(--ink); cursor: pointer; }
+.epp-item-label input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); flex-shrink: 0; }
+.epp-item-qty { width: 60px; padding: 6px 8px; border: 1.5px solid var(--line); border-radius: 8px; font-size: 14px; text-align: center; font-family: inherit; }
 
 /* ── Upload label ── */
 .upload-label {

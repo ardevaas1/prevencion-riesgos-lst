@@ -20,12 +20,14 @@ function inicializarPlanilla() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
 
   crearHoja(ss, 'TRABAJADORES', [
-    'N°', 'Nombre', 'RUT', 'Cargo', 'Empresa/Contratista', 'Fecha Ingreso', 'Estado', 'Foto', 'Fecha Registro'
+    'N°', 'Nombre', 'RUT', 'Cargo', 'Empresa/Contratista', 'Fecha Ingreso', 'Estado', 'Foto', 'Fecha Registro',
+    'Obra', 'Fecha Inicio Contrato', 'Fecha Término Contrato', 'Archivo Contrato',
+    'Fecha Vigencia Examen Altura', 'Archivo Examen Altura'
   ]);
 
   crearHoja(ss, 'INSPECCIONES', [
     'N°', 'Fecha', 'Tipo Inspección', 'Área/Lugar', 'Inspector', 'Tema/Categoría',
-    'Hallazgos', 'Nivel Riesgo', 'Foto', 'Acción Correctiva', 'Estado', 'Fecha Registro'
+    'Hallazgos', 'Nivel Riesgo', 'Foto', 'Acción Correctiva', 'Estado', 'Fecha Registro', 'Obra'
   ]);
 
   crearHoja(ss, 'CHARLAS', [
@@ -35,7 +37,7 @@ function inicializarPlanilla() {
   crearHoja(ss, 'INCIDENTES', [
     'N°', 'Fecha', 'Tipo', 'Trabajador Involucrado', 'Área', 'Descripción', 'Causas',
     'Gravedad', 'Foto', 'Acciones Correctivas', 'Estado', 'Fecha Registro', 'Reportado Por',
-    'Respaldo Cierre'
+    'Respaldo Cierre', 'Obra', 'Días Perdidos'
   ]);
 
   crearHoja(ss, 'PROCEDIMIENTOS', [

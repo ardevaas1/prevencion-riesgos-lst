@@ -97,6 +97,9 @@
         <div class="stat green" onclick="irPagina('charlas')"><div class="stat-n" data-stat="charlas">0</div><div class="stat-l">Charlas pendientes</div></div>
       </div>
 
+      <div class="sec-label" style="margin-top:20px;">Estadísticas de seguridad</div>
+      <div data-list="stats-seguridad"></div>
+
       <div class="sec-label">Módulos</div>
       <div class="modulos-lista" data-list="modulos-home"></div>
 
@@ -193,6 +196,9 @@
   </div>
 
   <div class="dt-page active" id="dt-page-inicio" style="display:flex;">
+    <div class="sec-label">Estadísticas de seguridad</div>
+    <div data-list="stats-seguridad"></div>
+
     <div class="sec-label">Módulos</div>
     <div class="modulos-lista" data-list="modulos-home"></div>
   </div>
@@ -221,6 +227,11 @@
         <select name="estado"><option>Activo</option><option>Inactivo</option></select>
       </div>
       <div class="form-group">
+        <label>Obra</label>
+        <select name="obra" id="sel-obra-trabajador" required onchange="onCambioObraSelect(this,'input-trabajador-obra-otra')"></select>
+        <input type="text" id="input-trabajador-obra-otra" class="hidden" placeholder="Nombre de la obra" style="margin-top:8px;">
+      </div>
+      <div class="form-group">
         <label>Foto (opcional)</label>
         <label class="upload-label" onclick="event.currentTarget.classList.add('selected')"><svg viewBox="0 0 24 24" fill="none" class="inline-ic"><path d="M4 8a1 1 0 0 1 1-1h2l1.2-2h7.6L17 7h2a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.4" stroke="currentColor" stroke-width="1.7"/></svg> Tomar / subir foto<input type="file" name="foto" accept="image/*" capture="environment" style="display:none"></label>
       </div>
@@ -244,6 +255,11 @@
       </div>
       <div class="form-group"><label>Área / Lugar</label><input name="area" required></div>
       <div class="form-group"><label>Inspector</label><input name="inspector" required></div>
+      <div class="form-group">
+        <label>Obra</label>
+        <select name="obra" id="sel-obra-inspeccion" required onchange="onCambioObraSelect(this,'input-inspeccion-obra-otra')"></select>
+        <input type="text" id="input-inspeccion-obra-otra" class="hidden" placeholder="Nombre de la obra" style="margin-top:8px;">
+      </div>
       <div class="form-group"><label>Tema / Categoría</label><select name="tema" id="sel-tema-inspeccion" required></select></div>
       <div class="form-group"><label>Hallazgos</label><textarea name="hallazgos" required></textarea></div>
       <div class="form-group"><label>Nivel de riesgo</label>
@@ -274,6 +290,20 @@
   </div>
 </div>
 
+<!-- ===== MODAL: Plan de acción sugerido (incidentes) ===== -->
+<div class="panel hidden" id="modal-alerta-plan">
+  <div class="panel-bar"><div></div><div class="pnl-title" id="alerta-plan-titulo">Plan sugerido</div><div class="pnl-back" onclick="closePanel('modal-alerta-plan')">Cerrar</div></div>
+  <div class="panel-body">
+    <div class="alerta-charla-box">
+      <div class="alerta-charla-icon"><svg viewBox="0 0 24 24" fill="none" style="width:38px;height:38px"><path d="M12 3 2 20h20L12 3Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M12 9.5v4.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="12" cy="17" r="1" fill="currentColor"/></svg></div>
+      <div id="alerta-plan-cuerpo"></div>
+      <div style="font-size:12px;color:#888;">Área: <span id="alerta-plan-area"></span></div>
+    </div>
+    <p id="alerta-plan-nota" style="font-size:13px;color:#666;text-align:center;"></p>
+    <button class="btn-add" id="alerta-plan-btn"></button>
+  </div>
+</div>
+
 <!-- ===== PANEL: Nuevo Incidente/Accidente ===== -->
 <div class="panel hidden" id="panel-form-incidente">
   <div class="panel-bar"><div class="pnl-back" onclick="closePanel('panel-form-incidente')">‹ Volver</div><div class="pnl-title">Nuevo incidente</div><div></div></div>
@@ -285,11 +315,17 @@
       </div>
       <div class="form-group"><label>Trabajador involucrado</label><select name="trabajador" id="sel-trabajador-incidente"></select></div>
       <div class="form-group"><label>Área</label><input name="area" required></div>
+      <div class="form-group">
+        <label>Obra</label>
+        <select name="obra" id="sel-obra-incidente" required onchange="onCambioObraSelect(this,'input-incidente-obra-otra')"></select>
+        <input type="text" id="input-incidente-obra-otra" class="hidden" placeholder="Nombre de la obra" style="margin-top:8px;">
+      </div>
       <div class="form-group"><label>Descripción</label><textarea name="descripcion" required></textarea></div>
       <div class="form-group"><label>Causas</label><textarea name="causas"></textarea></div>
       <div class="form-group"><label>Gravedad</label>
         <select name="gravedad" required><option>Leve</option><option>Grave</option><option>Fatal</option><option>Sin lesión</option></select>
       </div>
+      <div class="form-group"><label>Días perdidos (si aplica)</label><input type="number" name="diasPerdidos" min="0" value="0"></div>
       <div class="form-group"><label>Acciones correctivas</label><textarea name="accion"></textarea></div>
       <div class="form-group">
         <label>Foto de registro</label>
@@ -343,21 +379,15 @@
       <div class="form-group"><label>Trabajador</label><select name="trabajador" id="sel-trabajador-epp" required></select></div>
 
       <div class="sec-label" style="margin-top:18px;">Ítems a entregar</div>
-      <div class="form-group">
-        <label>EPP</label>
-        <select id="sel-epp-item" onchange="onCambioEppItem()"></select>
+      <div id="checklist-epp" class="epp-checklist"></div>
+      <div class="form-group" style="margin-top:10px;">
+        <label>+ Escribir otro tipo de EPP (opcional)</label>
+        <input id="input-epp-otro" placeholder="Ej: Guantes dieléctricos" oninput="onCambioEppOtro()">
       </div>
-      <div class="form-group hidden" id="grupo-epp-otro">
-        <label>Especifica el tipo de EPP</label>
-        <input id="input-epp-otro" placeholder="Ej: Guantes dieléctricos">
-      </div>
-      <div class="form-group">
+      <div class="form-group hidden" id="grupo-epp-otro-qty">
         <label>Cantidad</label>
-        <input type="number" id="input-epp-cantidad" value="1" min="1">
+        <input type="number" id="input-epp-otro-cantidad" value="1" min="1">
       </div>
-      <button class="action-btn" type="button" onclick="agregarItemEpp()">+ Agregar a la entrega</button>
-
-      <div id="carrito-epp" style="margin-top:10px;"></div>
 
       <div class="sec-label" style="margin-top:18px;">Firma y responsable</div>
       <div class="form-group"><label>Responsable de la entrega</label><input name="responsable" placeholder="Se usará tu correo si lo dejas vacío"></div>
@@ -375,6 +405,39 @@
 <div class="panel hidden" id="panel-ficha-trabajador">
   <div class="panel-bar"><div class="pnl-back" onclick="closePanel('panel-ficha-trabajador')">‹ Volver</div><div class="pnl-title">Ficha del trabajador</div><div></div></div>
   <div class="panel-body" id="ficha-trabajador-body"></div>
+</div>
+
+<!-- ===== PANEL: Contrato de trabajo (subir/actualizar) ===== -->
+<div class="panel hidden" id="panel-editar-contrato">
+  <div class="panel-bar"><div class="pnl-back" onclick="closePanel('panel-editar-contrato')">‹ Volver</div><div class="pnl-title">Contrato de trabajo</div><div></div></div>
+  <div class="panel-body">
+    <form id="form-editar-contrato" onsubmit="guardarContrato(event)">
+      <input type="hidden" name="fila">
+      <div class="form-group"><label>Fecha de inicio</label><input type="date" name="inicio" required></div>
+      <div class="form-group"><label>Fecha de término (vacío = indefinido)</label><input type="date" name="termino"></div>
+      <div class="form-group">
+        <label>Documento del contrato (opcional)</label>
+        <label class="upload-label" onclick="event.currentTarget.classList.add('selected')"><svg viewBox="0 0 24 24" fill="none" class="inline-ic"><path d="M7 3h7l4 4v14H7Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M14 3v4h4" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg> Subir archivo<input type="file" name="archivo" accept="application/pdf,image/*" style="display:none"></label>
+      </div>
+      <button class="btn-add" type="submit">Guardar contrato</button>
+    </form>
+  </div>
+</div>
+
+<!-- ===== PANEL: Examen de altura física (subir/actualizar) ===== -->
+<div class="panel hidden" id="panel-editar-altura">
+  <div class="panel-bar"><div class="pnl-back" onclick="closePanel('panel-editar-altura')">‹ Volver</div><div class="pnl-title">Examen de altura física</div><div></div></div>
+  <div class="panel-body">
+    <form id="form-editar-altura" onsubmit="guardarAltura(event)">
+      <input type="hidden" name="fila">
+      <div class="form-group"><label>Vigente hasta</label><input type="date" name="vigencia" required></div>
+      <div class="form-group">
+        <label>Documento del examen (opcional)</label>
+        <label class="upload-label" onclick="event.currentTarget.classList.add('selected')"><svg viewBox="0 0 24 24" fill="none" class="inline-ic"><path d="M7 3h7l4 4v14H7Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M14 3v4h4" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg> Subir archivo<input type="file" name="archivo" accept="application/pdf,image/*" style="display:none"></label>
+      </div>
+      <button class="btn-add" type="submit">Guardar examen</button>
+    </form>
+  </div>
 </div>
 
 
