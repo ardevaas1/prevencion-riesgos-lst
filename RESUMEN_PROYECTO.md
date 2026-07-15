@@ -56,40 +56,114 @@ repositorio de GitHub **separado**.
 `ENTREGA_EPP`, `USUARIOS` (esta última creada pero sin usar todavía — pensada
 a futuro para roles admin/prevencionista/viewer, no implementado).
 
+Columnas agregadas después del lanzamiento inicial (ver `rowToX` en `app.js`
+para el mapeo exacto de índices):
+- `TRABAJADORES`: `Obra` (J), `Fecha Inicio Contrato` (K), `Fecha Término
+  Contrato` (L, vacío = indefinido), `Archivo Contrato` (M), `Fecha Vigencia
+  Examen Altura` (N), `Archivo Examen Altura` (O).
+- `INSPECCIONES`: `Obra` (M).
+- `INCIDENTES`: `Respaldo Cierre` (N), `Obra` (O), `Días Perdidos` (P).
+
+Si el Sheet real ya existía antes de estos cambios, hay que agregar los
+encabezados a mano en la fila 1 de cada pestaña (la API escribe igual aunque
+falte el encabezado, pero para que se vea prolijo conviene completarlo).
+"Obra" no tiene una lista fija: se detecta automáticamente leyendo los
+valores ya usados en Trabajadores/Inspecciones/Incidentes, igual que el
+patrón de "+ Escribir otro tipo..." de EPP (`opcionesObraSelectHTML` en
+`app.js`) — cada Inspección e Incidente tiene su propia Obra (independiente
+de la obra del trabajador), porque un trabajador puede rotar entre obras.
+
 ## Módulos de la app
 
 1. **Inspecciones** — foto de registro. Al guardar, **genera automáticamente
    una alerta de charla** sobre el tema elegido (dropdown fijo de 12 temas)
    y la deja "Pendiente" en el módulo Charlas.
-2. **Incidentes y Accidentes** — foto de registro. Al guardar, un **motor de
-   palabras clave** (`REGLAS_SUGERENCIA_CHARLA` en `app.js`) analiza la
-   descripción/causas y sugiere automáticamente una charla relacionada (ej.
-   "desorden" → *Orden y limpieza*). **Importante:** esto NO es una llamada a
-   una API de IA real — se decidió así a propósito porque exponer una API
-   key de un modelo de IA en código client-side (público en GitHub) sería
-   un riesgo de seguridad/costos. Si en algún momento se quiere una sugerencia
-   con LLM real, hay que agregar un backend (Apps Script o Cloud Function)
-   que guarde la key del lado del servidor.
+2. **Incidentes y Accidentes** — foto de registro, con Obra y Días perdidos
+   (relevante para accidentes). Al guardar, un **motor de palabras clave**
+   (`sugerirPlanAccion` en `app.js`, que combina `REGLAS_SUGERENCIA_CHARLA`,
+   `REGLAS_SUGERENCIA_EPP`, `PALABRAS_MANTENCION` y un cruce con
+   `allProcedimientos`) analiza la descripción/causas y sugiere el plan de
+   acción más relacionado, en este orden de prioridad:
+   1. **Reponer/entregar EPP** si el texto indica EPP dañado/faltante (ej.
+      "sin guantes", "casco dañado") → botón directo a Entrega de EPP con el
+      trabajador e ítem prellenados.
+   2. **Derivar a mantención** si menciona herramienta/equipo en mal estado
+      (ej. "esmeril dañado", "no funciona") — solo queda como aviso, la app
+      no tiene módulo de mantención donde registrarlo.
+   3. **Revisar procedimiento (PTS)** si el Área del incidente coincide con
+      el Área de un procedimiento Vigente ya cargado.
+   4. **Charla de seguridad** (motor original) como respaldo general — se
+      crea automáticamente "Pendiente" en el módulo Charlas, igual que antes.
+   **Importante:** sigue sin ser IA real, mismo motivo de seguridad/costos
+   que antes (exponer una API key de LLM en código client-side es un riesgo
+   si el repo es público). Si se quiere una sugerencia con LLM real hay que
+   agregar un backend (Apps Script o Cloud Function) que guarde la key del
+   lado del servidor.
    Tiene botón "Cerrar caso" (Estado Abierto → Cerrado), que abre un panel
    para adjuntar opcionalmente un **respaldo del cierre** (foto o PDF, sube
-   a la misma subcarpeta de Drive `Incidentes-Accidentes`) — columna nueva
-   `Respaldo Cierre` (N) en la pestaña INCIDENTES del Sheet. Si el Sheet ya
-   existe en producción, hay que agregar el encabezado a mano en la celda
-   N1 (la API lo escribe igual aunque falte, pero para que se vea prolijo).
+   a la misma subcarpeta de Drive `Incidentes-Accidentes`) — columna
+   `Respaldo Cierre` (N) en la pestaña INCIDENTES del Sheet.
 3. **Procedimientos de Trabajo Seguro** — sube PDF a Drive.
-4. **Entrega de EPP** — permite **varios ítems en una sola entrega** (carrito:
-   agregar ítem + cantidad, repetir, firmar una vez al final → se guardan
-   varias filas en el Sheet compartiendo la misma firma). Tiene opción
+4. **Entrega de EPP** — **checklist tipo menú**: se muestran todos los tipos
+   de EPP con checkbox + cantidad al lado, se marcan los que correspondan
+   (varios a la vez) y se firma una vez al final → se guarda una fila por
+   ítem marcado en el Sheet, todas compartiendo la misma firma
+   (`recolectarItemsEpp` en `app.js`). Se reemplazó el flujo anterior de
+   "carrito" (agregar ítem por ítem, uno a la vez) por este checklist directo
+   porque es más rápido para marcar varios ítems de una entrega. Tiene campo
    "+ Escribir otro tipo..." — los tipos personalizados quedan disponibles
-   solos en el dropdown la próxima vez (se detectan leyendo el historial ya
-   guardado, no hay una lista separada que mantener).
-5. **Trabajadores** — alta de nómina. Al tocar un trabajador se abre su
-   **ficha con historial** (EPP entregado + incidentes relacionados),
-   replicando el patrón de ficha de equipo de Flota.
+   solos en el checklist la próxima vez (se detectan leyendo el historial ya
+   guardado, no hay una lista separada que mantener). `abrirFormEpp(item,
+   trabajador)` acepta parámetros opcionales de prellenado, usados por la
+   sugerencia de "reponer EPP" de Incidentes.
+5. **Trabajadores** — alta de nómina, con Obra. Al tocar un trabajador se abre
+   su **ficha con historial**: EPP entregado, incidentes relacionados, y dos
+   secciones nuevas — **Contrato de trabajo** (fecha inicio/término o
+   "Indefinido", badge Vigente/Vencido, subir/ver PDF) y **Examen de altura
+   física** (fecha de vigencia, badge Vigente/Vencido, subir/ver PDF) — cada
+   una con su propio panel de edición (`panel-editar-contrato` /
+   `panel-editar-altura`). Replica el patrón de ficha de equipo de Flota.
 6. **Charlas de Seguridad** — lista de alertas generadas (por inspecciones o
    incidentes), con botón "Marcar realizada".
 
 Inspecciones también tiene botón "Cerrar inspección" (Abierta → Cerrada).
+
+## Dashboard: estadísticas de seguridad (Inicio)
+
+En la pantalla de Inicio (mobile y desktop), arriba de "Módulos", hay un
+selector de **Obra** ("Todas las obras" + cada obra detectada) y 3
+indicadores (`calcularEstadisticasSeguridad` en `app.js`), con las fórmulas
+estándar de Mutualidad/DS40:
+
+- **Tasa de Accidentabilidad** = (N° accidentes con tiempo perdido / N°
+  trabajadores activos de la obra) × 100
+- **Índice de Frecuencia** = (N° accidentes con tiempo perdido / Horas
+  Hombre Trabajadas) × 1.000.000
+- **Índice de Gravedad** = (N° días perdidos / Horas Hombre Trabajadas) ×
+  1.000.000
+
+Se consideran "accidente con tiempo perdido" los Incidentes con tipo
+`Accidente Leve/Grave/Fatal` (no cuentan Casi Accidente ni Incidente).
+"Días perdidos" es el campo manual que se ingresa al registrar el incidente.
+
+**Horas Hombre Trabajadas** se estima a partir de la vigencia del contrato
+de cada trabajador (Fecha Inicio/Término en su ficha) × una jornada diaria
+estándar (`HORAS_JORNADA_DIARIA = 8`, ajustable en `app.js`) — la app no
+registra asistencia real, así que esto es una aproximación explícitamente
+decidida así (no hay otra fuente de horas trabajadas). Si un trabajador
+activo no tiene fecha de inicio de contrato cargada, sus horas no se cuentan
+y aparece un aviso bajo los indicadores avisando cuántos trabajadores están
+en esa situación.
+
+El período de cálculo es **acumulado del año calendario actual** (1 de enero
+a hoy) — no hay selector de rango de fechas, es una decisión para mantenerlo
+simple; si más adelante se quiere comparar años o meses hay que agregar un
+selector de período además del de obra.
+
+Cada Inspección e Incidente tiene su propia Obra (no se hereda del
+trabajador involucrado), pero las Horas Hombre se calculan agrupando
+Trabajadores por su propia Obra — o sea, la Obra de un trabajador y la Obra
+de un incidente son campos independientes que hay que llenar por separado.
 
 ## Decisiones de diseño visuales (por qué se ve como se ve)
 
@@ -157,8 +231,16 @@ con overlay oscuro detrás, en vez de pantalla completa.
 ## Pendiente / ideas no implementadas
 
 - Roles de usuario (hoja `USUARIOS` existe pero no se usa para permisos).
-- Sugerencia de charlas con IA real (actualmente es motor de palabras clave
-  por las razones de seguridad explicadas arriba).
+- Sugerencia de charlas/plan de acción con IA real (actualmente es motor de
+  palabras clave por las razones de seguridad explicadas arriba).
 - Grupos de EPP en la lista se arman por coincidencia exacta de
   `fecha+trabajador+firma` — si dos entregas distintas del mismo trabajador
   caen el mismo día, podrían agruparse por error (caso borde no resuelto).
+- Selector de período en el dashboard de estadísticas (hoy es fijo: acumulado
+  del año calendario actual).
+- Horas Hombre Trabajadas es una aproximación (jornada estándar × vigencia de
+  contrato), no asistencia real — si se necesita mayor precisión habría que
+  agregar registro de asistencia/turnos.
+- La sugerencia de "Derivar a mantención" (Incidentes) es solo un aviso: la
+  app no tiene un módulo de mantención donde registrar/hacer seguimiento del
+  equipo derivado.

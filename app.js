@@ -51,6 +51,58 @@ function sugerirTemaCharla(texto) {
   return null;
 }
 
+// ── Sugerencia ampliada de plan de acción (Incidentes) ─────────────────
+// Mismo motor de palabras clave: antes de caer en "sugerir una charla" se
+// revisa si el incidente es más bien un tema de EPP dañado/faltante
+// (reponer EPP), de herramienta/equipo en mal estado (mantención), o si
+// existe un Procedimiento de Trabajo Seguro vigente para esa área (revisarlo).
+const REGLAS_SUGERENCIA_EPP = [
+  { item: 'Casco', palabras: ['sin casco', 'casco dañado', 'casco roto', 'no tenia casco', 'no tenía casco', 'falta casco', 'casco malo'] },
+  { item: 'Lentes de seguridad', palabras: ['sin lentes', 'lentes rayados', 'lentes rotos', 'lentes dañados', 'falta lentes'] },
+  { item: 'Guantes', palabras: ['sin guantes', 'guantes rotos', 'guantes dañados', 'falta guantes', 'guantes en mal estado'] },
+  { item: 'Zapatos de seguridad', palabras: ['sin zapatos de seguridad', 'zapatos dañados', 'zapatos rotos', 'zapatos en mal estado'] },
+  { item: 'Chaleco reflectante', palabras: ['sin chaleco', 'chaleco roto', 'chaleco dañado'] },
+  { item: 'Protección auditiva', palabras: ['sin proteccion auditiva', 'sin protección auditiva', 'tapones dañados'] },
+  { item: 'Arnés de seguridad', palabras: ['sin arnes', 'sin arnés', 'arnes dañado', 'arnés dañado', 'arnes roto', 'arnés roto', 'arnes en mal estado'] },
+  { item: 'Mascarilla / Respirador', palabras: ['sin mascarilla', 'mascarilla rota', 'sin respirador', 'respirador dañado'] },
+  { item: 'Careta facial', palabras: ['sin careta', 'careta rota', 'careta dañada'] },
+];
+function sugerirReposicionEpp(texto) {
+  const t = (texto || '').toLowerCase();
+  for (const regla of REGLAS_SUGERENCIA_EPP) {
+    if (regla.palabras.some(p => t.includes(p))) return regla.item;
+  }
+  if (t.includes('epp') && /(sin |falta|dañad|roto|rota|perdio|perdió|no tenia|no tenía)/.test(t)) return 'EPP';
+  return null;
+}
+const PALABRAS_MANTENCION = [
+  'herramienta dañada', 'herramienta en mal estado', 'equipo defectuoso', 'equipo dañado',
+  'equipo en mal estado', 'maquina dañada', 'máquina dañada', 'maquina defectuosa', 'máquina defectuosa',
+  'no funciona', 'esmeril malo', 'esmeril dañado', 'taladro dañado', 'sierra dañada', 'cable pelado',
+];
+function sugerirMantencion(texto) {
+  const t = (texto || '').toLowerCase();
+  return PALABRAS_MANTENCION.some(p => t.includes(p)) ? 'Revisar y dar mantención al equipo/herramienta involucrada' : null;
+}
+function sugerirProcedimientoRelacionado(area) {
+  const a = (area || '').toLowerCase().trim();
+  if (!a) return null;
+  return allProcedimientos.find(p => p.estado === 'Vigente' && p.area &&
+    (a.includes(p.area.toLowerCase()) || p.area.toLowerCase().includes(a))) || null;
+}
+function sugerirPlanAccion(descripcion, causas, area) {
+  const texto = `${descripcion || ''} ${causas || ''}`;
+  const itemEpp = sugerirReposicionEpp(texto);
+  if (itemEpp) return { tipo: 'epp', valor: itemEpp };
+  const mantencion = sugerirMantencion(texto);
+  if (mantencion) return { tipo: 'mantencion', valor: mantencion };
+  const pts = sugerirProcedimientoRelacionado(area);
+  if (pts) return { tipo: 'procedimiento', valor: pts };
+  const tema = sugerirTemaCharla(texto);
+  if (tema) return { tipo: 'charla', valor: tema };
+  return null;
+}
+
 let userEmail = null;
 let userRole  = null; // admin | prevencionista | viewer
 
@@ -306,6 +358,7 @@ const ICONS = {
   camara: '<svg viewBox="0 0 24 24" fill="none"><path d="M4 8a1 1 0 0 1 1-1h2l1.2-2h7.6L17 7h2a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.4" stroke="currentColor" stroke-width="1.7"/></svg>',
   documento: '<svg viewBox="0 0 24 24" fill="none"><path d="M7 3h7l4 4v14H7Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M14 3v4h4" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>',
   firma: '<svg viewBox="0 0 24 24" fill="none"><path d="M4 17c2.5-1 4.5-1 6.5 0s4.5 1 6.5 0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M6 13.5 15 4.5a1.7 1.7 0 0 1 2.4 2.4L8.4 15.9l-3 0.7.6-3.1Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg>',
+  obra: '<svg viewBox="0 0 24 24" fill="none"><path d="M4 21V8l6-4 6 4v13" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M14 21v-7h6v7" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 10h.01M12 10h.01M8 14h.01M12 14h.01M8 18h.01M12 18h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
 };
 function ic(name, size) { return ICONS[name].replace('<svg ', `<svg style="width:${size||14}px;height:${size||14}px;vertical-align:-3px;flex-shrink:0" `); }
 
@@ -387,9 +440,9 @@ async function cargarTodo(silencioso) {
   try {
     if (!silencioso) splash(45, 'Cargando información...');
     const [trab, insp, inc, proc, epp, charlas] = await Promise.all([
-      fetchSheet(`'${CONFIG.SHEET_TRABAJADORES}'!A2:I2000`),
-      fetchSheet(`'${CONFIG.SHEET_INSPECCIONES}'!A2:L2000`),
-      fetchSheet(`'${CONFIG.SHEET_INCIDENTES}'!A2:N2000`),
+      fetchSheet(`'${CONFIG.SHEET_TRABAJADORES}'!A2:O2000`),
+      fetchSheet(`'${CONFIG.SHEET_INSPECCIONES}'!A2:M2000`),
+      fetchSheet(`'${CONFIG.SHEET_INCIDENTES}'!A2:P2000`),
       fetchSheet(`'${CONFIG.SHEET_PROCEDIMIENTOS}'!A2:I2000`),
       fetchSheet(`'${CONFIG.SHEET_EPP}'!A2:I2000`),
       fetchSheet(`'${CONFIG.SHEET_CHARLAS}'!A2:G2000`),
@@ -415,17 +468,20 @@ async function cargarTodo(silencioso) {
 // ── Mapeo de filas ───────────────────────────────────────────
 function rowToTrabajador(r, i) {
   return { fila: i+2, n: r[0]||'', nombre: r[1]||'', rut: r[2]||'', cargo: r[3]||'', empresa: r[4]||'',
-    fechaIngreso: r[5]||'', estado: r[6]||'Activo', foto: r[7]||'', fechaRegistro: r[8]||'' };
+    fechaIngreso: r[5]||'', estado: r[6]||'Activo', foto: r[7]||'', fechaRegistro: r[8]||'',
+    obra: r[9]||'', contratoInicio: r[10]||'', contratoTermino: r[11]||'', contratoArchivo: r[12]||'',
+    alturaVigencia: r[13]||'', alturaArchivo: r[14]||'' };
 }
 function rowToInspeccion(r, i) {
   return { fila: i+2, n: r[0]||'', fecha: r[1]||'', tipo: r[2]||'', area: r[3]||'', inspector: r[4]||'',
     tema: r[5]||'', hallazgos: r[6]||'', riesgo: r[7]||'Bajo', foto: r[8]||'', accion: r[9]||'',
-    estado: r[10]||'Abierta', fechaRegistro: r[11]||'' };
+    estado: r[10]||'Abierta', fechaRegistro: r[11]||'', obra: r[12]||'' };
 }
 function rowToIncidente(r, i) {
   return { fila: i+2, n: r[0]||'', fecha: r[1]||'', tipo: r[2]||'', trabajador: r[3]||'', area: r[4]||'',
     descripcion: r[5]||'', causas: r[6]||'', gravedad: r[7]||'', foto: r[8]||'', accion: r[9]||'',
-    estado: r[10]||'Abierto', fechaRegistro: r[11]||'', reportadoPor: r[12]||'', respaldo: r[13]||'' };
+    estado: r[10]||'Abierto', fechaRegistro: r[11]||'', reportadoPor: r[12]||'', respaldo: r[13]||'',
+    obra: r[14]||'', diasPerdidos: parseInt(r[15],10) || 0 };
 }
 function rowToProcedimiento(r, i) {
   return { fila: i+2, n: r[0]||'', codigo: r[1]||'', nombre: r[2]||'', area: r[3]||'', version: r[4]||'',
@@ -451,6 +507,99 @@ function renderDashboard() {
   setStat('inspecciones', abiertas);
   setStat('incidentes', incAbiertos);
   setStat('charlas', charlasPend);
+  renderEstadisticasSeguridad();
+}
+
+// ── Obras (catálogo dinámico, mismo patrón que "Otro" en EPP) ──────────
+function opcionesObrasDisponibles() {
+  const obras = new Set([
+    ...allTrabajadores.map(t => t.obra),
+    ...allInspecciones.map(i => i.obra),
+    ...allIncidentes.map(i => i.obra),
+  ].filter(Boolean));
+  return [...obras].sort((a, b) => a.localeCompare(b, 'es'));
+}
+function opcionesObraSelectHTML(actual) {
+  return opcionesObrasDisponibles().map(o => `<option ${o===actual?'selected':''}>${esc(o)}</option>`).join('')
+    + '<option value="__otra__">+ Escribir otra obra...</option>';
+}
+function onCambioObraSelect(selEl, otroId) {
+  document.getElementById(otroId).classList.toggle('hidden', selEl.value !== '__otra__');
+}
+function valorObra(selEl, otroId) {
+  if (selEl.value === '__otra__') return document.getElementById(otroId).value.trim();
+  return selEl.value;
+}
+
+// ── Índices de seguridad (fórmulas DS40 / Mutualidad) ──────────────────
+// Horas Hombre Trabajadas: se estima desde la vigencia del contrato de cada
+// trabajador (fecha inicio/término) × jornada diaria estándar, porque la app
+// no registra asistencia real. Ajustar HORAS_JORNADA_DIARIA si la jornada
+// real de la obra es distinta.
+const HORAS_JORNADA_DIARIA = 8;
+let obraDashboardSel = 'todas';
+
+function onCambioObraDashboard() {
+  obraDashboardSel = document.getElementById('sel-obra-dashboard').value;
+  renderEstadisticasSeguridad();
+}
+function esAccidenteConTiempoPerdido(inc) {
+  return inc.tipo === 'Accidente Leve' || inc.tipo === 'Accidente Grave' || inc.tipo === 'Accidente Fatal';
+}
+function calcularEstadisticasSeguridad(obraSel) {
+  const hoy = new Date();
+  const inicioPeriodo = new Date(hoy.getFullYear(), 0, 1);
+  const inicioPeriodoStr = `${hoy.getFullYear()}-01-01`;
+  const hoyStr = hoyISO();
+
+  const trabajadoresObra = allTrabajadores.filter(t => obraSel === 'todas' || t.obra === obraSel);
+  let horasHombre = 0, sinContrato = 0;
+  trabajadoresObra.forEach(t => {
+    if (!t.contratoInicio) { sinContrato++; return; }
+    const ini = new Date(t.contratoInicio + 'T00:00:00');
+    const fin = t.contratoTermino ? new Date(t.contratoTermino + 'T00:00:00') : hoy;
+    const desde = ini > inicioPeriodo ? ini : inicioPeriodo;
+    const hasta = fin < hoy ? fin : hoy;
+    if (hasta >= desde) {
+      const dias = Math.floor((hasta - desde) / 86400000) + 1;
+      horasHombre += dias * HORAS_JORNADA_DIARIA;
+    }
+  });
+
+  const incidentesPeriodo = allIncidentes.filter(i =>
+    (obraSel === 'todas' || i.obra === obraSel) && esAccidenteConTiempoPerdido(i) &&
+    i.fecha >= inicioPeriodoStr && i.fecha <= hoyStr);
+  const nAccidentes = incidentesPeriodo.length;
+  const diasPerdidos = incidentesPeriodo.reduce((s, i) => s + (i.diasPerdidos || 0), 0);
+  const nTrabajadoresActivos = trabajadoresObra.filter(t => t.estado === 'Activo').length;
+
+  return {
+    anio: hoy.getFullYear(), nAccidentes, diasPerdidos, horasHombre, sinContrato,
+    tasaAccidentabilidad: nTrabajadoresActivos > 0 ? (nAccidentes / nTrabajadoresActivos) * 100 : 0,
+    indiceFrecuencia: horasHombre > 0 ? (nAccidentes / horasHombre) * 1000000 : 0,
+    indiceGravedad: horasHombre > 0 ? (diasPerdidos / horasHombre) * 1000000 : 0,
+  };
+}
+function renderEstadisticasSeguridad() {
+  const obras = opcionesObrasDisponibles();
+  if (obraDashboardSel !== 'todas' && !obras.includes(obraDashboardSel)) obraDashboardSel = 'todas';
+  const st = calcularEstadisticasSeguridad(obraDashboardSel);
+
+  setListHTML('stats-seguridad', `
+    <div class="stats-obra-bar">${ic('obra',16)}
+      <select id="sel-obra-dashboard" class="obra-selector" onchange="onCambioObraDashboard()">
+        <option value="todas" ${obraDashboardSel==='todas'?'selected':''}>Todas las obras</option>
+        ${obras.map(o => `<option ${o===obraDashboardSel?'selected':''}>${esc(o)}</option>`).join('')}
+      </select>
+    </div>
+    <div class="stats-row stats-row--indices">
+      <div class="stat blue"><div class="stat-n">${st.tasaAccidentabilidad.toFixed(1)}%</div><div class="stat-l">Tasa Accidentabilidad</div></div>
+      <div class="stat amber"><div class="stat-n">${Math.round(st.indiceFrecuencia)}</div><div class="stat-l">Índice Frecuencia</div></div>
+      <div class="stat red"><div class="stat-n">${Math.round(st.indiceGravedad)}</div><div class="stat-l">Índice Gravedad</div></div>
+    </div>
+    <div class="stats-caption">Acumulado ${st.anio} · ${st.nAccidentes} accidente(s) con tiempo perdido · ${Math.round(st.horasHombre).toLocaleString('es-CL')} HH trabajadas (estimadas)</div>
+    ${st.sinContrato > 0 ? `<div class="stats-aviso">${st.sinContrato} trabajador(es) sin fecha de contrato registrada — sus horas no se cuentan en los índices.</div>` : ''}
+  `);
 }
 
 // ============================================================
@@ -500,6 +649,15 @@ function abrirFichaTrabajador(nombre) {
           <span class="badge ${i.estado==='Cerrado'?'green':'red'}">${esc(i.estado)}</span>
         </div>`).join('');
 
+  const contratoBadge = !t.contratoInicio
+    ? `<span class="badge gray">Sin registrar</span>`
+    : !t.contratoTermino
+      ? `<span class="badge green">Vigente (indefinido)</span>`
+      : t.contratoTermino < hoyISO() ? `<span class="badge red">Vencido</span>` : `<span class="badge green">Vigente</span>`;
+  const alturaBadge = !t.alturaVigencia
+    ? `<span class="badge gray">Sin registrar</span>`
+    : t.alturaVigencia < hoyISO() ? `<span class="badge red">Vencido</span>` : `<span class="badge green">Vigente</span>`;
+
   document.getElementById('ficha-trabajador-body').innerHTML = `
     <div class="ficha-hero">
       <div class="ficha-hero-icon">${ic('trabajadores',32)}</div>
@@ -510,9 +668,23 @@ function abrirFichaTrabajador(nombre) {
     </div>
     <div class="field-row"><span>RUT</span><b>${esc(t.rut)}</b></div>
     <div class="field-row"><span>Empresa / Contratista</span><b>${esc(t.empresa)}</b></div>
+    <div class="field-row"><span>Obra</span><b>${esc(t.obra || '—')}</b></div>
     <div class="field-row"><span>Fecha de ingreso</span><b>${esc(t.fechaIngreso || '—')}</b></div>
     <div class="field-row"><span>Estado</span><span class="badge ${t.estado==='Activo'?'green':'gray'}">${esc(t.estado)}</span></div>
     ${t.foto ? `<div class="field-row"><span>Foto</span><a href="${esc(t.foto)}" target="_blank" class="badge blue">${ic('camara',12)} Ver foto</a></div>` : ''}
+
+    <div class="sec-label" style="margin-top:20px;">Contrato de trabajo</div>
+    <div class="field-row"><span>Inicio</span><b>${esc(t.contratoInicio || '—')}</b></div>
+    <div class="field-row"><span>Término</span><b>${esc(t.contratoTermino || 'Indefinido')}</b></div>
+    <div class="field-row"><span>Estado</span>${contratoBadge}</div>
+    ${t.contratoArchivo ? `<div class="field-row"><span>Documento</span><a href="${esc(t.contratoArchivo)}" target="_blank" class="badge blue">${ic('documento',12)} Ver contrato</a></div>` : ''}
+    <button class="action-btn" onclick="abrirEditarContrato(${t.fila})">${t.contratoInicio ? 'Actualizar contrato' : 'Subir contrato'}</button>
+
+    <div class="sec-label" style="margin-top:20px;">Examen de altura física</div>
+    <div class="field-row"><span>Vigencia</span><b>${esc(t.alturaVigencia || '—')}</b></div>
+    <div class="field-row"><span>Estado</span>${alturaBadge}</div>
+    ${t.alturaArchivo ? `<div class="field-row"><span>Documento</span><a href="${esc(t.alturaArchivo)}" target="_blank" class="badge blue">${ic('documento',12)} Ver examen</a></div>` : ''}
+    <button class="action-btn" onclick="abrirEditarAltura(${t.fila})">${t.alturaVigencia ? 'Actualizar examen' : 'Subir examen'}</button>
 
     <div class="sec-label" style="margin-top:20px;">Historial de EPP entregado</div>
     ${entregasHtml}
@@ -522,11 +694,77 @@ function abrirFichaTrabajador(nombre) {
   `;
   openPanel('panel-ficha-trabajador');
 }
+function abrirEditarContrato(fila) {
+  const t = allTrabajadores.find(x => x.fila === fila);
+  if (!t) return;
+  const f = document.getElementById('form-editar-contrato');
+  f.reset();
+  f.fila.value = fila;
+  f.inicio.value = t.contratoInicio || '';
+  f.termino.value = t.contratoTermino || '';
+  openPanel('panel-editar-contrato');
+}
+async function guardarContrato(ev) {
+  ev.preventDefault();
+  const f = ev.target;
+  const fila = f.fila.value;
+  const t = allTrabajadores.find(x => String(x.fila) === String(fila));
+  try {
+    let archivoLink = t ? t.contratoArchivo : '';
+    const archivoFile = f.archivo.files[0];
+    if (archivoFile) {
+      const up = await uploadFile(archivoFile, 'Trabajadores-Documentos', 'contrato_' + (t ? t.nombre.replace(/\s+/g,'_') : fila));
+      archivoLink = up.link;
+    }
+    await ensureToken();
+    const url = `${SHEETS_BASE}/${CONFIG.SHEET_ID}/values/${encodeURIComponent(`'${CONFIG.SHEET_TRABAJADORES}'!K${fila}:M${fila}`)}?valueInputOption=USER_ENTERED`;
+    await fetch(url, { method:'PUT', headers:{ 'Content-Type':'application/json', ...authHeader() },
+      body: JSON.stringify({ values: [[f.inicio.value, f.termino.value, archivoLink]] }) });
+    toast('Contrato actualizado ✓', 'ok');
+    closePanel('panel-editar-contrato');
+    await cargarTodo(true);
+    if (t) abrirFichaTrabajador(t.nombre);
+  } catch (e) { toast(e.message, 'error'); }
+}
+function abrirEditarAltura(fila) {
+  const t = allTrabajadores.find(x => x.fila === fila);
+  if (!t) return;
+  const f = document.getElementById('form-editar-altura');
+  f.reset();
+  f.fila.value = fila;
+  f.vigencia.value = t.alturaVigencia || '';
+  openPanel('panel-editar-altura');
+}
+async function guardarAltura(ev) {
+  ev.preventDefault();
+  const f = ev.target;
+  const fila = f.fila.value;
+  const t = allTrabajadores.find(x => String(x.fila) === String(fila));
+  try {
+    let archivoLink = t ? t.alturaArchivo : '';
+    const archivoFile = f.archivo.files[0];
+    if (archivoFile) {
+      const up = await uploadFile(archivoFile, 'Trabajadores-Documentos', 'examen_altura_' + (t ? t.nombre.replace(/\s+/g,'_') : fila));
+      archivoLink = up.link;
+    }
+    await ensureToken();
+    const url = `${SHEETS_BASE}/${CONFIG.SHEET_ID}/values/${encodeURIComponent(`'${CONFIG.SHEET_TRABAJADORES}'!N${fila}:O${fila}`)}?valueInputOption=USER_ENTERED`;
+    await fetch(url, { method:'PUT', headers:{ 'Content-Type':'application/json', ...authHeader() },
+      body: JSON.stringify({ values: [[f.vigencia.value, archivoLink]] }) });
+    toast('Examen de altura actualizado ✓', 'ok');
+    closePanel('panel-editar-altura');
+    await cargarTodo(true);
+    if (t) abrirFichaTrabajador(t.nombre);
+  } catch (e) { toast(e.message, 'error'); }
+}
 function selectTrabajadoresOptions() {
   return allTrabajadores.filter(t=>t.estado==='Activo').map(t => `<option value="${esc(t.nombre)}|${esc(t.rut)}">${esc(t.nombre)} — ${esc(t.rut)}</option>`).join('');
 }
 function abrirFormTrabajador() {
-  document.getElementById('form-trabajador').reset();
+  const f = document.getElementById('form-trabajador');
+  f.reset();
+  document.getElementById('sel-obra-trabajador').innerHTML = opcionesObraSelectHTML('');
+  document.getElementById('input-trabajador-obra-otra').classList.add('hidden');
   openPanel('panel-form-trabajador');
 }
 async function guardarTrabajador(ev) {
@@ -540,9 +778,11 @@ async function guardarTrabajador(ev) {
       fotoLink = up.link;
     }
     const n = allTrabajadores.length + 1;
-    await appendSheet(`'${CONFIG.SHEET_TRABAJADORES}'!A:I`, [[
+    const obra = valorObra(f.obra, 'input-trabajador-obra-otra');
+    await appendSheet(`'${CONFIG.SHEET_TRABAJADORES}'!A:O`, [[
       n, f.nombre.value, f.rut.value, f.cargo.value, f.empresa.value,
-      f.fechaIngreso.value, f.estado.value, fotoLink, new Date().toLocaleString('es-CL')
+      f.fechaIngreso.value, f.estado.value, fotoLink, new Date().toLocaleString('es-CL'),
+      obra, '', '', '', '', ''
     ]]);
     toast('Trabajador agregado ✓', 'ok');
     closePanel('panel-form-trabajador');
@@ -585,6 +825,8 @@ function abrirFormInspeccion() {
   f.reset();
   f.fecha.value = hoyISO();
   document.getElementById('sel-tema-inspeccion').innerHTML = TEMAS_CHARLA.map(t=>`<option>${t}</option>`).join('');
+  document.getElementById('sel-obra-inspeccion').innerHTML = opcionesObraSelectHTML('');
+  document.getElementById('input-inspeccion-obra-otra').classList.add('hidden');
   openPanel('panel-form-inspeccion');
 }
 async function guardarInspeccion(ev) {
@@ -598,10 +840,11 @@ async function guardarInspeccion(ev) {
       fotoLink = up.link;
     }
     const n = allInspecciones.length + 1;
-    await appendSheet(`'${CONFIG.SHEET_INSPECCIONES}'!A:L`, [[
+    const obra = valorObra(f.obra, 'input-inspeccion-obra-otra');
+    await appendSheet(`'${CONFIG.SHEET_INSPECCIONES}'!A:M`, [[
       n, f.fecha.value, f.tipo.value, f.area.value, f.inspector.value, f.tema.value,
       f.hallazgos.value, f.riesgo.value, fotoLink, f.accion.value || '', 'Abierta',
-      new Date().toLocaleString('es-CL')
+      new Date().toLocaleString('es-CL'), obra
     ]]);
 
     // Generar alerta de charla automáticamente
@@ -675,6 +918,8 @@ function abrirFormIncidente() {
   f.fecha.value = hoyISO();
   document.getElementById('sel-trabajador-incidente').innerHTML =
     '<option value="">— Selecciona (opcional) —</option>' + selectTrabajadoresOptions();
+  document.getElementById('sel-obra-incidente').innerHTML = opcionesObraSelectHTML('');
+  document.getElementById('input-incidente-obra-otra').classList.add('hidden');
   openPanel('panel-form-incidente');
 }
 async function guardarIncidente(ev) {
@@ -689,28 +934,75 @@ async function guardarIncidente(ev) {
     }
     const trabNombre = f.trabajador.value ? f.trabajador.value.split('|')[0] : '';
     const n = allIncidentes.length + 1;
-    await appendSheet(`'${CONFIG.SHEET_INCIDENTES}'!A:N`, [[
+    const obra = valorObra(f.obra, 'input-incidente-obra-otra');
+    const diasPerdidos = parseInt(f.diasPerdidos.value, 10) || 0;
+    await appendSheet(`'${CONFIG.SHEET_INCIDENTES}'!A:P`, [[
       n, f.fecha.value, f.tipo.value, trabNombre, f.area.value, f.descripcion.value,
       f.causas.value, f.gravedad.value, fotoLink, f.accion.value || '', 'Abierto',
-      new Date().toLocaleString('es-CL'), userEmail || '', ''
+      new Date().toLocaleString('es-CL'), userEmail || '', '', obra, diasPerdidos
     ]]);
 
-    // Sugerencia automática de charla según lo descrito en el incidente
-    const temaSugerido = sugerirTemaCharla(f.descripcion.value + ' ' + f.causas.value);
+    // Sugerencia automática de plan de acción según lo descrito en el incidente
+    const plan = sugerirPlanAccion(f.descripcion.value, f.causas.value, f.area.value);
 
     toast('Registro guardado ✓', 'ok');
     closePanel('panel-form-incidente');
     await cargarTodo(true);
 
-    if (temaSugerido) {
-      const nCharla = allCharlas.length + 1;
-      await appendSheet(`'${CONFIG.SHEET_CHARLAS}'!A:G`, [[
-        nCharla, hoyISO(), temaSugerido, 'Incidente #' + n, 'Pendiente', '', ''
-      ]]);
-      cargarTodo(true);
-      mostrarAlertaCharla(temaSugerido, f.area.value);
+    if (plan) {
+      if (plan.tipo === 'charla') {
+        const nCharla = allCharlas.length + 1;
+        await appendSheet(`'${CONFIG.SHEET_CHARLAS}'!A:G`, [[
+          nCharla, hoyISO(), plan.valor, 'Incidente #' + n, 'Pendiente', '', ''
+        ]]);
+        cargarTodo(true);
+      }
+      mostrarAlertaPlan(plan, f.area.value, trabNombre);
     }
   } catch (e) { toast(e.message, 'error'); }
+}
+function mostrarAlertaPlan(plan, area, trabajador) {
+  const textos = {
+    charla: {
+      titulo: 'Charla de seguridad sugerida',
+      cuerpo: `Se recomienda realizar una <b>charla de seguridad</b> sobre:<br><span class="alerta-charla-tema">${esc(plan.valor)}</span>`,
+      nota: 'Esta charla quedó registrada como <b>Pendiente</b> en el módulo "Charlas de Seguridad".',
+      boton: 'Ver charlas pendientes',
+    },
+    epp: {
+      titulo: 'Reposición de EPP sugerida',
+      cuerpo: `Se recomienda <b>reponer/entregar</b>:<br><span class="alerta-charla-tema">${esc(plan.valor)}${trabajador ? ' — ' + esc(trabajador) : ''}</span>`,
+      nota: 'Puedes registrar la entrega ahora mismo en el módulo de Entrega de EPP.',
+      boton: 'Entregar EPP ahora',
+    },
+    procedimiento: {
+      titulo: 'Procedimiento relacionado',
+      cuerpo: `Este incidente está relacionado con el procedimiento:<br><span class="alerta-charla-tema">${esc(plan.valor.nombre)}</span>`,
+      nota: 'Revisa si sigue vigente o si hay que actualizarlo.',
+      boton: 'Ver procedimientos',
+    },
+    mantencion: {
+      titulo: 'Mantención sugerida',
+      cuerpo: `Se recomienda:<br><span class="alerta-charla-tema">${esc(plan.valor)}</span>`,
+      nota: 'Este tipo de seguimiento aún no se registra dentro de la app — coordina la mantención directamente.',
+      boton: 'Entendido',
+    },
+  };
+  const acciones = {
+    charla: () => irPagina('charlas'),
+    epp: () => { irPagina('epp'); abrirFormEpp(plan.valor, trabajador); },
+    procedimiento: () => { irPagina('procedimientos'); if (plan.valor.archivo) window.open(plan.valor.archivo, '_blank'); },
+    mantencion: () => {},
+  };
+  const t = textos[plan.tipo];
+  document.getElementById('alerta-plan-titulo').textContent = t.titulo;
+  document.getElementById('alerta-plan-cuerpo').innerHTML = t.cuerpo;
+  document.getElementById('alerta-plan-nota').innerHTML = t.nota;
+  document.getElementById('alerta-plan-area').textContent = area || '—';
+  const btn = document.getElementById('alerta-plan-btn');
+  btn.textContent = t.boton;
+  btn.onclick = () => { closePanel('modal-alerta-plan'); acciones[plan.tipo](); };
+  openPanel('modal-alerta-plan');
 }
 function abrirCerrarIncidente(fila) {
   const f = document.getElementById('form-cerrar-incidente');
@@ -822,51 +1114,62 @@ function renderEpp() {
 }
 
 let firmaCtx = null, firmaActiva = false;
-let eppCarrito = [];
 
-function onCambioEppItem() {
-  const sel = document.getElementById('sel-epp-item');
-  document.getElementById('grupo-epp-otro').classList.toggle('hidden', sel.value !== '__otro__');
-}
-
-function agregarItemEpp() {
-  const sel = document.getElementById('sel-epp-item');
-  const cant = parseInt(document.getElementById('input-epp-cantidad').value, 10) || 1;
-  let nombre = sel.value;
-  if (nombre === '__otro__') {
-    nombre = document.getElementById('input-epp-otro').value.trim();
-    if (!nombre) { toast('Escribe el tipo de EPP', 'error'); return; }
-  }
-  eppCarrito.push({ item: nombre, cantidad: cant });
-  document.getElementById('input-epp-otro').value = '';
-  document.getElementById('input-epp-cantidad').value = 1;
-  renderCarritoEpp();
-}
-function quitarItemEpp(idx) {
-  eppCarrito.splice(idx, 1);
-  renderCarritoEpp();
-}
-function renderCarritoEpp() {
-  const cont = document.getElementById('carrito-epp');
-  if (eppCarrito.length === 0) { cont.innerHTML = '<div class="card-sub" style="padding:4px 2px;">Sin ítems agregados todavía.</div>'; return; }
-  cont.innerHTML = eppCarrito.map((it, idx) => `
-    <div class="field-row">
-      <span>${esc(it.item)} <b>× ${it.cantidad}</b></span>
-      <button type="button" onclick="quitarItemEpp(${idx})" style="color:#c62828;font-size:13px;font-weight:600;">Quitar</button>
+function renderChecklistEpp() {
+  document.getElementById('checklist-epp').innerHTML = opcionesEppDisponibles().map(item => `
+    <div class="epp-item-row" data-item="${esc(item)}">
+      <label class="epp-item-label"><input type="checkbox" class="epp-item-chk" onchange="onToggleEppItem(this)"> <span>${esc(item)}</span></label>
+      <input type="number" class="epp-item-qty hidden" min="1" value="1">
     </div>`).join('');
 }
+function onToggleEppItem(chk) {
+  chk.closest('.epp-item-row').querySelector('.epp-item-qty').classList.toggle('hidden', !chk.checked);
+}
+function onCambioEppOtro() {
+  const nombre = document.getElementById('input-epp-otro').value.trim();
+  document.getElementById('grupo-epp-otro-qty').classList.toggle('hidden', !nombre);
+}
+function recolectarItemsEpp() {
+  const items = [];
+  document.querySelectorAll('#checklist-epp .epp-item-row').forEach(row => {
+    const chk = row.querySelector('.epp-item-chk');
+    if (chk.checked) {
+      const cantidad = parseInt(row.querySelector('.epp-item-qty').value, 10) || 1;
+      items.push({ item: row.dataset.item, cantidad });
+    }
+  });
+  const otroNombre = document.getElementById('input-epp-otro').value.trim();
+  if (otroNombre) {
+    const cantidad = parseInt(document.getElementById('input-epp-otro-cantidad').value, 10) || 1;
+    items.push({ item: otroNombre, cantidad });
+  }
+  return items;
+}
 
-function abrirFormEpp() {
+// prefillItem/prefillTrabajador: usados por la sugerencia de "reponer EPP" al cerrar un incidente
+function abrirFormEpp(prefillItem, prefillTrabajador) {
   const f = document.getElementById('form-epp');
   f.reset();
   f.fecha.value = hoyISO();
-  eppCarrito = [];
   document.getElementById('sel-trabajador-epp').innerHTML =
     '<option value="">— Selecciona un trabajador —</option>' + selectTrabajadoresOptions();
-  document.getElementById('sel-epp-item').innerHTML =
-    opcionesEppDisponibles().map(x => `<option>${esc(x)}</option>`).join('') + '<option value="__otro__">+ Escribir otro tipo...</option>';
-  document.getElementById('grupo-epp-otro').classList.add('hidden');
-  renderCarritoEpp();
+  const trab = prefillTrabajador && allTrabajadores.find(x => x.nombre === prefillTrabajador);
+  if (trab) f.trabajador.value = `${trab.nombre}|${trab.rut}`;
+
+  renderChecklistEpp();
+  document.getElementById('input-epp-otro').value = '';
+  document.getElementById('grupo-epp-otro-qty').classList.add('hidden');
+  if (prefillItem) {
+    const row = document.querySelector(`#checklist-epp .epp-item-row[data-item="${CSS.escape(prefillItem)}"]`);
+    if (row) {
+      const chk = row.querySelector('.epp-item-chk');
+      chk.checked = true;
+      onToggleEppItem(chk);
+    } else {
+      document.getElementById('input-epp-otro').value = prefillItem;
+      document.getElementById('grupo-epp-otro-qty').classList.remove('hidden');
+    }
+  }
   openPanel('panel-form-epp');
   setTimeout(initFirmaPad, 80);
 }
@@ -897,9 +1200,8 @@ async function guardarEpp(ev) {
   const canvas = document.getElementById('firma-canvas');
   try {
     if (!f.trabajador.value) { toast('Selecciona un trabajador', 'error'); return; }
-    // Si queda algo cargado en el selector sin agregar al carrito, lo agregamos solo
-    if (eppCarrito.length === 0) agregarItemEpp();
-    if (eppCarrito.length === 0) { toast('Agrega al menos un ítem a la entrega', 'error'); return; }
+    const itemsEpp = recolectarItemsEpp();
+    if (itemsEpp.length === 0) { toast('Marca al menos un ítem a entregar', 'error'); return; }
 
     const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
     const trabNombre = f.trabajador.value.split('|')[0];
@@ -910,14 +1212,13 @@ async function guardarEpp(ev) {
       firmaLink = up.link;
     }
     const fechaRegistro = new Date().toLocaleString('es-CL');
-    const filas = eppCarrito.map((it, i) => [
+    const filas = itemsEpp.map((it, i) => [
       allEpp.length + 1 + i, f.fecha.value, trabNombre, trabRut, it.item, it.cantidad,
       firmaLink, userEmail || f.responsable.value, fechaRegistro
     ]);
     await appendSheet(`'${CONFIG.SHEET_EPP}'!A:I`, filas);
     toast(`Entrega registrada ✓ (${filas.length} ítem${filas.length>1?'s':''})`, 'ok');
     closePanel('panel-form-epp');
-    eppCarrito = [];
     cargarTodo(true);
   } catch (e) { toast(e.message, 'error'); }
 }
