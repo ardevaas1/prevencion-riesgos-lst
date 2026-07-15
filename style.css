@@ -59,10 +59,10 @@ input, select, textarea { font-family: inherit; }
 
 /* ── Feedback táctil ── leve "hundimiento" al presionar botones, tarjetas e ítems,
    para que se sienta que uno está realmente apretando algo (estilo apps nativas). */
-button, .modulo-card, .equipo-card, .inv-card, .cont-card, .movh-card, .and-card, .fab-btn, .chip, [onclick] {
+button, .modulo-card, .equipo-card, .inv-card, .cont-card, .movh-card, .and-card, .card, .fab-btn, .chip, .upload-label, .desktop-stat, [onclick] {
   transition: transform .12s ease, opacity .12s ease, box-shadow .15s ease, border-color .15s ease, background .15s ease;
 }
-button:active, .modulo-card:active, .equipo-card:active, .inv-card:active, .cont-card:active, .movh-card:active, [onclick]:active {
+button:active, .modulo-card:active, .equipo-card:active, .inv-card:active, .cont-card:active, .movh-card:active, .card:active, .upload-label:active, .desktop-stat:active, [onclick]:active {
   transform: scale(0.96);
   opacity: 0.85;
 }

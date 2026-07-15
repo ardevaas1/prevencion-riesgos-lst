@@ -20,6 +20,13 @@
   .alerta-charla-icon { display:flex; justify-content:center; color:#c65e00; margin-bottom:10px; }
   .alerta-charla-tema { font-size:18px; font-weight:800; color:#c65e00; margin: 6px 0 2px; }
   .mas-list .card { cursor:pointer; }
+  .login-spinner { display:flex; justify-content:center; width:100%; padding:13px 0; }
+  .login-spinner-ring {
+    width:22px; height:22px; border-radius:50%;
+    border:2.5px solid rgba(229,141,23,0.25); border-top-color: var(--accent);
+    animation: loginSpin .7s linear infinite;
+  }
+  @keyframes loginSpin { to { transform: rotate(360deg); } }
 
   /* ── Versión escritorio: sidebar + panel central ── */
   .dt-page { padding: 0 24px 24px; overflow-y:auto; }
@@ -41,8 +48,9 @@
     <div class="entry-logo-wrap"><img src="logo-transparent.png" alt="LST" class="login-logo"></div>
     <div class="login-title">Prevención de Riesgos</div>
     <div class="login-sub">Constructora LST</div>
-    <button class="login-btn" onclick="signIn()">Iniciar sesión con Google</button>
-    <div class="login-hint">Usa tu cuenta corporativa autorizada</div>
+    <button class="login-btn" id="login-btn" onclick="signIn()">Iniciar sesión con Google</button>
+    <div class="login-spinner hidden" id="login-spinner"><div class="login-spinner-ring"></div></div>
+    <div class="login-hint" id="login-hint">Usa tu cuenta corporativa autorizada</div>
   </div>
 </div>
 
@@ -195,7 +203,7 @@
       </div>
       <div class="form-group">
         <label>Foto (opcional)</label>
-        <label class="upload-label"><svg viewBox="0 0 24 24" fill="none" class="inline-ic"><path d="M4 8a1 1 0 0 1 1-1h2l1.2-2h7.6L17 7h2a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.4" stroke="currentColor" stroke-width="1.7"/></svg> Tomar / subir foto<input type="file" name="foto" accept="image/*" capture="environment" style="display:none" onchange="this.previousSibling ? null : null; this.parentElement.classList.add('selected')"></label>
+        <label class="upload-label" onclick="event.currentTarget.classList.add('selected')"><svg viewBox="0 0 24 24" fill="none" class="inline-ic"><path d="M4 8a1 1 0 0 1 1-1h2l1.2-2h7.6L17 7h2a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.4" stroke="currentColor" stroke-width="1.7"/></svg> Tomar / subir foto<input type="file" name="foto" accept="image/*" capture="environment" style="display:none"></label>
       </div>
       <button class="btn-add" type="submit">Guardar trabajador</button>
     </form>

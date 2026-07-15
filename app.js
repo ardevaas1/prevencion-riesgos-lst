@@ -31,13 +31,14 @@ let userRole  = null; // admin | prevencionista | viewer
 let tokenClient = null;
 let accessToken = null;
 let tokenExpiry = 0;
-const TOKEN_KEY = 'lst_pr_token';
-const EXPIRY_KEY = 'lst_pr_expiry';
-const EMAIL_KEY = 'lst_pr_email';
+const TOKEN_KEY   = 'lst_pr_token';
+const EXPIRY_KEY  = 'lst_pr_expiry';
+const EMAIL_KEY   = 'lst_pr_email';
+const HADLOGIN_KEY = 'lst_pr_had_login'; // se mantiene aunque el token expire; solo se borra al Cerrar sesión
 
 function saveToken(token, expiresIn) {
   accessToken = token;
-  tokenExpiry = Date.now() + (expiresIn * 1000);
+  tokenExpiry = Date.now() + ((expiresIn - 60) * 1000); // 60s de margen
   localStorage.setItem(TOKEN_KEY, token);
   localStorage.setItem(EXPIRY_KEY, String(tokenExpiry));
 }
@@ -50,17 +51,19 @@ function loadStoredToken() {
 }
 function clearToken() {
   accessToken = null; tokenExpiry = 0;
-  localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(EXPIRY_KEY); localStorage.removeItem(EMAIL_KEY);
+  localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(EXPIRY_KEY);
 }
 function tokenValido() { return accessToken && tokenExpiry > Date.now(); }
 
 function initOAuth() {
+  if (typeof google === 'undefined') { setTimeout(initOAuth, 300); return; }
   tokenClient = google.accounts.oauth2.initTokenClient({
     client_id: CONFIG.CLIENT_ID,
-    scope: CONFIG.SCOPES,
+    scope: CONFIG.SCOPES + ' https://www.googleapis.com/auth/userinfo.email',
     callback: async (resp) => {
-      if (resp.error) { toast('Error de acceso con Google: ' + resp.error, 'error'); return; }
+      if (resp.error) { mostrarLogin('Error: ' + resp.error); return; }
       saveToken(resp.access_token, resp.expires_in || 3600);
+      localStorage.setItem(HADLOGIN_KEY, '1');
       await obtenerEmailUsuario();
       arrancarApp();
     },
@@ -78,19 +81,62 @@ async function obtenerEmailUsuario() {
   } catch (e) { console.warn('No se pudo obtener email', e); }
 }
 
+// Botón "Iniciar sesión con Google": si ya inició sesión antes en este
+// dispositivo, reutiliza esa misma cuenta en silencio (sin mostrar el
+// selector de cuentas). El selector de cuentas solo aparece la primera
+// vez, o después de tocar "Cerrar sesión".
 function signIn() {
+  mostrarLogin('Conectando...', true);
   if (!tokenClient) { initOAuth(); setTimeout(signIn, 500); return; }
-  tokenClient.requestAccessToken({ prompt: 'select_account' });
+  const hadLogin   = localStorage.getItem(HADLOGIN_KEY);
+  const savedEmail = localStorage.getItem(EMAIL_KEY) || '';
+  const opts = hadLogin
+    ? { prompt: '', login_hint: savedEmail }
+    : { prompt: 'select_account' };
+
+  if (hadLogin) {
+    // Si el intento silencioso no responde en unos segundos (puede pasar
+    // en Safari/iOS), se reintenta pidiendo elegir cuenta para no dejar
+    // a la persona con el botón pegado en "Conectando...".
+    let resuelto = false;
+    const prevCb = tokenClient.callback;
+    const watchdog = setTimeout(() => {
+      if (resuelto) return;
+      resuelto = true;
+      tokenClient.callback = prevCb;
+      tokenClient.requestAccessToken({ prompt: 'select_account' });
+    }, 6000);
+    tokenClient.callback = (resp) => {
+      if (resuelto) return;
+      resuelto = true;
+      clearTimeout(watchdog);
+      tokenClient.callback = prevCb;
+      prevCb(resp);
+    };
+  }
+  tokenClient.requestAccessToken(opts);
+}
+
+function mostrarLogin(hint, conectando) {
+  document.getElementById('login-hint').textContent = hint || 'Usa tu cuenta corporativa autorizada';
+  document.getElementById('login-btn').classList.toggle('hidden', !!conectando);
+  document.getElementById('login-spinner').classList.toggle('hidden', !conectando);
+  document.getElementById('login-screen').classList.remove('hidden');
 }
 
 function signOut() {
-  if (accessToken && google?.accounts?.oauth2) google.accounts.oauth2.revoke(accessToken, () => {});
+  if (!confirm('¿Cerrar sesión? Vas a tener que elegir tu cuenta de Google de nuevo para volver a entrar.')) return;
+  if (accessToken && typeof google !== 'undefined' && google.accounts?.oauth2) {
+    google.accounts.oauth2.revoke(accessToken, () => {});
+  }
   clearToken();
+  localStorage.removeItem(HADLOGIN_KEY);
+  localStorage.removeItem(EMAIL_KEY);
   userEmail = null; userRole = null;
   document.getElementById('main').classList.add('hidden');
   document.getElementById('desktop-sidebar').classList.add('dt-oculto');
   document.getElementById('desktop-main').classList.add('dt-oculto');
-  document.getElementById('login-screen').classList.remove('hidden');
+  mostrarLogin('Usa tu cuenta corporativa autorizada', false);
 }
 
 async function ensureToken() {
@@ -104,7 +150,8 @@ async function ensureToken() {
       saveToken(resp.access_token, resp.expires_in || 3600);
       resolve();
     };
-    tokenClient.requestAccessToken({ prompt: '' });
+    const savedEmail = localStorage.getItem(EMAIL_KEY) || '';
+    tokenClient.requestAccessToken({ prompt: '', login_hint: savedEmail });
   });
 }
 function authHeader() { return { Authorization: 'Bearer ' + accessToken }; }
@@ -249,8 +296,43 @@ function setListHTML(name, html) {
 function setStat(name, value) {
   document.querySelectorAll(`[data-stat="${name}"]`).forEach(el => el.textContent = value);
 }
-function openPanel(id) { document.getElementById(id).classList.remove('hidden'); }
-function closePanel(id) { document.getElementById(id).classList.add('hidden'); }
+function openPanel(id) {
+  const el = document.getElementById(id);
+  // Fuerza la posición inicial ANTES de mostrar el panel, para que el
+  // navegador tenga un punto de partida real desde el cual animar
+  // (si no, la primera apertura no se desliza: aparece de golpe).
+  el.style.transform = 'translateX(100%)';
+  el.classList.remove('hidden');
+  requestAnimationFrame(() => requestAnimationFrame(() => { el.style.transform = 'translateX(0)'; }));
+
+  if (window.innerWidth >= 900 && !document.getElementById('panel-overlay')) {
+    const ov = document.createElement('div');
+    ov.id = 'panel-overlay';
+    ov.className = 'panel-overlay';
+    ov.onclick = () => {
+      const visible = [...document.querySelectorAll('.panel:not(.hidden)')].pop();
+      if (visible) closePanel(visible.id);
+    };
+    document.getElementById('app').appendChild(ov);
+  }
+}
+function closePanel(id) {
+  const el = document.getElementById(id);
+  el.style.transform = 'translateX(100%)';
+  let cerrado = false;
+  function onEnd() {
+    if (cerrado) return;
+    cerrado = true;
+    el.removeEventListener('transitionend', onEnd);
+    el.classList.add('hidden');
+    if (window.innerWidth >= 900) {
+      const quedan = document.querySelectorAll('.panel:not(.hidden)').length;
+      if (!quedan) { const ov = document.getElementById('panel-overlay'); if (ov) ov.remove(); }
+    }
+  }
+  el.addEventListener('transitionend', onEnd, { once: true });
+  setTimeout(onEnd, 320);
+}
 function fmtFecha(d) { return new Date(d).toLocaleDateString('es-CL'); }
 function hoyISO() { return new Date().toISOString().slice(0,10); }
 
@@ -647,5 +729,53 @@ async function arrancarApp() {
 }
 window.addEventListener('DOMContentLoaded', () => {
   initOAuth();
-  if (loadStoredToken()) { arrancarApp(); }
+
+  // Caso 1: token todavía válido → directo a la app, sin mostrar login
+  if (loadStoredToken()) { arrancarApp(); return; }
+
+  // Caso 2: ya había iniciado sesión antes (token vencido) → reconectar
+  // en silencio con la misma cuenta, sin mostrar el selector de cuentas
+  const hadLogin = localStorage.getItem(HADLOGIN_KEY);
+  if (hadLogin) {
+    mostrarLogin('Conectando...', true);
+    let intentos = 0;
+    function intentarSilencioso() {
+      intentos++;
+      if (!tokenClient) {
+        if (intentos < 10) { setTimeout(intentarSilencioso, 300); }
+        else { mostrarLogin('Usa tu cuenta corporativa autorizada', false); }
+        return;
+      }
+      let resuelto = false;
+      const prevCb = tokenClient.callback;
+      const watchdog = setTimeout(() => {
+        if (resuelto) return;
+        resuelto = true;
+        tokenClient.callback = prevCb;
+        if (intentos < 3) { setTimeout(intentarSilencioso, 1200); }
+        else { mostrarLogin('Usa tu cuenta corporativa autorizada', false); }
+      }, 6000);
+      tokenClient.callback = async (resp) => {
+        if (resuelto) return;
+        resuelto = true;
+        clearTimeout(watchdog);
+        tokenClient.callback = prevCb;
+        if (resp.error) {
+          if (intentos < 3 && resp.error !== 'access_denied') { setTimeout(intentarSilencioso, 1200); }
+          else { mostrarLogin('Usa tu cuenta corporativa autorizada', false); }
+          return;
+        }
+        saveToken(resp.access_token, resp.expires_in || 3600);
+        userEmail = localStorage.getItem(EMAIL_KEY) || '';
+        arrancarApp();
+      };
+      const savedEmail = localStorage.getItem(EMAIL_KEY) || '';
+      tokenClient.requestAccessToken({ prompt: '', login_hint: savedEmail });
+    }
+    setTimeout(intentarSilencioso, 300);
+    return;
+  }
+
+  // Caso 3: primera vez → mostrar login normal con botón
+  mostrarLogin('Usa tu cuenta corporativa autorizada', false);
 });
