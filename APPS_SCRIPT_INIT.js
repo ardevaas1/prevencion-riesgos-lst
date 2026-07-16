@@ -31,7 +31,8 @@ function inicializarPlanilla() {
   ]);
 
   crearHoja(ss, 'CHARLAS', [
-    'N°', 'Fecha Generada', 'Tema', 'Origen', 'Estado', 'Fecha Realizada', 'Responsable'
+    'N°', 'Fecha Generada', 'Tema', 'Origen', 'Estado', 'Fecha Realizada', 'Responsable',
+    'Relator', 'Obra', 'Hora', 'Riesgos', 'Medidas de Control', 'Asistentes', 'PDF'
   ]);
 
   crearHoja(ss, 'INCIDENTES', [

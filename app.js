@@ -440,6 +440,7 @@ function closePanel(id) {
 }
 function fmtFecha(d) { return new Date(d).toLocaleDateString('es-CL'); }
 function hoyISO() { return new Date().toISOString().slice(0,10); }
+function horaActual() { return new Date().toTimeString().slice(0,5); }
 
 // ============================================================
 // DATOS EN MEMORIA
@@ -462,7 +463,7 @@ async function cargarTodo(silencioso) {
       fetchSheet(`'${CONFIG.SHEET_INCIDENTES}'!A2:P2000`),
       fetchSheet(`'${CONFIG.SHEET_PROCEDIMIENTOS}'!A2:I2000`),
       fetchSheet(`'${CONFIG.SHEET_EPP}'!A2:I2000`),
-      fetchSheet(`'${CONFIG.SHEET_CHARLAS}'!A2:G2000`),
+      fetchSheet(`'${CONFIG.SHEET_CHARLAS}'!A2:N2000`),
     ]);
     if (!silencioso) splash(85, 'Preparando la app...');
     allTrabajadores = trab.map((r,i) => rowToTrabajador(r,i));
@@ -510,7 +511,8 @@ function rowToEpp(r, i) {
 }
 function rowToCharla(r, i) {
   return { fila: i+2, n: r[0]||'', fecha: r[1]||'', tema: r[2]||'', origen: r[3]||'', estado: r[4]||'Pendiente',
-    fechaRealizada: r[5]||'', responsable: r[6]||'' };
+    fechaRealizada: r[5]||'', responsable: r[6]||'', relator: r[7]||'', obra: r[8]||'', hora: r[9]||'',
+    riesgos: r[10]||'', medidas: r[11]||'', asistentes: r[12]||'', pdf: r[13]||'' };
 }
 
 // ============================================================
@@ -941,20 +943,196 @@ function renderCharlas() {
       <div class="card-body">
         <div class="card-title">${esc(c.tema)}</div>
         <div class="card-sub">${esc(c.origen)} · Generada ${esc(c.fecha)}</div>
-        <div class="badge-row"><span class="badge ${c.estado==='Pendiente'?'amber':'green'}">${esc(c.estado)}</span></div>
-        ${c.estado==='Pendiente' ? `<button class="action-btn" onclick="marcarCharlaRealizada(${c.fila})">Marcar realizada</button>` : ''}
+        <div class="badge-row"><span class="badge ${c.estado==='Pendiente'?'amber':'green'}">${esc(c.estado)}</span>
+        ${c.pdf ? `<a href="${esc(c.pdf)}" target="_blank" class="badge blue">${ic('documento',12)} Ver documento</a>` : ''}</div>
+        ${c.estado==='Pendiente' ? `<button class="action-btn" onclick="abrirRealizarCharla(${c.fila})">Marcar realizada</button>` : ''}
       </div>
     </div>`).join(''));
 }
-async function marcarCharlaRealizada(fila) {
+
+// ── Realizar charla: paso 1 (datos) → paso 2 (firma de asistentes) → PDF ──
+let charlaEnProceso = null;
+
+function renderChecklistAsistentesCharla() {
+  const activos = allTrabajadores.filter(t => t.estado === 'Activo');
+  document.getElementById('checklist-asistentes-charla').innerHTML = activos.map(t => `
+    <div class="chk-row" data-nombre="${esc(t.nombre)}" data-rut="${esc(t.rut)}">
+      <label class="chk-row-label">
+        <span class="chk-row-checkbox-wrap">
+          <input type="checkbox" class="chk-row-input">
+          <span class="chk-row-checkbox"></span>
+        </span>
+        <span>${esc(t.nombre)} <span style="color:#888;">· ${esc(t.rut)}</span></span>
+      </label>
+    </div>`).join('');
+}
+function abrirRealizarCharla(fila) {
+  const c = allCharlas.find(x => x.fila === fila);
+  if (!c) return;
+  charlaEnProceso = { fila };
+  const f = document.getElementById('form-realizar-charla');
+  f.reset();
+  f.fecha.value = hoyISO();
+  f.hora.value = horaActual();
+  f.tema.value = c.tema;
+  document.getElementById('sel-obra-charla').innerHTML = opcionesObraSelectHTML('');
+  document.getElementById('input-charla-obra-otra').classList.add('hidden');
+  renderChecklistAsistentesCharla();
+  openPanel('panel-realizar-charla');
+  setTimeout(() => initFirmaPad('firma-canvas-relator'), 80);
+}
+function guardarDatosCharla(ev) {
+  ev.preventDefault();
+  const f = ev.target;
+  if (firmaEstaVacia('firma-canvas-relator')) { toast('Falta la firma del relator', 'error'); return; }
+  const asistentes = [...document.querySelectorAll('#checklist-asistentes-charla .chk-row')]
+    .filter(row => row.querySelector('.chk-row-input').checked)
+    .map(row => ({ nombre: row.dataset.nombre, rut: row.dataset.rut, firma: null }));
+
+  const canvasRelator = document.getElementById('firma-canvas-relator');
+  charlaEnProceso = {
+    ...charlaEnProceso,
+    relator: f.relator.value,
+    firmaRelator: canvasRelator.toDataURL('image/png'),
+    obra: valorObra(f.obra, 'input-charla-obra-otra'),
+    fecha: f.fecha.value, hora: f.hora.value,
+    tema: f.tema.value, riesgos: f.riesgos.value, medidas: f.medidas.value,
+    asistentes, asistenteActual: 0,
+  };
+  closePanel('panel-realizar-charla');
+  if (asistentes.length === 0) { finalizarCharla(); return; }
+  setTimeout(() => { openPanel('panel-firmar-asistente'); mostrarFirmaAsistenteActual(); }, 260);
+}
+function mostrarFirmaAsistenteActual() {
+  const { asistentes, asistenteActual } = charlaEnProceso;
+  const a = asistentes[asistenteActual];
+  document.getElementById('firmar-asistente-progreso').textContent = `Firma ${asistenteActual + 1} de ${asistentes.length}`;
+  document.getElementById('firmar-asistente-nombre').textContent = a.nombre;
+  document.getElementById('firmar-asistente-rut').textContent = a.rut;
+  setTimeout(() => initFirmaPad('firma-canvas-asistente'), 80);
+}
+function avanzarAsistente() {
+  charlaEnProceso.asistenteActual++;
+  if (charlaEnProceso.asistenteActual >= charlaEnProceso.asistentes.length) {
+    closePanel('panel-firmar-asistente');
+    setTimeout(finalizarCharla, 260);
+  } else {
+    mostrarFirmaAsistenteActual();
+  }
+}
+function confirmarFirmaAsistente() {
+  if (firmaEstaVacia('firma-canvas-asistente')) { toast('Falta la firma', 'error'); return; }
+  const canvas = document.getElementById('firma-canvas-asistente');
+  charlaEnProceso.asistentes[charlaEnProceso.asistenteActual].firma = canvas.toDataURL('image/png');
+  avanzarAsistente();
+}
+function saltarFirmaAsistente() { avanzarAsistente(); }
+function cancelarFirmaAsistentes() {
+  closePanel('panel-firmar-asistente');
+  charlaEnProceso = null;
+  toast('Registro de charla cancelado', 'error');
+}
+async function finalizarCharla() {
   try {
+    toast('Generando documento...');
+    const pdfLink = await generarYSubirPdfCharla(charlaEnProceso);
+    const asistentesTxto = charlaEnProceso.asistentes.map(a => `${a.nombre} (${a.rut})`).join('; ');
     await ensureToken();
-    const url = `${SHEETS_BASE}/${CONFIG.SHEET_ID}/values/${encodeURIComponent(`'${CONFIG.SHEET_CHARLAS}'!E${fila}:F${fila}`)}?valueInputOption=USER_ENTERED`;
+    const url = `${SHEETS_BASE}/${CONFIG.SHEET_ID}/values/${encodeURIComponent(`'${CONFIG.SHEET_CHARLAS}'!E${charlaEnProceso.fila}:N${charlaEnProceso.fila}`)}?valueInputOption=USER_ENTERED`;
     await fetch(url, { method:'PUT', headers:{ 'Content-Type':'application/json', ...authHeader() },
-      body: JSON.stringify({ values: [['Realizada', hoyISO()]] }) });
-    toast('Charla marcada como realizada ✓', 'ok');
+      body: JSON.stringify({ values: [[
+        'Realizada', hoyISO(), userEmail || '', charlaEnProceso.relator, charlaEnProceso.obra, charlaEnProceso.hora,
+        charlaEnProceso.riesgos, charlaEnProceso.medidas, asistentesTxto, pdfLink,
+      ]] }) });
+    toast('Charla registrada y documento generado ✓', 'ok');
+    charlaEnProceso = null;
     cargarTodo(true);
   } catch (e) { toast(e.message, 'error'); }
+}
+
+// ── Generación del PDF de Charla (plantilla plana, sin campos rellenables:
+// se dibuja el texto/las firmas encima en las coordenadas exactas de cada
+// campo, medidas a mano sobre la plantilla original) ──────────────────
+function ddmmyyyy(iso) { return (iso || hoyISO()).split('-').reverse().join('-'); }
+async function generarYSubirPdfCharla(datos) {
+  const { PDFDocument, rgb, StandardFonts } = PDFLib;
+  const templateBytes = await fetch('plantillas/charla_5min.pdf').then(r => r.arrayBuffer());
+  const pdfDoc = await PDFDocument.load(templateBytes);
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const [p1, p2] = pdfDoc.getPages();
+  const H = 792;
+
+  function cover(page, x0, top0, x1, top1) {
+    page.drawRectangle({ x: x0, y: H - top1, width: x1 - x0, height: top1 - top0, color: rgb(1,1,1) });
+  }
+  function text(page, str, x, top, size) {
+    page.drawText(str || '', { x, y: H - top, size: size || 9, font, color: rgb(0,0,0) });
+  }
+  function wrapLines(str, maxWidth, size) {
+    const words = (str || '').split(/\s+/).filter(Boolean);
+    const lines = [];
+    let current = '';
+    for (const w of words) {
+      const test = current ? current + ' ' + w : w;
+      if (font.widthOfTextAtSize(test, size) > maxWidth && current) { lines.push(current); current = w; }
+      else current = test;
+    }
+    if (current) lines.push(current);
+    return lines;
+  }
+  function textBlock(page, str, x, tops, maxWidth, size) {
+    wrapLines(str, maxWidth, size || 9).slice(0, tops.length).forEach((line, i) => text(page, line, x, tops[i], size));
+  }
+  async function drawSig(page, dataUrl, x, top, w, h) {
+    if (!dataUrl) return;
+    const bytes = Uint8Array.from(atob(dataUrl.split(',')[1]), c => c.charCodeAt(0));
+    const img = await pdfDoc.embedPng(bytes);
+    const dims = img.scaleToFit(w, h);
+    page.drawImage(img, { x, y: H - top - dims.height, width: dims.width, height: dims.height });
+  }
+
+  // Tapar pie de página de la plantilla original y la fecha de generación vieja
+  [p1, p2].forEach(p => {
+    cover(p, 200, 770, 400, 790);
+    cover(p, 503, 15, 560, 29);
+    text(p, ddmmyyyy(hoyISO()), 504, 26);
+  });
+
+  // Encabezado
+  text(p1, datos.relator, 155, 109, 10);
+  text(p1, datos.obra, 155, 138.5, 10);
+  text(p1, ddmmyyyy(datos.fecha), 155, 154, 10);
+  text(p1, datos.hora, 422, 154, 10);
+  await drawSig(p1, datos.firmaRelator, 422, 97, 130, 26);
+
+  // Tema / Riesgos / Medidas (se reparte en las líneas disponibles de la plantilla)
+  textBlock(p1, datos.tema, 52, [196, 210.6, 225.2], 505);
+  textBlock(p1, datos.riesgos, 52, [266.9, 281.5, 296.1, 310.9], 505);
+  textBlock(p1, datos.medidas, 52, [353.5, 368.1, 382.9, 396.2, 409.6], 505);
+
+  // Tabla de asistentes: filas 1-12 en la página 1, 13-35 en la página 2
+  const filasP1 = [453.2,478.4,503.4,528.4,553.4,578.6,603.6,628.6,653.6,678.9,703.9,728.9];
+  const filasP2 = [117.3,142.3,167.3,192.3,217.5,242.6,267.6,292.5,317.8,342.8,367.8,392.8,418.0,443.0,468.0,493.0,518.0,543.2,568.2,593.2,618.2,643.4,668.4];
+  for (let i = 0; i < datos.asistentes.length && i < filasP1.length; i++) {
+    const a = datos.asistentes[i], top = filasP1[i];
+    text(p1, a.nombre, 85, top + 8);
+    text(p1, a.rut, 365, top + 8);
+    await drawSig(p1, a.firma, 488, top - 1, 65, 23);
+  }
+  for (let i = filasP1.length; i < datos.asistentes.length && i < filasP1.length + filasP2.length; i++) {
+    const a = datos.asistentes[i], top = filasP2[i - filasP1.length];
+    text(p2, a.nombre, 85, top + 8);
+    text(p2, a.rut, 365, top + 8);
+    await drawSig(p2, a.firma, 488, top - 1, 65, 23);
+  }
+
+  // Nombre y firma del relator (línea final, página 2)
+  text(p2, datos.relator, 215, 731, 10);
+
+  const bytes = await pdfDoc.save();
+  const blob = new Blob([bytes], { type: 'application/pdf' });
+  const up = await uploadFile(blob, 'Charlas', 'charla_' + (datos.obra || 'obra').replace(/\s+/g,'_'), 'pdf');
+  return up.link;
 }
 
 // ============================================================
@@ -1222,11 +1400,11 @@ let firmaCtx = null, firmaActiva = false;
 
 function renderChecklistEpp() {
   document.getElementById('checklist-epp').innerHTML = opcionesEppDisponibles().map(item => `
-    <div class="epp-item-row" data-item="${esc(item)}">
-      <label class="epp-item-label">
-        <span class="epp-item-checkbox-wrap">
-          <input type="checkbox" class="epp-item-chk" onchange="onToggleEppItem(this)">
-          <span class="epp-item-checkbox"></span>
+    <div class="chk-row" data-item="${esc(item)}">
+      <label class="chk-row-label">
+        <span class="chk-row-checkbox-wrap">
+          <input type="checkbox" class="chk-row-input" onchange="onToggleEppItem(this)">
+          <span class="chk-row-checkbox"></span>
         </span>
         <span>${esc(item)}</span>
       </label>
@@ -1234,7 +1412,7 @@ function renderChecklistEpp() {
     </div>`).join('');
 }
 function onToggleEppItem(chk) {
-  chk.closest('.epp-item-row').querySelector('.epp-item-qty').classList.toggle('hidden', !chk.checked);
+  chk.closest('.chk-row').querySelector('.epp-item-qty').classList.toggle('hidden', !chk.checked);
 }
 function onCambioEppOtro() {
   const nombre = document.getElementById('input-epp-otro').value.trim();
@@ -1242,8 +1420,8 @@ function onCambioEppOtro() {
 }
 function recolectarItemsEpp() {
   const items = [];
-  document.querySelectorAll('#checklist-epp .epp-item-row').forEach(row => {
-    const chk = row.querySelector('.epp-item-chk');
+  document.querySelectorAll('#checklist-epp .chk-row').forEach(row => {
+    const chk = row.querySelector('.chk-row-input');
     if (chk.checked) {
       const cantidad = parseInt(row.querySelector('.epp-item-qty').value, 10) || 1;
       items.push({ item: row.dataset.item, cantidad });
@@ -1271,9 +1449,9 @@ function abrirFormEpp(prefillItem, prefillTrabajador) {
   document.getElementById('input-epp-otro').value = '';
   document.getElementById('grupo-epp-otro-qty').classList.add('hidden');
   if (prefillItem) {
-    const row = document.querySelector(`#checklist-epp .epp-item-row[data-item="${CSS.escape(prefillItem)}"]`);
+    const row = document.querySelector(`#checklist-epp .chk-row[data-item="${CSS.escape(prefillItem)}"]`);
     if (row) {
-      const chk = row.querySelector('.epp-item-chk');
+      const chk = row.querySelector('.chk-row-input');
       chk.checked = true;
       onToggleEppItem(chk);
     } else {
@@ -1282,10 +1460,15 @@ function abrirFormEpp(prefillItem, prefillTrabajador) {
     }
   }
   openPanel('panel-form-epp');
-  setTimeout(initFirmaPad, 80);
+  setTimeout(() => initFirmaPad('firma-canvas'), 80);
 }
-function initFirmaPad() {
-  const canvas = document.getElementById('firma-canvas');
+// canvasId: distintos paneles con firma (EPP, relator de charla, asistente de
+// charla) tienen su propio <canvas> — solo uno está visible a la vez, así que
+// basta con recordar cuál es el activo en firmaCanvasId.
+let firmaCanvasId = 'firma-canvas';
+function initFirmaPad(canvasId) {
+  firmaCanvasId = canvasId || 'firma-canvas';
+  const canvas = document.getElementById(firmaCanvasId);
   canvas.width = canvas.clientWidth; canvas.height = 180;
   firmaCtx = canvas.getContext('2d');
   firmaCtx.strokeStyle = '#1a1a1a'; firmaCtx.lineWidth = 2.2; firmaCtx.lineCap = 'round';
@@ -1302,8 +1485,15 @@ function initFirmaPad() {
   canvas.ontouchstart = start; canvas.ontouchmove = move; canvas.ontouchend = end;
 }
 function limpiarFirma() {
-  const canvas = document.getElementById('firma-canvas');
+  const canvas = document.getElementById(firmaCanvasId);
   firmaCtx.clearRect(0, 0, canvas.width, canvas.height);
+}
+function firmaEstaVacia(canvasId) {
+  const canvas = document.getElementById(canvasId);
+  const ctx = canvas.getContext('2d');
+  const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+  for (let i = 3; i < data.length; i += 4) if (data[i] !== 0) return false;
+  return true;
 }
 async function guardarEpp(ev) {
   ev.preventDefault();

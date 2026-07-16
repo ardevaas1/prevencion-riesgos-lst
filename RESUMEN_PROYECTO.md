@@ -77,6 +77,12 @@ para el mapeo exacto de índices):
   Examen Altura` (N), `Archivo Examen Altura` (O).
 - `INSPECCIONES`: `Obra` (M).
 - `INCIDENTES`: `Respaldo Cierre` (N), `Obra` (O), `Días Perdidos` (P).
+- `CHARLAS`: `Relator` (H), `Obra` (I), `Hora` (J), `Riesgos` (K), `Medidas
+  de Control` (L), `Asistentes` (M, texto "Nombre (Rut); Nombre (Rut)..."),
+  `PDF` (N, link al documento generado). Columna `Responsable` (G) ahora se
+  usa: se llena con el correo del usuario logueado al completar la charla
+  (distinto del `Relator`, que es quien dicta la charla y puede no tener
+  cuenta en la app).
 
 Si el Sheet real ya existía antes de estos cambios, hay que agregar los
 encabezados a mano en la fila 1 de cada pestaña (la API escribe igual aunque
@@ -198,6 +204,62 @@ sólida = año actual, altura normalizada al mayor de los dos valores.
 `calcularEstadisticasSeguridad(obraSel, offsetAnios)` acepta un offset de
 años para poder calcular ambos períodos con la misma lógica.
 
+## Generación de PDFs rellenados (Charla de 5 min)
+
+El cliente entregó un PDF real de "Charla Diaria de Seguridad" (formato
+D.S. 44/2024) y pidió que la app junte los datos y genere ese mismo
+documento ya lleno, con firmas, listo para archivar. Es la primera de tres
+plantillas pedidas (Charla, Investigación de Accidente, HCR) — se implementó
+primero Charla como prueba de concepto antes de replicar el patrón en las
+otras dos (**pendiente**, ver abajo).
+
+- **El PDF original NO tiene campos de formulario rellenables** (es plano,
+  probablemente exportado de Word) — no hay AcroForm/Widgets. Por eso no se
+  puede "rellenar" en el sentido típico: se **dibuja texto y firmas encima**
+  de la plantilla, en las coordenadas exactas de cada campo. Esas coordenadas
+  se midieron a mano con `pdfplumber` (extrae `x0/top/x1/bottom` de cada
+  palabra y línea de la tabla) sobre el PDF de ejemplo que mandó el cliente,
+  no hay forma de que la app las calcule solas — si el cliente cambia el
+  diseño del PDF en el futuro, hay que volver a medir coordenadas.
+- **Librería:** `pdf-lib`, **empaquetada localmente** en `vendor/pdf-lib.min.js`
+  (no CDN) para que funcione offline como el resto de la PWA y para que el
+  Service Worker la pueda cachear (`sw.js` solo cachea same-origin). Expone
+  el global `PDFLib` (`PDFDocument`, `rgb`, `StandardFonts`).
+- **Plantilla:** `plantillas/charla_5min.pdf`, se carga con `fetch()` en el
+  momento de generar el documento (también precacheada por el Service Worker).
+- **Pie de página de la plantilla original** ("LUIS ANDRES SAEZ THIELEMAN ~
+  RUT...", branding de quien generó el PDF de origen, no de LST) se tapa con
+  un rectángulo blanco en cada página al generar — decisión explícita del
+  cliente, no debe aparecer en los documentos de la app.
+- **Fecha del encabezado** ("Fecha:" arriba a la derecha): la plantilla ya
+  trae una fecha impresa (de cuando se exportó el PDF de muestra) — se tapa
+  y se reescribe con la fecha real de generación en cada documento nuevo.
+- **Flujo en la app** (botón "Marcar realizada" de una charla pendiente):
+  1. `panel-realizar-charla`: Relator + firma del relator, Obra, Fecha/Hora,
+     Tema (prellenado con el tema de la alerta pendiente, editable), Riesgos,
+     Medidas de control, y checklist de asistentes (nómina de trabajadores
+     activos, multi-selección tipo EPP).
+  2. `panel-firmar-asistente`: firma en cadena, uno por uno — muestra nombre
+     y RUT del asistente actual con un canvas grande, botones "Firmar y
+     continuar" o "Saltar (sin firma)". Se repite hasta terminar la lista.
+  3. `generarYSubirPdfCharla`: genera el PDF (texto envuelto en las líneas
+     disponibles de Tema/Riesgos/Medidas vía `wrapLines`/`textBlock`, firmas
+     como imágenes PNG embebidas desde el canvas), lo sube a Drive en la
+     carpeta de módulo `Charlas`, y guarda el link + todos los datos en la
+     fila de la hoja `CHARLAS` (marca `Estado = Realizada`).
+  - Tabla de asistentes: filas 1-12 en página 1, 13-35 en página 2 de la
+    plantilla (35 firmas máximo — si hay más asistentes que eso, los que
+    sobran simplemente no se dibujan, no hay página adicional dinámica).
+  - Firma del relator y de cada trabajador se capturan con el mismo pad de
+    firma que ya usaba EPP (`initFirmaPad(canvasId)`, ahora recibe el id del
+    canvas porque hay tres paneles distintos con su propio `<canvas>`:
+    `firma-canvas` de EPP, `firma-canvas-relator`, `firma-canvas-asistente`).
+- Las clases CSS del checklist (`.chk-row`, `.chk-row-label`,
+  `.chk-row-checkbox-wrap`, `.chk-row-checkbox`) se generalizaron desde
+  `.epp-item-*` para reutilizarlas también en el checklist de asistentes de
+  Charla — cualquier lista futura de "marcar varios de una nómina" puede
+  reusar el mismo patrón.
+
 ## Decisiones de diseño visuales (por qué se ve como se ve)
 
 - **Color principal:** `#e58d17` (naranjo/amarillo vivo), con `--accent-dark:
@@ -282,3 +344,13 @@ con overlay oscuro detrás, en vez de pantalla completa.
 - La sugerencia de "Derivar a mantención" (Incidentes) es solo un aviso: la
   app no tiene un módulo de mantención donde registrar/hacer seguimiento del
   equipo derivado.
+- **Generación de PDF para Investigación de Accidente**: pendiente, mismo
+  patrón que Charla (coordenadas medidas a mano + `pdf-lib`). El cliente
+  pidió que se dispare automáticamente al registrar cualquier accidente
+  (sin importar su categoría) — falta definir el disparador exacto y medir
+  coordenadas del PDF real entregado (`investigacion_de_accidente.pdf`),
+  documento mucho más denso que Charla (~60 campos, muchos checkboxes).
+- **Módulo nuevo HCR (Hoja de Control de Riesgos)**: pendiente, el cliente
+  pidió que sea un módulo separado del resto, con el mismo mecanismo de
+  generar PDF (más de 100 checkboxes en 4 páginas — el más grande de los
+  tres documentos, con diferencia).
