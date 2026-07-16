@@ -651,15 +651,18 @@ function renderEstadisticasSeguridad() {
 // MÓDULO: TRABAJADORES
 // ============================================================
 let filtroTrabajadores = '';
+// Sin tildes/diacríticos, para que buscar "gonzalez" encuentre "González"
+// (en un teclado de celular es más natural escribir sin tilde).
+function sinTildes(s) { return (s || '').normalize('NFD').replace(/[̀-ͯ]/g, ''); }
 function onBuscarTrabajadores(v) {
-  filtroTrabajadores = (v || '').trim().toLowerCase();
+  filtroTrabajadores = sinTildes((v || '').trim().toLowerCase());
   renderTrabajadores();
 }
 function renderTrabajadores() {
   let activos = [...allTrabajadores].reverse();
   if (filtroTrabajadores) {
     activos = activos.filter(t => [t.nombre, t.rut, t.cargo, t.empresa, t.obra]
-      .some(v => (v || '').toLowerCase().includes(filtroTrabajadores)));
+      .some(v => sinTildes((v || '').toLowerCase()).includes(filtroTrabajadores)));
   }
   if (activos.length === 0) { setListHTML('trabajadores', emptyState(filtroTrabajadores ? 'Sin resultados' : 'Sin trabajadores', filtroTrabajadores ? 'Prueba con otro nombre, RUT o cargo' : 'Agrega el primer trabajador')); return; }
   setListHTML('trabajadores', activos.map(t => `
