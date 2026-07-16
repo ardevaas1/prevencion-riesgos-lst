@@ -936,7 +936,7 @@ function mostrarAlertaCharla(tema, area) {
 // ============================================================
 function renderCharlas() {
   const items = [...allCharlas].reverse();
-  if (items.length === 0) { setListHTML('charlas', emptyState('Sin charlas pendientes', '')); return; }
+  if (items.length === 0) { setListHTML('charlas', emptyState('Sin charlas registradas', 'Toca "+" para registrar una charla')); return; }
   setListHTML('charlas', items.map(c => `
     <div class="card card--default">
       <div class="card-icon modulo-icon--flota">${ic('charlas',18)}</div>
@@ -977,6 +977,22 @@ function abrirRealizarCharla(fila) {
   f.tema.value = c.tema;
   document.getElementById('sel-obra-charla').innerHTML = opcionesObraSelectHTML('');
   document.getElementById('input-charla-obra-otra').classList.add('hidden');
+  document.getElementById('panel-realizar-charla-titulo').textContent = 'Realizar charla';
+  renderChecklistAsistentesCharla();
+  openPanel('panel-realizar-charla');
+  setTimeout(() => initFirmaPad('firma-canvas-relator'), 80);
+}
+// Charla hecha "porque sí" (recorrido rutinario, decisión del prevencionista,
+// etc.), sin que una Inspección o Incidente la haya generado como alerta.
+function abrirNuevaCharla() {
+  charlaEnProceso = { fila: null };
+  const f = document.getElementById('form-realizar-charla');
+  f.reset();
+  f.fecha.value = hoyISO();
+  f.hora.value = horaActual();
+  document.getElementById('sel-obra-charla').innerHTML = opcionesObraSelectHTML('');
+  document.getElementById('input-charla-obra-otra').classList.add('hidden');
+  document.getElementById('panel-realizar-charla-titulo').textContent = 'Nueva charla';
   renderChecklistAsistentesCharla();
   openPanel('panel-realizar-charla');
   setTimeout(() => initFirmaPad('firma-canvas-relator'), 80);
@@ -1038,12 +1054,23 @@ async function finalizarCharla() {
     const pdfLink = await generarYSubirPdfCharla(charlaEnProceso);
     const asistentesTxto = charlaEnProceso.asistentes.map(a => `${a.nombre} (${a.rut})`).join('; ');
     await ensureToken();
-    const url = `${SHEETS_BASE}/${CONFIG.SHEET_ID}/values/${encodeURIComponent(`'${CONFIG.SHEET_CHARLAS}'!E${charlaEnProceso.fila}:N${charlaEnProceso.fila}`)}?valueInputOption=USER_ENTERED`;
-    await fetch(url, { method:'PUT', headers:{ 'Content-Type':'application/json', ...authHeader() },
-      body: JSON.stringify({ values: [[
-        'Realizada', hoyISO(), userEmail || '', charlaEnProceso.relator, charlaEnProceso.obra, charlaEnProceso.hora,
+    if (charlaEnProceso.fila) {
+      // Charla que ya existía como alerta "Pendiente" (generada por Inspección/Incidente): actualiza esa fila
+      const url = `${SHEETS_BASE}/${CONFIG.SHEET_ID}/values/${encodeURIComponent(`'${CONFIG.SHEET_CHARLAS}'!E${charlaEnProceso.fila}:N${charlaEnProceso.fila}`)}?valueInputOption=USER_ENTERED`;
+      await fetch(url, { method:'PUT', headers:{ 'Content-Type':'application/json', ...authHeader() },
+        body: JSON.stringify({ values: [[
+          'Realizada', hoyISO(), userEmail || '', charlaEnProceso.relator, charlaEnProceso.obra, charlaEnProceso.hora,
+          charlaEnProceso.riesgos, charlaEnProceso.medidas, asistentesTxto, pdfLink,
+        ]] }) });
+    } else {
+      // Charla hecha por iniciativa propia, sin alerta previa: se agrega una fila completa nueva
+      const n = allCharlas.length + 1;
+      await appendSheet(`'${CONFIG.SHEET_CHARLAS}'!A:N`, [[
+        n, hoyISO(), charlaEnProceso.tema, 'Manual', 'Realizada', hoyISO(), userEmail || '',
+        charlaEnProceso.relator, charlaEnProceso.obra, charlaEnProceso.hora,
         charlaEnProceso.riesgos, charlaEnProceso.medidas, asistentesTxto, pdfLink,
-      ]] }) });
+      ]]);
+    }
     toast('Charla registrada y documento generado ✓', 'ok');
     charlaEnProceso = null;
     cargarTodo(true);

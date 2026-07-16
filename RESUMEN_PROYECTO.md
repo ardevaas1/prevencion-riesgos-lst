@@ -234,11 +234,21 @@ otras dos (**pendiente**, ver abajo).
 - **Fecha del encabezado** ("Fecha:" arriba a la derecha): la plantilla ya
   trae una fecha impresa (de cuando se exportó el PDF de muestra) — se tapa
   y se reescribe con la fecha real de generación en cada documento nuevo.
-- **Flujo en la app** (botón "Marcar realizada" de una charla pendiente):
+- **Dos formas de entrar al flujo:** botón "Marcar realizada" de una charla
+  "Pendiente" generada automáticamente (`abrirRealizarCharla(fila)`, al
+  terminar actualiza esa misma fila de `CHARLAS`), o botón "+" en el módulo
+  Charlas para una **charla hecha por iniciativa propia**, sin que una
+  Inspección o Incidente la haya disparado (`abrirNuevaCharla()`, al
+  terminar agrega una fila nueva completa con `Origen = Manual`). Mismo
+  formulario y mismo flujo de firmas en ambos casos — `charlaEnProceso.fila`
+  es `null` en el caso manual, eso es lo que decide en `finalizarCharla()`
+  si hay que hacer `PUT` (actualizar) o `appendSheet` (fila nueva).
+- **Flujo en la app:**
   1. `panel-realizar-charla`: Relator + firma del relator, Obra, Fecha/Hora,
-     Tema (prellenado con el tema de la alerta pendiente, editable), Riesgos,
-     Medidas de control, y checklist de asistentes (nómina de trabajadores
-     activos, multi-selección tipo EPP).
+     Tema (prellenado con el tema de la alerta si viene de una pendiente,
+     vacío con placeholder de ejemplo si es manual), Riesgos, Medidas de
+     control, y checklist de asistentes (nómina de trabajadores activos,
+     multi-selección tipo EPP).
   2. `panel-firmar-asistente`: firma en cadena, uno por uno — muestra nombre
      y RUT del asistente actual con un canvas grande, botones "Firmar y
      continuar" o "Saltar (sin firma)". Se repite hasta terminar la lista.
