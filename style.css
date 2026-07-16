@@ -603,23 +603,23 @@ body.is-offline #app { padding-top: 30px; }
 
 /* ── Checklist de EPP (Entrega de EPP: varios ítems + cantidad, tipo menú) ── */
 .epp-checklist { display: flex; flex-direction: column; }
-.epp-item-row {
+.chk-row {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
   padding: 9px 2px; border-bottom: 1px solid #f0f0f0;
 }
-.epp-item-row:last-child { border-bottom: none; }
-.epp-item-label { display: flex; align-items: center; gap: 12px; flex: 1; font-size: 14px; color: var(--ink); cursor: pointer; padding: 4px 0; }
-.epp-item-checkbox-wrap { position: relative; width: 22px; height: 22px; flex-shrink: 0; }
-.epp-item-checkbox-wrap input[type="checkbox"] {
+.chk-row:last-child { border-bottom: none; }
+.chk-row-label { display: flex; align-items: center; gap: 12px; flex: 1; font-size: 14px; color: var(--ink); cursor: pointer; padding: 4px 0; }
+.chk-row-checkbox-wrap { position: relative; width: 22px; height: 22px; flex-shrink: 0; }
+.chk-row-checkbox-wrap input[type="checkbox"] {
   position: absolute; inset: 0; width: 100%; height: 100%; margin: 0;
   opacity: 0; cursor: pointer; z-index: 1;
 }
-.epp-item-checkbox {
+.chk-row-checkbox {
   position: absolute; inset: 0; border-radius: 6px; border: 1.5px solid var(--line);
   background: #fff; transition: background 0.15s, border-color 0.15s;
 }
-.epp-item-checkbox-wrap input:checked + .epp-item-checkbox { background: var(--accent); border-color: var(--accent); }
-.epp-item-checkbox-wrap input:checked + .epp-item-checkbox::after {
+.chk-row-checkbox-wrap input:checked + .chk-row-checkbox { background: var(--accent); border-color: var(--accent); }
+.chk-row-checkbox-wrap input:checked + .chk-row-checkbox::after {
   content: ''; position: absolute; width: 6px; height: 11px;
   border: solid #fff; border-width: 0 2px 2px 0;
   transform: rotate(45deg); top: 2px; left: 7px;

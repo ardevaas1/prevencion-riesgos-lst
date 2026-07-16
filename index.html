@@ -408,6 +408,51 @@
   </div>
 </div>
 
+<!-- ===== PANEL: Realizar Charla (datos + firma relator + asistentes) ===== -->
+<div class="panel hidden" id="panel-realizar-charla">
+  <div class="panel-bar"><div class="pnl-back" onclick="closePanel('panel-realizar-charla')">‹ Volver</div><div class="pnl-title">Realizar charla</div><div></div></div>
+  <div class="panel-body">
+    <form id="form-realizar-charla" onsubmit="guardarDatosCharla(event)">
+      <div class="form-group"><label>Relator</label><input name="relator" required placeholder="Nombre de quien dicta la charla"></div>
+      <div class="form-group">
+        <label>Firma del relator</label>
+        <div class="firma-box"><canvas id="firma-canvas-relator"></canvas></div>
+        <div class="firma-actions"><button type="button" onclick="limpiarFirma()">Borrar firma</button></div>
+      </div>
+      <div class="form-group">
+        <label>Obra</label>
+        <select name="obra" id="sel-obra-charla" required onchange="onCambioObraSelect(this,'input-charla-obra-otra')"></select>
+        <input type="text" id="input-charla-obra-otra" class="hidden" placeholder="Nombre de la obra" style="margin-top:8px;">
+      </div>
+      <div class="form-group"><label>Fecha</label><input type="date" name="fecha" required></div>
+      <div class="form-group"><label>Hora</label><input type="time" name="hora" required></div>
+      <div class="form-group"><label>Tema tratado</label><textarea name="tema" required></textarea></div>
+      <div class="form-group"><label>Riesgos</label><textarea name="riesgos"></textarea></div>
+      <div class="form-group"><label>Medidas de control</label><textarea name="medidas"></textarea></div>
+
+      <div class="sec-label" style="margin-top:18px;">Asistentes</div>
+      <div id="checklist-asistentes-charla"></div>
+
+      <button class="btn-add" type="submit" style="margin-top:14px;">Continuar a firmas de asistentes</button>
+    </form>
+  </div>
+</div>
+
+<!-- ===== PANEL: Firma de asistentes (uno por uno) ===== -->
+<div class="panel hidden" id="panel-firmar-asistente">
+  <div class="panel-bar"><div class="pnl-back" onclick="cancelarFirmaAsistentes()">‹ Cancelar</div><div class="pnl-title" id="firmar-asistente-progreso">Firma</div><div></div></div>
+  <div class="panel-body">
+    <div style="text-align:center;margin-bottom:16px;">
+      <div class="ficha-hero-name" style="font-size:20px;" id="firmar-asistente-nombre"></div>
+      <div class="card-sub" id="firmar-asistente-rut"></div>
+    </div>
+    <div class="firma-box"><canvas id="firma-canvas-asistente"></canvas></div>
+    <div class="firma-actions"><button type="button" onclick="limpiarFirma()">Borrar firma</button></div>
+    <button class="btn-add" type="button" onclick="confirmarFirmaAsistente()">Firmar y continuar</button>
+    <button class="action-btn" type="button" onclick="saltarFirmaAsistente()" style="margin-top:8px;">Saltar (sin firma)</button>
+  </div>
+</div>
+
 <!-- ===== FICHA: Detalle e historial de trabajador ===== -->
 <div class="panel hidden" id="panel-ficha-trabajador">
   <div class="panel-bar"><div class="pnl-back" onclick="closePanel('panel-ficha-trabajador')">‹ Volver</div><div class="pnl-title">Ficha del trabajador</div><div></div></div>
@@ -451,6 +496,7 @@
 <div class="toast hidden" id="toast"></div>
 
 <script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="vendor/pdf-lib.min.js"></script>
 <script src="config.js"></script>
 <script src="app.js"></script>
 <script>
