@@ -1395,7 +1395,7 @@ async function guardarCierreIncidente(ev) {
 // ============================================================
 // MÓDULO: ATENCIÓN MÉDICA (DIAT / Declaración de rechazo)
 // Al registrar un Accidente Leve/Grave/Fatal, antes de habilitar la
-// Investigación se pregunta si el trabajador necesitó atención médica:
+// Investigación se pregunta si el trabajador necesita atención médica:
 // si Sí, se llena la DIAT (Denuncia Individual de Accidente del Trabajo,
 // formulario oficial de la Mutual); si No, se genera una declaración simple
 // en que el trabajador manifiesta su rechazo — sin firma digital, porque
