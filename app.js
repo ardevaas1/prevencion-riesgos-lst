@@ -988,8 +988,9 @@ function abrirRealizarCharla(fila) {
   f.fecha.value = hoyISO();
   f.hora.value = horaActual();
   f.tema.value = c.tema;
-  document.getElementById('sel-obra-charla').innerHTML = opcionesObraSelectHTML('');
-  document.getElementById('input-charla-obra-otra').classList.add('hidden');
+  const selObraCharla1 = document.getElementById('sel-obra-charla');
+  selObraCharla1.innerHTML = opcionesObraSelectHTML('');
+  onCambioObraSelect(selObraCharla1, 'input-charla-obra-otra');
   document.getElementById('panel-realizar-charla-titulo').textContent = 'Realizar charla';
   renderChecklistAsistentesCharla();
   openPanel('panel-realizar-charla');
@@ -1003,8 +1004,9 @@ function abrirNuevaCharla() {
   f.reset();
   f.fecha.value = hoyISO();
   f.hora.value = horaActual();
-  document.getElementById('sel-obra-charla').innerHTML = opcionesObraSelectHTML('');
-  document.getElementById('input-charla-obra-otra').classList.add('hidden');
+  const selObraCharla2 = document.getElementById('sel-obra-charla');
+  selObraCharla2.innerHTML = opcionesObraSelectHTML('');
+  onCambioObraSelect(selObraCharla2, 'input-charla-obra-otra');
   document.getElementById('panel-realizar-charla-titulo').textContent = 'Nueva charla';
   renderChecklistAsistentesCharla();
   openPanel('panel-realizar-charla');
@@ -1876,8 +1878,9 @@ function abrirNuevoHcr() {
   const f = document.getElementById('form-hcr');
   f.reset();
   f.fecha.value = hoyISO();
-  document.getElementById('sel-obra-hcr').innerHTML = opcionesObraSelectHTML('');
-  document.getElementById('input-hcr-obra-otra').classList.add('hidden');
+  const selObraHcr = document.getElementById('sel-obra-hcr');
+  selObraHcr.innerHTML = opcionesObraSelectHTML('');
+  onCambioObraSelect(selObraHcr, 'input-hcr-obra-otra');
   renderChecklistsHcr();
   renderChecklistTrabajadoresHcr();
   openPanel('panel-form-hcr');
