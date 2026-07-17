@@ -39,7 +39,8 @@ function inicializarPlanilla() {
     'N°', 'Fecha', 'Tipo', 'Trabajador Involucrado', 'Área', 'Descripción', 'Causas',
     'Gravedad', 'Foto', 'Acciones Correctivas', 'Estado', 'Fecha Registro', 'Reportado Por',
     'Respaldo Cierre', 'Obra', 'Días Perdidos',
-    'Investigación Estado', 'Investigación Responsable', 'Investigación Fecha', 'Investigación PDF'
+    'Investigación Estado', 'Investigación Responsable', 'Investigación Fecha', 'Investigación PDF',
+    'Atención Médica Estado', 'Atención Médica PDF'
   ]);
 
   crearHoja(ss, 'INVESTIGACIONES', [
@@ -61,6 +62,21 @@ function inicializarPlanilla() {
     'EPP y Medios de Apoyo', 'Verificación Comunicación', 'Registros Adicionales',
     'Tareas / Riesgos / Medidas', 'Supervisor', '(reservado)', '(reservado)',
     'Asistentes', 'PDF', 'Registrado Por', 'Fecha Registro'
+  ]);
+
+  crearHoja(ss, 'DIAT', [
+    'N°', 'Fecha', 'Incidente (fila)', 'Empleador Nombre', 'Empleador Rut', 'Empleador Dirección',
+    'Empleador Comuna', 'Empleador Teléfono', 'N Trabajadores Hombres', 'N Trabajadores Mujeres',
+    'Propiedad Empresa', 'Tipo Empresa', 'Actividad Económica', 'Actividad Económica Empresa Principal',
+    'Trabajador Nombre', 'Trabajador Run', 'Trabajador Dirección', 'Trabajador Comuna', 'Trabajador Teléfono',
+    'Sexo', 'Edad', 'Fecha Nacimiento', 'Pueblo Originario', 'Nacionalidad', 'Profesión u Oficio',
+    'Antigüedad Valor', 'Antigüedad Unidad', 'Tipo Contrato', 'Tipo Ingreso', 'Categoría Ocupacional',
+    'Fecha Accidente', 'Hora Accidente', 'Hora Ingreso Trabajo', 'Hora Salida Trabajo',
+    'Dirección Accidente', 'Comuna Accidente', 'Qué Hacía el Trabajador', 'Lugar Accidente',
+    'Descripción Accidente', 'Trabajo Habitual', 'Desarrollaba Trabajo Habitual', 'Clasificación Accidente',
+    'Tipo Accidente', 'Tipo Accidente Trayecto', 'Medio de Prueba', 'Detalle Medio de Prueba',
+    'Denunciante Nombre', 'Denunciante Run', 'Denunciante Teléfono', 'Clasificación Denunciante',
+    'PDF', 'Registrado Por', 'Fecha Registro'
   ]);
 
   crearHoja(ss, 'PROCEDIMIENTOS', [
