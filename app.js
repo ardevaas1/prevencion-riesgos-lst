@@ -1684,9 +1684,9 @@ async function generarYSubirPdfInvestigacion(datos) {
 
   // Medidas de control implementadas (tabla de hasta 3 filas)
   const filasMedidas = [
-    [datos.medida1, datos.responsable1, datos.fechaImpl1, 208],
-    [datos.medida2, datos.responsable2, datos.fechaImpl2, 224],
-    [datos.medida3, datos.responsable3, datos.fechaImpl3, 240],
+    [datos.medida1, datos.responsable1, datos.fechaImpl1, 212],
+    [datos.medida2, datos.responsable2, datos.fechaImpl2, 228],
+    [datos.medida3, datos.responsable3, datos.fechaImpl3, 244],
   ];
   filasMedidas.forEach(([medida, responsable, fecha, top]) => {
     if (!medida) return;
