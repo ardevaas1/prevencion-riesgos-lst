@@ -1,8 +1,8 @@
-const CACHE_NAME = 'lst-prevencion-shell-v2';
+const CACHE_NAME = 'lst-prevencion-shell-v3';
 const APP_SHELL = [
   './', './index.html', './style.css', './config.js', './app.js',
   './manifest.json', './logo.png', './logo-white.png', './icon-192.png', './icon-512.png',
-  './plantillas/charla_5min.pdf', './vendor/pdf-lib.min.js',
+  './plantillas/charla_5min.pdf', './plantillas/investigacion_accidente.pdf', './vendor/pdf-lib.min.js',
 ];
 
 self.addEventListener('install', (event) => {

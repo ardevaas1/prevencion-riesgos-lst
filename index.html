@@ -453,6 +453,102 @@
   </div>
 </div>
 
+<!-- ===== PANEL: Investigación de Accidente ===== -->
+<div class="panel hidden" id="panel-form-investigacion">
+  <div class="panel-bar"><div class="pnl-back" onclick="closePanel('panel-form-investigacion')">‹ Volver</div><div class="pnl-title">Investigación de accidente</div><div></div></div>
+  <div class="panel-body">
+    <form id="form-investigacion" onsubmit="guardarInvestigacion(event)">
+
+      <div class="sec-label">Información de la organización</div>
+      <div class="form-group"><label>Empresa mandante</label><input name="empresaMandante" required></div>
+      <div class="form-group"><label>Empresa Contratista / Subcontratista</label><input name="empresaContratista"></div>
+      <div class="form-group"><label>Área</label><input name="area" required></div>
+      <div class="form-group"><label>Asesor en Prevención de Riesgos</label><input name="asesorPrevencion"></div>
+      <div class="form-group"><label>Jefatura del departamento o unidad</label><input name="jefaturaDepto"></div>
+
+      <div class="sec-label" style="margin-top:18px;">Antecedentes del siniestro</div>
+      <div class="form-group"><label>Fecha</label><input type="date" name="fechaSiniestro" required></div>
+      <div class="form-group"><label>Hora</label><input type="time" name="horaSiniestro"></div>
+      <div class="form-group"><label>Lugar</label><input name="lugar"></div>
+      <div class="form-group"><label>Jefatura directa</label><input name="jefaturaDirecta"></div>
+      <div class="form-group"><label>Supervisor directo</label><input name="supervisorDirecto"></div>
+
+      <div class="sec-label" style="margin-top:18px;">Tipo de siniestro</div>
+      <div id="chk-inv-tiposiniestro"></div>
+
+      <div class="sec-label" style="margin-top:18px;">Empresa afectada</div>
+      <div id="chk-inv-empresa"></div>
+
+      <div class="sec-label" style="margin-top:18px;">Daños</div>
+      <div id="chk-inv-danos"></div>
+      <div class="form-group" style="margin-top:8px;"><label>Otros (especifique)</label><input name="danosOtroTexto"></div>
+
+      <div class="sec-label" style="margin-top:18px;">Potencial</div>
+      <div id="chk-inv-potencial"></div>
+
+      <div class="sec-label" style="margin-top:18px;">Datos del trabajador involucrado / afectado</div>
+      <div class="form-group"><label>Nombre del trabajador</label><input name="trabajadorNombre" required></div>
+      <div class="form-group"><label>Rut</label><input name="trabajadorRut"></div>
+      <div class="form-group"><label>Cargo o función</label><input name="trabajadorCargo"></div>
+      <div class="form-group"><label>Antigüedad en el cargo</label><input name="trabajadorAntiguedadCargo"></div>
+      <div class="form-group"><label>Antigüedad en la empresa</label><input name="trabajadorAntiguedadEmpresa"></div>
+      <div class="form-group"><label>Horas trabajadas en el turno</label><input name="trabajadorHorasTurno"></div>
+      <div class="form-group"><label>Estado del trabajador</label><input name="trabajadorEstado" placeholder="Ej: Con licencia médica"></div>
+      <div class="form-group"><label>Observación</label><input name="trabajadorObservacion"></div>
+
+      <div class="sec-label" style="margin-top:18px;">Datos testigos</div>
+      <div class="form-group"><label>Nombre del trabajador</label><input name="testigoNombre"></div>
+      <div class="form-group"><label>Rut</label><input name="testigoRut"></div>
+      <div class="form-group"><label>Cargo o función</label><input name="testigoCargo"></div>
+      <div class="form-group"><label>Tiempo en el cargo</label><input name="testigoTiempoCargo"></div>
+      <div class="form-group"><label>Actividad que realizaba</label><input name="testigoActividad"></div>
+      <div class="form-group"><label>Observación</label><input name="testigoObservacion"></div>
+
+      <div class="sec-label" style="margin-top:18px;">Descripción del evento ocurrido</div>
+      <div class="form-group"><textarea name="descripcionEvento" required placeholder="Detalle cronológico de los acontecimientos ocurridos indicando acciones y consecuencias"></textarea></div>
+
+      <div class="sec-label" style="margin-top:18px;">Localización del siniestro</div>
+      <div class="form-group"><input name="localizacion"></div>
+
+      <div class="sec-label" style="margin-top:18px;">Tipo de incidente</div>
+      <div id="chk-inv-tipoincidente"></div>
+      <div class="form-group" style="margin-top:8px;"><label>Otros (especifique)</label><input name="tipoIncidenteOtroTexto"></div>
+
+      <div class="sec-label" style="margin-top:18px;">Determinación de causas inmediatas</div>
+      <div id="chk-inv-causasinmediatas"></div>
+      <div class="form-group" style="margin-top:8px;"><label>Otras acciones subestándar (especifique)</label><input name="causasInmediatasOtroTexto"></div>
+
+      <div class="sec-label" style="margin-top:18px;">Determinación de causas básicas</div>
+      <div id="chk-inv-causasbasicas"></div>
+
+      <div class="sec-label" style="margin-top:18px;">Medidas de control implementadas antes de la ocurrencia del incidente</div>
+      <div class="form-group"><label>Medida 1</label><input name="medida1"></div>
+      <div class="form-group"><label>Responsable 1</label><input name="responsable1"></div>
+      <div class="form-group"><label>Fecha implementada 1</label><input type="date" name="fechaImpl1"></div>
+      <div class="form-group"><label>Medida 2</label><input name="medida2"></div>
+      <div class="form-group"><label>Responsable 2</label><input name="responsable2"></div>
+      <div class="form-group"><label>Fecha implementada 2</label><input type="date" name="fechaImpl2"></div>
+      <div class="form-group"><label>Medida 3</label><input name="medida3"></div>
+      <div class="form-group"><label>Responsable 3</label><input name="responsable3"></div>
+      <div class="form-group"><label>Fecha implementada 3</label><input type="date" name="fechaImpl3"></div>
+
+      <div class="sec-label" style="margin-top:18px;">Observaciones</div>
+      <div class="form-group"><textarea name="observaciones"></textarea></div>
+
+      <div class="sec-label" style="margin-top:18px;">Quien investiga</div>
+      <div class="form-group"><label>Nombre y Rut</label><input name="investigadorNombreRut" required></div>
+      <div class="form-group"><label>Cargo</label><input name="investigadorCargo"></div>
+      <div class="form-group">
+        <label>Firma</label>
+        <div class="firma-box"><canvas id="firma-canvas-investigador"></canvas></div>
+        <div class="firma-actions"><button type="button" onclick="limpiarFirma()">Borrar firma</button></div>
+      </div>
+
+      <button class="btn-add" type="submit" style="margin-top:14px;">Generar informe de investigación</button>
+    </form>
+  </div>
+</div>
+
 <!-- ===== FICHA: Detalle e historial de trabajador ===== -->
 <div class="panel hidden" id="panel-ficha-trabajador">
   <div class="panel-bar"><div class="pnl-back" onclick="closePanel('panel-ficha-trabajador')">‹ Volver</div><div class="pnl-title">Ficha del trabajador</div><div></div></div>

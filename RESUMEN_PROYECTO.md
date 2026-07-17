@@ -58,17 +58,23 @@ repositorio de GitHub **separado**.
   amarillo/naranjo, generado con Python/Pillow, no a mano).
 - `logo.png`, `logo-white.png`, `logo-transparent.png` — logos LST heredados
   de Flota, cada uno usado en un lugar distinto (ver abajo).
-- `APPS_SCRIPT_INIT.js` — se pega una sola vez en el Apps Script del Sheet
-  nuevo para crear las 7 pestañas con encabezados. No se sube a GitHub, es
-  de uso único.
+- `APPS_SCRIPT_INIT.js` — se pega en el Apps Script del Sheet para crear las
+  8 pestañas con encabezados. Es seguro volver a ejecutarlo cuando se agregan
+  columnas/pestañas nuevas (no borra datos existentes).
 - `INSTRUCCIONES_SETUP.md` — guía paso a paso de configuración inicial
   (crear Sheet, carpeta Drive, credenciales Google Cloud, GitHub Pages).
+- `plantillas/` — PDFs originales del cliente usados como base para la
+  generación de documentos (`charla_5min.pdf`, `investigacion_accidente.pdf`),
+  cacheados por el Service Worker.
+- `vendor/pdf-lib.min.js` — librería `pdf-lib` empaquetada localmente (no
+  CDN) para generación de PDF offline.
 
-## Estructura de datos (Google Sheet, 7 pestañas)
+## Estructura de datos (Google Sheet, 8 pestañas)
 
-`TRABAJADORES`, `INSPECCIONES`, `CHARLAS`, `INCIDENTES`, `PROCEDIMIENTOS`,
-`ENTREGA_EPP`, `USUARIOS` (esta última creada pero sin usar todavía — pensada
-a futuro para roles admin/prevencionista/viewer, no implementado).
+`TRABAJADORES`, `INSPECCIONES`, `CHARLAS`, `INCIDENTES`, `INVESTIGACIONES`,
+`PROCEDIMIENTOS`, `ENTREGA_EPP`, `USUARIOS` (esta última creada pero sin usar
+todavía — pensada a futuro para roles admin/prevencionista/viewer, no
+implementado).
 
 Columnas agregadas después del lanzamiento inicial (ver `rowToX` en `app.js`
 para el mapeo exacto de índices):
@@ -76,7 +82,12 @@ para el mapeo exacto de índices):
   Contrato` (L, vacío = indefinido), `Archivo Contrato` (M), `Fecha Vigencia
   Examen Altura` (N), `Archivo Examen Altura` (O).
 - `INSPECCIONES`: `Obra` (M).
-- `INCIDENTES`: `Respaldo Cierre` (N), `Obra` (O), `Días Perdidos` (P).
+- `INCIDENTES`: `Respaldo Cierre` (N), `Obra` (O), `Días Perdidos` (P),
+  `Investigación Estado` (Q), `Investigación Responsable` (R), `Investigación
+  Fecha` (S), `Investigación PDF` (T) — ver sección "Generación de PDFs
+  rellenados (Investigación de Accidente)" más abajo.
+- `INVESTIGACIONES`: pestaña nueva completa (46 columnas, `A:AT`), ver
+  sección "Generación de PDFs rellenados (Investigación de Accidente)".
 - `CHARLAS`: `Relator` (H), `Obra` (I), `Hora` (J), `Riesgos` (K), `Medidas
   de Control` (L), `Asistentes` (M, texto "Nombre (Rut); Nombre (Rut)..."),
   `PDF` (N, link al documento generado). Columna `Responsable` (G) ahora se
@@ -135,6 +146,12 @@ vez de esperar un cambio que nunca ocurre.
    con todos los campos — descripción, causas, obra, días perdidos, acciones
    correctivas, fecha de registro, quién lo reportó, foto y respaldo — y ahí
    vive el botón "Cerrar caso" (se sacó de la tarjeta de la lista).
+   **Investigación de accidente:** si el tipo es `Accidente Leve/Grave/
+   Fatal`, al guardar queda automáticamente `Investigación Estado =
+   Pendiente` — tarjeta y ficha muestran badge "Investigación pendiente" y
+   botón "Realizar investigación" que abre el formulario completo (ver
+   sección de PDFs más abajo). No se fuerza a completarla al momento del
+   registro, igual que las alertas de Charla.
 3. **Procedimientos de Trabajo Seguro** — sube PDF a Drive.
 4. **Entrega de EPP** — **checklist tipo menú**: se muestran todos los tipos
    de EPP con checkbox + cantidad al lado, se marcan los que correspondan
@@ -270,6 +287,65 @@ otras dos (**pendiente**, ver abajo).
   Charla — cualquier lista futura de "marcar varios de una nómina" puede
   reusar el mismo patrón.
 
+## Generación de PDFs rellenados (Investigación de Accidente)
+
+Segunda de las tres plantillas pedidas (después de Charla). Se activa
+**solo** para Incidentes tipo `Accidente Leve`, `Accidente Grave` o
+`Accidente Fatal` (no para `Cuasiaccidente` ni `Incidente`,
+`requiereInvestigacion(tipo)` en `app.js`) — decisión confirmada con el
+cliente. Al guardar un incidente de esos tres tipos, la fila de
+`INCIDENTES` queda con `Investigación Estado = Pendiente` automáticamente
+(igual que las alertas de Charla), sin forzar a completarla en el momento.
+
+- **Mismo enfoque que Charla:** el PDF original (`plantillas/
+  investigacion_accidente.pdf`) tampoco tiene campos rellenables — todo el
+  texto y las "X" de los checkbox se dibujan encima en coordenadas exactas,
+  medidas con `pdfplumber` sobre el PDF que mandó el cliente. A diferencia
+  de Charla, esta plantilla es tamaño A4 (`H = 841.8`) y no trae el pie de
+  página con branding de terceros, así que no hace falta taparlo.
+- **Checkbox:** la función `checkX(page, x, cellCenterTop, size)` centra la
+  "X" usando la altura de mayúscula de la fuente (`capHeight = size*0.72`)
+  en vez de un offset a ojo — esto se descubrió necesario durante Charla (ver
+  historial de commits) y se aplicó desde el principio acá. Cada grupo de
+  checkbox está definido como una lista de opciones con su `{ label, x, top,
+  page }` ya medido (`INV_TIPO_SINIESTRO`, `INV_EMPRESA`, `INV_DANOS`,
+  `INV_POTENCIAL`, `INV_TIPO_INCIDENTE` (16), `INV_CAUSAS_INMEDIATAS` (21),
+  `INV_CAUSAS_BASICAS` (14) en `app.js`) — la misma lista se usa tanto para
+  pintar el checklist en el formulario (`renderChecklistInv`) como para
+  dibujar las "X" en el PDF, así no hay dos fuentes de verdad para las
+  opciones.
+- **Grupos de una sola opción** (Tipo de Siniestro, Empresa afectada,
+  Potencial) usan `<input type="radio">`; el resto son checkbox
+  multi-selección — se agregó `.chk-row-radio` en `style.css` (círculo en
+  vez de cuadrado) reutilizando el mismo `.chk-row-checkbox-wrap`.
+- **Campos "Otros (especifique)"** (Daños, Tipo de Incidente, causas
+  subestándar) tienen su propio input de texto libre en el formulario, que
+  se dibuja en la línea en blanco correspondiente del PDF si viene con
+  contenido.
+- **Firma:** solo hay un firmante (quien investiga) — se dibuja en el
+  espacio en blanco a la derecha de "NOMBRE Y RUT DE QUIEN INVESTIGA" /
+  "CARGO" en la página 2 (ese documento no tiene una línea de firma
+  dedicada como Charla, así que se usa el espacio libre de esa fila).
+- **Flujo en la app:** botón "Realizar investigación" en la tarjeta o en la
+  ficha de detalle de un Incidente con `Investigación Estado = Pendiente`
+  (`abrirInvestigacion(filaIncidente)`) → un único formulario largo,
+  seccionado igual que el PDF (organización, antecedentes, checkbox de
+  clasificación, datos del trabajador/testigo, descripción, tipo de
+  incidente, causas inmediatas/básicas, medidas de control (hasta 3 filas),
+  observaciones, y firma de quien investiga) → `guardarInvestigacion(ev)`
+  genera el PDF, lo sube a Drive (carpeta del trabajador si hay uno
+  asociado), agrega una fila nueva a la pestaña `INVESTIGACIONES` (46
+  columnas — casi todos los campos del formulario, con los grupos de
+  checkbox guardados como texto separado por `;`), y actualiza la fila del
+  Incidente en `INCIDENTES` (`Investigación Estado = Completada`,
+  `Responsable`, `Fecha`, `PDF`) con un `PUT` a las columnas Q:T.
+- **Pestaña nueva `INVESTIGACIONES`:** no viene en el Sheet original — hay
+  que volver a ejecutar `inicializarPlanilla` desde Apps Script (menú
+  Extensiones → Apps Script → ejecutar `inicializarPlanilla`) para que se
+  cree; es seguro volver a ejecutarla, no borra datos existentes en las
+  pestañas que ya existen, solo agrega las que faltan y reescribe los
+  encabezados de la fila 1.
+
 ## Decisiones de diseño visuales (por qué se ve como se ve)
 
 - **Color principal:** `#e58d17` (naranjo/amarillo vivo), con `--accent-dark:
@@ -354,12 +430,6 @@ con overlay oscuro detrás, en vez de pantalla completa.
 - La sugerencia de "Derivar a mantención" (Incidentes) es solo un aviso: la
   app no tiene un módulo de mantención donde registrar/hacer seguimiento del
   equipo derivado.
-- **Generación de PDF para Investigación de Accidente**: pendiente, mismo
-  patrón que Charla (coordenadas medidas a mano + `pdf-lib`). El cliente
-  pidió que se dispare automáticamente al registrar cualquier accidente
-  (sin importar su categoría) — falta definir el disparador exacto y medir
-  coordenadas del PDF real entregado (`investigacion_de_accidente.pdf`),
-  documento mucho más denso que Charla (~60 campos, muchos checkboxes).
 - **Módulo nuevo HCR (Hoja de Control de Riesgos)**: pendiente, el cliente
   pidió que sea un módulo separado del resto, con el mismo mecanismo de
   generar PDF (más de 100 checkboxes en 4 páginas — el más grande de los
