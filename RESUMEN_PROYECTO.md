@@ -69,12 +69,12 @@ repositorio de GitHub **separado**.
 - `vendor/pdf-lib.min.js` — librería `pdf-lib` empaquetada localmente (no
   CDN) para generación de PDF offline.
 
-## Estructura de datos (Google Sheet, 8 pestañas)
+## Estructura de datos (Google Sheet, 9 pestañas)
 
 `TRABAJADORES`, `INSPECCIONES`, `CHARLAS`, `INCIDENTES`, `INVESTIGACIONES`,
-`PROCEDIMIENTOS`, `ENTREGA_EPP`, `USUARIOS` (esta última creada pero sin usar
-todavía — pensada a futuro para roles admin/prevencionista/viewer, no
-implementado).
+`HCR`, `PROCEDIMIENTOS`, `ENTREGA_EPP`, `USUARIOS` (esta última creada pero
+sin usar todavía — pensada a futuro para roles admin/prevencionista/viewer,
+no implementado).
 
 Columnas agregadas después del lanzamiento inicial (ver `rowToX` en `app.js`
 para el mapeo exacto de índices):
@@ -174,6 +174,9 @@ vez de esperar un cambio que nunca ocurre.
    `panel-editar-altura`). Replica el patrón de ficha de equipo de Flota.
 6. **Charlas de Seguridad** — lista de alertas generadas (por inspecciones o
    incidentes), con botón "Marcar realizada".
+7. **Hoja de Control de Riesgos (HCR)** — módulo completamente separado del
+   resto (a pedido explícito del cliente), sin relación con Incidentes ni
+   Charlas. Ver sección "Generación de PDFs rellenados (HCR)" más abajo.
 
 Inspecciones también tiene botón "Cerrar inspección" (Abierta → Cerrada).
 
@@ -346,6 +349,71 @@ cliente. Al guardar un incidente de esos tres tipos, la fila de
   pestañas que ya existen, solo agrega las que faltan y reescribe los
   encabezados de la fila 1.
 
+## Generación de PDFs rellenados (HCR)
+
+Tercera y última de las plantillas pedidas, y la más grande con diferencia:
+`plantillas/hcr.pdf`, **4 páginas con tamaños mixtos** — páginas 1 y 2 en
+A4 apaisado (`H=595.2`), páginas 3 y 4 en carta vertical (`H=792`) — con
+más de 130 checkbox solo en la página 1. A pedido explícito del cliente
+("quiero que esto sea otro modulo para separarlo de todo"), HCR es un
+**módulo independiente**: no se dispara desde Incidentes ni Charlas, tiene
+su propia entrada en el menú/Inicio (`irPagina('hcr')`), su propio botón
+"+" (`abrirNuevoHcr`) y su propia pestaña `HCR` en el Sheet.
+
+- **Mismo enfoque de overlay que Charla/Investigación**, pero la página 1
+  tiene una particularidad: los ~130 checkbox NO están alineados por fila
+  dentro de cada sección — en cambio, **una misma franja vertical de
+  checkbox se reutiliza para varias secciones apiladas** en la misma columna
+  de la página (ej. la franja de checkbox de "1. Peligros/Seguridad
+  columna 1" es exactamente la misma franja x que usa más abajo
+  "3. Riesgos/Seguridad"). Esto se descubrió midiendo con `pdfplumber` los
+  bordes de las celdas (`rects` con `width<2.5` = borde vertical de la
+  franja de checkbox), no fue una suposición: cada sección define su lista
+  de opciones con un `top` propio pero comparte la constante `x` de su
+  columna (`HCR_CX.col1/col2/col3` en `app.js`).
+- **Filas de altura no uniforme:** algunas filas del PDF original son más
+  altas que el resto (ej. "CONDICIONES METEREOLOGICAS ADVERSAS" en Peligros/
+  Seguridad) — el centro vertical de cada checkbox se calculó individualmente
+  a partir de los bordes reales de esa fila específica, no con un alto de
+  fila fijo aplicado a ciegas.
+- **Sección 7 "Verificación de comunicación" y "Registros adicionales"**
+  son preguntas de una sola respuesta (Sí/No/N.A.), no checkbox
+  independientes — se renderizan como 3 radios por pregunta
+  (`HCR_VERIF_PREGUNTAS`, `HCR_REGISTROS_ADIC`), reutilizando 3 franjas de
+  checkbox angostas (`HCR_CX.si/no/na`).
+- **Página 2** trae los datos generales (Actividad, Área, Fecha, HH de
+  capacitación) y una tabla libre "Tareas / Riesgos / Medidas para el
+  control de los riesgos" que en el PDF original es un área en blanco sin
+  grilla interna (pensada para escribir a mano); en la app se ofrecen 4
+  filas fijas repartidas en alturas iguales dentro de esa área. También
+  trae los 3 campos de **firma de jefatura** (Supervisor, Jefe de Obra/Jefe
+  Terreno, Prevención de Riesgos) — como la caja de cada firma es angosta y
+  la plantilla ya imprime la etiqueta a media altura, no se escribe un
+  nombre tipeado ahí (se probó y se superponía con la etiqueta impresa):
+  solo se dibuja la firma debajo. Esa misma caja de firmas jefatura se
+  repite al final de la página 4, y se dibujan ahí las mismas 3 firmas.
+- **Páginas 3 y 4** son el registro de firmas de la cuadrilla (mismo patrón
+  de "firma en cadena, una por una" que Charla), con capacidad para 42
+  trabajadores (23 filas en página 3 + 19 en página 4 — la plantilla
+  original salta el número "20" en su numeración impresa, un detalle del
+  documento del cliente que se dejó tal cual, no es un bug de la app).
+- **Múltiples pads de firma simultáneos:** a diferencia de Charla/
+  Investigación (un solo canvas de firma visible a la vez), el formulario de
+  HCR muestra **3 canvas de firma al mismo tiempo** (supervisor, jefe de
+  obra, prevención). Esto expuso un bug real en `initFirmaPad`/`firmaCtx`:
+  las funciones de dibujo usaban variables globales compartidas
+  (`firmaCtx`/`firmaActiva`), así que inicializar el segundo o tercer
+  canvas "robaba" el contexto de dibujo del primero (dibujar en el canvas A
+  terminaba pintando en el canvas B). Se corrigió haciendo que cada llamada
+  a `initFirmaPad` use un `ctx`/`activa` **local** a esa closure — las
+  variables globales se mantienen solo por compatibilidad con
+  `limpiarFirma()` (usada en los flujos de un solo canvas). Se agregó
+  `limpiarFirmaId(canvasId)` para borrar un canvas específico sin depender
+  del estado global, usado por los 3 botones "Borrar firma" del HCR.
+- **Pestaña nueva `HCR`:** tampoco viene en el Sheet original — igual que
+  `INVESTIGACIONES`, hay que volver a ejecutar `inicializarPlanilla` desde
+  Apps Script para que se cree (22 columnas, `A:V`).
+
 ## Decisiones de diseño visuales (por qué se ve como se ve)
 
 - **Color principal:** `#e58d17` (naranjo/amarillo vivo), con `--accent-dark:
@@ -430,7 +498,13 @@ con overlay oscuro detrás, en vez de pantalla completa.
 - La sugerencia de "Derivar a mantención" (Incidentes) es solo un aviso: la
   app no tiene un módulo de mantención donde registrar/hacer seguimiento del
   equipo derivado.
-- **Módulo nuevo HCR (Hoja de Control de Riesgos)**: pendiente, el cliente
-  pidió que sea un módulo separado del resto, con el mismo mecanismo de
-  generar PDF (más de 100 checkboxes en 4 páginas — el más grande de los
-  tres documentos, con diferencia).
+- La tabla "Tareas / Riesgos / Medidas" del HCR soporta hasta 4 filas fijas
+  en el formulario (la plantilla original es un área en blanco sin grilla,
+  pensada para escribir a mano cualquier cantidad de líneas) — si en la
+  práctica casi siempre se necesitan más de 4, se puede ampliar agregando
+  más `tareaN`/`riesgoN`/`medidaN` en el formulario y el arreglo
+  `filasMedidas`-equivalente de `generarYSubirPdfHcr`.
+- El roster de firmas del HCR soporta hasta 42 trabajadores (23 en página 3
+  + 19 en página 4, límite físico de la plantilla) — si una cuadrilla tiene
+  más integrantes que eso, los que sobran no se dibujan (mismo
+  comportamiento ya aceptado en la tabla de asistentes de Charla).
