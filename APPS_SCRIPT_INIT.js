@@ -73,7 +73,12 @@ function inicializarPlanilla() {
     ss.deleteSheet(porDefecto);
   }
 
-  SpreadsheetApp.getUi().alert('Listo ✅ Todas las pestañas fueron creadas con sus encabezados.');
+  // El popup de confirmación puede fallar según cómo se abrió el editor de
+  // Apps Script (no siempre hay UI disponible) — no debe hacer fallar el
+  // resto del script, que para entonces ya terminó de crear/actualizar
+  // todas las pestañas.
+  try { SpreadsheetApp.getUi().alert('Listo ✅ Todas las pestañas fueron creadas con sus encabezados.'); }
+  catch (e) { Logger.log('Listo ✅ Todas las pestañas fueron creadas con sus encabezados.'); }
 }
 
 function crearHoja(ss, nombre, encabezados) {
@@ -96,5 +101,6 @@ function agregarmeComoAdmin() {
   const MI_CORREO = 'PON_AQUI_TU_CORREO@gmail.com'; // ← cámbialo
   const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('USUARIOS');
   sh.appendRow([MI_CORREO.toLowerCase(), 'admin', '']);
-  SpreadsheetApp.getUi().alert('Agregado como admin: ' + MI_CORREO);
+  try { SpreadsheetApp.getUi().alert('Agregado como admin: ' + MI_CORREO); }
+  catch (e) { Logger.log('Agregado como admin: ' + MI_CORREO); }
 }
