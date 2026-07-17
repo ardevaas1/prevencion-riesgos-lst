@@ -462,6 +462,119 @@
 </div>
 
 <!-- ===== PANEL: Investigación de Accidente ===== -->
+<!-- ===== MODAL: ¿Necesitó atención médica? ===== -->
+<div class="panel hidden" id="panel-pregunta-atencion-medica">
+  <div class="panel-bar"><div></div><div class="pnl-title">Atención médica</div><div class="pnl-back" onclick="closePanel('panel-pregunta-atencion-medica')">Cerrar</div></div>
+  <div class="panel-body">
+    <div class="alerta-charla-box">
+      <div class="alerta-charla-icon"><svg viewBox="0 0 24 24" fill="none" style="width:38px;height:38px"><path d="M12 3 2 20h20L12 3Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M12 9.5v4.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="12" cy="17" r="1" fill="currentColor"/></svg></div>
+      <div style="text-align:center;font-size:15px;">¿El trabajador necesitó atención médica?</div>
+    </div>
+    <p style="font-size:13px;color:#666;text-align:center;">Si es Sí, se debe completar la DIAT (Denuncia Individual de Accidente del Trabajo). Si es No, se genera una declaración simple de rechazo voluntario.</p>
+    <button class="btn-add" type="button" onclick="elegirAtencionMedica(true)">Sí, necesitó atención médica</button>
+    <button class="action-btn" type="button" onclick="elegirAtencionMedica(false)" style="margin-top:8px;">No necesitó atención médica</button>
+  </div>
+</div>
+
+<!-- ===== PANEL: DIAT (Denuncia Individual de Accidente del Trabajo) ===== -->
+<div class="panel hidden" id="panel-form-diat">
+  <div class="panel-bar"><div class="pnl-back" onclick="closePanel('panel-form-diat')">‹ Volver</div><div class="pnl-title">DIAT</div><div></div></div>
+  <div class="panel-body">
+    <form id="form-diat" onsubmit="guardarDiat(event)">
+
+      <div class="sec-label">A. Identificación del Empleador</div>
+      <div class="form-group"><label>Nombre o Razón Social</label><input name="empleadorNombre" required></div>
+      <div class="form-group"><label>RUT</label><input name="empleadorRut"></div>
+      <div class="form-group"><label>Dirección</label><input name="empleadorDireccion"></div>
+      <div class="form-group"><label>Comuna</label><input name="empleadorComuna"></div>
+      <div class="form-group"><label>Número de Teléfono</label><input name="empleadorTelefono"></div>
+      <div class="form-group"><label>N° de Trabajadores — Hombres</label><input type="number" name="nTrabHombres" min="0"></div>
+      <div class="form-group"><label>N° de Trabajadores — Mujeres</label><input type="number" name="nTrabMujeres" min="0"></div>
+      <div class="sec-label" style="margin-top:12px;">Propiedad de la Empresa</div>
+      <div id="chk-diat-propiedad"></div>
+      <div class="sec-label" style="margin-top:12px;">Tipo de Empresa</div>
+      <div id="chk-diat-tipoempresa"></div>
+      <div class="form-group"><label>Actividad Económica</label><input name="actividadEconomica"></div>
+      <div class="form-group"><label>Si es Contratista o Subcontratista, actividad económica de la empresa principal</label><input name="actividadEconomicaPrincipal"></div>
+
+      <div class="sec-label" style="margin-top:18px;">B. Identificación del Trabajador/a</div>
+      <div class="form-group"><label>Nombres y Apellidos</label><input name="trabajadorNombre" required></div>
+      <div class="form-group"><label>RUN</label><input name="trabajadorRun"></div>
+      <div class="form-group"><label>Dirección</label><input name="trabajadorDireccion"></div>
+      <div class="form-group"><label>Comuna</label><input name="trabajadorComuna"></div>
+      <div class="form-group"><label>Número de Teléfono</label><input name="trabajadorTelefono"></div>
+      <div class="sec-label" style="margin-top:12px;">Sexo</div>
+      <div id="chk-diat-sexo"></div>
+      <div class="form-group"><label>Edad</label><input type="number" name="edad" min="0"></div>
+      <div class="form-group"><label>Fecha de Nacimiento</label><input type="date" name="fechaNacimiento"></div>
+      <div class="sec-label" style="margin-top:12px;">Pueblo originario</div>
+      <div id="chk-diat-pueblo"></div>
+      <div class="form-group"><label>Nacionalidad</label><input name="nacionalidad"></div>
+      <div class="form-group"><label>Profesión u Oficio</label><input name="profesionOficio"></div>
+      <div class="form-group"><label>Antigüedad en la Empresa (número)</label><input type="number" name="antiguedadValor" min="0"></div>
+      <div class="sec-label" style="margin-top:12px;">Antigüedad — unidad</div>
+      <div id="chk-diat-antiguedadunidad"></div>
+      <div class="sec-label" style="margin-top:12px;">Tipo de Contrato</div>
+      <div id="chk-diat-tipocontrato"></div>
+      <div class="sec-label" style="margin-top:12px;">Tipo de Ingreso</div>
+      <div id="chk-diat-tipoingreso"></div>
+      <div class="sec-label" style="margin-top:12px;">Categoría Ocupacional</div>
+      <div id="chk-diat-categoria"></div>
+
+      <div class="sec-label" style="margin-top:18px;">C. Datos del Accidente</div>
+      <div class="form-group"><label>Fecha del Accidente</label><input type="date" name="fechaAccidente" required></div>
+      <div class="form-group"><label>Hora del Accidente</label><input name="horaAccidente" placeholder="Ej: 11:30"></div>
+      <div id="chk-diat-ampm-accidente"></div>
+      <div class="form-group"><label>Hora de Ingreso al Trabajo</label><input name="horaIngreso" placeholder="Ej: 08:00"></div>
+      <div id="chk-diat-ampm-ingreso"></div>
+      <div class="form-group"><label>Hora de Salida del Trabajo</label><input name="horaSalida" placeholder="Ej: 18:00"></div>
+      <div id="chk-diat-ampm-salida"></div>
+      <div class="form-group"><label>Dirección del accidente</label><input name="direccionAccidente"></div>
+      <div class="form-group"><label>Comuna</label><input name="comunaAccidente"></div>
+      <div class="form-group"><label>¿Qué estaba haciendo el trabajador al momento o justo antes del accidente?</label><textarea name="queHacia"></textarea></div>
+      <div class="form-group"><label>Lugar donde ocurrió el accidente</label><input name="lugarAccidente"></div>
+      <div class="form-group"><label>¿Qué pasó o cómo ocurrió el accidente?</label><textarea name="descripcionAccidente" required></textarea></div>
+      <div class="form-group"><label>¿Cuál era su trabajo habitual?</label><input name="trabajoHabitual"></div>
+      <div class="sec-label" style="margin-top:12px;">¿Al momento del accidente desarrollaba su trabajo habitual?</div>
+      <div id="chk-diat-desarrollaba"></div>
+      <div class="sec-label" style="margin-top:12px;">Clasificación del Accidente</div>
+      <div id="chk-diat-clasificacion"></div>
+      <div class="sec-label" style="margin-top:12px;">Tipo de Accidente</div>
+      <div id="chk-diat-tipoaccidente"></div>
+      <div class="sec-label" style="margin-top:12px;">Si es accidente de Trayecto</div>
+      <div id="chk-diat-trayecto"></div>
+      <div class="sec-label" style="margin-top:12px;">Medio de Prueba</div>
+      <div id="chk-diat-medioprueba"></div>
+      <div class="form-group"><label>Detalle del Medio de Prueba</label><input name="detalleMedioPrueba"></div>
+
+      <div class="sec-label" style="margin-top:18px;">D. Identificación del Denunciante</div>
+      <div class="form-group"><label>Nombres y Apellidos</label><input name="denuncianteNombre"></div>
+      <div class="form-group"><label>RUN</label><input name="denuncianteRun"></div>
+      <div class="form-group"><label>Número de Teléfono</label><input name="denuncianteTelefono"></div>
+      <div class="sec-label" style="margin-top:12px;">Clasificación del Denunciante</div>
+      <div id="chk-diat-denunciante"></div>
+
+      <button class="btn-add" type="submit" style="margin-top:14px;">Generar DIAT</button>
+    </form>
+  </div>
+</div>
+
+<!-- ===== PANEL: Declaración de rechazo de atención médica ===== -->
+<div class="panel hidden" id="panel-form-declaracion">
+  <div class="panel-bar"><div class="pnl-back" onclick="closePanel('panel-form-declaracion')">‹ Volver</div><div class="pnl-title">Declaración de rechazo</div><div></div></div>
+  <div class="panel-body">
+    <form id="form-declaracion" onsubmit="guardarDeclaracion(event)">
+      <div class="form-group"><label>Trabajador</label><input name="trabajadorNombre" required></div>
+      <div class="form-group"><label>Fecha</label><input type="date" name="fecha" required></div>
+      <div class="form-group">
+        <label>Declaración (se escribe completa, tal cual va a quedar en el documento — el documento no lleva firma, esa se hace a mano después)</label>
+        <textarea name="texto" rows="10" required placeholder="Ej: Yo, [nombre], RUT [rut], declaro voluntariamente que no requiero atención médica producto del incidente ocurrido el [fecha]..."></textarea>
+      </div>
+      <button class="btn-add" type="submit">Generar declaración</button>
+    </form>
+  </div>
+</div>
+
 <div class="panel hidden" id="panel-form-investigacion">
   <div class="panel-bar"><div class="pnl-back" onclick="closePanel('panel-form-investigacion')">‹ Volver</div><div class="pnl-title">Investigación de accidente</div><div></div></div>
   <div class="panel-body">

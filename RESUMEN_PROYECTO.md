@@ -64,17 +64,19 @@ repositorio de GitHub **separado**.
 - `INSTRUCCIONES_SETUP.md` — guía paso a paso de configuración inicial
   (crear Sheet, carpeta Drive, credenciales Google Cloud, GitHub Pages).
 - `plantillas/` — PDFs originales del cliente usados como base para la
-  generación de documentos (`charla_5min.pdf`, `investigacion_accidente.pdf`),
-  cacheados por el Service Worker.
+  generación de documentos (`charla_5min.pdf`, `investigacion_accidente.pdf`,
+  `hcr.pdf`, `diat.pdf`), cacheados por el Service Worker. La Declaración de
+  rechazo de atención médica es la única que NO usa plantilla (se genera en
+  blanco desde cero).
 - `vendor/pdf-lib.min.js` — librería `pdf-lib` empaquetada localmente (no
   CDN) para generación de PDF offline.
 
-## Estructura de datos (Google Sheet, 9 pestañas)
+## Estructura de datos (Google Sheet, 10 pestañas)
 
 `TRABAJADORES`, `INSPECCIONES`, `CHARLAS`, `INCIDENTES`, `INVESTIGACIONES`,
-`HCR`, `PROCEDIMIENTOS`, `ENTREGA_EPP`, `USUARIOS` (esta última creada pero
-sin usar todavía — pensada a futuro para roles admin/prevencionista/viewer,
-no implementado).
+`HCR`, `DIAT`, `PROCEDIMIENTOS`, `ENTREGA_EPP`, `USUARIOS` (esta última
+creada pero sin usar todavía — pensada a futuro para roles admin/
+prevencionista/viewer, no implementado).
 
 Columnas agregadas después del lanzamiento inicial (ver `rowToX` en `app.js`
 para el mapeo exacto de índices):
@@ -84,10 +86,13 @@ para el mapeo exacto de índices):
 - `INSPECCIONES`: `Obra` (M).
 - `INCIDENTES`: `Respaldo Cierre` (N), `Obra` (O), `Días Perdidos` (P),
   `Investigación Estado` (Q), `Investigación Responsable` (R), `Investigación
-  Fecha` (S), `Investigación PDF` (T) — ver sección "Generación de PDFs
-  rellenados (Investigación de Accidente)" más abajo.
+  Fecha` (S), `Investigación PDF` (T), `Atención Médica Estado` (U),
+  `Atención Médica PDF` (V) — ver secciones "Generación de PDFs rellenados
+  (Investigación de Accidente)" y "...(DIAT / Declaración)" más abajo.
 - `INVESTIGACIONES`: pestaña nueva completa (46 columnas, `A:AT`), ver
   sección "Generación de PDFs rellenados (Investigación de Accidente)".
+- `DIAT`: pestaña nueva completa (53 columnas, `A:BA`), ver sección
+  "Generación de PDFs rellenados (DIAT / Declaración)".
 - `CHARLAS`: `Relator` (H), `Obra` (I), `Hora` (J), `Riesgos` (K), `Medidas
   de Control` (L), `Asistentes` (M, texto "Nombre (Rut); Nombre (Rut)..."),
   `PDF` (N, link al documento generado). Columna `Responsable` (G) ahora se
@@ -146,12 +151,18 @@ vez de esperar un cambio que nunca ocurre.
    con todos los campos — descripción, causas, obra, días perdidos, acciones
    correctivas, fecha de registro, quién lo reportó, foto y respaldo — y ahí
    vive el botón "Cerrar caso" (se sacó de la tarjeta de la lista).
-   **Investigación de accidente:** si el tipo es `Accidente Leve/Grave/
-   Fatal`, al guardar queda automáticamente `Investigación Estado =
-   Pendiente` — tarjeta y ficha muestran badge "Investigación pendiente" y
-   botón "Realizar investigación" que abre el formulario completo (ver
-   sección de PDFs más abajo). No se fuerza a completarla al momento del
-   registro, igual que las alertas de Charla.
+   **Atención médica e investigación de accidente:** si el tipo es
+   `Accidente Leve/Grave/Fatal`, al guardar queda automáticamente
+   `Atención Médica Estado = Pendiente` — tarjeta y ficha muestran badge
+   "Atención médica: por definir" y botón "Definir atención médica" que
+   pregunta si el trabajador necesitó atención médica: si Sí, abre el
+   formulario de la DIAT; si No, abre la declaración simple de rechazo.
+   Recién al resolver esa pregunta (cualquiera de las dos opciones) se
+   marca `Investigación Estado = Pendiente` y aparece el botón "Realizar
+   investigación" — la investigación queda deliberadamente supeditada a
+   resolver primero la atención médica. Ver sección de PDFs más abajo. No
+   se fuerza a completar nada al momento del registro, igual que las
+   alertas de Charla.
 3. **Procedimientos de Trabajo Seguro** — sube PDF a Drive.
 4. **Entrega de EPP** — **checklist tipo menú**: se muestran todos los tipos
    de EPP con checkbox + cantidad al lado, se marcan los que correspondan
@@ -413,6 +424,52 @@ su propia entrada en el menú/Inicio (`irPagina('hcr')`), su propio botón
 - **Pestaña nueva `HCR`:** tampoco viene en el Sheet original — igual que
   `INVESTIGACIONES`, hay que volver a ejecutar `inicializarPlanilla` desde
   Apps Script para que se cree (22 columnas, `A:V`).
+
+## Generación de PDFs rellenados (DIAT / Declaración de rechazo)
+
+A pedido del cliente: al registrar un `Accidente Leve/Grave/Fatal` se
+pregunta si el trabajador necesitó atención médica **antes** de habilitar
+la Investigación (ver "Atención médica e investigación de accidente" en
+Módulos de la app). Según la respuesta se generan documentos muy distintos:
+
+- **Si Sí → DIAT** (Denuncia Individual de Accidente del Trabajo,
+  formulario oficial de la Mutual de Seguridad). Mismo enfoque de overlay
+  que Investigación/HCR: `plantillas/diat.pdf` no tiene campos rellenables,
+  se mide con `pdfplumber` y se dibuja encima. A diferencia de los otros
+  tres documentos, acá los 61 checkbox del PDF **sí son rects individuales**
+  (cuadrados de ~7.9pt de ancho/alto, no franjas compartidas como en HCR),
+  así que se pudieron extraer todos de una vez emparejando cada rect con la
+  palabra más cercana a su derecha en la misma fila — mucho más rápido que
+  medir uno por uno. Los campos de texto (Nombre, RUT, Dirección, etc.) no
+  tienen bordes rectos (son curvas/rutas Bézier para las esquinas
+  redondeadas), así que sus coordenadas se estimaron a partir de la
+  posición de la etiqueta impresa y se ajustaron con el ciclo habitual de
+  generar → renderizar a imagen → revisar → corregir.
+  - Prellenado automático desde el Incidente/Trabajador: nombre y RUT del
+    trabajador, su profesión/cargo, fecha del accidente, lugar, descripción,
+    y la Clasificación del Accidente (Grave/Fatal/Otro) según el tipo ya
+    registrado — el resto (identificación del empleador, datos del
+    trabajador, denunciante, checkboxes de clasificación, etc.) se completa
+    a mano en un formulario largo, seccionado igual que el PDF (A/B/C/D).
+  - El campo "Firma" del denunciante (sección D) se deja en blanco a
+    propósito — no se implementó firma digital para la DIAT porque, igual
+    que la Declaración, es un documento que termina imprimiéndose/
+    entregándose a la Mutual con firma física.
+  - Se guarda en una pestaña nueva `DIAT` (53 columnas, `A:BA`) y sube el
+    PDF a Drive (carpeta del trabajador).
+- **Si No → Declaración simple de rechazo.** A pedido explícito del
+  cliente, **sin plantilla ni formato**: no se dibuja sobre ningún PDF
+  base, se genera una página en blanco nueva (`PDFDocument.create()`) con
+  un título, trabajador, fecha, y el texto que se haya escrito completo en
+  un textarea — tal cual, sin agregar ni completar nada por la app. **Sin
+  firma**: el cliente fue explícito en que no debe llevar firma digital
+  porque la firma real se hace a mano, en persona, después — capturarla acá
+  no tendría sentido. Es la función más simple de las cuatro plantillas de
+  este proyecto (`generarPdfDeclaracion` en `app.js`), útil como referencia
+  de cómo generar un PDF "desde cero" con pdf-lib sin depender de una
+  plantilla externa.
+- **Pestaña nueva `DIAT`:** igual que `INVESTIGACIONES`/`HCR`, hay que
+  volver a ejecutar `inicializarPlanilla` para que se cree.
 
 ## Decisiones de diseño visuales (por qué se ve como se ve)
 

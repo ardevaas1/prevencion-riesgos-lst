@@ -455,21 +455,23 @@ let allEpp = [];
 let allCharlas = [];
 let allInvestigaciones = [];
 let allHcr = [];
+let allDiat = [];
 
 async function cargarTodo(silencioso) {
   if (!silencioso) { splash(20, 'Conectando con Google Sheets...'); }
   else { toast('Actualizando datos...'); }
   try {
     if (!silencioso) splash(45, 'Cargando información...');
-    const [trab, insp, inc, proc, epp, charlas, invest, hcr] = await Promise.all([
+    const [trab, insp, inc, proc, epp, charlas, invest, hcr, diat] = await Promise.all([
       fetchSheet(`'${CONFIG.SHEET_TRABAJADORES}'!A2:O2000`),
       fetchSheet(`'${CONFIG.SHEET_INSPECCIONES}'!A2:M2000`),
-      fetchSheet(`'${CONFIG.SHEET_INCIDENTES}'!A2:T2000`),
+      fetchSheet(`'${CONFIG.SHEET_INCIDENTES}'!A2:V2000`),
       fetchSheet(`'${CONFIG.SHEET_PROCEDIMIENTOS}'!A2:I2000`),
       fetchSheet(`'${CONFIG.SHEET_EPP}'!A2:I2000`),
       fetchSheet(`'${CONFIG.SHEET_CHARLAS}'!A2:N2000`),
       fetchSheet(`'${CONFIG.SHEET_INVESTIGACIONES}'!A2:AT2000`),
       fetchSheet(`'${CONFIG.SHEET_HCR}'!A2:V2000`),
+      fetchSheet(`'${CONFIG.SHEET_DIAT}'!A2:BA2000`),
     ]);
     if (!silencioso) splash(85, 'Preparando la app...');
     allTrabajadores = trab.map((r,i) => rowToTrabajador(r,i));
@@ -480,6 +482,7 @@ async function cargarTodo(silencioso) {
     allCharlas = charlas.map((r,i) => rowToCharla(r,i));
     allInvestigaciones = invest.map((r,i) => ({ fila: i+2, n: r[0]||'' }));
     allHcr = hcr.map((r,i) => ({ fila: i+2, n: r[0]||'', fecha: r[1]||'', obra: r[2]||'', actividad: r[3]||'', area: r[4]||'', pdf: r[19]||'' }));
+    allDiat = diat.map((r,i) => ({ fila: i+2, n: r[0]||'' }));
     renderDashboard();
     renderTrabajadores(); renderInspecciones(); renderIncidentes(); renderProcedimientos(); renderEpp(); renderCharlas(); renderHcr();
     if (!silencioso) splash(100, '¡Listo!');
@@ -508,9 +511,11 @@ function rowToIncidente(r, i) {
     descripcion: r[5]||'', causas: r[6]||'', gravedad: r[7]||'', foto: r[8]||'', accion: r[9]||'',
     estado: r[10]||'Abierto', fechaRegistro: r[11]||'', reportadoPor: r[12]||'', respaldo: r[13]||'',
     obra: r[14]||'', diasPerdidos: parseInt(r[15],10) || 0,
-    investigacionEstado: r[16]||'', investigacionResponsable: r[17]||'', investigacionFecha: r[18]||'', investigacionPdf: r[19]||'' };
+    investigacionEstado: r[16]||'', investigacionResponsable: r[17]||'', investigacionFecha: r[18]||'', investigacionPdf: r[19]||'',
+    atencionMedicaEstado: r[20]||'', atencionMedicaPdf: r[21]||'' };
 }
-// Se abre investigación formal solo para accidentes reales (no Cuasiaccidente/Incidente)
+// Se abre investigación formal (y se pregunta por atención médica) solo
+// para accidentes reales (no Cuasiaccidente/Incidente)
 function requiereInvestigacion(tipoIncidente) {
   return tipoIncidente === 'Accidente Leve' || tipoIncidente === 'Accidente Grave' || tipoIncidente === 'Accidente Fatal';
 }
@@ -1191,8 +1196,11 @@ function renderIncidentes() {
         <div class="card-sub">${esc(i.fecha)} · ${esc(i.area)}${i.obra ? ' · ' + esc(i.obra) : ''}</div>
         <div class="badge-row"><span class="badge red">${esc(i.gravedad)}</span>
         <span class="badge ${i.estado==='Cerrado'?'green':'gray'}">${esc(i.estado)}</span>
+        ${i.atencionMedicaEstado==='Pendiente' ? '<span class="badge amber">Atención médica: por definir</span>' : ''}
+        ${i.atencionMedicaEstado && i.atencionMedicaEstado!=='Pendiente' ? `<span class="badge green">${esc(i.atencionMedicaEstado)}</span>` : ''}
         ${i.investigacionEstado==='Pendiente' ? '<span class="badge amber">Investigación pendiente</span>' : ''}
         ${i.investigacionEstado==='Completada' ? '<span class="badge green">Investigación completada</span>' : ''}</div>
+        ${i.atencionMedicaEstado==='Pendiente' ? `<button class="action-btn" onclick="event.stopPropagation(); abrirPreguntaAtencionMedica(${i.fila})">Definir atención médica</button>` : ''}
         ${i.investigacionEstado==='Pendiente' ? `<button class="action-btn" onclick="event.stopPropagation(); abrirInvestigacion(${i.fila})">Realizar investigación</button>` : ''}
         ${i.investigacionEstado==='Completada' && i.investigacionPdf ? `<a href="${esc(i.investigacionPdf)}" target="_blank" class="badge blue" onclick="event.stopPropagation();">${ic('documento',12)} Ver informe</a>` : ''}
       </div>
@@ -1229,6 +1237,12 @@ function abrirDetalleIncidente(fila) {
     ${i.foto ? `<div class="field-row"><span>Foto</span><a href="${esc(i.foto)}" target="_blank" class="badge blue">${ic('camara',12)} Ver foto</a></div>` : ''}
     ${i.respaldo ? `<div class="field-row"><span>Respaldo de cierre</span><a href="${esc(i.respaldo)}" target="_blank" class="badge blue">${ic('documento',12)} Ver respaldo</a></div>` : ''}
 
+    ${i.atencionMedicaEstado ? `
+    <div class="sec-label" style="margin-top:20px;">Atención médica</div>
+    <div class="field-row"><span>Estado</span><span class="badge ${i.atencionMedicaEstado==='Pendiente'?'amber':'green'}">${esc(i.atencionMedicaEstado)}</span></div>
+    ${i.atencionMedicaPdf ? `<div class="field-row"><span>Documento</span><a href="${esc(i.atencionMedicaPdf)}" target="_blank" class="badge blue">${ic('documento',12)} Ver documento</a></div>` : ''}
+    ` : ''}
+
     ${i.investigacionEstado ? `
     <div class="sec-label" style="margin-top:20px;">Investigación de accidente</div>
     <div class="field-row"><span>Estado</span><span class="badge ${i.investigacionEstado==='Completada'?'green':'amber'}">${esc(i.investigacionEstado)}</span></div>
@@ -1237,6 +1251,7 @@ function abrirDetalleIncidente(fila) {
     ${i.investigacionPdf ? `<div class="field-row"><span>Informe</span><a href="${esc(i.investigacionPdf)}" target="_blank" class="badge blue">${ic('documento',12)} Ver informe</a></div>` : ''}
     ` : ''}
 
+    ${i.atencionMedicaEstado === 'Pendiente' ? `<button class="action-btn" onclick="closePanel('panel-detalle-incidente'); abrirPreguntaAtencionMedica(${i.fila})">Definir atención médica</button>` : ''}
     ${i.investigacionEstado === 'Pendiente' ? `<button class="action-btn" onclick="closePanel('panel-detalle-incidente'); abrirInvestigacion(${i.fila})">Realizar investigación</button>` : ''}
     ${i.estado !== 'Cerrado' ? `<button class="action-btn" onclick="closePanel('panel-detalle-incidente'); abrirCerrarIncidente(${i.fila})">Cerrar caso</button>` : ''}
   `;
@@ -1269,12 +1284,15 @@ async function guardarIncidente(ev) {
     const n = allIncidentes.length + 1;
     const obra = valorObra(f.obra, 'input-incidente-obra-otra');
     const diasPerdidos = parseInt(f.diasPerdidos.value, 10) || 0;
-    const investigacionEstado = requiereInvestigacion(f.tipo.value) ? 'Pendiente' : '';
-    await appendSheet(`'${CONFIG.SHEET_INCIDENTES}'!A:T`, [[
+    // La investigación queda supeditada a resolver primero la pregunta de
+    // atención médica (DIAT si es Sí, Declaración simple si es No) — no se
+    // marca "Pendiente" de inmediato, se habilita recién al resolver eso.
+    const atencionMedicaEstado = requiereInvestigacion(f.tipo.value) ? 'Pendiente' : '';
+    await appendSheet(`'${CONFIG.SHEET_INCIDENTES}'!A:V`, [[
       n, f.fecha.value, f.tipo.value, trabNombre, f.area.value, f.descripcion.value,
       f.causas.value, f.gravedad.value, fotoLink, f.accion.value || '', 'Abierto',
       new Date().toLocaleString('es-CL'), userEmail || '', '', obra, diasPerdidos,
-      investigacionEstado, '', '', ''
+      '', '', '', '', atencionMedicaEstado, ''
     ]]);
 
     // Sugerencia automática de plan de acción según lo descrito en el incidente
@@ -1372,6 +1390,387 @@ async function guardarCierreIncidente(ev) {
     closePanel('panel-cerrar-incidente');
     cargarTodo(true);
   } catch (e) { toast(e.message, 'error'); }
+}
+
+// ============================================================
+// MÓDULO: ATENCIÓN MÉDICA (DIAT / Declaración de rechazo)
+// Al registrar un Accidente Leve/Grave/Fatal, antes de habilitar la
+// Investigación se pregunta si el trabajador necesitó atención médica:
+// si Sí, se llena la DIAT (Denuncia Individual de Accidente del Trabajo,
+// formulario oficial de la Mutual); si No, se genera una declaración simple
+// en que el trabajador manifiesta su rechazo — sin firma digital, porque
+// esa se hace a mano, en persona, después.
+// ============================================================
+let atencionMedicaFilaIncidente = null;
+function abrirPreguntaAtencionMedica(filaIncidente) {
+  atencionMedicaFilaIncidente = filaIncidente;
+  openPanel('panel-pregunta-atencion-medica');
+}
+function elegirAtencionMedica(necesitaAtencion) {
+  closePanel('panel-pregunta-atencion-medica');
+  setTimeout(() => {
+    if (necesitaAtencion) abrirFormDiat();
+    else abrirFormDeclaracion();
+  }, 260);
+}
+
+// ── DIAT (Denuncia Individual de Accidente del Trabajo) ──────────────────
+const DIAT_CX = {}; // los checkbox de este documento no comparten franjas, cada uno mide su propio centro
+const DIAT_PROPIEDAD_EMPRESA = [
+  { label: 'Pública', x: 513.2, top: 225.9 }, { label: 'Privada', x: 553.7, top: 225.9 },
+];
+const DIAT_TIPO_EMPRESA = [
+  { label: 'Principal', x: 53.0, top: 261.1 }, { label: 'Contratista', x: 112.0, top: 261.1 },
+  { label: 'Subcontratista', x: 179.7, top: 261.1 }, { label: 'De Servicios Transitorios', x: 258.3, top: 261.1 },
+];
+const DIAT_SEXO = [{ label: 'Hombre', x: 53.2, top: 403.9 }, { label: 'Mujer', x: 107.4, top: 403.9 }];
+const DIAT_PUEBLO_ORIGINARIO = [
+  { label: 'Alacalufe', x: 310.5, top: 410.5 }, { label: 'Colla', x: 374.3, top: 410.3 },
+  { label: 'Quechua', x: 439.3, top: 410.6 }, { label: 'Otro', x: 521.2, top: 409.2 },
+  { label: 'Atacameño', x: 310.5, top: 424.2 }, { label: 'Diaguita', x: 374.2, top: 424.1 },
+  { label: 'Rapanui', x: 439.2, top: 424.3 }, { label: 'Aimara', x: 310.5, top: 438.7 },
+  { label: 'Mapuche', x: 374.2, top: 438.6 }, { label: 'Yamana (Yagán)', x: 439.2, top: 438.8 },
+  { label: 'Ninguno', x: 521.2, top: 438.9 },
+];
+const DIAT_ANTIGUEDAD_UNIDAD = [
+  { label: 'Días', x: 75.3, top: 469.8 }, { label: 'Meses', x: 108.4, top: 469.5 }, { label: 'Años', x: 146.9, top: 469.5 },
+];
+const DIAT_TIPO_CONTRATO = [
+  { label: 'Indefinido', x: 195.4, top: 470.0 }, { label: 'Plazo Fijo', x: 258.1, top: 470.0 },
+  { label: 'Por Obra o Faena', x: 322.5, top: 469.5 }, { label: 'Temporada', x: 414.1, top: 470.1 },
+];
+const DIAT_TIPO_INGRESO = [
+  { label: 'Remuneración Fija', x: 491.5, top: 478.7 }, { label: 'Remuneración Variable', x: 491.4, top: 491.7 },
+  { label: 'Honorarios', x: 491.3, top: 504.7 },
+];
+const DIAT_CATEGORIA_OCUPACIONAL = [
+  { label: 'Empleador', x: 52.9, top: 503.2 }, { label: 'Trabajador Dependiente', x: 105.0, top: 503.2 },
+  { label: 'Trabajador Independiente', x: 197.9, top: 503.2 }, { label: 'Familiar no Remunerado', x: 296.3, top: 503.2 },
+  { label: 'Trabajador Voluntario', x: 391.8, top: 503.2 },
+];
+const DIAT_AMPM_ACCIDENTE = [{ label: 'A.M.', x: 311.0, top: 551.2 }, { label: 'P.M.', x: 340.5, top: 551.2 }];
+const DIAT_AMPM_INGRESO = [{ label: 'A.M.', x: 421.7, top: 551.3 }, { label: 'P.M.', x: 451.2, top: 551.3 }];
+const DIAT_AMPM_SALIDA = [{ label: 'A.M.', x: 531.9, top: 551.5 }, { label: 'P.M.', x: 561.4, top: 551.5 }];
+const DIAT_DESARROLLABA_HABITUAL = [{ label: 'Sí', x: 540.9, top: 719.8 }, { label: 'No', x: 564.4, top: 719.8 }];
+const DIAT_CLASIFICACION_ACCIDENTE = [
+  { label: 'Grave', x: 52.1, top: 757.8 }, { label: 'Fatal', x: 87.6, top: 757.8 }, { label: 'Otro', x: 120.0, top: 757.8 },
+];
+const DIAT_TIPO_ACCIDENTE = [{ label: 'Trabajo', x: 163.2, top: 755.0 }, { label: 'Trayecto', x: 222.9, top: 755.0 }];
+const DIAT_TIPO_ACCIDENTE_TRAYECTO = [
+  { label: 'Domicilio - Trabajo', x: 479.3, top: 754.1 }, { label: 'Trabajo - Domicilio', x: 479.2, top: 767.0 },
+  { label: 'Entre dos Trabajos', x: 479.2, top: 779.6 },
+];
+const DIAT_MEDIO_PRUEBA = [
+  { label: 'Parte de Carabineros', x: 51.4, top: 780.5 }, { label: 'Declaración', x: 137.4, top: 780.5 },
+  { label: 'Testigos', x: 195.7, top: 780.5 }, { label: 'Otro', x: 245.5, top: 780.5 },
+];
+const DIAT_CLASIFICACION_DENUNCIANTE = [
+  { label: 'Empleador', x: 177.5, top: 881.8 }, { label: 'Trabajador/a', x: 248.4, top: 881.7 },
+  { label: 'Familiar', x: 319.8, top: 881.5 }, { label: 'Médico Tratante', x: 374.9, top: 881.6 },
+  { label: 'Comité Paritario', x: 177.5, top: 896.0 }, { label: 'Empresa Usuaria', x: 272.3, top: 896.0 },
+  { label: 'Otro', x: 374.9, top: 895.9 },
+];
+
+function renderChecklistsDiat() {
+  renderChecklistInv('chk-diat-propiedad', DIAT_PROPIEDAD_EMPRESA, 'radio', 'diatPropiedad');
+  renderChecklistInv('chk-diat-tipoempresa', DIAT_TIPO_EMPRESA, 'radio', 'diatTipoEmpresa');
+  renderChecklistInv('chk-diat-sexo', DIAT_SEXO, 'radio', 'diatSexo');
+  renderChecklistInv('chk-diat-pueblo', DIAT_PUEBLO_ORIGINARIO, 'radio', 'diatPueblo');
+  renderChecklistInv('chk-diat-antiguedadunidad', DIAT_ANTIGUEDAD_UNIDAD, 'radio', 'diatAntiguedadUnidad');
+  renderChecklistInv('chk-diat-tipocontrato', DIAT_TIPO_CONTRATO, 'radio', 'diatTipoContrato');
+  renderChecklistInv('chk-diat-tipoingreso', DIAT_TIPO_INGRESO, 'radio', 'diatTipoIngreso');
+  renderChecklistInv('chk-diat-categoria', DIAT_CATEGORIA_OCUPACIONAL, 'radio', 'diatCategoria');
+  renderChecklistInv('chk-diat-ampm-accidente', DIAT_AMPM_ACCIDENTE, 'radio', 'diatAmpmAccidente');
+  renderChecklistInv('chk-diat-ampm-ingreso', DIAT_AMPM_INGRESO, 'radio', 'diatAmpmIngreso');
+  renderChecklistInv('chk-diat-ampm-salida', DIAT_AMPM_SALIDA, 'radio', 'diatAmpmSalida');
+  renderChecklistInv('chk-diat-desarrollaba', DIAT_DESARROLLABA_HABITUAL, 'radio', 'diatDesarrollaba');
+  renderChecklistInv('chk-diat-clasificacion', DIAT_CLASIFICACION_ACCIDENTE, 'radio', 'diatClasificacion');
+  renderChecklistInv('chk-diat-tipoaccidente', DIAT_TIPO_ACCIDENTE, 'radio', 'diatTipoAccidente');
+  renderChecklistInv('chk-diat-trayecto', DIAT_TIPO_ACCIDENTE_TRAYECTO, 'radio', 'diatTrayecto');
+  renderChecklistInv('chk-diat-medioprueba', DIAT_MEDIO_PRUEBA, 'radio', 'diatMedioPrueba');
+  renderChecklistInv('chk-diat-denunciante', DIAT_CLASIFICACION_DENUNCIANTE, 'radio', 'diatDenunciante');
+}
+function seleccionadoRadioInv(name) {
+  const el = document.querySelector(`input[name="${name}"]:checked`);
+  return el ? parseInt(el.value, 10) : -1;
+}
+
+function abrirFormDiat() {
+  const inc = allIncidentes.find(x => x.fila === atencionMedicaFilaIncidente);
+  if (!inc) { toast('No se encontró el registro', 'error'); return; }
+  const trab = inc.trabajador && allTrabajadores.find(x => x.nombre === inc.trabajador);
+  const f = document.getElementById('form-diat');
+  f.reset();
+  f.empleadorNombre.value = 'Constructora LST SpA';
+  f.trabajadorNombre.value = inc.trabajador || '';
+  f.trabajadorRun.value = trab ? trab.rut : '';
+  f.profesionOficio.value = trab ? trab.cargo : '';
+  f.nacionalidad.value = 'Chilena';
+  f.fechaAccidente.value = inc.fecha || hoyISO();
+  f.lugarAccidente.value = inc.area || '';
+  f.direccionAccidente.value = inc.obra || '';
+  f.descripcionAccidente.value = inc.descripcion || '';
+  renderChecklistsDiat();
+  openPanel('panel-form-diat');
+  // Clasificación del accidente prellenada según el tipo ya registrado
+  // (renderChecklistsDiat ya insertó los radios de forma síncrona arriba)
+  const idxClasificacion = inc.tipo === 'Accidente Grave' ? 0 : inc.tipo === 'Accidente Fatal' ? 1 : 2;
+  const elClasificacion = document.querySelector(`input[name="diatClasificacion"][value="${idxClasificacion}"]`);
+  if (elClasificacion) elClasificacion.checked = true;
+}
+async function guardarDiat(ev) {
+  ev.preventDefault();
+  const f = ev.target;
+  try {
+    toast('Generando documento...');
+    const datos = {
+      empleadorNombre: f.empleadorNombre.value, empleadorRut: f.empleadorRut.value,
+      empleadorDireccion: f.empleadorDireccion.value, empleadorComuna: f.empleadorComuna.value,
+      empleadorTelefono: f.empleadorTelefono.value,
+      nTrabHombres: f.nTrabHombres.value, nTrabMujeres: f.nTrabMujeres.value,
+      propiedadEmpresa: seleccionadoRadioInv('diatPropiedad'), tipoEmpresa: seleccionadoRadioInv('diatTipoEmpresa'),
+      actividadEconomica: f.actividadEconomica.value, actividadEconomicaPrincipal: f.actividadEconomicaPrincipal.value,
+      trabajadorNombre: f.trabajadorNombre.value, trabajadorRun: f.trabajadorRun.value,
+      trabajadorDireccion: f.trabajadorDireccion.value, trabajadorComuna: f.trabajadorComuna.value,
+      trabajadorTelefono: f.trabajadorTelefono.value,
+      sexo: seleccionadoRadioInv('diatSexo'), edad: f.edad.value, fechaNacimiento: f.fechaNacimiento.value,
+      pueblo: seleccionadoRadioInv('diatPueblo'), nacionalidad: f.nacionalidad.value, profesionOficio: f.profesionOficio.value,
+      antiguedadValor: f.antiguedadValor.value, antiguedadUnidad: seleccionadoRadioInv('diatAntiguedadUnidad'),
+      tipoContrato: seleccionadoRadioInv('diatTipoContrato'), tipoIngreso: seleccionadoRadioInv('diatTipoIngreso'),
+      categoria: seleccionadoRadioInv('diatCategoria'),
+      fechaAccidente: f.fechaAccidente.value,
+      horaAccidente: f.horaAccidente.value, ampmAccidente: seleccionadoRadioInv('diatAmpmAccidente'),
+      horaIngreso: f.horaIngreso.value, ampmIngreso: seleccionadoRadioInv('diatAmpmIngreso'),
+      horaSalida: f.horaSalida.value, ampmSalida: seleccionadoRadioInv('diatAmpmSalida'),
+      direccionAccidente: f.direccionAccidente.value, comunaAccidente: f.comunaAccidente.value,
+      queHacia: f.queHacia.value, lugarAccidente: f.lugarAccidente.value, descripcionAccidente: f.descripcionAccidente.value,
+      trabajoHabitual: f.trabajoHabitual.value, desarrollaba: seleccionadoRadioInv('diatDesarrollaba'),
+      clasificacion: seleccionadoRadioInv('diatClasificacion'), tipoAccidente: seleccionadoRadioInv('diatTipoAccidente'),
+      trayecto: seleccionadoRadioInv('diatTrayecto'), medioPrueba: seleccionadoRadioInv('diatMedioPrueba'),
+      detalleMedioPrueba: f.detalleMedioPrueba.value,
+      denuncianteNombre: f.denuncianteNombre.value, denuncianteRun: f.denuncianteRun.value,
+      denuncianteTelefono: f.denuncianteTelefono.value, denunciante: seleccionadoRadioInv('diatDenunciante'),
+    };
+    const pdfLink = await generarYSubirPdfDiat(datos);
+
+    const n = allDiat.length + 1;
+    await appendSheet(`'${CONFIG.SHEET_DIAT}'!A:BA`, [[
+      n, hoyISO(), atencionMedicaFilaIncidente,
+      datos.empleadorNombre, datos.empleadorRut, datos.empleadorDireccion, datos.empleadorComuna, datos.empleadorTelefono,
+      datos.nTrabHombres, datos.nTrabMujeres,
+      datos.propiedadEmpresa>=0 ? DIAT_PROPIEDAD_EMPRESA[datos.propiedadEmpresa].label : '',
+      datos.tipoEmpresa>=0 ? DIAT_TIPO_EMPRESA[datos.tipoEmpresa].label : '',
+      datos.actividadEconomica, datos.actividadEconomicaPrincipal,
+      datos.trabajadorNombre, datos.trabajadorRun, datos.trabajadorDireccion, datos.trabajadorComuna, datos.trabajadorTelefono,
+      datos.sexo>=0 ? DIAT_SEXO[datos.sexo].label : '', datos.edad, datos.fechaNacimiento,
+      datos.pueblo>=0 ? DIAT_PUEBLO_ORIGINARIO[datos.pueblo].label : '', datos.nacionalidad, datos.profesionOficio,
+      datos.antiguedadValor, datos.antiguedadUnidad>=0 ? DIAT_ANTIGUEDAD_UNIDAD[datos.antiguedadUnidad].label : '',
+      datos.tipoContrato>=0 ? DIAT_TIPO_CONTRATO[datos.tipoContrato].label : '',
+      datos.tipoIngreso>=0 ? DIAT_TIPO_INGRESO[datos.tipoIngreso].label : '',
+      datos.categoria>=0 ? DIAT_CATEGORIA_OCUPACIONAL[datos.categoria].label : '',
+      datos.fechaAccidente,
+      `${datos.horaAccidente||''} ${datos.ampmAccidente>=0?DIAT_AMPM_ACCIDENTE[datos.ampmAccidente].label:''}`,
+      `${datos.horaIngreso||''} ${datos.ampmIngreso>=0?DIAT_AMPM_INGRESO[datos.ampmIngreso].label:''}`,
+      `${datos.horaSalida||''} ${datos.ampmSalida>=0?DIAT_AMPM_SALIDA[datos.ampmSalida].label:''}`,
+      datos.direccionAccidente, datos.comunaAccidente, datos.queHacia, datos.lugarAccidente, datos.descripcionAccidente,
+      datos.trabajoHabitual, datos.desarrollaba>=0 ? DIAT_DESARROLLABA_HABITUAL[datos.desarrollaba].label : '',
+      datos.clasificacion>=0 ? DIAT_CLASIFICACION_ACCIDENTE[datos.clasificacion].label : '',
+      datos.tipoAccidente>=0 ? DIAT_TIPO_ACCIDENTE[datos.tipoAccidente].label : '',
+      datos.trayecto>=0 ? DIAT_TIPO_ACCIDENTE_TRAYECTO[datos.trayecto].label : '',
+      datos.medioPrueba>=0 ? DIAT_MEDIO_PRUEBA[datos.medioPrueba].label : '', datos.detalleMedioPrueba,
+      datos.denuncianteNombre, datos.denuncianteRun, datos.denuncianteTelefono,
+      datos.denunciante>=0 ? DIAT_CLASIFICACION_DENUNCIANTE[datos.denunciante].label : '',
+      pdfLink, userEmail || '', new Date().toLocaleString('es-CL'),
+    ]]);
+
+    await guardarResultadoAtencionMedica('Con atención médica (DIAT)', pdfLink);
+    toast('DIAT registrada y documento generado ✓', 'ok');
+    closePanel('panel-form-diat');
+    cargarTodo(true);
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+// Actualiza la fila del Incidente: marca la atención médica como resuelta y
+// habilita recién ahí la Investigación (columnas Q:V de INCIDENTES).
+async function guardarResultadoAtencionMedica(estado, pdfLink) {
+  await ensureToken();
+  const fila = atencionMedicaFilaIncidente;
+  const url = `${SHEETS_BASE}/${CONFIG.SHEET_ID}/values/${encodeURIComponent(`'${CONFIG.SHEET_INCIDENTES}'!Q${fila}:V${fila}`)}?valueInputOption=USER_ENTERED`;
+  await fetch(url, { method:'PUT', headers:{ 'Content-Type':'application/json', ...authHeader() },
+    body: JSON.stringify({ values: [['Pendiente', '', '', '', estado, pdfLink]] }) });
+  atencionMedicaFilaIncidente = null;
+}
+
+async function generarYSubirPdfDiat(datos) {
+  const { PDFDocument, rgb, StandardFonts } = PDFLib;
+  const templateBytes = await fetch('plantillas/diat.pdf').then(r => r.arrayBuffer());
+  const pdfDoc = await PDFDocument.load(templateBytes);
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const [p1] = pdfDoc.getPages();
+  const H = 935.434;
+
+  function text(str, x, top, size, bold) {
+    p1.drawText(str || '', { x, y: H - top, size: size || 7, font: bold ? fontBold : font, color: rgb(0,0,0) });
+  }
+  function checkX(x, cellCenterTop, size) {
+    const s = size || 7.5;
+    const capHeight = s * 0.72;
+    const baselineTop = cellCenterTop + capHeight / 2;
+    p1.drawText('X', { x: x - s * 0.33, y: H - baselineTop, size: s, font: fontBold, color: rgb(0,0,0) });
+  }
+  function wrapLines(str, maxWidth, size) {
+    const words = (str || '').split(/\s+/).filter(Boolean);
+    const lines = []; let current = '';
+    for (const w of words) {
+      const test = current ? current + ' ' + w : w;
+      if (font.widthOfTextAtSize(test, size) > maxWidth && current) { lines.push(current); current = w; }
+      else current = test;
+    }
+    if (current) lines.push(current);
+    return lines;
+  }
+  function textBlock(str, x, tops, maxWidth, size) {
+    wrapLines(str, maxWidth, size || 7).slice(0, tops.length).forEach((l, i) => text(l, x, tops[i], size));
+  }
+  function marcar(grupo, idx, extraTexto) {
+    if (idx == null || idx < 0) return;
+    checkX(grupo[idx].x, grupo[idx].top);
+  }
+
+  // A. Identificación del Empleador
+  text(datos.empleadorNombre, 90, 165, 7.5);
+  text(datos.empleadorRut, 515, 165, 7.5);
+  text(datos.empleadorDireccion, 90, 200, 7);
+  text(datos.empleadorComuna, 417, 200, 7);
+  text(datos.empleadorTelefono, 510, 200, 7);
+  text(String(datos.nTrabHombres||''), 411, 220, 7);
+  text(String(datos.nTrabMujeres||''), 469, 220, 7);
+  marcar(DIAT_PROPIEDAD_EMPRESA, datos.propiedadEmpresa);
+  text(datos.actividadEconomica, 45, 235, 7);
+  marcar(DIAT_TIPO_EMPRESA, datos.tipoEmpresa);
+  textBlock(datos.actividadEconomicaPrincipal, 386, [268, 277], 200, 7);
+
+  // B. Identificación del Trabajador/a
+  text(datos.trabajadorNombre, 90, 345, 7.5);
+  text(datos.trabajadorRun, 515, 345, 7.5);
+  text(datos.trabajadorDireccion, 90, 380, 7);
+  text(datos.trabajadorComuna, 422, 380, 7);
+  text(datos.trabajadorTelefono, 511, 380, 7);
+  marcar(DIAT_SEXO, datos.sexo);
+  text(datos.edad, 163, 413, 7.5);
+  text(datos.fechaNacimiento ? ddmmyyyy(datos.fechaNacimiento) : '', 210, 413, 7);
+  marcar(DIAT_PUEBLO_ORIGINARIO, datos.pueblo);
+  text(datos.nacionalidad, 70, 446, 7);
+  text(datos.profesionOficio, 190, 446, 7);
+  text(datos.antiguedadValor, 44, 474, 7);
+  marcar(DIAT_ANTIGUEDAD_UNIDAD, datos.antiguedadUnidad);
+  marcar(DIAT_TIPO_CONTRATO, datos.tipoContrato);
+  marcar(DIAT_TIPO_INGRESO, datos.tipoIngreso);
+  marcar(DIAT_CATEGORIA_OCUPACIONAL, datos.categoria);
+
+  // C. Datos del Accidente
+  text(datos.fechaAccidente ? ddmmyyyy(datos.fechaAccidente) : '', 178, 545, 7.5);
+  text(datos.horaAccidente, 282, 545, 7);
+  marcar(DIAT_AMPM_ACCIDENTE, datos.ampmAccidente);
+  text(datos.horaIngreso, 393, 545, 7);
+  marcar(DIAT_AMPM_INGRESO, datos.ampmIngreso);
+  text(datos.horaSalida, 502, 545, 7);
+  marcar(DIAT_AMPM_SALIDA, datos.ampmSalida);
+  text(datos.direccionAccidente, 45, 594, 7);
+  text(datos.comunaAccidente, 508, 594, 7);
+  textBlock(datos.queHacia, 45, [630, 638.5], 240, 6.5);
+  textBlock(datos.lugarAccidente, 322, [630, 638.5], 250, 6.5);
+  textBlock(datos.descripcionAccidente, 45, [670, 678.6, 687.2, 695.8, 704.4], 530, 7);
+  text(datos.trabajoHabitual, 174, 719, 7);
+  marcar(DIAT_DESARROLLABA_HABITUAL, datos.desarrollaba);
+  marcar(DIAT_CLASIFICACION_ACCIDENTE, datos.clasificacion);
+  marcar(DIAT_TIPO_ACCIDENTE, datos.tipoAccidente);
+  marcar(DIAT_TIPO_ACCIDENTE_TRAYECTO, datos.trayecto);
+  marcar(DIAT_MEDIO_PRUEBA, datos.medioPrueba);
+  text(datos.detalleMedioPrueba, 318, 791, 6.5);
+
+  // D. Identificación del Denunciante
+  text(datos.denuncianteNombre, 107, 848, 7.5);
+  text(datos.denuncianteRun, 389, 848, 7.5);
+  text(datos.denuncianteTelefono, 61, 881, 7);
+  marcar(DIAT_CLASIFICACION_DENUNCIANTE, datos.denunciante);
+
+  const bytes = await pdfDoc.save();
+  const blob = new Blob([bytes], { type: 'application/pdf' });
+  const nombreArchivo = 'diat_' + (datos.trabajadorNombre || 'accidente').replace(/\s+/g, '_');
+  const up = datos.trabajadorNombre
+    ? await uploadFileTrabajador(blob, datos.trabajadorNombre, nombreArchivo, 'pdf')
+    : await uploadFile(blob, 'DIAT', nombreArchivo, 'pdf');
+  return up.link;
+}
+
+// ── Declaración simple de rechazo de atención médica ──────────────────────
+// A pedido del cliente: sin plantilla, sin formato — solo lo que el
+// trabajador escriba, tal cual, generado como PDF en blanco (no se dibuja
+// sobre ningún documento base). Sin firma: se firma a mano, en persona,
+// después — no tiene sentido capturar una firma digital acá.
+function abrirFormDeclaracion() {
+  const inc = allIncidentes.find(x => x.fila === atencionMedicaFilaIncidente);
+  if (!inc) { toast('No se encontró el registro', 'error'); return; }
+  const f = document.getElementById('form-declaracion');
+  f.reset();
+  f.trabajadorNombre.value = inc.trabajador || '';
+  f.fecha.value = hoyISO();
+  openPanel('panel-form-declaracion');
+}
+async function guardarDeclaracion(ev) {
+  ev.preventDefault();
+  const f = ev.target;
+  try {
+    toast('Generando documento...');
+    const datos = { trabajadorNombre: f.trabajadorNombre.value, fecha: f.fecha.value, texto: f.texto.value };
+    const pdfLink = await generarPdfDeclaracion(datos);
+    await guardarResultadoAtencionMedica('Sin atención médica (Declaración)', pdfLink);
+    toast('Declaración registrada y documento generado ✓', 'ok');
+    closePanel('panel-form-declaracion');
+    cargarTodo(true);
+  } catch (e) { toast(e.message, 'error'); }
+}
+async function generarPdfDeclaracion(datos) {
+  const { PDFDocument, rgb, StandardFonts } = PDFLib;
+  const pdfDoc = await PDFDocument.create();
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const page = pdfDoc.addPage([612, 792]);
+  const H = 792;
+  let y = H - 72;
+
+  page.drawText('DECLARACIÓN VOLUNTARIA DE RECHAZO DE ATENCIÓN MÉDICA', { x: 56, y, size: 13, font: fontBold, color: rgb(0,0,0) });
+  y -= 26;
+  page.drawText(`Trabajador: ${datos.trabajadorNombre || ''}`, { x: 56, y, size: 10, font, color: rgb(0,0,0) });
+  y -= 16;
+  page.drawText(`Fecha: ${ddmmyyyy(datos.fecha)}`, { x: 56, y, size: 10, font, color: rgb(0,0,0) });
+  y -= 34;
+
+  const maxWidth = 500, size = 11, lineHeight = 16;
+  const words = (datos.texto || '').split(/\s+/).filter(Boolean);
+  let current = '';
+  const lines = [];
+  for (const w of words) {
+    const test = current ? current + ' ' + w : w;
+    if (font.widthOfTextAtSize(test, size) > maxWidth && current) { lines.push(current); current = w; }
+    else current = test;
+  }
+  if (current) lines.push(current);
+  for (const line of lines) {
+    if (y < 80) break;
+    page.drawText(line, { x: 56, y, size, font, color: rgb(0,0,0) });
+    y -= lineHeight;
+  }
+
+  const bytes = await pdfDoc.save();
+  const blob = new Blob([bytes], { type: 'application/pdf' });
+  const nombreArchivo = 'declaracion_rechazo_' + (datos.trabajadorNombre || 'trabajador').replace(/\s+/g, '_');
+  const up = datos.trabajadorNombre
+    ? await uploadFileTrabajador(blob, datos.trabajadorNombre, nombreArchivo, 'pdf')
+    : await uploadFile(blob, 'Declaraciones', nombreArchivo, 'pdf');
+  return up.link;
 }
 
 // ============================================================
