@@ -38,7 +38,21 @@ function inicializarPlanilla() {
   crearHoja(ss, 'INCIDENTES', [
     'N°', 'Fecha', 'Tipo', 'Trabajador Involucrado', 'Área', 'Descripción', 'Causas',
     'Gravedad', 'Foto', 'Acciones Correctivas', 'Estado', 'Fecha Registro', 'Reportado Por',
-    'Respaldo Cierre', 'Obra', 'Días Perdidos'
+    'Respaldo Cierre', 'Obra', 'Días Perdidos',
+    'Investigación Estado', 'Investigación Responsable', 'Investigación Fecha', 'Investigación PDF'
+  ]);
+
+  crearHoja(ss, 'INVESTIGACIONES', [
+    'N°', 'Fecha', 'Incidente (fila)', 'Empresa Mandante', 'Empresa Contratista', 'Área',
+    'Asesor Prevención', 'Jefatura Departamento', 'Fecha Siniestro', 'Hora Siniestro', 'Lugar',
+    'Jefatura Directa', 'Supervisor Directo', 'Tipo Siniestro', 'Empresa Afectada', 'Daños',
+    'Daños Otro', 'Potencial', 'Trabajador Nombre', 'Trabajador Rut', 'Trabajador Cargo',
+    'Trabajador Antigüedad Cargo', 'Trabajador Antigüedad Empresa', 'Trabajador Horas Turno',
+    'Trabajador Estado', 'Trabajador Observación', 'Testigo Nombre', 'Testigo Rut', 'Testigo Cargo',
+    'Testigo Tiempo Cargo', 'Testigo Actividad', 'Testigo Observación', 'Descripción del Evento',
+    'Localización', 'Tipo de Incidente', 'Tipo de Incidente Otro', 'Causas Inmediatas',
+    'Causas Inmediatas Otro', 'Causas Básicas', 'Medidas de Control', 'Observaciones',
+    'Investigador Nombre y Rut', 'Investigador Cargo', 'PDF', 'Registrado Por', 'Fecha Registro'
   ]);
 
   crearHoja(ss, 'PROCEDIMIENTOS', [

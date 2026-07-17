@@ -451,19 +451,21 @@ let allIncidentes = [];
 let allProcedimientos = [];
 let allEpp = [];
 let allCharlas = [];
+let allInvestigaciones = [];
 
 async function cargarTodo(silencioso) {
   if (!silencioso) { splash(20, 'Conectando con Google Sheets...'); }
   else { toast('Actualizando datos...'); }
   try {
     if (!silencioso) splash(45, 'Cargando información...');
-    const [trab, insp, inc, proc, epp, charlas] = await Promise.all([
+    const [trab, insp, inc, proc, epp, charlas, invest] = await Promise.all([
       fetchSheet(`'${CONFIG.SHEET_TRABAJADORES}'!A2:O2000`),
       fetchSheet(`'${CONFIG.SHEET_INSPECCIONES}'!A2:M2000`),
-      fetchSheet(`'${CONFIG.SHEET_INCIDENTES}'!A2:P2000`),
+      fetchSheet(`'${CONFIG.SHEET_INCIDENTES}'!A2:T2000`),
       fetchSheet(`'${CONFIG.SHEET_PROCEDIMIENTOS}'!A2:I2000`),
       fetchSheet(`'${CONFIG.SHEET_EPP}'!A2:I2000`),
       fetchSheet(`'${CONFIG.SHEET_CHARLAS}'!A2:N2000`),
+      fetchSheet(`'${CONFIG.SHEET_INVESTIGACIONES}'!A2:AT2000`),
     ]);
     if (!silencioso) splash(85, 'Preparando la app...');
     allTrabajadores = trab.map((r,i) => rowToTrabajador(r,i));
@@ -472,6 +474,7 @@ async function cargarTodo(silencioso) {
     allProcedimientos = proc.map((r,i) => rowToProcedimiento(r,i));
     allEpp = epp.map((r,i) => rowToEpp(r,i));
     allCharlas = charlas.map((r,i) => rowToCharla(r,i));
+    allInvestigaciones = invest.map((r,i) => ({ fila: i+2, n: r[0]||'' }));
     renderDashboard();
     renderTrabajadores(); renderInspecciones(); renderIncidentes(); renderProcedimientos(); renderEpp(); renderCharlas();
     if (!silencioso) splash(100, '¡Listo!');
@@ -499,7 +502,12 @@ function rowToIncidente(r, i) {
   return { fila: i+2, n: r[0]||'', fecha: r[1]||'', tipo: r[2]||'', trabajador: r[3]||'', area: r[4]||'',
     descripcion: r[5]||'', causas: r[6]||'', gravedad: r[7]||'', foto: r[8]||'', accion: r[9]||'',
     estado: r[10]||'Abierto', fechaRegistro: r[11]||'', reportadoPor: r[12]||'', respaldo: r[13]||'',
-    obra: r[14]||'', diasPerdidos: parseInt(r[15],10) || 0 };
+    obra: r[14]||'', diasPerdidos: parseInt(r[15],10) || 0,
+    investigacionEstado: r[16]||'', investigacionResponsable: r[17]||'', investigacionFecha: r[18]||'', investigacionPdf: r[19]||'' };
+}
+// Se abre investigación formal solo para accidentes reales (no Cuasiaccidente/Incidente)
+function requiereInvestigacion(tipoIncidente) {
+  return tipoIncidente === 'Accidente Leve' || tipoIncidente === 'Accidente Grave' || tipoIncidente === 'Accidente Fatal';
 }
 function rowToProcedimiento(r, i) {
   return { fila: i+2, n: r[0]||'', codigo: r[1]||'', nombre: r[2]||'', area: r[3]||'', version: r[4]||'',
@@ -1175,7 +1183,11 @@ function renderIncidentes() {
         <div class="card-title">${esc(i.tipo)}${i.trabajador ? ' — ' + esc(i.trabajador) : ''}</div>
         <div class="card-sub">${esc(i.fecha)} · ${esc(i.area)}${i.obra ? ' · ' + esc(i.obra) : ''}</div>
         <div class="badge-row"><span class="badge red">${esc(i.gravedad)}</span>
-        <span class="badge ${i.estado==='Cerrado'?'green':'gray'}">${esc(i.estado)}</span></div>
+        <span class="badge ${i.estado==='Cerrado'?'green':'gray'}">${esc(i.estado)}</span>
+        ${i.investigacionEstado==='Pendiente' ? '<span class="badge amber">Investigación pendiente</span>' : ''}
+        ${i.investigacionEstado==='Completada' ? '<span class="badge green">Investigación completada</span>' : ''}</div>
+        ${i.investigacionEstado==='Pendiente' ? `<button class="action-btn" onclick="event.stopPropagation(); abrirInvestigacion(${i.fila})">Realizar investigación</button>` : ''}
+        ${i.investigacionEstado==='Completada' && i.investigacionPdf ? `<a href="${esc(i.investigacionPdf)}" target="_blank" class="badge blue" onclick="event.stopPropagation();">${ic('documento',12)} Ver informe</a>` : ''}
       </div>
       <div class="card-arrow">›</div>
     </div>`).join(''));
@@ -1210,6 +1222,15 @@ function abrirDetalleIncidente(fila) {
     ${i.foto ? `<div class="field-row"><span>Foto</span><a href="${esc(i.foto)}" target="_blank" class="badge blue">${ic('camara',12)} Ver foto</a></div>` : ''}
     ${i.respaldo ? `<div class="field-row"><span>Respaldo de cierre</span><a href="${esc(i.respaldo)}" target="_blank" class="badge blue">${ic('documento',12)} Ver respaldo</a></div>` : ''}
 
+    ${i.investigacionEstado ? `
+    <div class="sec-label" style="margin-top:20px;">Investigación de accidente</div>
+    <div class="field-row"><span>Estado</span><span class="badge ${i.investigacionEstado==='Completada'?'green':'amber'}">${esc(i.investigacionEstado)}</span></div>
+    ${i.investigacionResponsable ? `<div class="field-row"><span>Responsable</span><b>${esc(i.investigacionResponsable)}</b></div>` : ''}
+    ${i.investigacionFecha ? `<div class="field-row"><span>Fecha</span><b>${esc(i.investigacionFecha)}</b></div>` : ''}
+    ${i.investigacionPdf ? `<div class="field-row"><span>Informe</span><a href="${esc(i.investigacionPdf)}" target="_blank" class="badge blue">${ic('documento',12)} Ver informe</a></div>` : ''}
+    ` : ''}
+
+    ${i.investigacionEstado === 'Pendiente' ? `<button class="action-btn" onclick="closePanel('panel-detalle-incidente'); abrirInvestigacion(${i.fila})">Realizar investigación</button>` : ''}
     ${i.estado !== 'Cerrado' ? `<button class="action-btn" onclick="closePanel('panel-detalle-incidente'); abrirCerrarIncidente(${i.fila})">Cerrar caso</button>` : ''}
   `;
   openPanel('panel-detalle-incidente');
@@ -1241,10 +1262,12 @@ async function guardarIncidente(ev) {
     const n = allIncidentes.length + 1;
     const obra = valorObra(f.obra, 'input-incidente-obra-otra');
     const diasPerdidos = parseInt(f.diasPerdidos.value, 10) || 0;
-    await appendSheet(`'${CONFIG.SHEET_INCIDENTES}'!A:P`, [[
+    const investigacionEstado = requiereInvestigacion(f.tipo.value) ? 'Pendiente' : '';
+    await appendSheet(`'${CONFIG.SHEET_INCIDENTES}'!A:T`, [[
       n, f.fecha.value, f.tipo.value, trabNombre, f.area.value, f.descripcion.value,
       f.causas.value, f.gravedad.value, fotoLink, f.accion.value || '', 'Abierto',
-      new Date().toLocaleString('es-CL'), userEmail || '', '', obra, diasPerdidos
+      new Date().toLocaleString('es-CL'), userEmail || '', '', obra, diasPerdidos,
+      investigacionEstado, '', '', ''
     ]]);
 
     // Sugerencia automática de plan de acción según lo descrito en el incidente
@@ -1342,6 +1365,351 @@ async function guardarCierreIncidente(ev) {
     closePanel('panel-cerrar-incidente');
     cargarTodo(true);
   } catch (e) { toast(e.message, 'error'); }
+}
+
+// ============================================================
+// MÓDULO: INVESTIGACIÓN DE ACCIDENTE
+// (se activa solo para Accidente Leve/Grave/Fatal; genera el
+// "Informe de Investigación de Accidente y Enfermedad Profesional"
+// como PDF, con la misma técnica de overlay de coordenadas que Charlas)
+// ============================================================
+
+// Centros X de checkbox reutilizados en todo el documento (medidos con pdfplumber)
+const INV_CX = { c1: 116.3, c2: 276.9, c3: 369.5, c4: 465.7, cGraveFatal: 434.8 };
+
+const INV_TIPO_SINIESTRO = [
+  { label: 'Accidente de trabajo', x: INV_CX.c2, top: 231.3, page: 'p1' },
+  { label: 'Accidente de trayecto', x: INV_CX.c3, top: 231.3, page: 'p1' },
+  { label: 'Accidente común', x: INV_CX.c4, top: 231.3, page: 'p1' },
+  { label: 'Enfermedad profesional', x: INV_CX.c1, top: 231.3, page: 'p1' },
+];
+const INV_EMPRESA = [
+  { label: 'Empresa Mandante', x: INV_CX.c1, top: 253.1, page: 'p1' },
+  { label: 'Empresa Contratista', x: INV_CX.c2, top: 253.1, page: 'p1' },
+  { label: 'Subcontrato', x: INV_CX.c3, top: 253.1, page: 'p1' },
+];
+const INV_DANOS = [
+  { label: 'A las personas', x: INV_CX.c1, top: 278.1, page: 'p1' },
+  { label: 'A los materiales', x: INV_CX.c2, top: 278.1, page: 'p1' },
+  { label: 'Al medio ambiente', x: INV_CX.c3, top: 278.1, page: 'p1' },
+  { label: 'Externos/Clientes', x: INV_CX.c4, top: 278.1, page: 'p1' },
+  { label: 'Otros (especifique)', x: 133, top: 290.7, page: 'p1' },
+];
+const INV_POTENCIAL = [
+  { label: 'Bajo', x: INV_CX.c1, top: 307.3, page: 'p1' },
+  { label: 'Menos Grave', x: INV_CX.c2, top: 307.3, page: 'p1' },
+  { label: 'Grave/Fatal', x: INV_CX.cGraveFatal, top: 307.3, page: 'p1' },
+];
+const INV_TIPO_INCIDENTE = [
+  { label: 'Golpe con (objetos manejados por el mismo accidentado)', x: INV_CX.c2, top: 488.5, page: 'p1' },
+  { label: 'Contacto con (la persona hace contacto con algún objeto o sustancia que le inflige lesión no producida por la fuerza)', x: INV_CX.c4, top: 488.5, page: 'p1' },
+  { label: 'Golpe por (objetos o materiales ajenos al accidentado)', x: INV_CX.c2, top: 510.0, page: 'p1' },
+  { label: 'Contacto eléctrico', x: INV_CX.c4, top: 510.0, page: 'p1' },
+  { label: 'Golpe contra (la persona se golpea con objeto de su medio ambiente)', x: INV_CX.c2, top: 523.9, page: 'p1' },
+  { label: 'Arco eléctrico', x: INV_CX.c4, top: 523.9, page: 'p1' },
+  { label: 'Caída del mismo nivel', x: INV_CX.c2, top: 540.1, page: 'p1' },
+  { label: 'Tránsito (choque o colisión en que la persona tuvo una activa participación)', x: INV_CX.c4, top: 540.1, page: 'p1' },
+  { label: 'Caída de distinto nivel', x: INV_CX.c2, top: 561.2, page: 'p1' },
+  { label: 'Tránsito por terceros, choque en que la persona no tuvo participación activa', x: INV_CX.c4, top: 561.2, page: 'p1' },
+  { label: 'Atrapamiento (la persona es oprimida, aplastada, apretada o comprimida entre objetos)', x: INV_CX.c2, top: 581.95, page: 'p1' },
+  { label: 'Mordedura de perros', x: INV_CX.c4, top: 581.95, page: 'p1' },
+  { label: 'Aprisionamiento (la persona queda encerrada en algún recinto, ej. espacio confinado)', x: INV_CX.c2, top: 597.8, page: 'p1' },
+  { label: 'Asalto', x: INV_CX.c4, top: 597.8, page: 'p1' },
+  { label: 'Sobreesfuerzo (esfuerzo mal realizado o por sobre la capacidad)', x: INV_CX.c2, top: 616.55, page: 'p1' },
+  { label: 'Otros', x: INV_CX.c4, top: 616.55, page: 'p1' },
+];
+const INV_CAUSAS_INMEDIATAS = [
+  { label: 'Asumir posiciones o posturas inseguras', x: INV_CX.c2, top: 648.45, page: 'p1' },
+  { label: 'Almacenamiento deficiente', x: INV_CX.c4, top: 648.45, page: 'p1' },
+  { label: 'Dejar inoperantes los dispositivos de seguridad', x: INV_CX.c2, top: 657.05, page: 'p1' },
+  { label: 'Congestión y espacio libre insuficiente', x: INV_CX.c4, top: 657.05, page: 'p1' },
+  { label: 'Desviarse de procedimientos de trabajo recomendados', x: INV_CX.c2, top: 665.65, page: 'p1' },
+  { label: 'Defectos de maquinarias, materiales o herramientas', x: INV_CX.c4, top: 665.65, page: 'p1' },
+  { label: 'Distraerse en juegos u otros', x: INV_CX.c2, top: 674.3, page: 'p1' },
+  { label: 'Equipos sin protección', x: INV_CX.c4, top: 674.3, page: 'p1' },
+  { label: 'No advertir o señalar riesgos según se requiera', x: INV_CX.c2, top: 682.9, page: 'p1' },
+  { label: 'Falta de adecuados sistemas de seguridad', x: INV_CX.c4, top: 682.9, page: 'p1' },
+  { label: 'Operar a velocidad insegura', x: INV_CX.c2, top: 691.5, page: 'p1' },
+  { label: 'Falta de orden y aseo', x: INV_CX.c4, top: 691.5, page: 'p1' },
+  { label: 'Operar máquinas / equipos sin autorización', x: INV_CX.c2, top: 700.1, page: 'p1' },
+  { label: 'Objetos que sobresalen', x: INV_CX.c4, top: 700.1, page: 'p1' },
+  { label: 'Reparar, conducir equipos sin considerar los riesgos', x: INV_CX.c2, top: 708.7, page: 'p1' },
+  { label: 'Propensión a arder o explotar', x: INV_CX.c4, top: 708.7, page: 'p1' },
+  { label: 'Usar en forma insegura materiales, equipos, herramientas', x: INV_CX.c2, top: 717.3, page: 'p1' },
+  { label: 'No se detectó condición subestándar', x: INV_CX.c4, top: 717.3, page: 'p1' },
+  { label: 'Usar herramientas instrumental y/o equipos inseguros', x: INV_CX.c2, top: 725.9, page: 'p1' },
+  { label: 'Otras condiciones subestándar (especifique)', x: INV_CX.c4, top: 725.9, page: 'p1' },
+  { label: 'No se detectó acción subestándar', x: INV_CX.c2, top: 734.7, page: 'p1' },
+];
+const INV_CAUSAS_BASICAS = [
+  { label: 'Capacidad física disminuida', x: INV_CX.c2, top: 124.3, page: 'p2' },
+  { label: 'Supervisión y liderazgo deficiente', x: INV_CX.c4, top: 124.3, page: 'p2' },
+  { label: 'Capacidad mental / sicológica inadecuada', x: INV_CX.c2, top: 132.9, page: 'p2' },
+  { label: 'Ingeniería inadecuada', x: INV_CX.c4, top: 132.9, page: 'p2' },
+  { label: 'Tensión mental o fisiológica', x: INV_CX.c2, top: 141.5, page: 'p2' },
+  { label: 'Deficiencia en las adquisiciones', x: INV_CX.c4, top: 141.5, page: 'p2' },
+  { label: 'Falta de conocimiento', x: INV_CX.c2, top: 150.1, page: 'p2' },
+  { label: 'Mantención deficiente', x: INV_CX.c4, top: 150.1, page: 'p2' },
+  { label: 'Falta de habilidad', x: INV_CX.c2, top: 158.7, page: 'p2' },
+  { label: 'Herramientas y equipos inadecuados', x: INV_CX.c4, top: 158.7, page: 'p2' },
+  { label: 'Motivación inadecuada', x: INV_CX.c2, top: 167.3, page: 'p2' },
+  { label: 'Estándares deficientes de trabajo', x: INV_CX.c4, top: 167.3, page: 'p2' },
+  { label: 'Uso y desgaste', x: INV_CX.c2, top: 175.9, page: 'p2' },
+  { label: 'Condiciones ambientales adversas', x: INV_CX.c4, top: 175.9, page: 'p2' },
+];
+
+function renderChecklistInv(contId, opciones, tipo, name) {
+  document.getElementById(contId).innerHTML = opciones.map((o, i) => `
+    <div class="chk-row">
+      <label class="chk-row-label">
+        <span class="chk-row-checkbox-wrap">
+          <input type="${tipo}" name="${name}" class="chk-row-input" value="${i}">
+          <span class="chk-row-checkbox${tipo === 'radio' ? ' chk-row-radio' : ''}"></span>
+        </span>
+        <span>${esc(o.label)}</span>
+      </label>
+    </div>`).join('');
+}
+function renderChecklistsInvestigacion() {
+  renderChecklistInv('chk-inv-tiposiniestro', INV_TIPO_SINIESTRO, 'radio', 'tiposiniestro');
+  renderChecklistInv('chk-inv-empresa', INV_EMPRESA, 'radio', 'empresainv');
+  renderChecklistInv('chk-inv-danos', INV_DANOS, 'checkbox', 'danos');
+  renderChecklistInv('chk-inv-potencial', INV_POTENCIAL, 'radio', 'potencial');
+  renderChecklistInv('chk-inv-tipoincidente', INV_TIPO_INCIDENTE, 'checkbox', 'tipoincidente');
+  renderChecklistInv('chk-inv-causasinmediatas', INV_CAUSAS_INMEDIATAS, 'checkbox', 'causasinmediatas');
+  renderChecklistInv('chk-inv-causasbasicas', INV_CAUSAS_BASICAS, 'checkbox', 'causasbasicas');
+}
+function seleccionadosInv(name) {
+  return [...document.querySelectorAll(`input[name="${name}"]:checked`)].map(el => parseInt(el.value, 10));
+}
+
+let investigacionEnProceso = null;
+function abrirInvestigacion(filaIncidente) {
+  const inc = allIncidentes.find(x => x.fila === filaIncidente);
+  if (!inc) { toast('No se encontró el registro', 'error'); return; }
+  investigacionEnProceso = { filaIncidente };
+  const f = document.getElementById('form-investigacion');
+  f.reset();
+  f.empresaMandante.value = 'Constructora LST SpA';
+  f.area.value = inc.area || '';
+  f.fechaSiniestro.value = inc.fecha || hoyISO();
+  f.lugar.value = inc.area || '';
+  f.trabajadorNombre.value = inc.trabajador || '';
+  f.descripcionEvento.value = inc.descripcion || '';
+  renderChecklistsInvestigacion();
+  openPanel('panel-form-investigacion');
+  setTimeout(() => initFirmaPad('firma-canvas-investigador'), 80);
+}
+async function guardarInvestigacion(ev) {
+  ev.preventDefault();
+  const f = ev.target;
+  if (firmaEstaVacia('firma-canvas-investigador')) { toast('Falta la firma de quien investiga', 'error'); return; }
+  try {
+    toast('Generando informe...');
+    const datos = {
+      empresaMandante: f.empresaMandante.value, empresaContratista: f.empresaContratista.value,
+      area: f.area.value, asesorPrevencion: f.asesorPrevencion.value, jefaturaDepto: f.jefaturaDepto.value,
+      fechaSiniestro: f.fechaSiniestro.value, horaSiniestro: f.horaSiniestro.value,
+      lugar: f.lugar.value, jefaturaDirecta: f.jefaturaDirecta.value, supervisorDirecto: f.supervisorDirecto.value,
+      tipoSiniestro: seleccionadosInv('tiposiniestro'), empresa: seleccionadosInv('empresainv'),
+      danos: seleccionadosInv('danos'), danosOtroTexto: f.danosOtroTexto.value,
+      potencial: seleccionadosInv('potencial'),
+      trabajadorNombre: f.trabajadorNombre.value, trabajadorRut: f.trabajadorRut.value,
+      trabajadorCargo: f.trabajadorCargo.value, trabajadorAntiguedadCargo: f.trabajadorAntiguedadCargo.value,
+      trabajadorAntiguedadEmpresa: f.trabajadorAntiguedadEmpresa.value, trabajadorHorasTurno: f.trabajadorHorasTurno.value,
+      trabajadorEstado: f.trabajadorEstado.value, trabajadorObservacion: f.trabajadorObservacion.value,
+      testigoNombre: f.testigoNombre.value, testigoRut: f.testigoRut.value,
+      testigoCargo: f.testigoCargo.value, testigoTiempoCargo: f.testigoTiempoCargo.value,
+      testigoActividad: f.testigoActividad.value, testigoObservacion: f.testigoObservacion.value,
+      descripcionEvento: f.descripcionEvento.value, localizacion: f.localizacion.value,
+      tipoIncidente: seleccionadosInv('tipoincidente'), tipoIncidenteOtroTexto: f.tipoIncidenteOtroTexto.value,
+      causasInmediatas: seleccionadosInv('causasinmediatas'), causasInmediatasOtroTexto: f.causasInmediatasOtroTexto.value,
+      causasBasicas: seleccionadosInv('causasbasicas'),
+      medida1: f.medida1.value, responsable1: f.responsable1.value, fechaImpl1: f.fechaImpl1.value,
+      medida2: f.medida2.value, responsable2: f.responsable2.value, fechaImpl2: f.fechaImpl2.value,
+      medida3: f.medida3.value, responsable3: f.responsable3.value, fechaImpl3: f.fechaImpl3.value,
+      observaciones: f.observaciones.value,
+      investigadorNombreRut: f.investigadorNombreRut.value, investigadorCargo: f.investigadorCargo.value,
+      firmaInvestigador: document.getElementById('firma-canvas-investigador').toDataURL('image/png'),
+    };
+    const pdfLink = await generarYSubirPdfInvestigacion(datos);
+
+    const n = allInvestigaciones.length + 1;
+    await appendSheet(`'${CONFIG.SHEET_INVESTIGACIONES}'!A:AT`, [[
+      n, hoyISO(), investigacionEnProceso.filaIncidente,
+      datos.empresaMandante, datos.empresaContratista, datos.area, datos.asesorPrevencion, datos.jefaturaDepto,
+      datos.fechaSiniestro, datos.horaSiniestro, datos.lugar, datos.jefaturaDirecta, datos.supervisorDirecto,
+      datos.tipoSiniestro.map(i => INV_TIPO_SINIESTRO[i].label).join('; '),
+      datos.empresa.map(i => INV_EMPRESA[i].label).join('; '),
+      datos.danos.map(i => INV_DANOS[i].label).join('; '), datos.danosOtroTexto,
+      datos.potencial.map(i => INV_POTENCIAL[i].label).join('; '),
+      datos.trabajadorNombre, datos.trabajadorRut, datos.trabajadorCargo, datos.trabajadorAntiguedadCargo,
+      datos.trabajadorAntiguedadEmpresa, datos.trabajadorHorasTurno, datos.trabajadorEstado, datos.trabajadorObservacion,
+      datos.testigoNombre, datos.testigoRut, datos.testigoCargo, datos.testigoTiempoCargo,
+      datos.testigoActividad, datos.testigoObservacion,
+      datos.descripcionEvento, datos.localizacion,
+      datos.tipoIncidente.map(i => INV_TIPO_INCIDENTE[i].label).join('; '), datos.tipoIncidenteOtroTexto,
+      datos.causasInmediatas.map(i => INV_CAUSAS_INMEDIATAS[i].label).join('; '), datos.causasInmediatasOtroTexto,
+      datos.causasBasicas.map(i => INV_CAUSAS_BASICAS[i].label).join('; '),
+      `${datos.medida1} | ${datos.responsable1} | ${datos.fechaImpl1}; ${datos.medida2} | ${datos.responsable2} | ${datos.fechaImpl2}; ${datos.medida3} | ${datos.responsable3} | ${datos.fechaImpl3}`,
+      datos.observaciones, datos.investigadorNombreRut, datos.investigadorCargo,
+      pdfLink, userEmail || '', new Date().toLocaleString('es-CL'),
+    ]]);
+
+    await ensureToken();
+    const fila = investigacionEnProceso.filaIncidente;
+    const urlEstado = `${SHEETS_BASE}/${CONFIG.SHEET_ID}/values/${encodeURIComponent(`'${CONFIG.SHEET_INCIDENTES}'!Q${fila}:T${fila}`)}?valueInputOption=USER_ENTERED`;
+    await fetch(urlEstado, { method:'PUT', headers:{ 'Content-Type':'application/json', ...authHeader() },
+      body: JSON.stringify({ values: [['Completada', userEmail || '', hoyISO(), pdfLink]] }) });
+
+    toast('Investigación registrada y documento generado ✓', 'ok');
+    closePanel('panel-form-investigacion');
+    investigacionEnProceso = null;
+    cargarTodo(true);
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+// ── Generación del PDF de Investigación (misma técnica de overlay que Charla:
+// checkX() centra la "X" en el centro vertical real de la celda del checkbox,
+// medido con pdfplumber sobre la plantilla, usando la altura de mayúscula de
+// la fuente para el offset del baseline en vez de un valor a ojo) ──────────
+async function generarYSubirPdfInvestigacion(datos) {
+  const { PDFDocument, rgb, StandardFonts } = PDFLib;
+  const templateBytes = await fetch('plantillas/investigacion_accidente.pdf').then(r => r.arrayBuffer());
+  const pdfDoc = await PDFDocument.load(templateBytes);
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const [p1, p2] = pdfDoc.getPages();
+  const H = 841.8;
+
+  function cover(page, x0, top0, x1, top1) {
+    page.drawRectangle({ x: x0, y: H - top1, width: x1 - x0, height: top1 - top0, color: rgb(1,1,1) });
+  }
+  function text(page, str, x, top, size, bold) {
+    page.drawText(str || '', { x, y: H - top, size: size || 6.5, font: bold ? fontBold : font, color: rgb(0,0,0) });
+  }
+  function checkX(page, x, cellCenterTop, size) {
+    const s = size || 7.5;
+    const capHeight = s * 0.72;
+    const baselineTop = cellCenterTop + capHeight / 2;
+    page.drawText('X', { x: x - s * 0.33, y: H - baselineTop, size: s, font: fontBold, color: rgb(0,0,0) });
+  }
+  function wrapLines(str, maxWidth, size) {
+    const words = (str || '').split(/\s+/).filter(Boolean);
+    const lines = []; let current = '';
+    for (const w of words) {
+      const test = current ? current + ' ' + w : w;
+      if (font.widthOfTextAtSize(test, size) > maxWidth && current) { lines.push(current); current = w; }
+      else current = test;
+    }
+    if (current) lines.push(current);
+    return lines;
+  }
+  function textBlock(page, str, x, tops, maxWidth, size) {
+    wrapLines(str, maxWidth, size || 6.5).slice(0, tops.length).forEach((l, i) => text(page, l, x, tops[i], size));
+  }
+  async function drawSig(page, dataUrl, x, top, w, h) {
+    if (!dataUrl) return;
+    const bytes = Uint8Array.from(atob(dataUrl.split(',')[1]), c => c.charCodeAt(0));
+    const img = await pdfDoc.embedPng(bytes);
+    const dims = img.scaleToFit(w, h);
+    page.drawImage(img, { x, y: H - top - dims.height, width: dims.width, height: dims.height });
+  }
+  const pages = { p1, p2 };
+
+  // Encabezado (solo existe en la página 1)
+  cover(p1, 412, 95, 445, 102.8);
+  text(p1, ddmmyyyy(hoyISO()), 413, 101, 6.5);
+
+  // Información de la organización
+  text(p1, datos.empresaMandante, 145, 142, 6.5);
+  text(p1, datos.empresaContratista, 190, 149.4, 6.5);
+  text(p1, datos.area, 70, 157.6, 6.5);
+  text(p1, datos.asesorPrevencion, 142, 165.8, 6.5);
+  text(p1, datos.jefaturaDepto, 172, 174.2, 6.5);
+
+  // Antecedentes del siniestro
+  text(p1, ddmmyyyy(datos.fechaSiniestro), 73, 191.4, 6.5);
+  text(p1, datos.horaSiniestro, 311, 191.4, 6.5);
+  text(p1, datos.lugar, 72, 199.6, 6.5);
+  text(p1, datos.jefaturaDirecta, 339, 199.6, 6.5);
+  text(p1, datos.supervisorDirecto, 105, 208.0, 6.5);
+
+  // Grupos de checkbox de una sola fila
+  datos.tipoSiniestro.forEach(i => checkX(p1, INV_TIPO_SINIESTRO[i].x, INV_TIPO_SINIESTRO[i].top));
+  datos.empresa.forEach(i => checkX(p1, INV_EMPRESA[i].x, INV_EMPRESA[i].top));
+  datos.danos.forEach(i => checkX(p1, INV_DANOS[i].x, INV_DANOS[i].top));
+  if (datos.danosOtroTexto) text(p1, datos.danosOtroTexto, 178, 290, 6.5);
+  datos.potencial.forEach(i => checkX(p1, INV_POTENCIAL[i].x, INV_POTENCIAL[i].top));
+
+  // Datos del trabajador involucrado
+  text(p1, datos.trabajadorNombre, 118, 326.6, 6.5);
+  text(p1, datos.trabajadorRut, 308, 326.6, 6.5);
+  text(p1, datos.trabajadorCargo, 98, 334.8, 6.5);
+  text(p1, datos.trabajadorAntiguedadCargo, 358, 334.8, 6.5);
+  text(p1, datos.trabajadorAntiguedadEmpresa, 126, 343, 6.5);
+  text(p1, datos.trabajadorHorasTurno, 372, 343, 6.5);
+  text(p1, datos.trabajadorEstado, 113, 351.4, 6.5);
+  text(p1, datos.trabajadorObservacion, 331, 351.4, 6.5);
+
+  // Datos testigos
+  text(p1, datos.testigoNombre, 118, 368.4, 6.5);
+  text(p1, datos.testigoRut, 308, 368.4, 6.5);
+  text(p1, datos.testigoCargo, 98, 376.6, 6.5);
+  text(p1, datos.testigoTiempoCargo, 358, 376.6, 6.5);
+  text(p1, datos.testigoActividad, 118, 384, 6.5);
+  text(p1, datos.testigoObservacion, 331, 384, 6.5);
+
+  // Descripción del evento (5 líneas disponibles)
+  textBlock(p1, datos.descripcionEvento, 52, [402.25, 410.45, 418.65, 426.85, 435.05], 430, 6.5);
+
+  // Localización del siniestro
+  text(p1, datos.localizacion, 55, 452, 6.5);
+
+  // Tipo de incidente / Causas inmediatas / Causas básicas (checkbox múltiples)
+  datos.tipoIncidente.forEach(i => {
+    const o = INV_TIPO_INCIDENTE[i];
+    checkX(pages[o.page], o.x, o.top);
+  });
+  if (datos.tipoIncidenteOtroTexto) text(p1, datos.tipoIncidenteOtroTexto, 311, 619, 6.5);
+  datos.causasInmediatas.forEach(i => {
+    const o = INV_CAUSAS_INMEDIATAS[i];
+    checkX(pages[o.page], o.x, o.top);
+  });
+  if (datos.causasInmediatasOtroTexto) text(p2, datos.causasInmediatasOtroTexto, 123, 102, 6.5);
+  datos.causasBasicas.forEach(i => {
+    const o = INV_CAUSAS_BASICAS[i];
+    checkX(pages[o.page], o.x, o.top);
+  });
+
+  // Medidas de control implementadas (tabla de hasta 3 filas)
+  const filasMedidas = [
+    [datos.medida1, datos.responsable1, datos.fechaImpl1, 208],
+    [datos.medida2, datos.responsable2, datos.fechaImpl2, 224],
+    [datos.medida3, datos.responsable3, datos.fechaImpl3, 240],
+  ];
+  filasMedidas.forEach(([medida, responsable, fecha, top]) => {
+    if (!medida) return;
+    text(p2, medida, 55, top, 6.5);
+    text(p2, responsable, 295, top, 6.5);
+    text(p2, fecha ? ddmmyyyy(fecha) : '', 388, top, 6.5);
+  });
+
+  // Observaciones
+  textBlock(p2, datos.observaciones, 55, [262, 270.2, 278.4, 286.6, 294.8], 425, 6.5);
+
+  // Nombre y rut de quien investiga / cargo / firma
+  text(p2, datos.investigadorNombreRut, 55, 322, 6.5);
+  text(p2, datos.investigadorCargo, 76, 340, 6.5);
+  await drawSig(p2, datos.firmaInvestigador, 300, 300, 160, 40);
+
+  const bytes = await pdfDoc.save();
+  const blob = new Blob([bytes], { type: 'application/pdf' });
+  const nombreArchivo = 'investigacion_' + (datos.trabajadorNombre || 'accidente').replace(/\s+/g, '_');
+  const up = datos.trabajadorNombre
+    ? await uploadFileTrabajador(blob, datos.trabajadorNombre, nombreArchivo, 'pdf')
+    : await uploadFile(blob, 'Investigaciones', nombreArchivo, 'pdf');
+  return up.link;
 }
 
 // ============================================================

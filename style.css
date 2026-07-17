@@ -610,7 +610,8 @@ body.is-offline #app { padding-top: 30px; }
 .chk-row:last-child { border-bottom: none; }
 .chk-row-label { display: flex; align-items: center; gap: 12px; flex: 1; font-size: 14px; color: var(--ink); cursor: pointer; padding: 4px 0; }
 .chk-row-checkbox-wrap { position: relative; width: 22px; height: 22px; flex-shrink: 0; }
-.chk-row-checkbox-wrap input[type="checkbox"] {
+.chk-row-checkbox-wrap input[type="checkbox"],
+.chk-row-checkbox-wrap input[type="radio"] {
   position: absolute; inset: 0; width: 100%; height: 100%; margin: 0;
   opacity: 0; cursor: pointer; z-index: 1;
 }
@@ -623,6 +624,11 @@ body.is-offline #app { padding-top: 30px; }
   content: ''; position: absolute; width: 6px; height: 11px;
   border: solid #fff; border-width: 0 2px 2px 0;
   transform: rotate(45deg); top: 2px; left: 7px;
+}
+.chk-row-radio { border-radius: 50%; }
+.chk-row-checkbox-wrap input[type="radio"]:checked + .chk-row-radio::after {
+  content: ''; position: absolute; width: 10px; height: 10px; border-radius: 50%;
+  background: #fff; top: 4.5px; left: 4.5px;
 }
 .epp-item-qty { width: 60px; padding: 6px 8px; border: 1.5px solid var(--line); border-radius: 8px; font-size: 14px; text-align: center; font-family: inherit; }
 
