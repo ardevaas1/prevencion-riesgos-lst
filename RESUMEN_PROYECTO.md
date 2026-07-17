@@ -155,7 +155,7 @@ vez de esperar un cambio que nunca ocurre.
    `Accidente Leve/Grave/Fatal`, al guardar queda automáticamente
    `Atención Médica Estado = Pendiente` — tarjeta y ficha muestran badge
    "Atención médica: por definir" y botón "Definir atención médica" que
-   pregunta si el trabajador necesitó atención médica: si Sí, abre el
+   pregunta si el trabajador necesita atención médica: si Sí, abre el
    formulario de la DIAT; si No, abre la declaración simple de rechazo.
    Recién al resolver esa pregunta (cualquiera de las dos opciones) se
    marca `Investigación Estado = Pendiente` y aparece el botón "Realizar
@@ -428,7 +428,7 @@ su propia entrada en el menú/Inicio (`irPagina('hcr')`), su propio botón
 ## Generación de PDFs rellenados (DIAT / Declaración de rechazo)
 
 A pedido del cliente: al registrar un `Accidente Leve/Grave/Fatal` se
-pregunta si el trabajador necesitó atención médica **antes** de habilitar
+pregunta si el trabajador necesita atención médica **antes** de habilitar
 la Investigación (ver "Atención médica e investigación de accidente" en
 Módulos de la app). Según la respuesta se generan documentos muy distintos:
 
