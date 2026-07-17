@@ -144,6 +144,12 @@
       <div data-list="charlas"></div>
     </div>
 
+    <!-- HCR -->
+    <div class="page" id="page-hcr">
+      <div class="sec-label">Hoja de Control de Riesgos (HCR)</div>
+      <div data-list="hcr"></div>
+    </div>
+
   </div>
 
   <!-- FAB agregar (contextual) -->
@@ -182,6 +188,7 @@
     <button class="desktop-nav-item" data-pag="epp" onclick="irPagina('epp')"><span class="dn-ic"><svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px"><path d="M4 16.5a8 8 0 0 1 16 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M12 6.5v3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><rect x="2" y="16.5" width="20" height="3" rx="1.3" stroke="currentColor" stroke-width="1.7"/></svg></span><span class="dn-lb">Entrega de EPP</span></button>
     <button class="desktop-nav-item" data-pag="trabajadores" onclick="irPagina('trabajadores')"><span class="dn-ic"><svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px"><circle cx="12" cy="7.5" r="3.5" stroke="currentColor" stroke-width="1.8"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span><span class="dn-lb">Trabajadores</span></button>
     <button class="desktop-nav-item" data-pag="charlas" onclick="irPagina('charlas')"><span class="dn-ic"><svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px"><path d="M4 5h16v11H9l-4 4v-4H4Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 9h8M8 12.3h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span><span class="dn-lb">Charlas de Seguridad</span></button>
+    <button class="desktop-nav-item" data-pag="hcr" onclick="irPagina('hcr')"><span class="dn-ic"><svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px"><path d="M12 3 2 20h20L12 3Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M9.5 16h5M12 9v4.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span><span class="dn-lb">HCR</span></button>
   </div>
   <div class="desktop-sidebar-footer">
     <button class="desktop-refresh-btn" onclick="cargarTodo(true)">↻ Actualizar datos</button>
@@ -210,6 +217,7 @@
   <div class="dt-page" id="dt-page-epp"><div data-list="epp"></div></div>
   <div class="dt-page" id="dt-page-trabajadores"><div class="desktop-search"><svg viewBox="0 0 24 24" fill="none" style="width:16px;height:16px;color:var(--ink-soft)"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><input type="text" placeholder="Buscar por nombre, RUT o cargo..." oninput="onBuscarTrabajadores(this.value)"></div><div data-list="trabajadores"></div></div>
   <div class="dt-page" id="dt-page-charlas"><div data-list="charlas"></div></div>
+  <div class="dt-page" id="dt-page-hcr"><div data-list="hcr"></div></div>
 </div>
 
 </div><!-- /#app -->
@@ -549,6 +557,105 @@
   </div>
 </div>
 
+<!-- ===== PANEL: Hoja de Control de Riesgos (HCR) ===== -->
+<div class="panel hidden" id="panel-form-hcr">
+  <div class="panel-bar"><div class="pnl-back" onclick="closePanel('panel-form-hcr')">‹ Volver</div><div class="pnl-title">Nueva HCR</div><div></div></div>
+  <div class="panel-body">
+    <form id="form-hcr" onsubmit="guardarDatosHcr(event)">
+
+      <div class="sec-label">Datos generales</div>
+      <div class="form-group">
+        <label>Obra</label>
+        <select name="obra" id="sel-obra-hcr" required onchange="onCambioObraSelect(this,'input-hcr-obra-otra')"></select>
+        <input type="text" id="input-hcr-obra-otra" class="hidden" placeholder="Nombre de la obra" style="margin-top:8px;">
+      </div>
+      <div class="form-group"><label>Fecha</label><input type="date" name="fecha" required></div>
+      <div class="form-group"><label>Actividad</label><input name="actividad" required></div>
+      <div class="form-group"><label>Área(s)</label><input name="area"></div>
+      <div class="form-group"><label>HH de capacitación</label><input name="hhCapacitacion"></div>
+
+      <div class="sec-label" style="margin-top:18px;">1. Peligros / Seguridad</div>
+      <div id="chk-hcr-peligros-seg-col1"></div>
+      <div id="chk-hcr-peligros-seg-col2"></div>
+
+      <div class="sec-label" style="margin-top:18px;">2. Peligros / Salud</div>
+      <div id="chk-hcr-peligros-salud"></div>
+
+      <div class="sec-label" style="margin-top:18px;">3. Riesgos / Seguridad</div>
+      <div id="chk-hcr-riesgos-seg"></div>
+      <div class="form-group" style="margin-top:8px;"><label>Otros (especifique)</label><input name="riesgosSegOtroTexto"></div>
+
+      <div class="sec-label" style="margin-top:18px;">4. Riesgos / Materiales - Ambientales</div>
+      <div id="chk-hcr-riesgos-mat"></div>
+
+      <div class="sec-label" style="margin-top:18px;">5. Riesgos / Salud</div>
+      <div id="chk-hcr-riesgos-salud"></div>
+
+      <div class="sec-label" style="margin-top:18px;">6. Elementos de Protección Personal y Medios de Apoyo</div>
+      <div id="chk-hcr-epp-cola"></div>
+      <div id="chk-hcr-epp-colb"></div>
+      <div id="chk-hcr-epp-colc"></div>
+
+      <div class="sec-label" style="margin-top:18px;">7. Verificación de comunicación</div>
+      <div id="chk-hcr-verif"></div>
+      <div class="sec-label" style="margin-top:12px;">Registros adicionales</div>
+      <div id="chk-hcr-registros"></div>
+
+      <div class="sec-label" style="margin-top:18px;">Tareas / Riesgos / Medidas para el control de los riesgos</div>
+      <div class="form-group"><label>Tarea 1</label><input name="tarea1"></div>
+      <div class="form-group"><label>Riesgo 1</label><input name="riesgo1"></div>
+      <div class="form-group"><label>Medida 1</label><input name="medida1"></div>
+      <div class="form-group"><label>Tarea 2</label><input name="tarea2"></div>
+      <div class="form-group"><label>Riesgo 2</label><input name="riesgo2"></div>
+      <div class="form-group"><label>Medida 2</label><input name="medida2"></div>
+      <div class="form-group"><label>Tarea 3</label><input name="tarea3"></div>
+      <div class="form-group"><label>Riesgo 3</label><input name="riesgo3"></div>
+      <div class="form-group"><label>Medida 3</label><input name="medida3"></div>
+      <div class="form-group"><label>Tarea 4</label><input name="tarea4"></div>
+      <div class="form-group"><label>Riesgo 4</label><input name="riesgo4"></div>
+      <div class="form-group"><label>Medida 4</label><input name="medida4"></div>
+
+      <div class="sec-label" style="margin-top:18px;">Firmas jefatura</div>
+      <div class="form-group"><label>Nombre del supervisor</label><input name="supervisorNombre" required></div>
+      <div class="form-group">
+        <label>Firma supervisor</label>
+        <div class="firma-box"><canvas id="firma-canvas-hcr-supervisor"></canvas></div>
+        <div class="firma-actions"><button type="button" onclick="limpiarFirmaId('firma-canvas-hcr-supervisor')">Borrar firma</button></div>
+      </div>
+      <div class="form-group">
+        <label>Firma jefe de obra / jefe terreno (opcional)</label>
+        <div class="firma-box"><canvas id="firma-canvas-hcr-jefeobra"></canvas></div>
+        <div class="firma-actions"><button type="button" onclick="limpiarFirmaId('firma-canvas-hcr-jefeobra')">Borrar firma</button></div>
+      </div>
+      <div class="form-group">
+        <label>Firma prevención de riesgos (opcional)</label>
+        <div class="firma-box"><canvas id="firma-canvas-hcr-prevencion"></canvas></div>
+        <div class="firma-actions"><button type="button" onclick="limpiarFirmaId('firma-canvas-hcr-prevencion')">Borrar firma</button></div>
+      </div>
+
+      <div class="sec-label" style="margin-top:18px;">Cuadrilla (registro de firmas)</div>
+      <div id="checklist-trabajadores-hcr"></div>
+
+      <button class="btn-add" type="submit" style="margin-top:14px;">Continuar a firmas de la cuadrilla</button>
+    </form>
+  </div>
+</div>
+
+<!-- ===== PANEL: Firma de la cuadrilla HCR (uno por uno) ===== -->
+<div class="panel hidden" id="panel-firmar-trabajador-hcr">
+  <div class="panel-bar"><div class="pnl-back" onclick="cancelarFirmaTrabajadoresHcr()">‹ Cancelar</div><div class="pnl-title" id="firmar-trabajador-hcr-progreso">Firma</div><div></div></div>
+  <div class="panel-body">
+    <div style="text-align:center;margin-bottom:16px;">
+      <div class="ficha-hero-name" style="font-size:20px;" id="firmar-trabajador-hcr-nombre"></div>
+      <div class="card-sub" id="firmar-trabajador-hcr-rut"></div>
+    </div>
+    <div class="firma-box"><canvas id="firma-canvas-trabajador-hcr"></canvas></div>
+    <div class="firma-actions"><button type="button" onclick="limpiarFirma()">Borrar firma</button></div>
+    <button class="btn-add" type="button" onclick="confirmarFirmaTrabajadorHcr()">Firmar y continuar</button>
+    <button class="action-btn" type="button" onclick="saltarFirmaTrabajadorHcr()" style="margin-top:8px;">Saltar (sin firma)</button>
+  </div>
+</div>
+
 <!-- ===== FICHA: Detalle e historial de trabajador ===== -->
 <div class="panel hidden" id="panel-ficha-trabajador">
   <div class="panel-bar"><div class="pnl-back" onclick="closePanel('panel-ficha-trabajador')">‹ Volver</div><div class="pnl-title">Ficha del trabajador</div><div></div></div>
@@ -599,7 +706,7 @@
   const TITULOS_PAGINA = {
     inicio: 'Inicio', inspecciones: 'Inspecciones', incidentes: 'Incidentes y Accidentes',
     procedimientos: 'Procedimientos de Trabajo Seguro', epp: 'Entrega de EPP',
-    trabajadores: 'Trabajadores', charlas: 'Charlas de Seguridad',
+    trabajadores: 'Trabajadores', charlas: 'Charlas de Seguridad', hcr: 'Hoja de Control de Riesgos (HCR)',
   };
 
   function irPagina(nombre) {
@@ -608,7 +715,8 @@
     // ── Móvil ──
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     const map = { inicio:'page-inicio', inspecciones:'page-inspecciones', incidentes:'page-incidentes',
-      procedimientos:'page-procedimientos', epp:'page-epp', trabajadores:'page-trabajadores', charlas:'page-charlas' };
+      procedimientos:'page-procedimientos', epp:'page-epp', trabajadores:'page-trabajadores', charlas:'page-charlas',
+      hcr:'page-hcr' };
     document.getElementById(map[nombre]).classList.add('active');
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     const navTarget = ['inicio','inspecciones','incidentes','epp'].includes(nombre) ? nombre : 'mas';
@@ -629,7 +737,7 @@
     const acciones = {
       inspecciones: abrirFormInspeccion, incidentes: abrirFormIncidente,
       procedimientos: abrirFormProcedimiento, epp: abrirFormEpp, trabajadores: abrirFormTrabajador,
-      charlas: abrirNuevaCharla,
+      charlas: abrirNuevaCharla, hcr: abrirNuevoHcr,
     };
     const fab = document.getElementById('fab-add');
     const dtFab = document.getElementById('dt-fab-add');

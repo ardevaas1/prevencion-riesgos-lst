@@ -371,6 +371,7 @@ const ICONS = {
   epp: '<svg viewBox="0 0 24 24" fill="none"><path d="M4 16.5a8 8 0 0 1 16 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M12 6.5v3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><rect x="2" y="16.5" width="20" height="3" rx="1.3" stroke="currentColor" stroke-width="1.7"/></svg>',
   trabajadores: '<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="7.5" r="3.5" stroke="currentColor" stroke-width="1.8"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
   charlas: '<svg viewBox="0 0 24 24" fill="none"><path d="M4 5h16v11H9l-4 4v-4H4Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 9h8M8 12.3h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
+  hcr: '<svg viewBox="0 0 24 24" fill="none"><path d="M12 3 2 20h20L12 3Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M9.5 16h5M12 9v4.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
   camara: '<svg viewBox="0 0 24 24" fill="none"><path d="M4 8a1 1 0 0 1 1-1h2l1.2-2h7.6L17 7h2a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.4" stroke="currentColor" stroke-width="1.7"/></svg>',
   documento: '<svg viewBox="0 0 24 24" fill="none"><path d="M7 3h7l4 4v14H7Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M14 3v4h4" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>',
   firma: '<svg viewBox="0 0 24 24" fill="none"><path d="M4 17c2.5-1 4.5-1 6.5 0s4.5 1 6.5 0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M6 13.5 15 4.5a1.7 1.7 0 0 1 2.4 2.4L8.4 15.9l-3 0.7.6-3.1Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg>',
@@ -387,6 +388,7 @@ function renderModulosHome() {
     { key: 'epp', nombre: 'Entrega de EPP', desc: 'Con firma digital del trabajador', color: 'mov' },
     { key: 'trabajadores', nombre: 'Trabajadores', desc: 'Nómina de la obra', color: 'inv' },
     { key: 'charlas', nombre: 'Charlas de Seguridad', desc: 'Alertas generadas por inspecciones', color: 'flota' },
+    { key: 'hcr', nombre: 'Hoja de Control de Riesgos (HCR)', desc: 'Registro diario por cuadrilla, antes de ejecutar el trabajo', color: 'and' },
   ];
   setListHTML('modulos-home', modulos.map(m => `
     <div class="modulo-card" onclick="irPagina('${m.key}')">
@@ -452,13 +454,14 @@ let allProcedimientos = [];
 let allEpp = [];
 let allCharlas = [];
 let allInvestigaciones = [];
+let allHcr = [];
 
 async function cargarTodo(silencioso) {
   if (!silencioso) { splash(20, 'Conectando con Google Sheets...'); }
   else { toast('Actualizando datos...'); }
   try {
     if (!silencioso) splash(45, 'Cargando información...');
-    const [trab, insp, inc, proc, epp, charlas, invest] = await Promise.all([
+    const [trab, insp, inc, proc, epp, charlas, invest, hcr] = await Promise.all([
       fetchSheet(`'${CONFIG.SHEET_TRABAJADORES}'!A2:O2000`),
       fetchSheet(`'${CONFIG.SHEET_INSPECCIONES}'!A2:M2000`),
       fetchSheet(`'${CONFIG.SHEET_INCIDENTES}'!A2:T2000`),
@@ -466,6 +469,7 @@ async function cargarTodo(silencioso) {
       fetchSheet(`'${CONFIG.SHEET_EPP}'!A2:I2000`),
       fetchSheet(`'${CONFIG.SHEET_CHARLAS}'!A2:N2000`),
       fetchSheet(`'${CONFIG.SHEET_INVESTIGACIONES}'!A2:AT2000`),
+      fetchSheet(`'${CONFIG.SHEET_HCR}'!A2:V2000`),
     ]);
     if (!silencioso) splash(85, 'Preparando la app...');
     allTrabajadores = trab.map((r,i) => rowToTrabajador(r,i));
@@ -475,8 +479,9 @@ async function cargarTodo(silencioso) {
     allEpp = epp.map((r,i) => rowToEpp(r,i));
     allCharlas = charlas.map((r,i) => rowToCharla(r,i));
     allInvestigaciones = invest.map((r,i) => ({ fila: i+2, n: r[0]||'' }));
+    allHcr = hcr.map((r,i) => ({ fila: i+2, n: r[0]||'', fecha: r[1]||'', obra: r[2]||'', actividad: r[3]||'', area: r[4]||'', pdf: r[19]||'' }));
     renderDashboard();
-    renderTrabajadores(); renderInspecciones(); renderIncidentes(); renderProcedimientos(); renderEpp(); renderCharlas();
+    renderTrabajadores(); renderInspecciones(); renderIncidentes(); renderProcedimientos(); renderEpp(); renderCharlas(); renderHcr();
     if (!silencioso) splash(100, '¡Listo!');
     else toast('Datos actualizados ✓', 'ok');
   } catch (e) {
@@ -1713,6 +1718,404 @@ async function generarYSubirPdfInvestigacion(datos) {
 }
 
 // ============================================================
+// MÓDULO: HOJA DE CONTROL DE RIESGOS (HCR)
+// Módulo separado del resto (a pedido del cliente): se llena a diario por
+// cuadrilla, antes de ejecutar el trabajo. Mismo mecanismo de overlay de
+// coordenadas que Charla/Investigación, pero sobre una plantilla de 4
+// páginas con tamaños mixtos (p1/p2 A4 apaisado, p3/p4 carta) y ~130
+// checkbox en la página 1.
+// ============================================================
+
+// Centros X de checkbox reutilizados en toda la página 1 (medidos con
+// pdfplumber: cada franja de checkbox se comparte entre varias secciones
+// apiladas verticalmente en la misma columna de la página).
+const HCR_CX = { col1: 257.5, col2: 457.1, col3: 695.8, si: 676.2, no: 689.2, na: 702.4 };
+
+const HCR_PELIGROS_SEG_COL1 = [
+  { label: 'Excavaciones', top: 136.85 }, { label: 'Explosivos', top: 145.15 },
+  { label: 'Trabajos marinos / submarinos', top: 153.7 }, { label: 'Acopios / materiales (pilas, rumas)', top: 162.35 },
+  { label: 'Trabajos en altura', top: 170.95 }, { label: 'Espacios confinados', top: 179.55 },
+  { label: 'Carga suspendida', top: 188.15 }, { label: 'Transito de vehiculos', top: 196.75 },
+  { label: 'Fauna (animales)', top: 205.4 }, { label: 'Condiciones metereologicas adversas', top: 217.4 },
+  { label: 'Exposicion a radiacion solar', top: 229.4 }, { label: 'Entorno social peligroso', top: 238.0 },
+  { label: 'Trabajos en presencia de napa', top: 246.6 }, { label: 'Flora (arboles, espinos, etc)', top: 255.0 },
+].map(o => ({ ...o, x: HCR_CX.col1, page: 'p1' }));
+
+const HCR_PELIGROS_SEG_COL2 = [
+  { label: 'Movimiento de maquinaria', top: 136.85 }, { label: 'Herramientas / equipos electricos', top: 145.15 },
+  { label: 'Herramientas / equipos a combustion', top: 153.7 }, { label: 'Herramientas / equipos a explosion', top: 162.35 },
+  { label: 'Gases comprimidos', top: 170.95 }, { label: 'Partes en movimiento (correas, etc)', top: 179.55 },
+  { label: 'Sustancia explosiva', top: 188.15 }, { label: 'Sustancia inflamable', top: 196.75 },
+  { label: 'Sustancia corrosiva', top: 205.4 }, { label: 'Interferencias aereas (tendidos)', top: 217.4 },
+  { label: 'Interferencias subterranea', top: 229.4 }, { label: 'Terreno desnivelado / estrecho / irregular', top: 238.0 },
+  { label: 'Falta o deficiencia de iluminacion', top: 246.6 }, { label: 'Falta o deficiencia de ventilaciòn', top: 255.0 },
+].map(o => ({ ...o, x: HCR_CX.col2, page: 'p1' }));
+
+const HCR_PELIGROS_SALUD = [
+  { label: 'Ruido', top: 145.15 }, { label: 'Vibraciones', top: 153.7 }, { label: 'Polvos', top: 162.35 },
+  { label: 'Temperatura extrema (calor)', top: 170.95 }, { label: 'Temperatura extrema (frio)', top: 179.55 },
+  { label: 'Plagas (roedores, insectos)', top: 196.75 }, { label: 'Aguas servidas', top: 205.4 },
+  { label: 'Sustancia toxica', top: 229.4 }, { label: 'Sustancia venenosa', top: 238.0 },
+  { label: 'Radiacion ionizante (densimetro nuclear)', top: 255.0 },
+].map(o => ({ ...o, x: HCR_CX.col3, page: 'p1' }));
+
+const HCR_RIESGOS_SEG = [
+  { label: 'Aplastamiento', top: 272.8 }, { label: 'Atrapamiento', top: 281.4 }, { label: 'Atropellamiento', top: 290.0 },
+  { label: 'Contacto con', top: 298.6 }, { label: 'Caida a nivel', top: 307.2 }, { label: 'Caida a desnivel', top: 315.8 },
+  { label: 'Electrocusion', top: 324.4 }, { label: 'Golpeado por', top: 333.0 }, { label: 'Golpeado contra', top: 341.6 },
+  { label: 'Quemadura', top: 350.2 }, { label: 'Sobreesfuerzo', top: 358.8 }, { label: 'Otros: especifique', top: 367.2 },
+].map(o => ({ ...o, x: HCR_CX.col1, page: 'p1' }));
+
+const HCR_RIESGOS_MAT = [
+  { label: 'Asentamiento', top: 272.8 }, { label: 'Contaminacion', top: 281.4 }, { label: 'Colision', top: 290.0 },
+  { label: 'Desplome', top: 298.6 }, { label: 'Derrumbe', top: 307.2 }, { label: 'Desgaste', top: 315.8 },
+  { label: 'Explosion', top: 324.4 }, { label: 'Incendio', top: 333.0 }, { label: 'Inundacion', top: 341.6 },
+  { label: 'Robo', top: 350.2 }, { label: 'Socavamiento', top: 358.8 }, { label: 'Volcamiento', top: 367.2 },
+].map(o => ({ ...o, x: HCR_CX.col2, page: 'p1' }));
+
+const HCR_RIESGOS_SALUD = [
+  { label: 'Alteracion del sistema nervioso', top: 272.8 }, { label: 'Asfixia', top: 281.4 }, { label: 'Conjuntivitis', top: 290.0 },
+  { label: 'Dermatitis', top: 298.6 }, { label: 'Hipotermia', top: 307.2 }, { label: 'Intoxicacion', top: 315.8 },
+  { label: 'Infeccion', top: 324.4 }, { label: 'Insolacion', top: 333.0 }, { label: 'Enfermedades respiratorias', top: 341.6 },
+  { label: 'Sordera', top: 350.2 }, { label: 'Tendinitis', top: 358.8 }, { label: 'Irradiacion', top: 367.2 },
+].map(o => ({ ...o, x: HCR_CX.col3, page: 'p1' }));
+
+const HCR_EPP_COLA = [
+  { label: 'Casco', top: 394.4 }, { label: 'Zapato de seguridad', top: 403.0 }, { label: 'Lente de seguridad', top: 411.6 },
+  { label: 'Chaleco o buzo con reflectante', top: 420.05 },
+  { label: 'Proteccion en las manos', top: 436.15 }, { label: 'Proteccion auditiva', top: 444.4 },
+  { label: 'Proteccion respiratoria', top: 453.0 }, { label: 'Proteccion facial (careta)', top: 461.6 },
+  { label: 'Proteccion contra caida (arnès)', top: 470.25 }, { label: 'Ropa termica', top: 478.9 },
+  { label: 'Ropa soldador (traje completo de cuero)', top: 487.5 }, { label: 'Pierneras', top: 495.9 },
+].map(o => ({ ...o, x: HCR_CX.col1, page: 'p1' }));
+
+const HCR_EPP_COLB = [
+  { label: 'Traje desechable', top: 386.0 }, { label: 'Ropa de agua', top: 394.4 },
+  { label: 'Bota de agua o cubrecalzado', top: 403.0 }, { label: 'Protector solar', top: 411.45 },
+  { label: 'Señalizacion de peligros interior faena', top: 428.35 }, { label: 'Señalizacion vial reglamentaria', top: 436.1 },
+  { label: 'Proteccion rigida (barandas-tapas)', top: 444.4 }, { label: 'Cinta de peligro', top: 453.0 },
+  { label: 'Alarma sonora', top: 461.6 }, { label: 'Alarma luminosa (baliza)', top: 470.25 },
+  { label: 'Conos - cono tambo', top: 478.9 }, { label: 'Lineas de vida', top: 487.5 },
+  { label: 'Banderero o loro vivo', top: 495.9 },
+].map(o => ({ ...o, x: HCR_CX.col2, page: 'p1' }));
+
+const HCR_EPP_COLC = [
+  { label: 'Bloqueo de equipo', top: 386.0 }, { label: 'Tarjeta de autorizaciòn (andamio y plataforma)', top: 394.4 },
+  { label: 'Pantallas o biombos', top: 403.0 }, { label: 'Pertigas', top: 411.6 }, { label: 'Medicion de atmosfera', top: 420.05 },
+].map(o => ({ ...o, x: HCR_CX.col3, page: 'p1' }));
+
+const HCR_VERIF_PREGUNTAS = [
+  { label: '¿Conoce el inventario de riesgos para esta actividad?', top: 444.1 },
+  { label: '¿Conoce el procedimiento o instructivo relacionado?', top: 452.7 },
+];
+const HCR_REGISTROS_ADIC = [
+  { label: 'Charla especifica de procedimiento o instructivo', top: 469.85 },
+  { label: 'Inspeccion a equipo / herramienta / area', top: 478.45 },
+  { label: 'Observacion', top: 487.1 },
+  { label: 'Lista de chequeo diaria vehiculo / maquinaria', top: 495.7 },
+];
+
+function renderChecklistsHcr() {
+  renderChecklistInv('chk-hcr-peligros-seg-col1', HCR_PELIGROS_SEG_COL1, 'checkbox', 'peligrosSegCol1');
+  renderChecklistInv('chk-hcr-peligros-seg-col2', HCR_PELIGROS_SEG_COL2, 'checkbox', 'peligrosSegCol2');
+  renderChecklistInv('chk-hcr-peligros-salud', HCR_PELIGROS_SALUD, 'checkbox', 'peligrosSalud');
+  renderChecklistInv('chk-hcr-riesgos-seg', HCR_RIESGOS_SEG, 'checkbox', 'riesgosSeg');
+  renderChecklistInv('chk-hcr-riesgos-mat', HCR_RIESGOS_MAT, 'checkbox', 'riesgosMat');
+  renderChecklistInv('chk-hcr-riesgos-salud', HCR_RIESGOS_SALUD, 'checkbox', 'riesgosSalud');
+  renderChecklistInv('chk-hcr-epp-cola', HCR_EPP_COLA, 'checkbox', 'eppColA');
+  renderChecklistInv('chk-hcr-epp-colb', HCR_EPP_COLB, 'checkbox', 'eppColB');
+  renderChecklistInv('chk-hcr-epp-colc', HCR_EPP_COLC, 'checkbox', 'eppColC');
+  document.getElementById('chk-hcr-verif').innerHTML = HCR_VERIF_PREGUNTAS.map((p, i) => `
+    <div class="chk-row"><label class="chk-row-label" style="flex:1;"><span>${esc(p.label)}</span></label>
+      <div style="display:flex;gap:14px;">
+        <label style="display:flex;align-items:center;gap:4px;font-size:12px;"><input type="radio" name="verif${i}" value="si"> Sí</label>
+        <label style="display:flex;align-items:center;gap:4px;font-size:12px;"><input type="radio" name="verif${i}" value="no"> No</label>
+        <label style="display:flex;align-items:center;gap:4px;font-size:12px;"><input type="radio" name="verif${i}" value="na"> N/A</label>
+      </div>
+    </div>`).join('');
+  document.getElementById('chk-hcr-registros').innerHTML = HCR_REGISTROS_ADIC.map((p, i) => `
+    <div class="chk-row"><label class="chk-row-label" style="flex:1;"><span>${esc(p.label)}</span></label>
+      <div style="display:flex;gap:14px;">
+        <label style="display:flex;align-items:center;gap:4px;font-size:12px;"><input type="radio" name="reg${i}" value="si"> Sí</label>
+        <label style="display:flex;align-items:center;gap:4px;font-size:12px;"><input type="radio" name="reg${i}" value="no"> No</label>
+        <label style="display:flex;align-items:center;gap:4px;font-size:12px;"><input type="radio" name="reg${i}" value="na"> N/A</label>
+      </div>
+    </div>`).join('');
+}
+
+function renderHcr() {
+  const items = [...allHcr].reverse();
+  if (items.length === 0) { setListHTML('hcr', emptyState('Sin HCR registradas', 'Toca "+" para registrar una')); return; }
+  setListHTML('hcr', items.map(h => `
+    <div class="card card--default">
+      <div class="card-icon modulo-icon--and">${ic('hcr',18)}</div>
+      <div class="card-body">
+        <div class="card-title">${esc(h.actividad)}</div>
+        <div class="card-sub">${esc(h.fecha)} · ${esc(h.obra)}${h.area ? ' · ' + esc(h.area) : ''}</div>
+        ${h.pdf ? `<a href="${esc(h.pdf)}" target="_blank" class="badge blue">${ic('documento',12)} Ver documento</a>` : ''}
+      </div>
+    </div>`).join(''));
+}
+
+let hcrEnProceso = null;
+function renderChecklistTrabajadoresHcr() {
+  const activos = allTrabajadores.filter(t => t.estado === 'Activo');
+  document.getElementById('checklist-trabajadores-hcr').innerHTML = activos.map(t => `
+    <div class="chk-row" data-nombre="${esc(t.nombre)}" data-rut="${esc(t.rut)}">
+      <label class="chk-row-label">
+        <span class="chk-row-checkbox-wrap">
+          <input type="checkbox" class="chk-row-input">
+          <span class="chk-row-checkbox"></span>
+        </span>
+        <span>${esc(t.nombre)} <span style="color:#888;">· ${esc(t.rut)}</span></span>
+      </label>
+    </div>`).join('');
+}
+function abrirNuevoHcr() {
+  hcrEnProceso = null;
+  const f = document.getElementById('form-hcr');
+  f.reset();
+  f.fecha.value = hoyISO();
+  document.getElementById('sel-obra-hcr').innerHTML = opcionesObraSelectHTML('');
+  document.getElementById('input-hcr-obra-otra').classList.add('hidden');
+  renderChecklistsHcr();
+  renderChecklistTrabajadoresHcr();
+  openPanel('panel-form-hcr');
+  setTimeout(() => {
+    initFirmaPad('firma-canvas-hcr-supervisor');
+    initFirmaPad('firma-canvas-hcr-jefeobra');
+    initFirmaPad('firma-canvas-hcr-prevencion');
+  }, 80);
+}
+function seleccionadosHcrRadio(prefix, n) {
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const el = document.querySelector(`input[name="${prefix}${i}"]:checked`);
+    out.push(el ? el.value : '');
+  }
+  return out;
+}
+function guardarDatosHcr(ev) {
+  ev.preventDefault();
+  const f = ev.target;
+  if (firmaEstaVacia('firma-canvas-hcr-supervisor')) { toast('Falta la firma del supervisor', 'error'); return; }
+  const asistentes = [...document.querySelectorAll('#checklist-trabajadores-hcr .chk-row')]
+    .filter(row => row.querySelector('.chk-row-input').checked)
+    .map(row => ({ nombre: row.dataset.nombre, rut: row.dataset.rut, firma: null }));
+
+  hcrEnProceso = {
+    obra: valorObra(f.obra, 'input-hcr-obra-otra'),
+    fecha: f.fecha.value,
+    actividad: f.actividad.value, area: f.area.value, hhCapacitacion: f.hhCapacitacion.value,
+    peligrosSegCol1: seleccionadosInv('peligrosSegCol1'), peligrosSegCol2: seleccionadosInv('peligrosSegCol2'),
+    peligrosSalud: seleccionadosInv('peligrosSalud'),
+    riesgosSeg: seleccionadosInv('riesgosSeg'), riesgosSegOtroTexto: f.riesgosSegOtroTexto.value,
+    riesgosMat: seleccionadosInv('riesgosMat'), riesgosSalud: seleccionadosInv('riesgosSalud'),
+    eppColA: seleccionadosInv('eppColA'), eppColB: seleccionadosInv('eppColB'), eppColC: seleccionadosInv('eppColC'),
+    verif: seleccionadosHcrRadio('verif', HCR_VERIF_PREGUNTAS.length),
+    registros: seleccionadosHcrRadio('reg', HCR_REGISTROS_ADIC.length),
+    tareas: [1,2,3,4].map(i => ({ tarea: f['tarea'+i].value, riesgo: f['riesgo'+i].value, medida: f['medida'+i].value })),
+    supervisorNombre: f.supervisorNombre.value,
+    firmaSupervisor: document.getElementById('firma-canvas-hcr-supervisor').toDataURL('image/png'),
+    firmaJefeObra: document.getElementById('firma-canvas-hcr-jefeobra').toDataURL('image/png'),
+    firmaPrevencion: document.getElementById('firma-canvas-hcr-prevencion').toDataURL('image/png'),
+    asistentes, asistenteActual: 0,
+  };
+  closePanel('panel-form-hcr');
+  if (asistentes.length === 0) { finalizarHcr(); return; }
+  setTimeout(() => { openPanel('panel-firmar-trabajador-hcr'); mostrarFirmaTrabajadorHcrActual(); }, 260);
+}
+function mostrarFirmaTrabajadorHcrActual() {
+  const { asistentes, asistenteActual } = hcrEnProceso;
+  const a = asistentes[asistenteActual];
+  document.getElementById('firmar-trabajador-hcr-progreso').textContent = `Firma ${asistenteActual + 1} de ${asistentes.length}`;
+  document.getElementById('firmar-trabajador-hcr-nombre').textContent = a.nombre;
+  document.getElementById('firmar-trabajador-hcr-rut').textContent = a.rut;
+  setTimeout(() => initFirmaPad('firma-canvas-trabajador-hcr'), 80);
+}
+function avanzarTrabajadorHcr() {
+  hcrEnProceso.asistenteActual++;
+  if (hcrEnProceso.asistenteActual >= hcrEnProceso.asistentes.length) {
+    closePanel('panel-firmar-trabajador-hcr');
+    setTimeout(finalizarHcr, 260);
+  } else {
+    mostrarFirmaTrabajadorHcrActual();
+  }
+}
+function confirmarFirmaTrabajadorHcr() {
+  if (firmaEstaVacia('firma-canvas-trabajador-hcr')) { toast('Falta la firma', 'error'); return; }
+  const canvas = document.getElementById('firma-canvas-trabajador-hcr');
+  hcrEnProceso.asistentes[hcrEnProceso.asistenteActual].firma = canvas.toDataURL('image/png');
+  avanzarTrabajadorHcr();
+}
+function saltarFirmaTrabajadorHcr() { avanzarTrabajadorHcr(); }
+function cancelarFirmaTrabajadoresHcr() {
+  closePanel('panel-firmar-trabajador-hcr');
+  hcrEnProceso = null;
+  toast('Registro de HCR cancelado', 'error');
+}
+async function finalizarHcr() {
+  try {
+    toast('Generando documento...');
+    const pdfLink = await generarYSubirPdfHcr(hcrEnProceso);
+    const n = allHcr.length + 1;
+    await appendSheet(`'${CONFIG.SHEET_HCR}'!A:V`, [[
+      n, hcrEnProceso.fecha, hcrEnProceso.obra, hcrEnProceso.actividad, hcrEnProceso.area, hcrEnProceso.hhCapacitacion,
+      hcrEnProceso.peligrosSegCol1.map(i => HCR_PELIGROS_SEG_COL1[i].label).concat(hcrEnProceso.peligrosSegCol2.map(i => HCR_PELIGROS_SEG_COL2[i].label)).join('; '),
+      hcrEnProceso.peligrosSalud.map(i => HCR_PELIGROS_SALUD[i].label).join('; '),
+      hcrEnProceso.riesgosSeg.map(i => HCR_RIESGOS_SEG[i].label).join('; '),
+      hcrEnProceso.riesgosMat.map(i => HCR_RIESGOS_MAT[i].label).join('; '),
+      hcrEnProceso.riesgosSalud.map(i => HCR_RIESGOS_SALUD[i].label).join('; '),
+      hcrEnProceso.eppColA.map(i => HCR_EPP_COLA[i].label).concat(hcrEnProceso.eppColB.map(i => HCR_EPP_COLB[i].label)).concat(hcrEnProceso.eppColC.map(i => HCR_EPP_COLC[i].label)).join('; '),
+      hcrEnProceso.verif.join('; '), hcrEnProceso.registros.join('; '),
+      hcrEnProceso.tareas.map(t => `${t.tarea} | ${t.riesgo} | ${t.medida}`).filter(s => s.trim() !== ' |  | ').join(' // '),
+      hcrEnProceso.supervisorNombre, '', '',
+      hcrEnProceso.asistentes.map(a => `${a.nombre} (${a.rut})`).join('; '),
+      pdfLink, userEmail || '', new Date().toLocaleString('es-CL'),
+    ]]);
+    toast('HCR registrada y documento generado ✓', 'ok');
+    hcrEnProceso = null;
+    cargarTodo(true);
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+// ── Generación del PDF de HCR: plantilla de 4 páginas, p1/p2 A4 apaisado
+// (H=595.2) y p3/p4 carta (H=792). Mismo checkX()/textBlock() ya validados
+// en Investigación, coordenadas medidas con pdfplumber (franjas de checkbox
+// compartidas entre secciones apiladas en la misma columna). ──────────────
+async function generarYSubirPdfHcr(datos) {
+  const { PDFDocument, rgb, StandardFonts } = PDFLib;
+  const templateBytes = await fetch('plantillas/hcr.pdf').then(r => r.arrayBuffer());
+  const pdfDoc = await PDFDocument.load(templateBytes);
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const [p1, p2, p3, p4] = pdfDoc.getPages();
+  const H1 = 595.2, H2 = 792;
+
+  function cover(page, H, x0, top0, x1, top1) {
+    page.drawRectangle({ x: x0, y: H - top1, width: x1 - x0, height: top1 - top0, color: rgb(1,1,1) });
+  }
+  function text(page, H, str, x, top, size, bold) {
+    page.drawText(str || '', { x, y: H - top, size: size || 6.5, font: bold ? fontBold : font, color: rgb(0,0,0) });
+  }
+  function checkX(page, H, x, cellCenterTop, size) {
+    const s = size || 7.5;
+    const capHeight = s * 0.72;
+    const baselineTop = cellCenterTop + capHeight / 2;
+    page.drawText('X', { x: x - s * 0.33, y: H - baselineTop, size: s, font: fontBold, color: rgb(0,0,0) });
+  }
+  function wrapLines(str, maxWidth, size) {
+    const words = (str || '').split(/\s+/).filter(Boolean);
+    const lines = []; let current = '';
+    for (const w of words) {
+      const test = current ? current + ' ' + w : w;
+      if (font.widthOfTextAtSize(test, size) > maxWidth && current) { lines.push(current); current = w; }
+      else current = test;
+    }
+    if (current) lines.push(current);
+    return lines;
+  }
+  function textBlock(page, H, str, x, tops, maxWidth, size) {
+    wrapLines(str, maxWidth, size || 6.5).slice(0, tops.length).forEach((l, i) => text(page, H, l, x, tops[i], size));
+  }
+  async function drawSig(page, H, dataUrl, x, top, w, h) {
+    if (!dataUrl) return;
+    const bytes = Uint8Array.from(atob(dataUrl.split(',')[1]), c => c.charCodeAt(0));
+    const img = await pdfDoc.embedPng(bytes);
+    const dims = img.scaleToFit(w, h);
+    page.drawImage(img, { x, y: H - top - dims.height, width: dims.width, height: dims.height });
+  }
+
+  // Pie de página de la plantilla original (branding de terceros) sólo
+  // existe en p3/p4 — se tapa igual que en Charla/HCR original.
+  [p3, p4].forEach(p => cover(p, H2, 220, 767, 392, 782));
+
+  // Encabezado AÑO (páginas 1 y 2, cada una trae su propia caja AÑO/VERSION/PAGINA)
+  cover(p1, H1, 630, 53, 709, 62.5);
+  text(p1, H1, ddmmyyyy(hoyISO()), 638, 61, 6.5);
+  cover(p2, H1, 566, 70.6, 657, 78.6);
+  text(p2, H1, ddmmyyyy(hoyISO()), 567, 77, 6.5);
+
+  // 1. Peligros/Seguridad + 2. Peligros/Salud
+  datos.peligrosSegCol1.forEach(i => checkX(p1, H1, HCR_PELIGROS_SEG_COL1[i].x, HCR_PELIGROS_SEG_COL1[i].top));
+  datos.peligrosSegCol2.forEach(i => checkX(p1, H1, HCR_PELIGROS_SEG_COL2[i].x, HCR_PELIGROS_SEG_COL2[i].top));
+  datos.peligrosSalud.forEach(i => checkX(p1, H1, HCR_PELIGROS_SALUD[i].x, HCR_PELIGROS_SALUD[i].top));
+
+  // 3/4/5. Riesgos
+  datos.riesgosSeg.forEach(i => checkX(p1, H1, HCR_RIESGOS_SEG[i].x, HCR_RIESGOS_SEG[i].top));
+  if (datos.riesgosSegOtroTexto) text(p1, H1, datos.riesgosSegOtroTexto, 145, 369, 6);
+  datos.riesgosMat.forEach(i => checkX(p1, H1, HCR_RIESGOS_MAT[i].x, HCR_RIESGOS_MAT[i].top));
+  datos.riesgosSalud.forEach(i => checkX(p1, H1, HCR_RIESGOS_SALUD[i].x, HCR_RIESGOS_SALUD[i].top));
+
+  // 6. EPP y medios de apoyo
+  datos.eppColA.forEach(i => checkX(p1, H1, HCR_EPP_COLA[i].x, HCR_EPP_COLA[i].top));
+  datos.eppColB.forEach(i => checkX(p1, H1, HCR_EPP_COLB[i].x, HCR_EPP_COLB[i].top));
+  datos.eppColC.forEach(i => checkX(p1, H1, HCR_EPP_COLC[i].x, HCR_EPP_COLC[i].top));
+
+  // 7. Verificación de comunicación + registros adicionales (SI/NO/NA)
+  const colXSiNoNa = { si: HCR_CX.si, no: HCR_CX.no, na: HCR_CX.na };
+  HCR_VERIF_PREGUNTAS.forEach((p, i) => { if (datos.verif[i]) checkX(p1, H1, colXSiNoNa[datos.verif[i]], p.top); });
+  HCR_REGISTROS_ADIC.forEach((p, i) => { if (datos.registros[i]) checkX(p1, H1, colXSiNoNa[datos.registros[i]], p.top); });
+
+  // Página 2: encabezado (Actividad/Área/Fecha/HH capacitación)
+  text(p2, H1, datos.actividad, 70, 109, 6.5);
+  text(p2, H1, datos.hhCapacitacion, 460, 109, 6.5);
+  text(p2, H1, datos.area, 65, 120, 6.5);
+  text(p2, H1, ddmmyyyy(datos.fecha), 418, 120, 6.5);
+
+  // Tabla Tareas / Riesgos / Medidas para el control de los riesgos
+  const filaAltura = (482.0 - 135.5) / 4;
+  datos.tareas.forEach((t, i) => {
+    if (!t.tarea && !t.riesgo && !t.medida) return;
+    const topBase = 135.5 + i * filaAltura + 10;
+    textBlock(p2, H1, t.tarea, 38, [topBase, topBase+8.6, topBase+17.2], 165, 6.5);
+    textBlock(p2, H1, t.riesgo, 213, [topBase, topBase+8.6, topBase+17.2], 143, 6.5);
+    textBlock(p2, H1, t.medida, 366, [topBase, topBase+8.6, topBase+17.2], 285, 6.5);
+  });
+
+  // Firmas jefatura (la caja es angosta y la plantilla ya trae impresas las
+  // etiquetas "SUPERVISOR:"/"JEFE DE OBRA..."/"PREVENCION DE RIESGOS" a media
+  // altura de cada columna; sólo se dibuja la firma debajo, sin nombre
+  // tipeado encima para no superponerse con esas etiquetas)
+  await drawSig(p2, H1, datos.firmaSupervisor, 365, 510, 110, 22);
+  await drawSig(p2, H1, datos.firmaJefeObra, 486, 510, 75, 20);
+  await drawSig(p2, H1, datos.firmaPrevencion, 569, 510, 85, 20);
+
+  // Fecha en encabezado de páginas 3 y 4 (registro de firmas)
+  [p3, p4].forEach(p => {
+    cover(p, H2, 488, 35, 546, 50);
+    text(p, H2, ddmmyyyy(hoyISO()), 490, 47, 8);
+  });
+
+  // La página 4 repite al final su propia caja "FIRMAS JEFATURA" (idéntica a
+  // la de la página 2) — se dibujan las mismas 3 firmas ahí también.
+  await drawSig(p4, H2, datos.firmaSupervisor, 35, 668, 185, 38);
+  await drawSig(p4, H2, datos.firmaJefeObra, 233, 668, 140, 38);
+  await drawSig(p4, H2, datos.firmaPrevencion, 386, 668, 175, 38);
+
+  // Roster de firmas de la cuadrilla: filas 1-23 en página 3, 24-42 en página 4
+  const filasP3 = [122.0,149.4,178.4,202.8,232.6,255.6,284.0,308.4,338.2,361.2,389.6,413.4,443.9,469.9,495.3,518.3,546.5,570.3,597.9,625.1,649.7,674.3,698.9];
+  const filasP4 = [122.0,149.4,178.4,202.8,232.6,255.6,284.0,308.4,338.2,361.2,389.6,413.4,443.9,469.9,495.3,518.3,546.5,570.3,597.9];
+  for (let i = 0; i < datos.asistentes.length && i < filasP3.length; i++) {
+    const a = datos.asistentes[i], top = filasP3[i];
+    text(p3, H2, a.nombre, 63, top + 8, 8);
+    text(p3, H2, a.rut, 270, top + 8, 8);
+    await drawSig(p3, H2, a.firma, 382, top - 1, 175, 24);
+  }
+  for (let i = filasP3.length; i < datos.asistentes.length && i < filasP3.length + filasP4.length; i++) {
+    const a = datos.asistentes[i], top = filasP4[i - filasP3.length];
+    text(p4, H2, a.nombre, 63, top + 8, 8);
+    text(p4, H2, a.rut, 270, top + 8, 8);
+    await drawSig(p4, H2, a.firma, 382, top - 1, 175, 24);
+  }
+
+  const bytes = await pdfDoc.save();
+  const blob = new Blob([bytes], { type: 'application/pdf' });
+  const up = await uploadFile(blob, 'HCR', 'hcr_' + (datos.obra || 'obra').replace(/\s+/g,'_'), 'pdf');
+  return up.link;
+}
+
+// ============================================================
 // MÓDULO: PROCEDIMIENTOS DE TRABAJO SEGURO
 // ============================================================
 function renderProcedimientos() {
@@ -1861,28 +2264,35 @@ function abrirFormEpp(prefillItem, prefillTrabajador) {
 // charla) tienen su propio <canvas> — solo uno está visible a la vez, así que
 // basta con recordar cuál es el activo en firmaCanvasId.
 let firmaCanvasId = 'firma-canvas';
+// Nota: start/move/end usan `ctx`/`activa` locales a cada canvas (no las
+// globales firmaCtx/firmaActiva) para que varios pads de firma puedan
+// coexistir a la vez en un mismo panel (ej. las 3 firmas de jefatura del
+// HCR) sin pisarse el contexto de dibujo entre sí.
 function initFirmaPad(canvasId) {
-  firmaCanvasId = canvasId || 'firma-canvas';
-  const canvas = document.getElementById(firmaCanvasId);
+  const id = canvasId || 'firma-canvas';
+  firmaCanvasId = id;
+  const canvas = document.getElementById(id);
   canvas.width = canvas.clientWidth; canvas.height = 180;
-  firmaCtx = canvas.getContext('2d');
-  firmaCtx.strokeStyle = '#1a1a1a'; firmaCtx.lineWidth = 2.2; firmaCtx.lineCap = 'round';
-  firmaActiva = false;
+  const ctx = canvas.getContext('2d');
+  firmaCtx = ctx;
+  ctx.strokeStyle = '#1a1a1a'; ctx.lineWidth = 2.2; ctx.lineCap = 'round';
+  let activa = false;
   const pos = (e) => {
     const r = canvas.getBoundingClientRect();
     const p = e.touches ? e.touches[0] : e;
     return { x: p.clientX - r.left, y: p.clientY - r.top };
   };
-  const start = (e) => { e.preventDefault(); firmaActiva = true; const p = pos(e); firmaCtx.beginPath(); firmaCtx.moveTo(p.x, p.y); };
-  const move = (e) => { if (!firmaActiva) return; e.preventDefault(); const p = pos(e); firmaCtx.lineTo(p.x, p.y); firmaCtx.stroke(); };
-  const end = () => { firmaActiva = false; };
+  const start = (e) => { e.preventDefault(); activa = true; const p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); };
+  const move = (e) => { if (!activa) return; e.preventDefault(); const p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); };
+  const end = () => { activa = false; };
   canvas.onmousedown = start; canvas.onmousemove = move; canvas.onmouseup = end; canvas.onmouseleave = end;
   canvas.ontouchstart = start; canvas.ontouchmove = move; canvas.ontouchend = end;
 }
-function limpiarFirma() {
-  const canvas = document.getElementById(firmaCanvasId);
-  firmaCtx.clearRect(0, 0, canvas.width, canvas.height);
+function limpiarFirmaId(canvasId) {
+  const canvas = document.getElementById(canvasId);
+  canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
 }
+function limpiarFirma() { limpiarFirmaId(firmaCanvasId); }
 function firmaEstaVacia(canvasId) {
   const canvas = document.getElementById(canvasId);
   const ctx = canvas.getContext('2d');

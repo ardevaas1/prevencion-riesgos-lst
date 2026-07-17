@@ -55,6 +55,14 @@ function inicializarPlanilla() {
     'Investigador Nombre y Rut', 'Investigador Cargo', 'PDF', 'Registrado Por', 'Fecha Registro'
   ]);
 
+  crearHoja(ss, 'HCR', [
+    'N°', 'Fecha', 'Obra', 'Actividad', 'Área(s)', 'HH Capacitación',
+    'Peligros', 'Peligros Salud', 'Riesgos Seguridad', 'Riesgos Materiales', 'Riesgos Salud',
+    'EPP y Medios de Apoyo', 'Verificación Comunicación', 'Registros Adicionales',
+    'Tareas / Riesgos / Medidas', 'Supervisor', '(reservado)', '(reservado)',
+    'Asistentes', 'PDF', 'Registrado Por', 'Fecha Registro'
+  ]);
+
   crearHoja(ss, 'PROCEDIMIENTOS', [
     'N°', 'Código', 'Nombre PTS', 'Área/Actividad', 'Versión', 'Fecha Emisión', 'Archivo', 'Estado', 'Fecha Registro'
   ]);
