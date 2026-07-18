@@ -244,6 +244,15 @@
         <label>Foto (opcional)</label>
         <label class="upload-label" onclick="event.currentTarget.classList.add('selected')"><svg viewBox="0 0 24 24" fill="none" class="inline-ic"><path d="M4 8a1 1 0 0 1 1-1h2l1.2-2h7.6L17 7h2a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.4" stroke="currentColor" stroke-width="1.7"/></svg> Tomar / subir foto<input type="file" name="foto" accept="image/*" capture="environment" style="display:none"></label>
       </div>
+      <div class="chk-row">
+        <label class="chk-row-label">
+          <span class="chk-row-checkbox-wrap">
+            <input type="checkbox" name="esSupervisor" class="chk-row-input">
+            <span class="chk-row-checkbox"></span>
+          </span>
+          <span>Es supervisor de esta obra (queda a cargo de los demás trabajadores activos de la misma Obra, y puede quedar sugerido como Relator en Charlas)</span>
+        </label>
+      </div>
       <button class="btn-add" type="submit">Guardar trabajador</button>
     </form>
   </div>
@@ -429,7 +438,7 @@
       </div>
       <div class="form-group">
         <label>Obra</label>
-        <select name="obra" id="sel-obra-charla" required onchange="onCambioObraSelect(this,'input-charla-obra-otra')"></select>
+        <select name="obra" id="sel-obra-charla" required onchange="onCambioObraCharla(this)"></select>
         <input type="text" id="input-charla-obra-otra" class="hidden" placeholder="Nombre de la obra" style="margin-top:8px;">
       </div>
       <div class="form-group"><label>Fecha</label><input type="date" name="fecha" required></div>

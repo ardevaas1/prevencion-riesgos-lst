@@ -463,7 +463,7 @@ async function cargarTodo(silencioso) {
   try {
     if (!silencioso) splash(45, 'Cargando información...');
     const [trab, insp, inc, proc, epp, charlas, invest, hcr, diat] = await Promise.all([
-      fetchSheet(`'${CONFIG.SHEET_TRABAJADORES}'!A2:O2000`),
+      fetchSheet(`'${CONFIG.SHEET_TRABAJADORES}'!A2:P2000`),
       fetchSheet(`'${CONFIG.SHEET_INSPECCIONES}'!A2:M2000`),
       fetchSheet(`'${CONFIG.SHEET_INCIDENTES}'!A2:V2000`),
       fetchSheet(`'${CONFIG.SHEET_PROCEDIMIENTOS}'!A2:I2000`),
@@ -499,7 +499,17 @@ function rowToTrabajador(r, i) {
   return { fila: i+2, n: r[0]||'', nombre: r[1]||'', rut: r[2]||'', cargo: r[3]||'', empresa: r[4]||'',
     fechaIngreso: r[5]||'', estado: r[6]||'Activo', foto: r[7]||'', fechaRegistro: r[8]||'',
     obra: r[9]||'', contratoInicio: r[10]||'', contratoTermino: r[11]||'', contratoArchivo: r[12]||'',
-    alturaVigencia: r[13]||'', alturaArchivo: r[14]||'' };
+    alturaVigencia: r[13]||'', alturaArchivo: r[14]||'', esSupervisor: r[15]==='Sí' };
+}
+// Un trabajador es "supervisor de obra" de todos los demás trabajadores
+// activos de su misma Obra (no hay asignación individual: se sigue el
+// mismo patrón simple de "Obra" ya usado en el resto de la app).
+function supervisorDeObra(obra) {
+  if (!obra) return null;
+  return allTrabajadores.find(t => t.esSupervisor && t.obra === obra && t.estado === 'Activo') || null;
+}
+function trabajadoresACargoDe(supervisor) {
+  return allTrabajadores.filter(t => t.obra === supervisor.obra && t.estado === 'Activo' && t.nombre !== supervisor.nombre);
 }
 function rowToInspeccion(r, i) {
   return { fila: i+2, n: r[0]||'', fecha: r[1]||'', tipo: r[2]||'', area: r[3]||'', inspector: r[4]||'',
@@ -562,6 +572,17 @@ function opcionesObraSelectHTML(actual) {
 }
 function onCambioObraSelect(selEl, otroId) {
   document.getElementById(otroId).classList.toggle('hidden', selEl.value !== '__otra__');
+}
+// Al elegir la Obra en el formulario de Charla, si esa obra tiene un
+// supervisor asignado se sugiere su nombre como Relator (solo si el campo
+// todavía está vacío, para no pisar algo ya escrito a mano).
+function onCambioObraCharla(selEl) {
+  onCambioObraSelect(selEl, 'input-charla-obra-otra');
+  const f = selEl.form;
+  if (f && !f.relator.value) {
+    const sup = supervisorDeObra(selEl.value);
+    if (sup) f.relator.value = sup.nombre;
+  }
 }
 function valorObra(selEl, otroId) {
   if (selEl.value === '__otra__') return document.getElementById(otroId).value.trim();
@@ -728,6 +749,26 @@ function abrirFichaTrabajador(nombre) {
           <span class="badge ${i.estado==='Cerrado'?'green':'red'}">${esc(i.estado)}</span>
         </div>`).join('');
 
+  // Supervisor de obra: a cargo de los demás trabajadores activos de su
+  // misma Obra, y responde por los incidentes que tengan.
+  const supervisorDeEste = !t.esSupervisor ? supervisorDeObra(t.obra) : null;
+  let equipoHtml = '';
+  if (t.esSupervisor) {
+    const equipo = trabajadoresACargoDe(t);
+    const incidentesEquipo = allIncidentes.filter(i => equipo.some(w => w.nombre === i.trabajador));
+    equipoHtml = `
+    <div class="sec-label" style="margin-top:20px;">Trabajadores a cargo (${equipo.length})</div>
+    ${equipo.length === 0 ? '<div class="card-sub" style="padding:6px 2px;">No hay otros trabajadores activos en esta obra todavía.</div>' : equipo.map(w => {
+      const incW = allIncidentes.filter(i => i.trabajador === w.nombre && i.estado !== 'Cerrado');
+      return `<div class="field-row" style="cursor:pointer;" onclick="closePanel('panel-ficha-trabajador'); abrirFichaTrabajador('${esc(w.nombre).replace(/'/g,"\\'")}')">
+        <span>${esc(w.nombre)}<br><span style="color:#888;font-size:12px;">${esc(w.cargo)}</span></span>
+        ${incW.length > 0 ? `<span class="badge red">${incW.length} incidente${incW.length>1?'s':''} abierto${incW.length>1?'s':''}</span>` : '<span class="badge green">Sin incidentes abiertos</span>'}
+      </div>`;
+    }).join('')}
+    ${incidentesEquipo.length > 0 ? `<div class="card-sub" style="padding:6px 2px;">Total histórico del equipo: ${incidentesEquipo.length} incidente${incidentesEquipo.length>1?'s':''} registrado${incidentesEquipo.length>1?'s':''}.</div>` : ''}
+    `;
+  }
+
   const contratoBadge = !t.contratoInicio
     ? `<span class="badge gray">Sin registrar</span>`
     : !t.contratoTermino
@@ -751,6 +792,9 @@ function abrirFichaTrabajador(nombre) {
     <div class="field-row"><span>Fecha de ingreso</span><b>${esc(t.fechaIngreso || '—')}</b></div>
     <div class="field-row"><span>Estado</span><span class="badge ${t.estado==='Activo'?'green':'gray'}">${esc(t.estado)}</span></div>
     ${t.foto ? `<div class="field-row"><span>Foto</span><a href="${esc(t.foto)}" target="_blank" class="badge blue">${ic('camara',12)} Ver foto</a></div>` : ''}
+    <div class="field-row"><span>Rol</span>${t.esSupervisor ? '<span class="badge amber">Supervisor de obra</span>' : supervisorDeEste ? `<span>Supervisado por <b>${esc(supervisorDeEste.nombre)}</b></span>` : '<span class="badge gray">Trabajador</span>'}</div>
+    <button class="action-btn" onclick="toggleSupervisor(${t.fila})">${t.esSupervisor ? 'Quitar rol de supervisor' : 'Marcar como supervisor de esta obra'}</button>
+    ${equipoHtml}
 
     <div class="sec-label" style="margin-top:20px;">Contrato de trabajo</div>
     <div class="field-row"><span>Inicio</span><b>${esc(t.contratoInicio || '—')}</b></div>
@@ -861,13 +905,26 @@ async function guardarTrabajador(ev) {
     }
     const n = allTrabajadores.length + 1;
     const obra = valorObra(f.obra, 'input-trabajador-obra-otra');
-    await appendSheet(`'${CONFIG.SHEET_TRABAJADORES}'!A:O`, [[
+    await appendSheet(`'${CONFIG.SHEET_TRABAJADORES}'!A:P`, [[
       n, f.nombre.value, f.rut.value, f.cargo.value, f.empresa.value,
       f.fechaIngreso.value, f.estado.value, fotoLink, new Date().toLocaleString('es-CL'),
-      obra, '', '', '', '', ''
+      obra, '', '', '', '', '', f.esSupervisor.checked ? 'Sí' : ''
     ]]);
     toast('Trabajador agregado ✓', 'ok');
     closePanel('panel-form-trabajador');
+    cargarTodo(true);
+  } catch (e) { toast(e.message, 'error'); }
+}
+async function toggleSupervisor(fila) {
+  const t = allTrabajadores.find(x => x.fila === fila);
+  if (!t) return;
+  try {
+    await ensureToken();
+    const nuevoValor = t.esSupervisor ? '' : 'Sí';
+    const url = `${SHEETS_BASE}/${CONFIG.SHEET_ID}/values/${encodeURIComponent(`'${CONFIG.SHEET_TRABAJADORES}'!P${fila}`)}?valueInputOption=USER_ENTERED`;
+    await fetch(url, { method:'PUT', headers:{ 'Content-Type':'application/json', ...authHeader() },
+      body: JSON.stringify({ values: [[nuevoValor]] }) });
+    toast(nuevoValor ? 'Marcado como supervisor de obra ✓' : 'Ya no es supervisor de obra', 'ok');
     cargarTodo(true);
   } catch (e) { toast(e.message, 'error'); }
 }
@@ -1210,6 +1267,11 @@ function renderIncidentes() {
 function abrirDetalleIncidente(fila) {
   const i = allIncidentes.find(x => x.fila === fila);
   if (!i) { toast('No se encontró el registro', 'error'); return; }
+  // Supervisor responsable: el supervisor de la Obra del trabajador
+  // involucrado (o de la Obra del incidente, si no hay trabajador asociado).
+  const trabInvolucrado = i.trabajador && allTrabajadores.find(x => x.nombre === i.trabajador);
+  const obraParaSupervisor = (trabInvolucrado && trabInvolucrado.obra) || i.obra;
+  const supervisorResponsable = supervisorDeObra(obraParaSupervisor);
   document.getElementById('detalle-incidente-body').innerHTML = `
     <div class="ficha-hero">
       <div class="ficha-hero-icon">${ic('incidentes',32)}</div>
@@ -1221,6 +1283,7 @@ function abrirDetalleIncidente(fila) {
     <div class="field-row"><span>Fecha</span><b>${esc(i.fecha)}</b></div>
     ${i.trabajador ? `<div class="field-row"><span>Trabajador</span><b>${esc(i.trabajador)}</b></div>` : ''}
     <div class="field-row"><span>Obra</span><b>${esc(i.obra || '—')}</b></div>
+    ${supervisorResponsable && supervisorResponsable.nombre !== i.trabajador ? `<div class="field-row"><span>Supervisor responsable</span><b>${esc(supervisorResponsable.nombre)}</b></div>` : ''}
     <div class="field-row"><span>Gravedad</span><span class="badge red">${esc(i.gravedad)}</span></div>
     <div class="field-row"><span>Días perdidos</span><b>${i.diasPerdidos || 0}</b></div>
     <div class="field-row"><span>Estado</span><span class="badge ${i.estado==='Cerrado'?'green':'gray'}">${esc(i.estado)}</span></div>
