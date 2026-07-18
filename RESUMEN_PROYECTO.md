@@ -82,7 +82,8 @@ Columnas agregadas después del lanzamiento inicial (ver `rowToX` en `app.js`
 para el mapeo exacto de índices):
 - `TRABAJADORES`: `Obra` (J), `Fecha Inicio Contrato` (K), `Fecha Término
   Contrato` (L, vacío = indefinido), `Archivo Contrato` (M), `Fecha Vigencia
-  Examen Altura` (N), `Archivo Examen Altura` (O).
+  Examen Altura` (N), `Archivo Examen Altura` (O), `Es Supervisor` (P, "Sí"
+  o vacío) — ver "Supervisor de obra" en Módulos de la app.
 - `INSPECCIONES`: `Obra` (M).
 - `INCIDENTES`: `Respaldo Cierre` (N), `Obra` (O), `Días Perdidos` (P),
   `Investigación Estado` (Q), `Investigación Responsable` (R), `Investigación
@@ -183,6 +184,31 @@ vez de esperar un cambio que nunca ocurre.
    física** (fecha de vigencia, badge Vigente/Vencido, subir/ver PDF) — cada
    una con su propio panel de edición (`panel-editar-contrato` /
    `panel-editar-altura`). Replica el patrón de ficha de equipo de Flota.
+   **Supervisor de obra:** un trabajador se puede marcar como supervisor
+   (checkbox al crearlo, o botón "Marcar como supervisor de esta obra" /
+   "Quitar rol de supervisor" en su ficha — `toggleSupervisor` en `app.js`).
+   No hay asignación individual de a quién supervisa: **un supervisor queda
+   a cargo automáticamente de todos los trabajadores Activos de su misma
+   Obra** (`supervisorDeObra(obra)` / `trabajadoresACargoDe(supervisor)` en
+   `app.js`), mismo patrón simple de "Obra" que ya usa el resto de la app —
+   decisión tomada para no tener que mantener una lista de asignaciones
+   aparte. Efectos concretos de marcar a alguien como supervisor:
+   - Su ficha muestra la sección **"Trabajadores a cargo"**: lista de sus
+     compañeros de obra con la cantidad de incidentes abiertos de cada uno,
+     y el total histórico del equipo.
+   - La ficha de cada trabajador a su cargo muestra "Supervisado por
+     [nombre]".
+   - Al **registrar una Charla** y elegir la Obra, si esa obra tiene
+     supervisor su nombre se sugiere automáticamente como Relator (solo si
+     el campo estaba vacío, no pisa algo ya escrito) — `onCambioObraCharla`
+     en `app.js`.
+   - El **detalle de un Incidente** muestra quién es el "Supervisor
+     responsable" (según la Obra del trabajador involucrado).
+   - **No hay control de acceso/permisos real todavía** (la hoja `USUARIOS`
+     sigue sin usarse para eso, ver "Pendiente" más abajo) — "tener la
+     facultad de hacer charlas" se implementó como sugerencia/prellenado,
+     no como restricción de quién puede crear una Charla en la app;
+     cualquiera logueado puede seguir haciéndolo igual que antes.
 6. **Charlas de Seguridad** — lista de alertas generadas (por inspecciones o
    incidentes), con botón "Marcar realizada".
 7. **Hoja de Control de Riesgos (HCR)** — módulo completamente separado del

@@ -22,7 +22,7 @@ function inicializarPlanilla() {
   crearHoja(ss, 'TRABAJADORES', [
     'N°', 'Nombre', 'RUT', 'Cargo', 'Empresa/Contratista', 'Fecha Ingreso', 'Estado', 'Foto', 'Fecha Registro',
     'Obra', 'Fecha Inicio Contrato', 'Fecha Término Contrato', 'Archivo Contrato',
-    'Fecha Vigencia Examen Altura', 'Archivo Examen Altura'
+    'Fecha Vigencia Examen Altura', 'Archivo Examen Altura', 'Es Supervisor'
   ]);
 
   crearHoja(ss, 'INSPECCIONES', [
