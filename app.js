@@ -213,6 +213,7 @@ function signOut() {
   localStorage.removeItem(EMAIL_KEY);
   userEmail = null; userRole = null;
   document.getElementById('main').classList.add('hidden');
+  document.getElementById('desktop-home').classList.add('dt-oculto');
   document.getElementById('desktop-sidebar').classList.add('dt-oculto');
   document.getElementById('desktop-main').classList.add('dt-oculto');
   mostrarLogin('Usa tu cuenta corporativa autorizada', false);
@@ -380,16 +381,24 @@ const ICONS = {
 };
 function ic(name, size) { return ICONS[name].replace('<svg ', `<svg style="width:${size||14}px;height:${size||14}px;vertical-align:-3px;flex-shrink:0" `); }
 
+// Color de cada módulo — se usa tanto para las tarjetas de Inicio como
+// para el header del sidebar de escritorio (cambia de color según el
+// módulo activo, igual que en Flota).
+const MODULOS_COLOR = {
+  inspecciones: 'flota', incidentes: 'and', procedimientos: 'cont',
+  epp: 'mov', trabajadores: 'inv', charlas: 'flota', hcr: 'and',
+};
+
 function renderModulosHome() {
   const modulos = [
-    { key: 'inspecciones', nombre: 'Inspecciones', desc: 'Con foto y alerta de charla automática', color: 'flota' },
-    { key: 'incidentes', nombre: 'Incidentes y Accidentes', desc: 'Registro con evidencia fotográfica', color: 'and' },
-    { key: 'procedimientos', nombre: 'Procedimientos de Trabajo Seguro', desc: 'PTS vigentes de la obra', color: 'cont' },
-    { key: 'epp', nombre: 'Entrega de EPP', desc: 'Con firma digital del trabajador', color: 'mov' },
-    { key: 'trabajadores', nombre: 'Trabajadores', desc: 'Nómina de la obra', color: 'inv' },
-    { key: 'charlas', nombre: 'Charlas de Seguridad', desc: 'Alertas generadas por inspecciones', color: 'flota' },
-    { key: 'hcr', nombre: 'Hoja de Control de Riesgos (HCR)', desc: 'Registro diario por cuadrilla, antes de ejecutar el trabajo', color: 'and' },
-  ];
+    { key: 'inspecciones', nombre: 'Inspecciones', desc: 'Con foto y alerta de charla automática' },
+    { key: 'incidentes', nombre: 'Incidentes y Accidentes', desc: 'Registro con evidencia fotográfica' },
+    { key: 'procedimientos', nombre: 'Procedimientos de Trabajo Seguro', desc: 'PTS vigentes de la obra' },
+    { key: 'epp', nombre: 'Entrega de EPP', desc: 'Con firma digital del trabajador' },
+    { key: 'trabajadores', nombre: 'Trabajadores', desc: 'Nómina de la obra' },
+    { key: 'charlas', nombre: 'Charlas de Seguridad', desc: 'Alertas generadas por inspecciones' },
+    { key: 'hcr', nombre: 'Hoja de Control de Riesgos (HCR)', desc: 'Registro diario por cuadrilla, antes de ejecutar el trabajo' },
+  ].map(m => ({ ...m, color: MODULOS_COLOR[m.key] }));
   setListHTML('modulos-home', modulos.map(m => `
     <div class="modulo-card modulo-card--${m.color}" onclick="irPagina('${m.key}')">
       <div class="modulo-icon modulo-icon--${m.color}">${ICONS[m.key]}</div>
@@ -2811,20 +2820,22 @@ async function arrancarApp() {
   document.getElementById('dt-chip-email').textContent = userEmail || '';
   document.getElementById('chip-footer-email').textContent = userEmail || '';
   document.getElementById('dt-footer-email').textContent = userEmail || '';
+  document.getElementById('dt-home-email').textContent = userEmail || '';
   renderModulosHome();
 
   await cargarTodo();
 
   // Revela la app con una pequeña animación de aparición, en vez de
-  // que todo salte de golpe apenas termina de cargar
+  // que todo salte de golpe apenas termina de cargar. Siempre arranca en
+  // Inicio: en escritorio esa es la página completa sin sidebar
+  // (desktop-home); el sidebar + panel central solo aparecen al entrar
+  // a un módulo (ver irPagina en index.html).
   const main = document.getElementById('main');
-  const sidebar = document.getElementById('desktop-sidebar');
-  const dtMain = document.getElementById('desktop-main');
+  const dtHome = document.getElementById('desktop-home');
+  irPagina('inicio');
   main.classList.remove('hidden');
-  sidebar.classList.remove('dt-oculto');
-  dtMain.classList.remove('dt-oculto');
-  [main, sidebar, dtMain].forEach(el => el.classList.add('app-enter'));
-  setTimeout(() => [main, sidebar, dtMain].forEach(el => el.classList.remove('app-enter')), 500);
+  [main, dtHome].forEach(el => el.classList.add('app-enter'));
+  setTimeout(() => [main, dtHome].forEach(el => el.classList.remove('app-enter')), 500);
 
   const splashEl = document.getElementById('splash');
   splashEl.style.opacity = '0';

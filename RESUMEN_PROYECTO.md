@@ -521,10 +521,63 @@ uno, en vez de una barra de tabs fija. Se optó por la opción recomendada
 - `.fab-btn` (botón + flotante) bajó su `bottom` de `72px` (dejaba espacio
   para la barra) a `20px`, y `.page` bajó su `padding-bottom` de `90px` a
   `24px` por la misma razón.
-- **El sidebar de escritorio (`.desktop-sidebar`/`.desktop-nav`) NO
-  cambió** — el pedido del cliente fue específicamente sobre el patrón
-  de navegación de la captura de Flota en celular; en escritorio ya
-  existía un menú lateral persistente y no hubo queja sobre eso.
+- Esto fue solo para **móvil**; en ese momento el cliente no había pedido
+  nada sobre escritorio. Ver la sección siguiente — poco después pidió el
+  mismo patrón (Inicio de página completa + sidebar solo dentro de un
+  módulo) también para escritorio, calcado de Flota.
+
+## Escritorio: Inicio de página completa + sidebar solo dentro de un módulo
+
+Igual que el cambio anterior pero para escritorio: el cliente mandó dos
+capturas de Flota en PC — la pantalla de Inicio (header centrado con logo
+en placa blanca + "Constructora LST" / "Gestión de Recursos", grilla de
+módulos en una fila, chip de cuenta + botones abajo, **sin sidebar**) y la
+vista dentro de un módulo (sidebar angosto a la izquierda con header de
+**color según el módulo**, ahí sí con navegación). Pidió replicar
+exactamente ese comportamiento, punto que además ya coincidía con el
+propio "look Flota" que se le había dado a esta app antes.
+
+Antes de implementar se preguntó explícitamente (porque nuestros módulos
+no tienen sub-secciones internas como "Registrar/Pendientes/Historial" de
+Movimientos en Flota) si el sidebar dentro de un módulo debía mostrar solo
+ese módulo + "Volver al inicio", o mantener la lista completa de los 7
+módulos para saltar entre ellos sin volver a Inicio. El cliente eligió
+**mantener la lista completa** (más rápido para el uso diario) — así que
+el sidebar de escritorio en la práctica se ve casi igual que antes, solo
+que ahora Inicio vive fuera de él.
+
+Cambios concretos:
+- **Nuevo `#desktop-home`** (`index.html`): página de escritorio completa,
+  sin sidebar, que reemplaza lo que antes vivía dentro de
+  `dt-page-inicio`. Header centrado con `.logo-badge` + título
+  "Prevención de Riesgos" + subtítulo "Constructora LST", con esquinas
+  inferiores redondeadas (28px) y el gradiente naranjo de siempre. Debajo:
+  fila de 4 estadísticas rápidas (Trabajadores / Inspecc. abiertas /
+  Incidentes / Charlas pend. — antes solo estaban en el sidebar, que ahora
+  se oculta en Inicio, así que se agregaron aquí para no perder esa
+  info), "Estadísticas de seguridad", la grilla de módulos
+  (`data-list="modulos-home"`, en fila con `repeat(auto-fit, minmax(190px,1fr))`
+  — antes este layout en fila estaba roto: el CSS apuntaba a un
+  `#modulos-home` que no existía en el HTML, así que en escritorio los
+  módulos se veían en grid de 2 columnas como en móvil) y al final el
+  chip de cuenta + "Actualizar datos"/"Cerrar sesión".
+- **`dt-page-inicio` se eliminó** de `#desktop-main` (quedó reemplazado
+  por `#desktop-home`, que vive fuera del sidebar).
+- **`irPagina()`** ahora decide en escritorio entre mostrar `#desktop-home`
+  (si `nombre === 'inicio'`) o el par `#desktop-sidebar` + `#desktop-main`
+  (cualquier otro módulo), alternando la clase `dt-oculto`.
+- **Header del sidebar con color por módulo**: `#desktop-sidebar-header`
+  ahora recibe una clase `header--flota/inv/cont/mov/and` (mismo esquema
+  de colores que ya usaban las tarjetas de módulo en Inicio) que
+  `irPagina()` agrega/saca según el módulo activo — se agregó
+  `.header--flota` (azul) en `style.css`, que no existía porque ningún
+  módulo propio usaba ese color de header hasta ahora. El mapeo
+  módulo → color vive en `MODULOS_COLOR` (`app.js`, nuevo, top-level),
+  compartido entre `renderModulosHome()` y `irPagina()`.
+- `arrancarApp()` ya no revela `desktop-sidebar`/`desktop-main`
+  directamente; llama a `irPagina('inicio')` (que decide mostrar
+  `desktop-home`) y anima ese contenedor en vez de los otros dos. `signOut()`
+  también oculta `desktop-home` ahora, además de sidebar/main.
 
 ## Decisiones de diseño visuales (por qué se ve como se ve)
 
