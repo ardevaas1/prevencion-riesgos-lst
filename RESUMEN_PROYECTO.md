@@ -566,18 +566,62 @@ Cambios concretos:
 - **`irPagina()`** ahora decide en escritorio entre mostrar `#desktop-home`
   (si `nombre === 'inicio'`) o el par `#desktop-sidebar` + `#desktop-main`
   (cualquier otro módulo), alternando la clase `dt-oculto`.
-- **Header del sidebar con color por módulo**: `#desktop-sidebar-header`
-  ahora recibe una clase `header--flota/inv/cont/mov/and` (mismo esquema
-  de colores que ya usaban las tarjetas de módulo en Inicio) que
-  `irPagina()` agrega/saca según el módulo activo — se agregó
-  `.header--flota` (azul) en `style.css`, que no existía porque ningún
-  módulo propio usaba ese color de header hasta ahora. El mapeo
-  módulo → color vive en `MODULOS_COLOR` (`app.js`, nuevo, top-level),
-  compartido entre `renderModulosHome()` y `irPagina()`.
+- **Header con color por módulo** (sidebar de escritorio Y header móvil,
+  ver sección siguiente para el detalle del fundido): reciben una capa
+  con clase `header--flota/inv/cont/mov/and` (mismo esquema de colores
+  que ya usaban las tarjetas de módulo en Inicio) que `irPagina()`
+  aplica según el módulo activo — se agregó `.header--flota` (azul) en
+  `style.css`, que no existía porque ningún módulo propio usaba ese
+  color de header hasta ahora. El mapeo módulo → color vive en
+  `MODULOS_COLOR` (`app.js`, nuevo, top-level), compartido entre
+  `renderModulosHome()` y `irPagina()`.
 - `arrancarApp()` ya no revela `desktop-sidebar`/`desktop-main`
   directamente; llama a `irPagina('inicio')` (que decide mostrar
   `desktop-home`) y anima ese contenedor en vez de los otros dos. `signOut()`
   también oculta `desktop-home` ahora, además de sidebar/main.
+
+## Headers: cambio de color con fundido (no de golpe)
+
+El cliente pidió dos cosas seguidas: que el header **móvil** también
+cambiara de color por módulo (antes solo se hizo en el sidebar de
+escritorio) y que el cambio de color tuviera una **transición**, "para
+que no sea tan de golpe", como en Flota.
+
+Lo primero (agregar color al header móvil) fue directo: se le sacó la
+clase fija `header--pr` que tenía siempre y ahora usa el mismo mecanismo
+que el sidebar (`MODULOS_COLOR` + `irPagina()`), quedando naranjo en
+Inicio y con el color del módulo en cualquier otra página. El header
+móvil (`#header-movil`) además ganó `position:relative;overflow:hidden`
++ `border-radius`/`padding-bottom` que antes vivían en una clase aparte
+`.header--pr` con el mismo gradiente hardcodeado (se sacó esa
+duplicación).
+
+Lo segundo (la transición) resultó más complicado de lo esperado:
+`transition: background 0.35s` **no anima gradientes** — se probó
+directamente (leyendo `getComputedStyle(...).backgroundImage` un frame
+después de cambiar la clase) y el valor salta instantáneo al gradiente
+nuevo, sin ningún paso intermedio. Los navegadores no interpolan entre
+dos `linear-gradient()` distintos con una transición simple.
+
+La solución fue un **fundido cruzado (crossfade) con dos capas**: cada
+header (`#header-movil` y `#desktop-sidebar-header`) tiene ahora dos
+`div.header-bg` hijos, superpuestos con `position:absolute;inset:0`,
+cada uno con su propio `transition: opacity 0.35s ease`. `aplicarColorHeader()`
+(`index.html`) lleva un registro de cuál de las dos capas está "al
+frente" (`headerEl.__bgFront`), le pone al otro div (el de atrás) la
+clase de color nueva, fuerza un reflow (`void back.offsetWidth`) para
+que el navegador registre el `opacity:0` de partida, y recién ahí anima
+ese div a `opacity:1` mientras el que estaba al frente baja a `opacity:0`
+— como `opacity` sí es animable de forma nativa y confiable en todos los
+navegadores, el cruce se ve como un fundido real en vez de un salto.
+El contenido del header (logo, título, botones) quedó con
+`position:relative;z-index:1` para pintarse siempre por encima de las
+capas de color.
+
+De paso se agregó una animación `pageFade` (`opacity` + `translateY(6px)`
+sutil, 0.28s) a `.page.active` y `.dt-page.active`, para que el
+contenido de cada página también entre con un pequeño fundido al
+navegar, en vez de aparecer de golpe.
 
 ## Decisiones de diseño visuales (por qué se ve como se ve)
 

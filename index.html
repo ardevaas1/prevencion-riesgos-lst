@@ -11,8 +11,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 <style>
-  .header--pr { background: radial-gradient(ellipse 320px 140px at 30% -40%, rgba(255,255,255,0.16), transparent 60%), linear-gradient(135deg, #c06f0a 0%, #e58d17 55%, #ffb462 100%); box-shadow: 0 2px 10px rgba(229,141,23,0.25); border-radius: 0 0 22px 22px; padding-bottom: 16px; }
-
   /* ── Logo en placa blanca redondeada (look "Flota"), reutilizado en el
      header móvil y en el encabezado del sidebar de escritorio ── */
   .logo-badge {
@@ -113,7 +111,9 @@
 
 <!-- APP PRINCIPAL (móvil) -->
 <div id="main" class="main hidden">
-  <div class="header header--pr">
+  <div class="header" id="header-movil">
+    <div class="header-bg"></div>
+    <div class="header-bg"></div>
     <div class="logo-badge" id="header-logo-badge"><img src="logo.png" class="header-logo" alt="LST"></div>
     <div class="header-back hidden" id="header-back" onclick="irPagina('inicio')">‹</div>
     <div class="header-center">
@@ -228,6 +228,8 @@
 <!-- ===== SIDEBAR ESCRITORIO (dentro de un módulo) ===== -->
 <div class="desktop-sidebar dt-oculto" id="desktop-sidebar">
   <div class="desktop-sidebar-header" id="desktop-sidebar-header">
+    <div class="header-bg"></div>
+    <div class="header-bg"></div>
     <div class="logo-badge"><img src="logo.png" alt="LST"></div>
     <div>
       <div class="desktop-sidebar-title">Prevención de Riesgos</div>
@@ -884,6 +886,27 @@
     trabajadores: 'Trabajadores', charlas: 'Charlas de Seguridad', hcr: 'Hoja de Control de Riesgos (HCR)',
   };
 
+  // Aplica el color del módulo activo a un header (móvil o el del sidebar
+  // de escritorio) con un fundido suave en vez de un salto brusco: cada
+  // header tiene 2 capas .header-bg superpuestas; la nueva aparece con
+  // opacity encima mientras la anterior se desvanece (los gradientes no
+  // se pueden animar directo con `transition: background`).
+  function aplicarColorHeader(headerEl, nombre) {
+    const color = MODULOS_COLOR[nombre] || 'pr';
+    const claseColor = 'header-bg header--' + color;
+    const layers = headerEl.querySelectorAll(':scope > .header-bg');
+    if (layers.length < 2) return;
+    const front = headerEl.__bgFront === layers[1] ? layers[1] : layers[0];
+    if (front.className === claseColor) return; // ya es ese color
+    const back = front === layers[0] ? layers[1] : layers[0];
+    back.className = claseColor;
+    back.style.opacity = '0';
+    void back.offsetWidth; // fuerza reflow para que la transición de opacity se anime
+    back.style.opacity = '1';
+    front.style.opacity = '0';
+    headerEl.__bgFront = back;
+  }
+
   function irPagina(nombre) {
     if (!TITULOS_PAGINA[nombre]) nombre = 'inicio';
 
@@ -894,13 +917,15 @@
       hcr:'page-hcr' };
     document.getElementById(map[nombre]).classList.add('active');
 
-    // Header móvil: en Inicio muestra el logo; en las demás páginas
-    // muestra un botón "‹ Volver a Inicio" con el título de la página
-    // (Inicio con su grilla de módulos es ahora la única forma de navegar).
+    // Header móvil: en Inicio muestra el logo (color naranjo de marca);
+    // en las demás páginas muestra un botón "‹ Volver a Inicio" con el
+    // título y el color del módulo activo (Inicio con su grilla de
+    // módulos es ahora la única forma de navegar).
     const esInicio = nombre === 'inicio';
     document.getElementById('header-logo-badge').classList.toggle('hidden', !esInicio);
     document.getElementById('header-back').classList.toggle('hidden', esInicio);
     document.getElementById('header-title').textContent = esInicio ? 'Prevención de Riesgos' : TITULOS_PAGINA[nombre];
+    aplicarColorHeader(document.getElementById('header-movil'), nombre);
 
     // ── Escritorio ──
     // Inicio es una página completa sin sidebar (igual que en Flota); al
@@ -918,10 +943,7 @@
       const dtTitle = document.getElementById('dt-page-title');
       if (dtTitle) dtTitle.textContent = TITULOS_PAGINA[nombre];
 
-      const dtHeader = document.getElementById('desktop-sidebar-header');
-      dtHeader.classList.remove('header--inv', 'header--cont', 'header--mov', 'header--and', 'header--flota');
-      const color = MODULOS_COLOR[nombre];
-      if (color) dtHeader.classList.add('header--' + color);
+      aplicarColorHeader(document.getElementById('desktop-sidebar-header'), nombre);
     }
 
     document.querySelectorAll('.desktop-nav-item').forEach(n => n.classList.remove('active'));
