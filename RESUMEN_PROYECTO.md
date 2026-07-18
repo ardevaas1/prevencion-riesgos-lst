@@ -497,6 +497,35 @@ Módulos de la app). Según la respuesta se generan documentos muy distintos:
 - **Pestaña nueva `DIAT`:** igual que `INVESTIGACIONES`/`HCR`, hay que
   volver a ejecutar `inicializarPlanilla` para que se cree.
 
+## Navegación móvil: Inicio como única entrada (se sacó la barra inferior)
+
+El cliente pidió que la navegación funcione "como en Flota": un menú
+principal (Inicio) con la grilla de módulos como forma de entrar a cada
+uno, en vez de una barra de tabs fija. Se optó por la opción recomendada
+(vs. mantener la barra y arreglar "Más"):
+
+- Se **eliminó por completo** la barra inferior `.nav` (5 tabs: Inicio /
+  Inspecc. / Incident. / EPP / Más) del HTML, su CSS (`.nav`, `.nav-item`,
+  `.nv-ic`, `.nv-lb`, `.nav-dot`) y las líneas de `irPagina()` que la
+  manejaban. Antes "Más" saltaba directo a Trabajadores, dejando
+  Procedimientos, Charlas y HCR alcanzables solo indirectamente — ese
+  problema desaparece porque ahora los 8 módulos son botones directos en
+  la grilla de Inicio.
+- El header móvil ahora es **dinámico** en vez de estático: en Inicio
+  muestra el logo (`#header-logo-badge`) + título fijo "Prevención de
+  Riesgos"; en cualquier otra página muestra un botón "‹ Volver a Inicio"
+  (`#header-back`, nuevo, circular translúcido igual que `.header-btn`)
+  + el título de esa página (reutiliza el objeto `TITULOS_PAGINA` que ya
+  existía para el título del sidebar de escritorio). El toggle está en
+  `irPagina()` en `index.html`.
+- `.fab-btn` (botón + flotante) bajó su `bottom` de `72px` (dejaba espacio
+  para la barra) a `20px`, y `.page` bajó su `padding-bottom` de `90px` a
+  `24px` por la misma razón.
+- **El sidebar de escritorio (`.desktop-sidebar`/`.desktop-nav`) NO
+  cambió** — el pedido del cliente fue específicamente sobre el patrón
+  de navegación de la captura de Flota en celular; en escritorio ya
+  existía un menú lateral persistente y no hubo queja sobre eso.
+
 ## Decisiones de diseño visuales (por qué se ve como se ve)
 
 - **"Look Flota" en el home (header + tarjetas de módulo + pie de sesión),

@@ -56,8 +56,17 @@
   /* ── Feedback más visible en botones de texto/ícono (antes se sentía
      "muerto" comparado con las tarjetas grandes) ── */
   .pnl-back:active, .pnl-action:active { background: var(--neutral-soft); border-radius: 8px; }
-  .nav-item:active { background: var(--neutral-soft); border-radius: 10px; }
   .desktop-nav-item:active { background: var(--neutral-soft) !important; }
+
+  /* ── Botón "‹ Volver a Inicio" del header móvil (reemplaza la barra
+     inferior: Inicio con la grilla de módulos es ahora la única forma de
+     navegar en móvil, igual que en Flota) ── */
+  .header-back {
+    width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,0.18);
+    color: #fff; font-size: 22px; font-weight: 700; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .header-back:active { background: rgba(255,255,255,0.3); }
   .desktop-refresh-btn:active { background: var(--accent-soft) !important; color: var(--accent-dark) !important; }
   .login-spinner { display:flex; justify-content:center; width:100%; padding:13px 0; }
   .login-spinner-ring {
@@ -106,9 +115,10 @@
 <!-- APP PRINCIPAL (móvil) -->
 <div id="main" class="main hidden">
   <div class="header header--pr">
-    <div class="logo-badge"><img src="logo.png" class="header-logo" alt="LST"></div>
+    <div class="logo-badge" id="header-logo-badge"><img src="logo.png" class="header-logo" alt="LST"></div>
+    <div class="header-back hidden" id="header-back" onclick="irPagina('inicio')">‹</div>
     <div class="header-center">
-      <div class="header-title">Prevención de Riesgos</div>
+      <div class="header-title" id="header-title">Prevención de Riesgos</div>
       <div class="header-sub" id="chip-email"></div>
     </div>
     <div class="header-btn" onclick="cargarTodo(true)">↻</div>
@@ -184,15 +194,6 @@
 
   <!-- FAB agregar (contextual) -->
   <div class="fab-btn hidden" id="fab-add">+</div>
-
-  <!-- NAV INFERIOR -->
-  <div class="nav">
-    <div class="nav-item active" data-pag="inicio" onclick="irPagina('inicio')"><div class="nv-ic"><svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px"><path d="M3 11l9-8 9 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 10v10h14V10" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 20v-6h6v6" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></div><div class="nv-lb">Inicio</div></div>
-    <div class="nav-item" data-pag="inspecciones" onclick="irPagina('inspecciones')"><div class="nv-ic"><svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px"><rect x="6" y="4" width="12" height="17" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M9 4V3.5A1.5 1.5 0 0 1 10.5 2h3A1.5 1.5 0 0 1 15 3.5V4" stroke="currentColor" stroke-width="1.7"/><path d="M9 12.5l1.8 1.8L15 10.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 17h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div><div class="nv-lb">Inspecc.</div></div>
-    <div class="nav-item" data-pag="incidentes" onclick="irPagina('incidentes')"><div class="nv-ic"><svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px"><path d="M12 3 2 20h20L12 3Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 9.5v4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="17" r="1" fill="currentColor"/></svg></div><div class="nv-lb">Incident.</div></div>
-    <div class="nav-item" data-pag="epp" onclick="irPagina('epp')"><div class="nv-ic"><svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px"><path d="M4 16.5a8 8 0 0 1 16 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M12 6.5v3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><rect x="2" y="16.5" width="20" height="3" rx="1.3" stroke="currentColor" stroke-width="1.7"/></svg></div><div class="nv-lb">EPP</div></div>
-    <div class="nav-item" data-pag="mas" onclick="irPagina('trabajadores')"><div class="nv-ic"><svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div><div class="nv-lb">Más</div></div>
-  </div>
 </div>
 
 <!-- ===== SIDEBAR ESCRITORIO ===== -->
@@ -871,10 +872,14 @@
       procedimientos:'page-procedimientos', epp:'page-epp', trabajadores:'page-trabajadores', charlas:'page-charlas',
       hcr:'page-hcr' };
     document.getElementById(map[nombre]).classList.add('active');
-    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    const navTarget = ['inicio','inspecciones','incidentes','epp'].includes(nombre) ? nombre : 'mas';
-    const navEl = document.querySelector(`.nav-item[data-pag="${navTarget}"]`);
-    if (navEl) navEl.classList.add('active');
+
+    // Header móvil: en Inicio muestra el logo; en las demás páginas
+    // muestra un botón "‹ Volver a Inicio" con el título de la página
+    // (Inicio con su grilla de módulos es ahora la única forma de navegar).
+    const esInicio = nombre === 'inicio';
+    document.getElementById('header-logo-badge').classList.toggle('hidden', !esInicio);
+    document.getElementById('header-back').classList.toggle('hidden', esInicio);
+    document.getElementById('header-title').textContent = esInicio ? 'Prevención de Riesgos' : TITULOS_PAGINA[nombre];
 
     // ── Escritorio ──
     document.querySelectorAll('.dt-page').forEach(p => { p.classList.remove('active'); p.style.display = 'none'; });
