@@ -84,7 +84,6 @@
     .desktop-main-header { display:flex; align-items:center; justify-content:space-between; padding-bottom:16px; }
     .desktop-main-title { margin-bottom:0; }
     #dt-fab-add.hidden { display:none; }
-    #dt-page-inicio .modulo-icon svg { width: 28px; height: 28px; }
   }
 </style>
 </head>
@@ -196,9 +195,39 @@
   <div class="fab-btn hidden" id="fab-add">+</div>
 </div>
 
-<!-- ===== SIDEBAR ESCRITORIO ===== -->
+<!-- ===== INICIO ESCRITORIO (página completa, sin sidebar) ===== -->
+<div class="desktop-home dt-oculto" id="desktop-home">
+  <div class="desktop-home-header">
+    <div class="logo-badge"><img src="logo.png" alt="LST"></div>
+    <div class="desktop-home-title">Prevención de Riesgos</div>
+    <div class="desktop-home-sub">Constructora LST</div>
+  </div>
+  <div class="desktop-home-body">
+    <div class="desktop-home-stats">
+      <div class="desktop-stat blue" onclick="irPagina('trabajadores')"><div class="desktop-stat-n" data-stat="trabajadores">0</div><div class="desktop-stat-l">Trabajadores</div></div>
+      <div class="desktop-stat amber" onclick="irPagina('inspecciones')"><div class="desktop-stat-n" data-stat="inspecciones">0</div><div class="desktop-stat-l">Inspecc. abiertas</div></div>
+      <div class="desktop-stat red" onclick="irPagina('incidentes')"><div class="desktop-stat-n" data-stat="incidentes">0</div><div class="desktop-stat-l">Incidentes abiertos</div></div>
+      <div class="desktop-stat green" onclick="irPagina('charlas')"><div class="desktop-stat-n" data-stat="charlas">0</div><div class="desktop-stat-l">Charlas pendientes</div></div>
+    </div>
+
+    <div class="sec-label" style="margin-top:28px;">Estadísticas de seguridad</div>
+    <div data-list="stats-seguridad"></div>
+
+    <div class="sec-label" style="margin-top:8px;">Módulos</div>
+    <div class="modulos-lista" data-list="modulos-home"></div>
+
+    <div class="desktop-home-session">
+      <div class="sec-label">Sesión</div>
+      <div class="account-chip"><span class="account-chip-avatar">G</span><span class="account-chip-email" id="dt-home-email"></span></div>
+      <button class="desktop-refresh-btn" onclick="cargarTodo(true)">↻ Actualizar datos</button>
+      <button class="desktop-refresh-btn" style="margin-top:8px;" onclick="signOut()">Cerrar sesión</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SIDEBAR ESCRITORIO (dentro de un módulo) ===== -->
 <div class="desktop-sidebar dt-oculto" id="desktop-sidebar">
-  <div class="desktop-sidebar-header">
+  <div class="desktop-sidebar-header" id="desktop-sidebar-header">
     <div class="logo-badge"><img src="logo.png" alt="LST"></div>
     <div>
       <div class="desktop-sidebar-title">Prevención de Riesgos</div>
@@ -233,14 +262,6 @@
   <div class="desktop-main-header">
     <div class="desktop-main-title" id="dt-page-title">Inicio</div>
     <button class="btn-add hidden" id="dt-fab-add">+ Agregar</button>
-  </div>
-
-  <div class="dt-page active" id="dt-page-inicio" style="display:flex;">
-    <div class="sec-label">Estadísticas de seguridad</div>
-    <div data-list="stats-seguridad"></div>
-
-    <div class="sec-label">Módulos</div>
-    <div class="modulos-lista" data-list="modulos-home"></div>
   </div>
 
   <div class="dt-page" id="dt-page-inspecciones"><div data-list="inspecciones"></div></div>
@@ -882,14 +903,30 @@
     document.getElementById('header-title').textContent = esInicio ? 'Prevención de Riesgos' : TITULOS_PAGINA[nombre];
 
     // ── Escritorio ──
-    document.querySelectorAll('.dt-page').forEach(p => { p.classList.remove('active'); p.style.display = 'none'; });
-    const dtPage = document.getElementById('dt-page-' + nombre);
-    if (dtPage) { dtPage.classList.add('active'); dtPage.style.display = 'flex'; }
+    // Inicio es una página completa sin sidebar (igual que en Flota); al
+    // entrar a un módulo aparece el par sidebar + panel central, con el
+    // header del sidebar coloreado según el módulo activo.
+    const esInicioDt = nombre === 'inicio';
+    document.getElementById('desktop-home').classList.toggle('dt-oculto', !esInicioDt);
+    document.getElementById('desktop-sidebar').classList.toggle('dt-oculto', esInicioDt);
+    document.getElementById('desktop-main').classList.toggle('dt-oculto', esInicioDt);
+
+    if (!esInicioDt) {
+      document.querySelectorAll('.dt-page').forEach(p => { p.classList.remove('active'); p.style.display = 'none'; });
+      const dtPage = document.getElementById('dt-page-' + nombre);
+      if (dtPage) { dtPage.classList.add('active'); dtPage.style.display = 'flex'; }
+      const dtTitle = document.getElementById('dt-page-title');
+      if (dtTitle) dtTitle.textContent = TITULOS_PAGINA[nombre];
+
+      const dtHeader = document.getElementById('desktop-sidebar-header');
+      dtHeader.classList.remove('header--inv', 'header--cont', 'header--mov', 'header--and', 'header--flota');
+      const color = MODULOS_COLOR[nombre];
+      if (color) dtHeader.classList.add('header--' + color);
+    }
+
     document.querySelectorAll('.desktop-nav-item').forEach(n => n.classList.remove('active'));
     const dtNavEl = document.querySelector(`.desktop-nav-item[data-pag="${nombre}"]`);
     if (dtNavEl) dtNavEl.classList.add('active');
-    const dtTitle = document.getElementById('dt-page-title');
-    if (dtTitle) dtTitle.textContent = TITULOS_PAGINA[nombre];
 
     // ── Botón agregar (ambos layouts) ──
     const acciones = {

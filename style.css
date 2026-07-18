@@ -196,6 +196,7 @@ body.is-offline #app { padding-top: 30px; }
 .header--cont { background: radial-gradient(ellipse 320px 140px at 30% -40%, rgba(255,255,255,0.16), transparent 60%), linear-gradient(135deg, #6b462a 0%, #c08a5a 55%, #d9ad84 100%); box-shadow: 0 2px 10px rgba(192,138,90,0.25); }
 .header--mov  { background: radial-gradient(ellipse 320px 140px at 30% -40%, rgba(255,255,255,0.16), transparent 60%), linear-gradient(135deg, #1f6b39 0%, #2f8a4d 55%, #6fcf8b 100%); box-shadow: 0 2px 10px rgba(47,138,77,0.25); }
 .header--and  { background: radial-gradient(ellipse 320px 140px at 30% -40%, rgba(255,255,255,0.16), transparent 60%), linear-gradient(135deg, #9c2f2f 0%, #d64545 55%, #e79494 100%); box-shadow: 0 2px 10px rgba(214,69,69,0.25); }
+.header--flota { background: radial-gradient(ellipse 320px 140px at 30% -40%, rgba(255,255,255,0.16), transparent 60%), linear-gradient(135deg, #2f6f9e 0%, #4a8ec2 55%, #8fc3e8 100%); box-shadow: 0 2px 10px rgba(47,111,158,0.25); }
 .header-logo { height: 36px; width: auto; object-fit: contain; }
 .header-center { flex: 1; }
 .header-title { font-size: 16px; font-weight: 700; color: #fff; line-height: 1.2; }
@@ -689,41 +690,62 @@ body.is-offline #app { padding-top: 30px; }
 /* ── Elementos desktop ocultos por defecto (JS los muestra) ── */
 .desktop-sidebar,
 .desktop-main,
-.desktop-detail { display: none; }
+.desktop-detail,
+.desktop-home { display: none; }
 
 @media (min-width: 900px) {
 
-  /* ── Pantalla de inicio (selección de módulos): en desktop se ven como
-     cuadrados en una sola fila en vez del grid 2 columnas de móvil, para
-     que la pantalla grande no se vea vacía ── */
-  .modulos-header {
+  /* ── Inicio en escritorio: página completa (sin sidebar), igual que en
+     Flota — header centrado con logo, grilla de módulos en fila(s) y la
+     sesión al final. Al entrar a un módulo esto se oculta y aparece el
+     par sidebar + panel central (más abajo). ── */
+  .desktop-home:not(.dt-oculto) {
+    display: flex; flex-direction: column;
+    height: 100vh; width: 100%; overflow-y: auto;
+    background: var(--bg);
+  }
+  .desktop-home-header {
+    flex-shrink: 0;
     padding: 44px 20px 36px;
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+    text-align: center;
+    border-radius: 0 0 28px 28px;
+    background:
+      radial-gradient(ellipse 420px 180px at 50% -40%, rgba(255,255,255,0.18), transparent 60%),
+      linear-gradient(135deg, #c06f0a 0%, var(--accent) 55%, #ffb462 100%);
+    box-shadow: 0 2px 14px rgba(229,141,23,0.25);
   }
-  #modulos-home .modulos-lista {
-    max-width: 1180px;
-    margin: 0 auto;
-    width: 100%;
-    grid-template-columns: repeat(5, 1fr);
+  .desktop-home-header .logo-badge { width: 64px; height: 64px; border-radius: 18px; }
+  .desktop-home-header .logo-badge img { width: 70%; height: 70%; }
+  .desktop-home-title { font-size: 22px; font-weight: 700; color: #fff; }
+  .desktop-home-sub { font-size: 13px; color: rgba(255,255,255,0.85); }
+  .desktop-home-body {
+    flex: 1; max-width: 1180px; margin: 0 auto; width: 100%;
+    padding: 32px 24px 60px;
+  }
+  .desktop-home-stats {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
+  }
+  .desktop-home .modulos-lista {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
     gap: 20px;
-    padding: 40px 24px;
+    padding: 8px 0 0;
   }
-  /* Cancela el "ancho completo" del último módulo impar (regla pensada
-     solo para el layout móvil de 2 columnas) */
-  #modulos-home .modulo-card:nth-last-child(1):nth-child(odd) {
-    grid-column: auto;
-  }
-  #modulos-home .modulo-card {
+  .desktop-home .modulo-card:nth-last-child(1):nth-child(odd) { grid-column: auto; }
+  .desktop-home .modulo-card {
     align-items: center;
     text-align: center;
     aspect-ratio: 1 / 1;
     justify-content: center;
     padding: 24px 16px;
   }
-  #modulos-home .modulo-icon {
+  .desktop-home .modulo-icon {
     width: 60px; height: 60px; border-radius: 16px;
   }
-  #modulos-home .modulo-icon svg { width: 30px; height: 30px; }
-  #modulos-home .modulo-info { flex: none; }
+  .desktop-home .modulo-icon svg { width: 30px; height: 30px; }
+  .desktop-home .modulo-info { flex: none; }
+  .desktop-home-session { max-width: 360px; margin: 36px auto 0; }
 
   /* ── Shell: ocultar todo lo móvil ── */
   #main  { display: none !important; }
@@ -762,10 +784,18 @@ body.is-offline #app { padding-top: 30px; }
     gap: 10px;
     padding: 18px 14px;
     flex-shrink: 0;
+    border-radius: 0 0 18px 0;
     background:
       radial-gradient(ellipse 220px 100px at 30% -30%, rgba(255,255,255,0.18), transparent 60%),
       linear-gradient(135deg, #c06f0a 0%, var(--accent) 55%, #ffb462 100%);
   }
+  /* El color del header del sidebar cambia según el módulo activo (JS
+     agrega/saca estas clases en irPagina), igual que en Flota. */
+  .desktop-sidebar-header.header--inv   { background: radial-gradient(ellipse 220px 100px at 30% -30%, rgba(255,255,255,0.18), transparent 60%), linear-gradient(135deg, #b15c0c 0%, #f5a623 55%, #ffc864 100%); }
+  .desktop-sidebar-header.header--cont  { background: radial-gradient(ellipse 220px 100px at 30% -30%, rgba(255,255,255,0.18), transparent 60%), linear-gradient(135deg, #6b462a 0%, #c08a5a 55%, #d9ad84 100%); }
+  .desktop-sidebar-header.header--mov   { background: radial-gradient(ellipse 220px 100px at 30% -30%, rgba(255,255,255,0.18), transparent 60%), linear-gradient(135deg, #1f6b39 0%, #2f8a4d 55%, #6fcf8b 100%); }
+  .desktop-sidebar-header.header--and   { background: radial-gradient(ellipse 220px 100px at 30% -30%, rgba(255,255,255,0.18), transparent 60%), linear-gradient(135deg, #9c2f2f 0%, #d64545 55%, #e79494 100%); }
+  .desktop-sidebar-header.header--flota { background: radial-gradient(ellipse 220px 100px at 30% -30%, rgba(255,255,255,0.18), transparent 60%), linear-gradient(135deg, #2f6f9e 0%, #4a8ec2 55%, #8fc3e8 100%); }
   .desktop-sidebar-header img {
     width: 36px; height: 36px;
     object-fit: contain;
