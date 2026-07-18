@@ -499,6 +499,35 @@ Módulos de la app). Según la respuesta se generan documentos muy distintos:
 
 ## Decisiones de diseño visuales (por qué se ve como se ve)
 
+- **"Look Flota" en el home (header + tarjetas de módulo + pie de sesión),
+  pero en naranjo, no en azul.** El cliente pidió mostrarle el mismo estilo
+  que la app de Flota (header curvo con logo en placa blanca, tarjetas de
+  módulo con círculos decorativos de fondo, chip de cuenta + botones
+  "Actualizar datos"/"Cerrar sesión" al pie) — pero se mantuvo el naranjo
+  de esta app **a propósito**, porque el color distinto a Flota fue una
+  decisión explícita anterior para no confundir las dos apps en el celular
+  (ver ícono de instalación PWA más abajo). Cambios concretos:
+  - `.logo-badge`: el logo queda dentro de una placa blanca redondeada
+    (12px) en vez de flotar directo sobre el gradiente — usa `logo.png`
+    (el logo a color, NO `logo-white.png`) porque sobre fondo blanco el
+    logo blanco queda invisible. Se usa tanto en el header móvil como en
+    el header del sidebar de escritorio.
+  - `.header--pr` ahora tiene **esquinas inferiores redondeadas** (22px) en
+    vez de terminar en línea recta.
+  - `.account-chip`: avatar circular azul con "G" (estilo cuenta de
+    Google) + correo, arriba de los botones "Actualizar datos"/"Cerrar
+    sesión" — se agregó tanto en la sección "Sesión" del Inicio móvil como
+    en el pie del sidebar de escritorio (antes el sidebar de escritorio
+    solo tenía los 2 botones, sin chip; y el móvil solo tenía "Cerrar
+    sesión", sin "Actualizar datos" ahí — ahora ambos quedan iguales).
+  - Los círculos decorativos de fondo en las tarjetas de módulo
+    (`.modulo-card::before`, ya existía en el CSS heredado de Flota, con
+    ~7% de opacidad) **no se estaban viendo** porque el color venía de
+    clases `.modulo-card--flota/inv/cont/mov/and` que nunca se aplicaban
+    a la tarjeta en sí (solo al ícono cuadrado de adentro, vía
+    `.modulo-icon--X`). Se agregó la clase `modulo-card--${color}`
+    correspondiente en `renderModulosHome()` (`app.js`) para activarlos —
+    no hizo falta CSS nuevo, solo faltaba conectar la clase.
 - **Color principal:** `#e58d17` (naranjo/amarillo vivo), con `--accent-dark:
   #9b570c` y gradientes que van de `#c06f0a` a `#ffb462`. Se probó primero un
   mostaza oscuro y luego se ajustó a este tono porque el cliente lo pidió
