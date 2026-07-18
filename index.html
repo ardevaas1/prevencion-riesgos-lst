@@ -11,7 +11,35 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 <style>
-  .header--pr { background: radial-gradient(ellipse 320px 140px at 30% -40%, rgba(255,255,255,0.16), transparent 60%), linear-gradient(135deg, #c06f0a 0%, #e58d17 55%, #ffb462 100%); box-shadow: 0 2px 10px rgba(229,141,23,0.25); }
+  .header--pr { background: radial-gradient(ellipse 320px 140px at 30% -40%, rgba(255,255,255,0.16), transparent 60%), linear-gradient(135deg, #c06f0a 0%, #e58d17 55%, #ffb462 100%); box-shadow: 0 2px 10px rgba(229,141,23,0.25); border-radius: 0 0 22px 22px; padding-bottom: 16px; }
+
+  /* ── Logo en placa blanca redondeada (look "Flota"), reutilizado en el
+     header móvil y en el encabezado del sidebar de escritorio ── */
+  .logo-badge {
+    width: 42px; height: 42px; border-radius: 12px; background: #fff;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15); flex-shrink: 0;
+  }
+  .logo-badge img { width: 66%; height: 66%; object-fit: contain; }
+  .desktop-sidebar-header .logo-badge { width: 40px; height: 40px; border-radius: 11px; }
+
+  /* ── Chip de cuenta (avatar + correo), arriba de "Actualizar datos" /
+     "Cerrar sesión" tanto en la sección Sesión (móvil) como en el pie del
+     sidebar (escritorio) ── */
+  .account-chip {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 12px; background: #fff; border: 1px solid var(--line);
+    border-radius: 30px; margin-bottom: 10px;
+  }
+  .account-chip-avatar {
+    width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
+    background: #4285F4; color: #fff; font-size: 13px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .account-chip-email {
+    font-size: 13px; font-weight: 500; color: var(--ink);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
   .firma-box { background:#fff; border:1.5px dashed var(--line); border-radius:12px; overflow:hidden; margin-bottom:8px; }
   #firma-canvas { width:100%; height:180px; touch-action:none; display:block; background:#fff; }
   .firma-actions { display:flex; justify-content:flex-end; margin-bottom:14px; }
@@ -78,7 +106,7 @@
 <!-- APP PRINCIPAL (móvil) -->
 <div id="main" class="main hidden">
   <div class="header header--pr">
-    <img src="logo-white.png" class="header-logo" alt="LST">
+    <div class="logo-badge"><img src="logo.png" class="header-logo" alt="LST"></div>
     <div class="header-center">
       <div class="header-title">Prevención de Riesgos</div>
       <div class="header-sub" id="chip-email"></div>
@@ -104,7 +132,9 @@
       <div class="modulos-lista" data-list="modulos-home"></div>
 
       <div class="sec-label" style="margin-top:24px;">Sesión</div>
-      <button class="action-btn" onclick="signOut()">Cerrar sesión</button>
+      <div class="account-chip"><span class="account-chip-avatar">G</span><span class="account-chip-email" id="chip-footer-email"></span></div>
+      <button class="action-btn" onclick="cargarTodo(true)">↻ Actualizar datos</button>
+      <button class="action-btn" style="margin-top:8px;" onclick="signOut()">Cerrar sesión</button>
     </div>
 
     <!-- INSPECCIONES -->
@@ -168,7 +198,7 @@
 <!-- ===== SIDEBAR ESCRITORIO ===== -->
 <div class="desktop-sidebar dt-oculto" id="desktop-sidebar">
   <div class="desktop-sidebar-header">
-    <img src="logo-white.png" alt="LST">
+    <div class="logo-badge"><img src="logo.png" alt="LST"></div>
     <div>
       <div class="desktop-sidebar-title">Prevención de Riesgos</div>
       <div class="desktop-sidebar-sub" id="dt-chip-email"></div>
@@ -191,6 +221,7 @@
     <button class="desktop-nav-item" data-pag="hcr" onclick="irPagina('hcr')"><span class="dn-ic"><svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px"><path d="M12 3 2 20h20L12 3Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M9.5 16h5M12 9v4.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span><span class="dn-lb">HCR</span></button>
   </div>
   <div class="desktop-sidebar-footer">
+    <div class="account-chip"><span class="account-chip-avatar">G</span><span class="account-chip-email" id="dt-footer-email"></span></div>
     <button class="desktop-refresh-btn" onclick="cargarTodo(true)">↻ Actualizar datos</button>
     <button class="desktop-refresh-btn" style="margin-top:8px;" onclick="signOut()">Cerrar sesión</button>
   </div>

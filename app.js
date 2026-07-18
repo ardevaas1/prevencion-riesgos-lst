@@ -391,7 +391,7 @@ function renderModulosHome() {
     { key: 'hcr', nombre: 'Hoja de Control de Riesgos (HCR)', desc: 'Registro diario por cuadrilla, antes de ejecutar el trabajo', color: 'and' },
   ];
   setListHTML('modulos-home', modulos.map(m => `
-    <div class="modulo-card" onclick="irPagina('${m.key}')">
+    <div class="modulo-card modulo-card--${m.color}" onclick="irPagina('${m.key}')">
       <div class="modulo-icon modulo-icon--${m.color}">${ICONS[m.key]}</div>
       <div class="modulo-info"><div class="modulo-nombre">${m.nombre}</div><div class="modulo-desc">${m.desc}</div></div>
     </div>`).join(''));
@@ -2809,6 +2809,8 @@ async function arrancarApp() {
   document.getElementById('splash-progress').classList.add('splash-waiting');
   document.getElementById('chip-email').textContent = userEmail || '';
   document.getElementById('dt-chip-email').textContent = userEmail || '';
+  document.getElementById('chip-footer-email').textContent = userEmail || '';
+  document.getElementById('dt-footer-email').textContent = userEmail || '';
   renderModulosHome();
 
   await cargarTodo();
