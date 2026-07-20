@@ -308,6 +308,43 @@
           <span>Es supervisor de esta obra (queda a cargo de los demás trabajadores activos de la misma Obra, y puede quedar sugerido como Relator en Charlas)</span>
         </label>
       </div>
+
+      <div class="sec-label" style="margin-top:18px;">Datos personales (para documentos como el DIAT — se rellenan solos la próxima vez)</div>
+      <div class="form-group"><label>Fecha de nacimiento</label><input type="date" name="fechaNacimiento"></div>
+      <div class="form-group"><label>Sexo</label>
+        <select name="sexo"><option value="">—</option><option>Hombre</option><option>Mujer</option></select>
+      </div>
+      <div class="form-group"><label>Nacionalidad</label><input name="nacionalidad" value="Chilena"></div>
+      <div class="form-group"><label>Dirección</label><input name="direccion"></div>
+      <div class="form-group"><label>Comuna</label><input name="comuna"></div>
+      <div class="form-group"><label>Teléfono</label><input name="telefono"></div>
+      <div class="form-group"><label>Pueblo originario</label>
+        <select name="puebloOriginario">
+          <option>Ninguno</option><option>Aimara</option><option>Alacalufe</option><option>Atacameño</option>
+          <option>Colla</option><option>Diaguita</option><option>Mapuche</option><option>Quechua</option>
+          <option>Rapanui</option><option>Yamana (Yagán)</option><option>Otro</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Tipo de contrato</label>
+        <select name="tipoContrato">
+          <option value="">—</option><option>Indefinido</option><option>Plazo Fijo</option>
+          <option>Por Obra o Faena</option><option>Temporada</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Tipo de remuneración</label>
+        <select name="tipoIngreso">
+          <option value="">—</option><option>Remuneración Fija</option>
+          <option>Remuneración Variable</option><option>Honorarios</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Categoría ocupacional</label>
+        <select name="categoriaOcupacional">
+          <option>Trabajador Dependiente</option><option>Empleador</option>
+          <option>Trabajador Independiente</option><option>Familiar no Remunerado</option>
+          <option>Trabajador Voluntario</option>
+        </select>
+      </div>
+
       <button class="btn-add" type="submit">Guardar trabajador</button>
     </form>
   </div>
@@ -868,6 +905,51 @@
         <label class="upload-label" onclick="event.currentTarget.classList.add('selected')"><svg viewBox="0 0 24 24" fill="none" class="inline-ic"><path d="M7 3h7l4 4v14H7Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M14 3v4h4" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg> Subir archivo<input type="file" name="archivo" accept="application/pdf,image/*" style="display:none"></label>
       </div>
       <button class="btn-add" type="submit">Guardar examen</button>
+    </form>
+  </div>
+</div>
+
+<!-- ===== PANEL: Datos personales del trabajador (para DIAT, etc.) ===== -->
+<div class="panel hidden" id="panel-editar-personales">
+  <div class="panel-bar"><div class="pnl-back" onclick="closePanel('panel-editar-personales')">‹ Volver</div><div class="pnl-title">Datos personales</div><div></div></div>
+  <div class="panel-body">
+    <form id="form-editar-personales" onsubmit="guardarDatosPersonales(event)">
+      <input type="hidden" name="fila">
+      <div class="form-group"><label>Fecha de nacimiento</label><input type="date" name="fechaNacimiento"></div>
+      <div class="form-group"><label>Sexo</label>
+        <select name="sexo"><option value="">—</option><option>Hombre</option><option>Mujer</option></select>
+      </div>
+      <div class="form-group"><label>Nacionalidad</label><input name="nacionalidad"></div>
+      <div class="form-group"><label>Dirección</label><input name="direccion"></div>
+      <div class="form-group"><label>Comuna</label><input name="comuna"></div>
+      <div class="form-group"><label>Teléfono</label><input name="telefono"></div>
+      <div class="form-group"><label>Pueblo originario</label>
+        <select name="puebloOriginario">
+          <option>Ninguno</option><option>Aimara</option><option>Alacalufe</option><option>Atacameño</option>
+          <option>Colla</option><option>Diaguita</option><option>Mapuche</option><option>Quechua</option>
+          <option>Rapanui</option><option>Yamana (Yagán)</option><option>Otro</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Tipo de contrato</label>
+        <select name="tipoContrato">
+          <option value="">—</option><option>Indefinido</option><option>Plazo Fijo</option>
+          <option>Por Obra o Faena</option><option>Temporada</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Tipo de remuneración</label>
+        <select name="tipoIngreso">
+          <option value="">—</option><option>Remuneración Fija</option>
+          <option>Remuneración Variable</option><option>Honorarios</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Categoría ocupacional</label>
+        <select name="categoriaOcupacional">
+          <option value="">—</option><option>Trabajador Dependiente</option><option>Empleador</option>
+          <option>Trabajador Independiente</option><option>Familiar no Remunerado</option>
+          <option>Trabajador Voluntario</option>
+        </select>
+      </div>
+      <button class="btn-add" type="submit">Guardar datos personales</button>
     </form>
   </div>
 </div>

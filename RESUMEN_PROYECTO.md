@@ -83,7 +83,12 @@ para el mapeo exacto de índices):
 - `TRABAJADORES`: `Obra` (J), `Fecha Inicio Contrato` (K), `Fecha Término
   Contrato` (L, vacío = indefinido), `Archivo Contrato` (M), `Fecha Vigencia
   Examen Altura` (N), `Archivo Examen Altura` (O), `Es Supervisor` (P, "Sí"
-  o vacío) — ver "Supervisor de obra" en Módulos de la app.
+  o vacío) — ver "Supervisor de obra" en Módulos de la app. `Fecha
+  Nacimiento` (Q), `Sexo` (R), `Nacionalidad` (S), `Dirección` (T), `Comuna`
+  (U), `Teléfono` (V), `Pueblo Originario` (W), `Tipo Contrato` (X), `Tipo
+  Ingreso` (Y), `Categoría Ocupacional` (Z) — datos personales estáticos
+  (no cambian entre incidentes), ver "Datos personales del trabajador
+  (prellenado de DIAT/Investigación)" más abajo.
 - `INSPECCIONES`: `Obra` (M).
 - `INCIDENTES`: `Respaldo Cierre` (N), `Obra` (O), `Días Perdidos` (P),
   `Investigación Estado` (Q), `Investigación Responsable` (R), `Investigación
@@ -501,6 +506,55 @@ Módulos de la app). Según la respuesta se generan documentos muy distintos:
   plantilla externa.
 - **Pestaña nueva `DIAT`:** igual que `INVESTIGACIONES`/`HCR`, hay que
   volver a ejecutar `inicializarPlanilla` para que se cree.
+
+## Datos personales del trabajador (prellenado de DIAT/Investigación)
+
+El cliente pidió que los datos que **no cambian entre incidentes** (fecha
+de nacimiento, dirección, tipo de contrato, etc.) vivan en la ficha del
+trabajador y se usen para rellenar solos los formularios que los piden
+(hoy: DIAT; también se aprovechó para Investigación de Accidente), en vez
+de escribirlos de cero cada vez.
+
+- **Columnas nuevas en `TRABAJADORES`** (`Q:Z`, ver arriba): `Fecha
+  Nacimiento`, `Sexo`, `Nacionalidad`, `Dirección`, `Comuna`, `Teléfono`,
+  `Pueblo Originario`, `Tipo Contrato`, `Tipo Ingreso`, `Categoría
+  Ocupacional`. Se reutilizan las mismas etiquetas que ya usaban los
+  checklists del DIAT (`DIAT_SEXO`, `DIAT_PUEBLO_ORIGINARIO`,
+  `DIAT_TIPO_CONTRATO`, `DIAT_TIPO_INGRESO`, `DIAT_CATEGORIA_OCUPACIONAL`
+  en `app.js`) para que el valor guardado calce exacto con el radio que
+  hay que marcar al prellenar (`marcarRadioPorLabel(name, catalogo,
+  label)`, nuevo, busca el índice cuyo `.label` coincide).
+- **Formulario "Nuevo trabajador"**: se agregó una sección "Datos
+  personales" con estos 10 campos (todos opcionales, no bloquean guardar
+  al trabajador si quedan vacíos).
+- **Ficha del trabajador**: nueva sección "Datos personales" con badge
+  "Completos"/"Incompletos" y botón "Completar/Actualizar datos
+  personales" — abre `panel-editar-personales` (`abrirEditarDatosPersonales`
+  / `guardarDatosPersonales` en `app.js`, mismo patrón que Contrato/Examen
+  de Altura: `PUT` acotado a `TRABAJADORES!Q{fila}:Z{fila}`, no reescribe
+  la fila completa). Esto es lo que permite completar los datos de
+  trabajadores que ya existían antes de este cambio.
+- **`Fecha Ingreso`** (columna F, ya existía) y **`Fecha Nacimiento`**
+  (nueva) no se guardan como "antigüedad"/"edad" fijas — se **calculan al
+  vuelo** cada vez que se abre un formulario, relativas a la fecha del
+  evento (`calcularEdad`/`calcularAntiguedad` en `app.js`), así no quedan
+  desactualizadas con el paso del tiempo. `calcularAntiguedad` devuelve
+  `{ valor, unidad }` en Días/Meses/Años según corresponda (< 30 días →
+  Días, < 365 → Meses, si no → Años) — ese `unidad` es literalmente uno
+  de los labels de `DIAT_ANTIGUEDAD_UNIDAD`, así que también sirve para
+  marcar el radio directamente.
+- **`abrirFormDiat()`**: si el incidente tiene un trabajador asociado con
+  datos personales cargados, prellena Dirección/Comuna/Teléfono/Fecha de
+  Nacimiento/Edad/Antigüedad (calculada) y marca los radios de
+  Sexo/Pueblo Originario/Tipo de Contrato/Tipo de Ingreso/Categoría
+  Ocupacional/Unidad de Antigüedad — todo sigue siendo editable en el
+  formulario por si algo cambió puntualmente para ese accidente.
+- **`abrirInvestigacion()`**: prellena Rut y Cargo del trabajador, y
+  "Antigüedad en la empresa" como texto (ej. "3 años") calculado igual que
+  en el DIAT. "Antigüedad en el cargo" queda sin prellenar a propósito —
+  no hay un dato de "fecha de inicio en el cargo actual" guardado (solo
+  fecha de ingreso a la empresa), y asumir que son lo mismo sería
+  incorrecto para alguien que cambió de cargo.
 
 ## Navegación móvil: Inicio como única entrada (se sacó la barra inferior)
 
