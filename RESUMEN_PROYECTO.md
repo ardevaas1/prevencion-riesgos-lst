@@ -707,6 +707,52 @@ sutil, 0.28s) a `.page.active` y `.dt-page.active`, para que el
 contenido de cada página también entre con un pequeño fundido al
 navegar, en vez de aparecer de golpe.
 
+## Fichas de detalle (Trabajador / Incidente) con look Flota
+
+El cliente mandó dos capturas comparando la Ficha del Trabajador de esta
+app con la ficha de un vehículo en Flota: en Flota cada sección
+("Información general", etc.) va en su propia tarjeta blanca con
+sombra y esquinas redondeadas, separada de las demás; en esta app todo
+el contenido (RUT, Empresa, Obra, Datos personales, Contrato...) iba
+suelto sobre el fondo gris, uno debajo del otro sin separación visual,
+salvo la tarjeta del encabezado (`.ficha-hero`).
+
+La solución fue casi gratis: `style.css` ya tenía las clases
+`.ficha-section`/`.ficha-sec-title` con exactamente el look de Flota
+(tarjeta blanca, borde, radio 12px) — quedaron sin usar desde que se
+copió el CSS de Flota al arrancar el proyecto. Solo hacía falta
+envolver cada sección de `abrirFichaTrabajador()` y
+`abrirDetalleIncidente()` (`app.js`) en un `<div class="ficha-section">`
+con su `<div class="ficha-sec-title">` como título, en vez de dejar los
+`field-row` sueltos con un `sec-label`. Se agregó `box-shadow` tanto a
+`.ficha-section` como a `.ficha-hero` (que ya existía pero sin sombra)
+para terminar de calzar con la referencia.
+
+De paso:
+- El header de ambos paneles (`#pnl-title-ficha-trabajador` /
+  `#pnl-title-detalle-incidente`, IDs nuevos) ahora muestra el nombre del
+  trabajador o el tipo de incidente en vez de un título genérico fijo
+  ("Ficha del trabajador" / "Detalle del registro"), igual que Flota
+  muestra la patente/nombre del vehículo en su header.
+- El hero de ambas fichas ganó una fila de badges de estado justo bajo
+  el nombre (`.ficha-hero-badges`, clase nueva) — Activo/Inactivo y
+  Supervisor de obra en Trabajador; Gravedad y Estado en Incidente —
+  calcado del patrón de Flota (ahí se ven "Con observaciones"/"OK" en el
+  mismo lugar). Antes esos datos vivían como un `field-row` más, mezclados
+  con el resto.
+- La Ficha del Trabajador quedó reorganizada en 7 tarjetas:
+  Información general, Rol (+ equipo si es supervisor), Datos
+  personales, Contrato de trabajo, Examen de altura física, Historial de
+  EPP entregado, Incidentes relacionados — cada botón de acción
+  ("Completar datos personales", "Subir contrato", etc.) quedó dentro de
+  la tarjeta de su propia sección, no suelto al final.
+- El Detalle de Incidente quedó en: Información general, Descripción
+  (+ Causas + Acciones correctivas juntas), Registro, Atención médica
+  (condicional) e Investigación de accidente (condicional) — los botones
+  de acción (Definir atención médica / Realizar investigación / Cerrar
+  caso) se dejaron fuera de las tarjetas, al final, porque son acciones
+  de flujo (no pertenecen a una sección de datos en particular).
+
 ## Decisiones de diseño visuales (por qué se ve como se ve)
 
 - **"Look Flota" en el home (header + tarjetas de módulo + pie de sesión),

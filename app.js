@@ -822,56 +822,78 @@ function abrirFichaTrabajador(nombre) {
     : t.alturaVigencia < hoyISO() ? `<span class="badge red">Vencido</span>` : `<span class="badge green">Vigente</span>`;
   const datosPersonalesCompletos = t.fechaNacimiento && t.sexo && t.direccion && t.comuna && t.telefono && t.tipoContrato;
 
+  document.getElementById('pnl-title-ficha-trabajador').textContent = t.nombre;
   document.getElementById('ficha-trabajador-body').innerHTML = `
     <div class="ficha-hero">
       <div class="ficha-hero-icon">${ic('trabajadores',32)}</div>
       <div class="ficha-hero-info">
         <div class="ficha-hero-type">${esc(t.cargo)}</div>
         <div class="ficha-hero-name">${esc(t.nombre)}</div>
+        <div class="ficha-hero-badges">
+          <span class="badge ${t.estado==='Activo'?'green':'gray'}">${esc(t.estado)}</span>
+          ${t.esSupervisor ? '<span class="badge amber">Supervisor de obra</span>' : ''}
+        </div>
       </div>
     </div>
-    <div class="field-row"><span>RUT</span><b>${esc(t.rut)}</b></div>
-    <div class="field-row"><span>Empresa / Contratista</span><b>${esc(t.empresa)}</b></div>
-    <div class="field-row"><span>Obra</span><b>${esc(t.obra || '—')}</b></div>
-    <div class="field-row"><span>Fecha de ingreso</span><b>${esc(t.fechaIngreso || '—')}</b></div>
-    <div class="field-row"><span>Estado</span><span class="badge ${t.estado==='Activo'?'green':'gray'}">${esc(t.estado)}</span></div>
-    ${t.foto ? `<div class="field-row"><span>Foto</span><a href="${esc(t.foto)}" target="_blank" class="badge blue">${ic('camara',12)} Ver foto</a></div>` : ''}
-    <div class="field-row"><span>Rol</span>${t.esSupervisor ? '<span class="badge amber">Supervisor de obra</span>' : supervisorDeEste ? `<span>Supervisado por <b>${esc(supervisorDeEste.nombre)}</b></span>` : '<span class="badge gray">Trabajador</span>'}</div>
-    <button class="action-btn" onclick="toggleSupervisor(${t.fila})">${t.esSupervisor ? 'Quitar rol de supervisor' : 'Marcar como supervisor de esta obra'}</button>
-    ${equipoHtml}
 
-    <div class="sec-label" style="margin-top:20px;">Datos personales</div>
-    <div class="field-row"><span>Estado</span>${datosPersonalesCompletos ? '<span class="badge green">Completos</span>' : '<span class="badge amber">Incompletos</span>'}</div>
-    <div class="field-row"><span>Fecha de nacimiento</span><b>${esc(t.fechaNacimiento || '—')}</b></div>
-    <div class="field-row"><span>Sexo</span><b>${esc(t.sexo || '—')}</b></div>
-    <div class="field-row"><span>Nacionalidad</span><b>${esc(t.nacionalidad || '—')}</b></div>
-    <div class="field-row"><span>Dirección</span><b>${esc(t.direccion || '—')}</b></div>
-    <div class="field-row"><span>Comuna</span><b>${esc(t.comuna || '—')}</b></div>
-    <div class="field-row"><span>Teléfono</span><b>${esc(t.telefono || '—')}</b></div>
-    <div class="field-row"><span>Pueblo originario</span><b>${esc(t.puebloOriginario || '—')}</b></div>
-    <div class="field-row"><span>Tipo de contrato</span><b>${esc(t.tipoContrato || '—')}</b></div>
-    <div class="field-row"><span>Tipo de remuneración</span><b>${esc(t.tipoIngreso || '—')}</b></div>
-    <div class="field-row"><span>Categoría ocupacional</span><b>${esc(t.categoriaOcupacional || '—')}</b></div>
-    <button class="action-btn" onclick="abrirEditarDatosPersonales(${t.fila})">${datosPersonalesCompletos ? 'Actualizar datos personales' : 'Completar datos personales'}</button>
+    <div class="ficha-section">
+      <div class="ficha-sec-title">Información general</div>
+      <div class="field-row"><span>RUT</span><b>${esc(t.rut)}</b></div>
+      <div class="field-row"><span>Empresa / Contratista</span><b>${esc(t.empresa)}</b></div>
+      <div class="field-row"><span>Obra</span><b>${esc(t.obra || '—')}</b></div>
+      <div class="field-row"><span>Fecha de ingreso</span><b>${esc(t.fechaIngreso || '—')}</b></div>
+      ${t.foto ? `<div class="field-row"><span>Foto</span><a href="${esc(t.foto)}" target="_blank" class="badge blue">${ic('camara',12)} Ver foto</a></div>` : ''}
+    </div>
 
-    <div class="sec-label" style="margin-top:20px;">Contrato de trabajo</div>
-    <div class="field-row"><span>Inicio</span><b>${esc(t.contratoInicio || '—')}</b></div>
-    <div class="field-row"><span>Término</span><b>${esc(t.contratoTermino || 'Indefinido')}</b></div>
-    <div class="field-row"><span>Estado</span>${contratoBadge}</div>
-    ${t.contratoArchivo ? `<div class="field-row"><span>Documento</span><a href="${esc(t.contratoArchivo)}" target="_blank" class="badge blue">${ic('documento',12)} Ver contrato</a></div>` : ''}
-    <button class="action-btn" onclick="abrirEditarContrato(${t.fila})">${t.contratoInicio ? 'Actualizar contrato' : 'Subir contrato'}</button>
+    <div class="ficha-section">
+      <div class="ficha-sec-title">Rol</div>
+      <div class="field-row"><span>Rol</span>${t.esSupervisor ? '<span class="badge amber">Supervisor de obra</span>' : supervisorDeEste ? `<span>Supervisado por <b>${esc(supervisorDeEste.nombre)}</b></span>` : '<span class="badge gray">Trabajador</span>'}</div>
+      <button class="action-btn" onclick="toggleSupervisor(${t.fila})">${t.esSupervisor ? 'Quitar rol de supervisor' : 'Marcar como supervisor de esta obra'}</button>
+      ${equipoHtml}
+    </div>
 
-    <div class="sec-label" style="margin-top:20px;">Examen de altura física</div>
-    <div class="field-row"><span>Vigencia</span><b>${esc(t.alturaVigencia || '—')}</b></div>
-    <div class="field-row"><span>Estado</span>${alturaBadge}</div>
-    ${t.alturaArchivo ? `<div class="field-row"><span>Documento</span><a href="${esc(t.alturaArchivo)}" target="_blank" class="badge blue">${ic('documento',12)} Ver examen</a></div>` : ''}
-    <button class="action-btn" onclick="abrirEditarAltura(${t.fila})">${t.alturaVigencia ? 'Actualizar examen' : 'Subir examen'}</button>
+    <div class="ficha-section">
+      <div class="ficha-sec-title">Datos personales</div>
+      <div class="field-row"><span>Estado</span>${datosPersonalesCompletos ? '<span class="badge green">Completos</span>' : '<span class="badge amber">Incompletos</span>'}</div>
+      <div class="field-row"><span>Fecha de nacimiento</span><b>${esc(t.fechaNacimiento || '—')}</b></div>
+      <div class="field-row"><span>Sexo</span><b>${esc(t.sexo || '—')}</b></div>
+      <div class="field-row"><span>Nacionalidad</span><b>${esc(t.nacionalidad || '—')}</b></div>
+      <div class="field-row"><span>Dirección</span><b>${esc(t.direccion || '—')}</b></div>
+      <div class="field-row"><span>Comuna</span><b>${esc(t.comuna || '—')}</b></div>
+      <div class="field-row"><span>Teléfono</span><b>${esc(t.telefono || '—')}</b></div>
+      <div class="field-row"><span>Pueblo originario</span><b>${esc(t.puebloOriginario || '—')}</b></div>
+      <div class="field-row"><span>Tipo de contrato</span><b>${esc(t.tipoContrato || '—')}</b></div>
+      <div class="field-row"><span>Tipo de remuneración</span><b>${esc(t.tipoIngreso || '—')}</b></div>
+      <div class="field-row"><span>Categoría ocupacional</span><b>${esc(t.categoriaOcupacional || '—')}</b></div>
+      <button class="action-btn" onclick="abrirEditarDatosPersonales(${t.fila})">${datosPersonalesCompletos ? 'Actualizar datos personales' : 'Completar datos personales'}</button>
+    </div>
 
-    <div class="sec-label" style="margin-top:20px;">Historial de EPP entregado</div>
-    ${entregasHtml}
+    <div class="ficha-section">
+      <div class="ficha-sec-title">Contrato de trabajo</div>
+      <div class="field-row"><span>Inicio</span><b>${esc(t.contratoInicio || '—')}</b></div>
+      <div class="field-row"><span>Término</span><b>${esc(t.contratoTermino || 'Indefinido')}</b></div>
+      <div class="field-row"><span>Estado</span>${contratoBadge}</div>
+      ${t.contratoArchivo ? `<div class="field-row"><span>Documento</span><a href="${esc(t.contratoArchivo)}" target="_blank" class="badge blue">${ic('documento',12)} Ver contrato</a></div>` : ''}
+      <button class="action-btn" onclick="abrirEditarContrato(${t.fila})">${t.contratoInicio ? 'Actualizar contrato' : 'Subir contrato'}</button>
+    </div>
 
-    <div class="sec-label" style="margin-top:20px;">Incidentes relacionados</div>
-    ${incidentesHtml}
+    <div class="ficha-section">
+      <div class="ficha-sec-title">Examen de altura física</div>
+      <div class="field-row"><span>Vigencia</span><b>${esc(t.alturaVigencia || '—')}</b></div>
+      <div class="field-row"><span>Estado</span>${alturaBadge}</div>
+      ${t.alturaArchivo ? `<div class="field-row"><span>Documento</span><a href="${esc(t.alturaArchivo)}" target="_blank" class="badge blue">${ic('documento',12)} Ver examen</a></div>` : ''}
+      <button class="action-btn" onclick="abrirEditarAltura(${t.fila})">${t.alturaVigencia ? 'Actualizar examen' : 'Subir examen'}</button>
+    </div>
+
+    <div class="ficha-section">
+      <div class="ficha-sec-title">Historial de EPP entregado</div>
+      ${entregasHtml}
+    </div>
+
+    <div class="ficha-section">
+      <div class="ficha-sec-title">Incidentes relacionados</div>
+      ${incidentesHtml}
+    </div>
   `;
   openPanel('panel-ficha-trabajador');
 }
@@ -1371,47 +1393,59 @@ function abrirDetalleIncidente(fila) {
   const trabInvolucrado = i.trabajador && allTrabajadores.find(x => x.nombre === i.trabajador);
   const obraParaSupervisor = (trabInvolucrado && trabInvolucrado.obra) || i.obra;
   const supervisorResponsable = supervisorDeObra(obraParaSupervisor);
+  document.getElementById('pnl-title-detalle-incidente').textContent = i.tipo;
   document.getElementById('detalle-incidente-body').innerHTML = `
     <div class="ficha-hero">
       <div class="ficha-hero-icon">${ic('incidentes',32)}</div>
       <div class="ficha-hero-info">
         <div class="ficha-hero-type">${esc(i.tipo)}</div>
         <div class="ficha-hero-name">${esc(i.area)}</div>
+        <div class="ficha-hero-badges">
+          <span class="badge red">${esc(i.gravedad)}</span>
+          <span class="badge ${i.estado==='Cerrado'?'green':'gray'}">${esc(i.estado)}</span>
+        </div>
       </div>
     </div>
-    <div class="field-row"><span>Fecha</span><b>${esc(i.fecha)}</b></div>
-    ${i.trabajador ? `<div class="field-row"><span>Trabajador</span><b>${esc(i.trabajador)}</b></div>` : ''}
-    <div class="field-row"><span>Obra</span><b>${esc(i.obra || '—')}</b></div>
-    ${supervisorResponsable && supervisorResponsable.nombre !== i.trabajador ? `<div class="field-row"><span>Supervisor responsable</span><b>${esc(supervisorResponsable.nombre)}</b></div>` : ''}
-    <div class="field-row"><span>Gravedad</span><span class="badge red">${esc(i.gravedad)}</span></div>
-    <div class="field-row"><span>Días perdidos</span><b>${i.diasPerdidos || 0}</b></div>
-    <div class="field-row"><span>Estado</span><span class="badge ${i.estado==='Cerrado'?'green':'gray'}">${esc(i.estado)}</span></div>
 
-    <div class="sec-label" style="margin-top:20px;">Descripción</div>
-    <div class="card-sub" style="white-space:normal;">${esc(i.descripcion) || '—'}</div>
+    <div class="ficha-section">
+      <div class="ficha-sec-title">Información general</div>
+      <div class="field-row"><span>Fecha</span><b>${esc(i.fecha)}</b></div>
+      ${i.trabajador ? `<div class="field-row"><span>Trabajador</span><b>${esc(i.trabajador)}</b></div>` : ''}
+      <div class="field-row"><span>Obra</span><b>${esc(i.obra || '—')}</b></div>
+      ${supervisorResponsable && supervisorResponsable.nombre !== i.trabajador ? `<div class="field-row"><span>Supervisor responsable</span><b>${esc(supervisorResponsable.nombre)}</b></div>` : ''}
+      <div class="field-row"><span>Días perdidos</span><b>${i.diasPerdidos || 0}</b></div>
+    </div>
 
-    ${i.causas ? `<div class="sec-label" style="margin-top:20px;">Causas</div><div class="card-sub" style="white-space:normal;">${esc(i.causas)}</div>` : ''}
-    ${i.accion ? `<div class="sec-label" style="margin-top:20px;">Acciones correctivas</div><div class="card-sub" style="white-space:normal;">${esc(i.accion)}</div>` : ''}
+    <div class="ficha-section">
+      <div class="ficha-sec-title">Descripción</div>
+      <div class="card-sub" style="white-space:normal;">${esc(i.descripcion) || '—'}</div>
+      ${i.causas ? `<div class="sec-label" style="margin-top:14px;">Causas</div><div class="card-sub" style="white-space:normal;">${esc(i.causas)}</div>` : ''}
+      ${i.accion ? `<div class="sec-label" style="margin-top:14px;">Acciones correctivas</div><div class="card-sub" style="white-space:normal;">${esc(i.accion)}</div>` : ''}
+    </div>
 
-    <div class="sec-label" style="margin-top:20px;">Registro</div>
-    <div class="field-row"><span>Fecha de registro</span><b>${esc(i.fechaRegistro || '—')}</b></div>
-    <div class="field-row"><span>Reportado por</span><b>${esc(i.reportadoPor || '—')}</b></div>
-    ${i.foto ? `<div class="field-row"><span>Foto</span><a href="${esc(i.foto)}" target="_blank" class="badge blue">${ic('camara',12)} Ver foto</a></div>` : ''}
-    ${i.respaldo ? `<div class="field-row"><span>Respaldo de cierre</span><a href="${esc(i.respaldo)}" target="_blank" class="badge blue">${ic('documento',12)} Ver respaldo</a></div>` : ''}
+    <div class="ficha-section">
+      <div class="ficha-sec-title">Registro</div>
+      <div class="field-row"><span>Fecha de registro</span><b>${esc(i.fechaRegistro || '—')}</b></div>
+      <div class="field-row"><span>Reportado por</span><b>${esc(i.reportadoPor || '—')}</b></div>
+      ${i.foto ? `<div class="field-row"><span>Foto</span><a href="${esc(i.foto)}" target="_blank" class="badge blue">${ic('camara',12)} Ver foto</a></div>` : ''}
+      ${i.respaldo ? `<div class="field-row"><span>Respaldo de cierre</span><a href="${esc(i.respaldo)}" target="_blank" class="badge blue">${ic('documento',12)} Ver respaldo</a></div>` : ''}
+    </div>
 
     ${i.atencionMedicaEstado ? `
-    <div class="sec-label" style="margin-top:20px;">Atención médica</div>
-    <div class="field-row"><span>Estado</span><span class="badge ${i.atencionMedicaEstado==='Pendiente'?'amber':'green'}">${esc(i.atencionMedicaEstado)}</span></div>
-    ${i.atencionMedicaPdf ? `<div class="field-row"><span>Documento</span><a href="${esc(i.atencionMedicaPdf)}" target="_blank" class="badge blue">${ic('documento',12)} Ver documento</a></div>` : ''}
-    ` : ''}
+    <div class="ficha-section">
+      <div class="ficha-sec-title">Atención médica</div>
+      <div class="field-row"><span>Estado</span><span class="badge ${i.atencionMedicaEstado==='Pendiente'?'amber':'green'}">${esc(i.atencionMedicaEstado)}</span></div>
+      ${i.atencionMedicaPdf ? `<div class="field-row"><span>Documento</span><a href="${esc(i.atencionMedicaPdf)}" target="_blank" class="badge blue">${ic('documento',12)} Ver documento</a></div>` : ''}
+    </div>` : ''}
 
     ${i.investigacionEstado ? `
-    <div class="sec-label" style="margin-top:20px;">Investigación de accidente</div>
-    <div class="field-row"><span>Estado</span><span class="badge ${i.investigacionEstado==='Completada'?'green':'amber'}">${esc(i.investigacionEstado)}</span></div>
-    ${i.investigacionResponsable ? `<div class="field-row"><span>Responsable</span><b>${esc(i.investigacionResponsable)}</b></div>` : ''}
-    ${i.investigacionFecha ? `<div class="field-row"><span>Fecha</span><b>${esc(i.investigacionFecha)}</b></div>` : ''}
-    ${i.investigacionPdf ? `<div class="field-row"><span>Informe</span><a href="${esc(i.investigacionPdf)}" target="_blank" class="badge blue">${ic('documento',12)} Ver informe</a></div>` : ''}
-    ` : ''}
+    <div class="ficha-section">
+      <div class="ficha-sec-title">Investigación de accidente</div>
+      <div class="field-row"><span>Estado</span><span class="badge ${i.investigacionEstado==='Completada'?'green':'amber'}">${esc(i.investigacionEstado)}</span></div>
+      ${i.investigacionResponsable ? `<div class="field-row"><span>Responsable</span><b>${esc(i.investigacionResponsable)}</b></div>` : ''}
+      ${i.investigacionFecha ? `<div class="field-row"><span>Fecha</span><b>${esc(i.investigacionFecha)}</b></div>` : ''}
+      ${i.investigacionPdf ? `<div class="field-row"><span>Informe</span><a href="${esc(i.investigacionPdf)}" target="_blank" class="badge blue">${ic('documento',12)} Ver informe</a></div>` : ''}
+    </div>` : ''}
 
     ${i.atencionMedicaEstado === 'Pendiente' ? `<button class="action-btn" onclick="closePanel('panel-detalle-incidente'); abrirPreguntaAtencionMedica(${i.fila})">Definir atención médica</button>` : ''}
     ${i.investigacionEstado === 'Pendiente' ? `<button class="action-btn" onclick="closePanel('panel-detalle-incidente'); abrirInvestigacion(${i.fila})">Realizar investigación</button>` : ''}
