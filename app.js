@@ -1819,41 +1819,48 @@ async function generarYSubirPdfDiat(datos) {
     checkX(grupo[idx].x, grupo[idx].top);
   }
 
+  // Coordenadas "top" recalculadas para que el texto quede centrado
+  // verticalmente en cada casilla (mismo criterio que ya usaba checkX()
+  // para las X de los checkboxes: centro de la celda + mitad del alto de
+  // la letra), en vez del criterio anterior de pegarlo cerca del borde
+  // inferior — se veía todo el texto "muy abajo" dentro del espacio
+  // en blanco.
+
   // A. Identificación del Empleador
-  text(datos.empleadorNombre, 90, 165, 7.5);
-  text(datos.empleadorRut, 515, 165, 7.5);
-  text(datos.empleadorDireccion, 90, 200, 7);
-  text(datos.empleadorComuna, 417, 200, 7);
-  text(datos.empleadorTelefono, 510, 200, 7);
+  text(datos.empleadorNombre, 90, 158.5, 7.5);
+  text(datos.empleadorRut, 515, 158.5, 7.5);
+  text(datos.empleadorDireccion, 90, 193.5, 7);
+  text(datos.empleadorComuna, 417, 193.5, 7);
+  text(datos.empleadorTelefono, 510, 193.5, 7);
   // "N° de Trabajadores": los números van DENTRO de las cajitas verdes
   // (387-409 y 443.7-465.7), no junto a la etiqueta "Hombres"/"Mujeres" —
   // antes quedaban flotando fuera de la caja, encima del borde.
-  text(String(datos.nTrabHombres||''), 393, 230, 7);
-  text(String(datos.nTrabMujeres||''), 449, 230, 7);
+  text(String(datos.nTrabHombres||''), 393, 228.4, 7);
+  text(String(datos.nTrabMujeres||''), 449, 228.4, 7);
   marcar(DIAT_PROPIEDAD_EMPRESA, datos.propiedadEmpresa);
-  text(datos.actividadEconomica, 45, 235, 7);
+  text(datos.actividadEconomica, 45, 228.5, 7);
   marcar(DIAT_TIPO_EMPRESA, datos.tipoEmpresa);
   textBlock(datos.actividadEconomicaPrincipal, 386, [268, 277], 200, 7);
 
   // B. Identificación del Trabajador/a
-  text(datos.trabajadorNombre, 90, 345, 7.5);
-  text(datos.trabajadorRun, 515, 345, 7.5);
-  text(datos.trabajadorDireccion, 90, 380, 7);
-  text(datos.trabajadorComuna, 422, 380, 7);
-  text(datos.trabajadorTelefono, 511, 380, 7);
+  text(datos.trabajadorNombre, 90, 338, 7.5);
+  text(datos.trabajadorRun, 515, 338, 7.5);
+  text(datos.trabajadorDireccion, 90, 372.3, 7);
+  text(datos.trabajadorComuna, 422, 372.3, 7);
+  text(datos.trabajadorTelefono, 511, 372.3, 7);
   marcar(DIAT_SEXO, datos.sexo);
-  text(datos.edad, 163, 413, 7.5);
+  text(datos.edad, 163, 406.6, 7.5);
   // La celda de Fecha de Nacimiento trae 2 barras "/" pre-impresas como
   // guía (día/mes/año); si se escribe la fecha completa encima queda
   // montada con esas barras — se tapan primero con blanco.
   if (datos.fechaNacimiento) {
     blank(201.2, 393.3, 290.5, 414.5);
-    text(ddmmyyyy(datos.fechaNacimiento), 210, 412, 7);
+    text(ddmmyyyy(datos.fechaNacimiento), 210, 406.4, 7);
   }
   marcar(DIAT_PUEBLO_ORIGINARIO, datos.pueblo);
-  text(datos.nacionalidad, 70, 446, 7);
-  text(datos.profesionOficio, 190, 446, 7);
-  text(datos.antiguedadValor, 44, 474, 7);
+  text(datos.nacionalidad, 70, 439.2, 7);
+  text(datos.profesionOficio, 190, 439.2, 7);
+  text(datos.antiguedadValor, 44, 472.2, 7);
   marcar(DIAT_ANTIGUEDAD_UNIDAD, datos.antiguedadUnidad);
   marcar(DIAT_TIPO_CONTRATO, datos.tipoContrato);
   marcar(DIAT_TIPO_INGRESO, datos.tipoIngreso);
@@ -1861,36 +1868,34 @@ async function generarYSubirPdfDiat(datos) {
 
   // C. Datos del Accidente
   // Misma celda con barras "/" pre-impresas que Fecha de Nacimiento — se
-  // tapan antes de escribir, y el texto baja de top=545 (quedaba pegado
-  // arriba, casi tocando el borde superior de la caja) a top=559 (la caja
-  // real va de 540.6 a 561.9, más cerca del borde inferior).
+  // tapan antes de escribir.
   if (datos.fechaAccidente) {
     blank(167.7, 540.6, 257.0, 561.9);
-    text(ddmmyyyy(datos.fechaAccidente), 178, 559, 7.5);
+    text(ddmmyyyy(datos.fechaAccidente), 178, 554, 7.5);
   }
-  text(datos.horaAccidente, 282, 545, 7);
+  text(datos.horaAccidente, 282, 553.9, 7);
   marcar(DIAT_AMPM_ACCIDENTE, datos.ampmAccidente);
-  text(datos.horaIngreso, 393, 545, 7);
+  text(datos.horaIngreso, 393, 554, 7);
   marcar(DIAT_AMPM_INGRESO, datos.ampmIngreso);
-  text(datos.horaSalida, 502, 545, 7);
+  text(datos.horaSalida, 502, 554.3, 7);
   marcar(DIAT_AMPM_SALIDA, datos.ampmSalida);
-  text(datos.direccionAccidente, 45, 594, 7);
-  text(datos.comunaAccidente, 508, 594, 7);
+  text(datos.direccionAccidente, 45, 587.3, 7);
+  text(datos.comunaAccidente, 508, 587.3, 7);
   textBlock(datos.queHacia, 45, [630, 638.5], 240, 6.5);
   textBlock(datos.lugarAccidente, 322, [630, 638.5], 250, 6.5);
   textBlock(datos.descripcionAccidente, 45, [670, 678.6, 687.2, 695.8, 704.4], 530, 7);
-  text(datos.trabajoHabitual, 174, 719, 7);
+  text(datos.trabajoHabitual, 174, 722.7, 7);
   marcar(DIAT_DESARROLLABA_HABITUAL, datos.desarrollaba);
   marcar(DIAT_CLASIFICACION_ACCIDENTE, datos.clasificacion);
   marcar(DIAT_TIPO_ACCIDENTE, datos.tipoAccidente);
   marcar(DIAT_TIPO_ACCIDENTE_TRAYECTO, datos.trayecto);
   marcar(DIAT_MEDIO_PRUEBA, datos.medioPrueba);
-  text(datos.detalleMedioPrueba, 318, 791, 6.5);
+  text(datos.detalleMedioPrueba, 318, 784, 6.5);
 
   // D. Identificación del Denunciante
-  text(datos.denuncianteNombre, 107, 848, 7.5);
-  text(datos.denuncianteRun, 389, 848, 7.5);
-  text(datos.denuncianteTelefono, 61, 881, 7);
+  text(datos.denuncianteNombre, 107, 840.6, 7.5);
+  text(datos.denuncianteRun, 389, 840.6, 7.5);
+  text(datos.denuncianteTelefono, 61, 873.6, 7);
   marcar(DIAT_CLASIFICACION_DENUNCIANTE, datos.denunciante);
 
   const bytes = await pdfDoc.save();
