@@ -445,6 +445,29 @@ function fmtFecha(d) { return new Date(d).toLocaleDateString('es-CL'); }
 function hoyISO() { return new Date().toISOString().slice(0,10); }
 function horaActual() { return new Date().toTimeString().slice(0,5); }
 
+// Edad y antigüedad calculadas al vuelo a partir de los datos estáticos del
+// trabajador (fecha de nacimiento / fecha de ingreso), en vez de pedirlas de
+// nuevo cada vez que se llena un documento (DIAT, Investigación, etc.).
+function calcularEdad(fechaNacimiento, fechaRef) {
+  if (!fechaNacimiento) return '';
+  const nac = new Date(fechaNacimiento + 'T00:00:00');
+  const ref = new Date((fechaRef || hoyISO()) + 'T00:00:00');
+  let edad = ref.getFullYear() - nac.getFullYear();
+  const m = ref.getMonth() - nac.getMonth();
+  if (m < 0 || (m === 0 && ref.getDate() < nac.getDate())) edad--;
+  return edad >= 0 ? edad : '';
+}
+function calcularAntiguedad(fechaInicio, fechaRef) {
+  if (!fechaInicio) return null;
+  const d1 = new Date(fechaInicio + 'T00:00:00');
+  const d2 = new Date((fechaRef || hoyISO()) + 'T00:00:00');
+  const dias = Math.round((d2 - d1) / 86400000);
+  if (dias < 0) return null;
+  if (dias >= 365) return { valor: Math.floor(dias / 365), unidad: 'Años' };
+  if (dias >= 30) return { valor: Math.floor(dias / 30), unidad: 'Meses' };
+  return { valor: dias, unidad: 'Días' };
+}
+
 // ============================================================
 // DATOS EN MEMORIA
 // ============================================================
@@ -464,7 +487,7 @@ async function cargarTodo(silencioso) {
   try {
     if (!silencioso) splash(45, 'Cargando información...');
     const [trab, insp, inc, proc, epp, charlas, invest, hcr, diat] = await Promise.all([
-      fetchSheet(`'${CONFIG.SHEET_TRABAJADORES}'!A2:P2000`),
+      fetchSheet(`'${CONFIG.SHEET_TRABAJADORES}'!A2:Z2000`),
       fetchSheet(`'${CONFIG.SHEET_INSPECCIONES}'!A2:M2000`),
       fetchSheet(`'${CONFIG.SHEET_INCIDENTES}'!A2:V2000`),
       fetchSheet(`'${CONFIG.SHEET_PROCEDIMIENTOS}'!A2:I2000`),
@@ -500,7 +523,12 @@ function rowToTrabajador(r, i) {
   return { fila: i+2, n: r[0]||'', nombre: r[1]||'', rut: r[2]||'', cargo: r[3]||'', empresa: r[4]||'',
     fechaIngreso: r[5]||'', estado: r[6]||'Activo', foto: r[7]||'', fechaRegistro: r[8]||'',
     obra: r[9]||'', contratoInicio: r[10]||'', contratoTermino: r[11]||'', contratoArchivo: r[12]||'',
-    alturaVigencia: r[13]||'', alturaArchivo: r[14]||'', esSupervisor: r[15]==='Sí' };
+    alturaVigencia: r[13]||'', alturaArchivo: r[14]||'', esSupervisor: r[15]==='Sí',
+    // Datos personales estáticos — no cambian entre incidentes, se usan para
+    // prellenar documentos legales (DIAT, Investigación de Accidente, etc.)
+    fechaNacimiento: r[16]||'', sexo: r[17]||'', nacionalidad: r[18]||'', direccion: r[19]||'',
+    comuna: r[20]||'', telefono: r[21]||'', puebloOriginario: r[22]||'', tipoContrato: r[23]||'',
+    tipoIngreso: r[24]||'', categoriaOcupacional: r[25]||'' };
 }
 // Un trabajador es "supervisor de obra" de todos los demás trabajadores
 // activos de su misma Obra (no hay asignación individual: se sigue el
@@ -778,6 +806,7 @@ function abrirFichaTrabajador(nombre) {
   const alturaBadge = !t.alturaVigencia
     ? `<span class="badge gray">Sin registrar</span>`
     : t.alturaVigencia < hoyISO() ? `<span class="badge red">Vencido</span>` : `<span class="badge green">Vigente</span>`;
+  const datosPersonalesCompletos = t.fechaNacimiento && t.sexo && t.direccion && t.comuna && t.telefono && t.tipoContrato;
 
   document.getElementById('ficha-trabajador-body').innerHTML = `
     <div class="ficha-hero">
@@ -796,6 +825,20 @@ function abrirFichaTrabajador(nombre) {
     <div class="field-row"><span>Rol</span>${t.esSupervisor ? '<span class="badge amber">Supervisor de obra</span>' : supervisorDeEste ? `<span>Supervisado por <b>${esc(supervisorDeEste.nombre)}</b></span>` : '<span class="badge gray">Trabajador</span>'}</div>
     <button class="action-btn" onclick="toggleSupervisor(${t.fila})">${t.esSupervisor ? 'Quitar rol de supervisor' : 'Marcar como supervisor de esta obra'}</button>
     ${equipoHtml}
+
+    <div class="sec-label" style="margin-top:20px;">Datos personales</div>
+    <div class="field-row"><span>Estado</span>${datosPersonalesCompletos ? '<span class="badge green">Completos</span>' : '<span class="badge amber">Incompletos</span>'}</div>
+    <div class="field-row"><span>Fecha de nacimiento</span><b>${esc(t.fechaNacimiento || '—')}</b></div>
+    <div class="field-row"><span>Sexo</span><b>${esc(t.sexo || '—')}</b></div>
+    <div class="field-row"><span>Nacionalidad</span><b>${esc(t.nacionalidad || '—')}</b></div>
+    <div class="field-row"><span>Dirección</span><b>${esc(t.direccion || '—')}</b></div>
+    <div class="field-row"><span>Comuna</span><b>${esc(t.comuna || '—')}</b></div>
+    <div class="field-row"><span>Teléfono</span><b>${esc(t.telefono || '—')}</b></div>
+    <div class="field-row"><span>Pueblo originario</span><b>${esc(t.puebloOriginario || '—')}</b></div>
+    <div class="field-row"><span>Tipo de contrato</span><b>${esc(t.tipoContrato || '—')}</b></div>
+    <div class="field-row"><span>Tipo de remuneración</span><b>${esc(t.tipoIngreso || '—')}</b></div>
+    <div class="field-row"><span>Categoría ocupacional</span><b>${esc(t.categoriaOcupacional || '—')}</b></div>
+    <button class="action-btn" onclick="abrirEditarDatosPersonales(${t.fila})">${datosPersonalesCompletos ? 'Actualizar datos personales' : 'Completar datos personales'}</button>
 
     <div class="sec-label" style="margin-top:20px;">Contrato de trabajo</div>
     <div class="field-row"><span>Inicio</span><b>${esc(t.contratoInicio || '—')}</b></div>
@@ -883,6 +926,44 @@ async function guardarAltura(ev) {
     if (t) abrirFichaTrabajador(t.nombre);
   } catch (e) { toast(e.message, 'error'); }
 }
+function abrirEditarDatosPersonales(fila) {
+  const t = allTrabajadores.find(x => x.fila === fila);
+  if (!t) return;
+  const f = document.getElementById('form-editar-personales');
+  f.reset();
+  f.fila.value = fila;
+  f.fechaNacimiento.value = t.fechaNacimiento || '';
+  f.sexo.value = t.sexo || '';
+  f.nacionalidad.value = t.nacionalidad || 'Chilena';
+  f.direccion.value = t.direccion || '';
+  f.comuna.value = t.comuna || '';
+  f.telefono.value = t.telefono || '';
+  f.puebloOriginario.value = t.puebloOriginario || 'Ninguno';
+  f.tipoContrato.value = t.tipoContrato || '';
+  f.tipoIngreso.value = t.tipoIngreso || '';
+  f.categoriaOcupacional.value = t.categoriaOcupacional || '';
+  openPanel('panel-editar-personales');
+}
+async function guardarDatosPersonales(ev) {
+  ev.preventDefault();
+  const f = ev.target;
+  const fila = f.fila.value;
+  const t = allTrabajadores.find(x => String(x.fila) === String(fila));
+  try {
+    await ensureToken();
+    const url = `${SHEETS_BASE}/${CONFIG.SHEET_ID}/values/${encodeURIComponent(`'${CONFIG.SHEET_TRABAJADORES}'!Q${fila}:Z${fila}`)}?valueInputOption=USER_ENTERED`;
+    await fetch(url, { method:'PUT', headers:{ 'Content-Type':'application/json', ...authHeader() },
+      body: JSON.stringify({ values: [[
+        f.fechaNacimiento.value, f.sexo.value, f.nacionalidad.value, f.direccion.value,
+        f.comuna.value, f.telefono.value, f.puebloOriginario.value, f.tipoContrato.value,
+        f.tipoIngreso.value, f.categoriaOcupacional.value
+      ]] }) });
+    toast('Datos personales actualizados ✓', 'ok');
+    closePanel('panel-editar-personales');
+    await cargarTodo(true);
+    if (t) abrirFichaTrabajador(t.nombre);
+  } catch (e) { toast(e.message, 'error'); }
+}
 function selectTrabajadoresOptions() {
   return allTrabajadores.filter(t=>t.estado==='Activo').map(t => `<option value="${esc(t.nombre)}|${esc(t.rut)}">${esc(t.nombre)} — ${esc(t.rut)}</option>`).join('');
 }
@@ -906,10 +987,13 @@ async function guardarTrabajador(ev) {
     }
     const n = allTrabajadores.length + 1;
     const obra = valorObra(f.obra, 'input-trabajador-obra-otra');
-    await appendSheet(`'${CONFIG.SHEET_TRABAJADORES}'!A:P`, [[
+    await appendSheet(`'${CONFIG.SHEET_TRABAJADORES}'!A:Z`, [[
       n, f.nombre.value, f.rut.value, f.cargo.value, f.empresa.value,
       f.fechaIngreso.value, f.estado.value, fotoLink, new Date().toLocaleString('es-CL'),
-      obra, '', '', '', '', '', f.esSupervisor.checked ? 'Sí' : ''
+      obra, '', '', '', '', '', f.esSupervisor.checked ? 'Sí' : '',
+      f.fechaNacimiento.value, f.sexo.value, f.nacionalidad.value, f.direccion.value,
+      f.comuna.value, f.telefono.value, f.puebloOriginario.value, f.tipoContrato.value,
+      f.tipoIngreso.value, f.categoriaOcupacional.value
     ]]);
     toast('Trabajador agregado ✓', 'ok');
     closePanel('panel-form-trabajador');
@@ -1551,6 +1635,16 @@ function seleccionadoRadioInv(name) {
   const el = document.querySelector(`input[name="${name}"]:checked`);
   return el ? parseInt(el.value, 10) : -1;
 }
+// Marca el radio de un checklist DIAT/Investigación buscando el índice cuyo
+// label calza con un valor guardado (ej. el Sexo o el Tipo de Contrato del
+// trabajador) — usado para prellenar desde los datos personales guardados.
+function marcarRadioPorLabel(name, catalogo, label) {
+  if (!label) return;
+  const idx = catalogo.findIndex(o => o.label === label);
+  if (idx < 0) return;
+  const el = document.querySelector(`input[name="${name}"][value="${idx}"]`);
+  if (el) el.checked = true;
+}
 
 function abrirFormDiat() {
   const inc = allIncidentes.find(x => x.fila === atencionMedicaFilaIncidente);
@@ -1562,15 +1656,39 @@ function abrirFormDiat() {
   f.trabajadorNombre.value = inc.trabajador || '';
   f.trabajadorRun.value = trab ? trab.rut : '';
   f.profesionOficio.value = trab ? trab.cargo : '';
-  f.nacionalidad.value = 'Chilena';
+  f.nacionalidad.value = (trab && trab.nacionalidad) || 'Chilena';
   f.fechaAccidente.value = inc.fecha || hoyISO();
   f.lugarAccidente.value = inc.area || '';
   f.direccionAccidente.value = inc.obra || '';
   f.descripcionAccidente.value = inc.descripcion || '';
+
+  // Datos personales del trabajador (fila TRABAJADORES) — se rellenan solos
+  // si ya están cargados en su ficha, en vez de escribirlos de nuevo cada
+  // vez que se llena un DIAT.
+  if (trab) {
+    f.trabajadorDireccion.value = trab.direccion || '';
+    f.trabajadorComuna.value = trab.comuna || '';
+    f.trabajadorTelefono.value = trab.telefono || '';
+    f.fechaNacimiento.value = trab.fechaNacimiento || '';
+    f.edad.value = calcularEdad(trab.fechaNacimiento, inc.fecha);
+    const antiguedad = calcularAntiguedad(trab.fechaIngreso, inc.fecha);
+    if (antiguedad) f.antiguedadValor.value = antiguedad.valor;
+  }
+
   renderChecklistsDiat();
   openPanel('panel-form-diat');
+  // Los radios recién se pueden marcar después de renderChecklistsDiat()
+  // (se insertan de forma síncrona arriba, así que ya existen en el DOM).
+  if (trab) {
+    marcarRadioPorLabel('diatSexo', DIAT_SEXO, trab.sexo);
+    marcarRadioPorLabel('diatPueblo', DIAT_PUEBLO_ORIGINARIO, trab.puebloOriginario);
+    marcarRadioPorLabel('diatTipoContrato', DIAT_TIPO_CONTRATO, trab.tipoContrato);
+    marcarRadioPorLabel('diatTipoIngreso', DIAT_TIPO_INGRESO, trab.tipoIngreso);
+    marcarRadioPorLabel('diatCategoria', DIAT_CATEGORIA_OCUPACIONAL, trab.categoriaOcupacional);
+    const antiguedad = calcularAntiguedad(trab.fechaIngreso, inc.fecha);
+    if (antiguedad) marcarRadioPorLabel('diatAntiguedadUnidad', DIAT_ANTIGUEDAD_UNIDAD, antiguedad.unidad);
+  }
   // Clasificación del accidente prellenada según el tipo ya registrado
-  // (renderChecklistsDiat ya insertó los radios de forma síncrona arriba)
   const idxClasificacion = inc.tipo === 'Accidente Grave' ? 0 : inc.tipo === 'Accidente Fatal' ? 1 : 2;
   const elClasificacion = document.querySelector(`input[name="diatClasificacion"][value="${idxClasificacion}"]`);
   if (elClasificacion) elClasificacion.checked = true;
@@ -1950,6 +2068,7 @@ let investigacionEnProceso = null;
 function abrirInvestigacion(filaIncidente) {
   const inc = allIncidentes.find(x => x.fila === filaIncidente);
   if (!inc) { toast('No se encontró el registro', 'error'); return; }
+  const trab = inc.trabajador && allTrabajadores.find(x => x.nombre === inc.trabajador);
   investigacionEnProceso = { filaIncidente };
   const f = document.getElementById('form-investigacion');
   f.reset();
@@ -1959,6 +2078,12 @@ function abrirInvestigacion(filaIncidente) {
   f.lugar.value = inc.area || '';
   f.trabajadorNombre.value = inc.trabajador || '';
   f.descripcionEvento.value = inc.descripcion || '';
+  if (trab) {
+    f.trabajadorRut.value = trab.rut || '';
+    f.trabajadorCargo.value = trab.cargo || '';
+    const antiguedad = calcularAntiguedad(trab.fechaIngreso, inc.fecha);
+    if (antiguedad) f.trabajadorAntiguedadEmpresa.value = `${antiguedad.valor} ${antiguedad.unidad.toLowerCase()}`;
+  }
   renderChecklistsInvestigacion();
   openPanel('panel-form-investigacion');
   setTimeout(() => initFirmaPad('firma-canvas-investigador'), 80);
