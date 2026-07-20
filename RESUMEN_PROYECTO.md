@@ -187,6 +187,12 @@ vez de esperar un cambio que nunca ocurre.
    guardado, no hay una lista separada que mantener). `abrirFormEpp(item,
    trabajador)` acepta parámetros opcionales de prellenado, usados por la
    sugerencia de "reponer EPP" de Incidentes.
+   El archivo de la firma (a diferencia de Charla/HCR/Investigación, acá no
+   va dentro de un PDF con más contexto alrededor — es la única firma de la
+   app que se sube como imagen suelta) se compone con `firmaConIdentificacion`
+   antes de subirse: agrega "Nombre — RUT" en una franja blanca debajo del
+   trazo, para que quien abra el archivo directo sepa de quién es sin tener
+   que cruzarlo con la fila del Sheet.
 5. **Trabajadores** — alta de nómina, con Obra. Al tocar un trabajador se abre
    su **ficha con historial**: EPP entregado, incidentes relacionados, y dos
    secciones nuevas — **Contrato de trabajo** (fecha inicio/término o
