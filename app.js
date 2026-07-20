@@ -566,6 +566,20 @@ function rowToEpp(r, i) {
   return { fila: i+2, n: r[0]||'', fecha: r[1]||'', trabajador: r[2]||'', rut: r[3]||'', epp: r[4]||'',
     cantidad: r[5]||'', firma: r[6]||'', responsable: r[7]||'', fechaRegistro: r[8]||'' };
 }
+// Una entrega de EPP es UNA fila con todos los ítems juntos en la columna
+// "EPP Entregado" (ej. "Casco (1); Guantes (2)"), igual que "Asistentes"
+// en Charlas — antes cada ítem quedaba en su propia fila (misma fecha/
+// trabajador/firma repetidos), lo que hacía ver una sola entrega como
+// varias filas/entregas duplicadas en el Sheet. Esta función separa esa
+// celda combinada en ítems individuales; también entiende filas antiguas
+// (antes del cambio), donde el ítem y la cantidad iban en columnas propias.
+function itemsDeFilaEpp(e) {
+  if (e.cantidad) return [{ item: e.epp, cantidad: e.cantidad }];
+  return (e.epp || '').split(';').map(s => s.trim()).filter(Boolean).map(s => {
+    const m = s.match(/^(.*)\((\d+)\)$/);
+    return m ? { item: m[1].trim(), cantidad: m[2] } : { item: s, cantidad: '' };
+  });
+}
 function rowToCharla(r, i) {
   return { fila: i+2, n: r[0]||'', fecha: r[1]||'', tema: r[2]||'', origen: r[3]||'', estado: r[4]||'Pendiente',
     fechaRealizada: r[5]||'', responsable: r[6]||'', relator: r[7]||'', obra: r[8]||'', hora: r[9]||'',
@@ -759,7 +773,7 @@ function abrirFichaTrabajador(nombre) {
   eppDeEste.forEach(e => {
     const key = e.fecha + '|' + e.firma;
     if (!grupos[key]) { grupos[key] = { fecha: e.fecha, firma: e.firma, items: [] }; orden.push(key); }
-    grupos[key].items.push(`${e.epp} (${e.cantidad})`);
+    grupos[key].items.push(...itemsDeFilaEpp(e).map(x => `${x.item} (${x.cantidad})`));
   });
   const entregasHtml = orden.length === 0
     ? '<div class="card-sub" style="padding:6px 2px;">Sin entregas de EPP registradas.</div>'
@@ -2776,7 +2790,7 @@ async function guardarProcedimiento(ev) {
 function opcionesEppDisponibles() {
   // Catálogo base + cualquier tipo "Otro" que alguien haya escrito antes
   // (se detecta automáticamente porque ya quedó guardado en entregas previas)
-  const historicos = [...new Set(allEpp.map(e => e.epp).filter(Boolean))];
+  const historicos = [...new Set(allEpp.flatMap(e => itemsDeFilaEpp(e).map(x => x.item)).filter(Boolean))];
   const todos = [...new Set([...EPP_ITEMS.filter(x => x !== 'Otro'), ...historicos])];
   todos.sort((a, b) => a.localeCompare(b, 'es'));
   return todos;
@@ -2784,13 +2798,15 @@ function opcionesEppDisponibles() {
 
 function renderEpp() {
   if (allEpp.length === 0) { setListHTML('epp', emptyState('Sin entregas registradas', '')); return; }
-  // Agrupa las filas que pertenecen a la misma entrega (misma fecha + trabajador + firma)
+  // Cada fila ya es una entrega completa (todos sus ítems juntos); se
+  // mantiene el agrupado por fecha+trabajador+firma solo por compatibilidad
+  // con filas antiguas, de antes de combinar los ítems en una sola fila.
   const grupos = {};
   const orden = [];
   allEpp.forEach(e => {
     const key = e.fecha + '|' + e.trabajador + '|' + e.firma;
     if (!grupos[key]) { grupos[key] = { fecha: e.fecha, trabajador: e.trabajador, firma: e.firma, items: [] }; orden.push(key); }
-    grupos[key].items.push(`${e.epp} (${e.cantidad})`);
+    grupos[key].items.push(...itemsDeFilaEpp(e).map(x => `${x.item} (${x.cantidad})`));
   });
   const items = orden.map(k => grupos[k]).reverse();
   setListHTML('epp', items.map(g => `
@@ -2948,12 +2964,17 @@ async function guardarEpp(ev) {
       firmaLink = up.link;
     }
     const fechaRegistro = new Date().toLocaleString('es-CL');
-    const filas = itemsEpp.map((it, i) => [
-      allEpp.length + 1 + i, f.fecha.value, trabNombre, trabRut, it.item, it.cantidad,
+    // Todos los ítems de una misma entrega van en UNA sola fila (columna
+    // "EPP Entregado" combinada, ej. "Casco (1); Guantes (2)"), igual que
+    // "Asistentes" en Charlas — antes cada ítem generaba su propia fila
+    // (misma fecha/trabajador/firma repetidos), y una sola entrega se veía
+    // como varias entregas duplicadas.
+    const itemsTexto = itemsEpp.map(it => `${it.item} (${it.cantidad})`).join('; ');
+    await appendSheet(`'${CONFIG.SHEET_EPP}'!A:I`, [[
+      allEpp.length + 1, f.fecha.value, trabNombre, trabRut, itemsTexto, '',
       firmaLink, userEmail || f.responsable.value, fechaRegistro
-    ]);
-    await appendSheet(`'${CONFIG.SHEET_EPP}'!A:I`, filas);
-    toast(`Entrega registrada ✓ (${filas.length} ítem${filas.length>1?'s':''})`, 'ok');
+    ]]);
+    toast(`Entrega registrada ✓ (${itemsEpp.length} ítem${itemsEpp.length>1?'s':''})`, 'ok');
     closePanel('panel-form-epp');
     cargarTodo(true);
   } catch (e) { toast(e.message, 'error'); }
