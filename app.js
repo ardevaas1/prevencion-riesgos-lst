@@ -1788,6 +1788,12 @@ async function generarYSubirPdfDiat(datos) {
   function text(str, x, top, size, bold) {
     p1.drawText(str || '', { x, y: H - top, size: size || 7, font: bold ? fontBold : font, color: rgb(0,0,0) });
   }
+  // Tapa con blanco el contenido pre-impreso de una celda (ej. las barras
+  // "/" guía de un campo de fecha) antes de escribir encima, para que no
+  // quede el texto mezclado/montado con esas marcas.
+  function blank(x0, top0, x1, top1) {
+    p1.drawRectangle({ x: x0, y: H - top1, width: x1 - x0, height: top1 - top0, color: rgb(1,1,1) });
+  }
   function checkX(x, cellCenterTop, size) {
     const s = size || 7.5;
     const capHeight = s * 0.72;
@@ -1819,8 +1825,11 @@ async function generarYSubirPdfDiat(datos) {
   text(datos.empleadorDireccion, 90, 200, 7);
   text(datos.empleadorComuna, 417, 200, 7);
   text(datos.empleadorTelefono, 510, 200, 7);
-  text(String(datos.nTrabHombres||''), 411, 220, 7);
-  text(String(datos.nTrabMujeres||''), 469, 220, 7);
+  // "N° de Trabajadores": los números van DENTRO de las cajitas verdes
+  // (387-409 y 443.7-465.7), no junto a la etiqueta "Hombres"/"Mujeres" —
+  // antes quedaban flotando fuera de la caja, encima del borde.
+  text(String(datos.nTrabHombres||''), 393, 230, 7);
+  text(String(datos.nTrabMujeres||''), 449, 230, 7);
   marcar(DIAT_PROPIEDAD_EMPRESA, datos.propiedadEmpresa);
   text(datos.actividadEconomica, 45, 235, 7);
   marcar(DIAT_TIPO_EMPRESA, datos.tipoEmpresa);
@@ -1834,7 +1843,13 @@ async function generarYSubirPdfDiat(datos) {
   text(datos.trabajadorTelefono, 511, 380, 7);
   marcar(DIAT_SEXO, datos.sexo);
   text(datos.edad, 163, 413, 7.5);
-  text(datos.fechaNacimiento ? ddmmyyyy(datos.fechaNacimiento) : '', 210, 413, 7);
+  // La celda de Fecha de Nacimiento trae 2 barras "/" pre-impresas como
+  // guía (día/mes/año); si se escribe la fecha completa encima queda
+  // montada con esas barras — se tapan primero con blanco.
+  if (datos.fechaNacimiento) {
+    blank(201.2, 393.3, 290.5, 414.5);
+    text(ddmmyyyy(datos.fechaNacimiento), 210, 412, 7);
+  }
   marcar(DIAT_PUEBLO_ORIGINARIO, datos.pueblo);
   text(datos.nacionalidad, 70, 446, 7);
   text(datos.profesionOficio, 190, 446, 7);
@@ -1845,7 +1860,14 @@ async function generarYSubirPdfDiat(datos) {
   marcar(DIAT_CATEGORIA_OCUPACIONAL, datos.categoria);
 
   // C. Datos del Accidente
-  text(datos.fechaAccidente ? ddmmyyyy(datos.fechaAccidente) : '', 178, 545, 7.5);
+  // Misma celda con barras "/" pre-impresas que Fecha de Nacimiento — se
+  // tapan antes de escribir, y el texto baja de top=545 (quedaba pegado
+  // arriba, casi tocando el borde superior de la caja) a top=559 (la caja
+  // real va de 540.6 a 561.9, más cerca del borde inferior).
+  if (datos.fechaAccidente) {
+    blank(167.7, 540.6, 257.0, 561.9);
+    text(ddmmyyyy(datos.fechaAccidente), 178, 559, 7.5);
+  }
   text(datos.horaAccidente, 282, 545, 7);
   marcar(DIAT_AMPM_ACCIDENTE, datos.ampmAccidente);
   text(datos.horaIngreso, 393, 545, 7);
