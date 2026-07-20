@@ -84,20 +84,12 @@ function sugerirMantencion(texto) {
   const t = (texto || '').toLowerCase();
   return PALABRAS_MANTENCION.some(p => t.includes(p)) ? 'Revisar y dar mantención al equipo/herramienta involucrada' : null;
 }
-function sugerirProcedimientoRelacionado(area) {
-  const a = (area || '').toLowerCase().trim();
-  if (!a) return null;
-  return allProcedimientos.find(p => p.estado === 'Vigente' && p.area &&
-    (a.includes(p.area.toLowerCase()) || p.area.toLowerCase().includes(a))) || null;
-}
-function sugerirPlanAccion(descripcion, causas, area) {
+function sugerirPlanAccion(descripcion, causas) {
   const texto = `${descripcion || ''} ${causas || ''}`;
   const itemEpp = sugerirReposicionEpp(texto);
   if (itemEpp) return { tipo: 'epp', valor: itemEpp };
   const mantencion = sugerirMantencion(texto);
   if (mantencion) return { tipo: 'mantencion', valor: mantencion };
-  const pts = sugerirProcedimientoRelacionado(area);
-  if (pts) return { tipo: 'procedimiento', valor: pts };
   const tema = sugerirTemaCharla(texto);
   if (tema) return { tipo: 'charla', valor: tema };
   return null;
@@ -1368,7 +1360,7 @@ async function guardarIncidente(ev) {
     ]]);
 
     // Sugerencia automática de plan de acción según lo descrito en el incidente
-    const plan = sugerirPlanAccion(f.descripcion.value, f.causas.value, f.area.value);
+    const plan = sugerirPlanAccion(f.descripcion.value, f.causas.value);
 
     toast('Registro guardado ✓', 'ok');
     closePanel('panel-form-incidente');
@@ -1400,12 +1392,6 @@ function mostrarAlertaPlan(plan, area, trabajador) {
       nota: 'Puedes registrar la entrega ahora mismo en el módulo de Entrega de EPP.',
       boton: 'Entregar EPP ahora',
     },
-    procedimiento: {
-      titulo: 'Procedimiento relacionado',
-      cuerpo: `Este incidente está relacionado con el procedimiento:<br><span class="alerta-charla-tema">${esc(plan.valor.nombre)}</span>`,
-      nota: 'Revisa si sigue vigente o si hay que actualizarlo.',
-      boton: 'Ver procedimientos',
-    },
     mantencion: {
       titulo: 'Mantención sugerida',
       cuerpo: `Se recomienda:<br><span class="alerta-charla-tema">${esc(plan.valor)}</span>`,
@@ -1416,7 +1402,6 @@ function mostrarAlertaPlan(plan, area, trabajador) {
   const acciones = {
     charla: () => irPagina('charlas'),
     epp: () => { irPagina('epp'); abrirFormEpp(plan.valor, trabajador); },
-    procedimiento: () => { irPagina('procedimientos'); if (plan.valor.archivo) window.open(plan.valor.archivo, '_blank'); },
     mantencion: () => {},
   };
   const t = textos[plan.tipo];
