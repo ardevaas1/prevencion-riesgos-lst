@@ -124,19 +124,24 @@ vez de esperar un cambio que nunca ocurre.
 2. **Incidentes y Accidentes** — foto de registro, con Obra y Días perdidos
    (relevante para accidentes). Al guardar, un **motor de palabras clave**
    (`sugerirPlanAccion` en `app.js`, que combina `REGLAS_SUGERENCIA_CHARLA`,
-   `REGLAS_SUGERENCIA_EPP`, `PALABRAS_MANTENCION` y un cruce con
-   `allProcedimientos`) analiza la descripción/causas y sugiere el plan de
-   acción más relacionado, en este orden de prioridad:
+   `REGLAS_SUGERENCIA_EPP` y `PALABRAS_MANTENCION`) analiza la descripción/
+   causas y sugiere el plan de acción más relacionado, en este orden de
+   prioridad:
    1. **Reponer/entregar EPP** si el texto indica EPP dañado/faltante (ej.
       "sin guantes", "casco dañado") → botón directo a Entrega de EPP con el
       trabajador e ítem prellenados.
    2. **Derivar a mantención** si menciona herramienta/equipo en mal estado
       (ej. "esmeril dañado", "no funciona") — solo queda como aviso, la app
       no tiene módulo de mantención donde registrarlo.
-   3. **Revisar procedimiento (PTS)** si el Área del incidente coincide con
-      el Área de un procedimiento Vigente ya cargado.
-   4. **Charla de seguridad** (motor original) como respaldo general — se
+   3. **Charla de seguridad** (motor original) como respaldo general — se
       crea automáticamente "Pendiente" en el módulo Charlas, igual que antes.
+   **Se sacó** la sugerencia de "Revisar procedimiento (PTS)" que cruzaba
+   el Área del incidente con el Área de un procedimiento Vigente
+   (`sugerirProcedimientoRelacionado`, ya no existe) — el cliente pidió
+   quitarla porque el calce era solo texto plano (`includes()` en ambos
+   sentidos, sin lista fija de áreas) y podía sugerir el procedimiento
+   equivocado cuando dos PTS compartían palabras parecidas en su campo
+   Área.
    **Importante:** sigue sin ser IA real, mismo motivo de seguridad/costos
    que antes (exponer una API key de LLM en código client-side es un riesgo
    si el repo es público). Si se quiere una sugerencia con LLM real hay que
