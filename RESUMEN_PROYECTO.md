@@ -177,16 +177,35 @@ vez de esperar un cambio que nunca ocurre.
 3. **Procedimientos de Trabajo Seguro** — sube PDF a Drive.
 4. **Entrega de EPP** — **checklist tipo menú**: se muestran todos los tipos
    de EPP con checkbox + cantidad al lado, se marcan los que correspondan
-   (varios a la vez) y se firma una vez al final → se guarda una fila por
-   ítem marcado en el Sheet, todas compartiendo la misma firma
-   (`recolectarItemsEpp` en `app.js`). Se reemplazó el flujo anterior de
-   "carrito" (agregar ítem por ítem, uno a la vez) por este checklist directo
-   porque es más rápido para marcar varios ítems de una entrega. Tiene campo
-   "+ Escribir otro tipo..." — los tipos personalizados quedan disponibles
-   solos en el checklist la próxima vez (se detectan leyendo el historial ya
-   guardado, no hay una lista separada que mantener). `abrirFormEpp(item,
-   trabajador)` acepta parámetros opcionales de prellenado, usados por la
-   sugerencia de "reponer EPP" de Incidentes.
+   (varios a la vez) y se firma una vez al final → se guarda **una sola fila
+   por entrega** en el Sheet, con todos los ítems juntos en la columna "EPP
+   Entregado" (ej. "Casco (1); Guantes (2)"), igual que "Asistentes" en
+   Charlas (`recolectarItemsEpp` + `itemsDeFilaEpp` en `app.js`). Antes cada
+   ítem marcado generaba su propia fila (misma fecha/trabajador/firma
+   repetidos en todas), así que una sola entrega de 3 ítems se veía como 3
+   entregas separadas tanto en el Sheet como en los listados de la app — el
+   cliente pidió juntarlas. La columna "Cantidad" queda vacía en las filas
+   nuevas (la cantidad ahora va embebida en el texto de cada ítem);
+   `itemsDeFilaEpp(fila)` sabe leer ambos formatos (separa la celda
+   combinada nueva, o toma ítem+cantidad de las columnas separadas si es
+   una fila antigua de antes de este cambio) — de ahí lo usan tanto
+   `opcionesEppDisponibles()` (catálogo de tipos, para que no se cuele el
+   texto combinado como si fuera un tipo de EPP) como el listado y la ficha
+   del trabajador (que igual mantienen su agrupado por fecha+trabajador+
+   firma, ahora solo relevante para leer filas antiguas). Se reemplazó el
+   flujo anterior de "carrito" (agregar ítem por ítem, uno a la vez) por
+   este checklist directo porque es más rápido para marcar varios ítems de
+   una entrega. Tiene campo "+ Escribir otro tipo..." — los tipos
+   personalizados quedan disponibles solos en el checklist la próxima vez
+   (se detectan leyendo el historial ya guardado, no hay una lista separada
+   que mantener). `abrirFormEpp(item, trabajador)` acepta parámetros
+   opcionales de prellenado, usados por la sugerencia de "reponer EPP" de
+   Incidentes — **ojo**: como el botón `+` (FAB) asigna la función directo a
+   `onclick`, el navegador le pasa el `PointerEvent` del clic como
+   `prefillItem` si no se envuelve en una función sin argumentos (bug real
+   que hacía aparecer el texto "[object PointerEvent]" en el campo "+
+   Escribir otro tipo..." al abrir el formulario con el botón +, ya
+   corregido en `irPagina()` en `index.html`).
    El archivo de la firma (a diferencia de Charla/HCR/Investigación, acá no
    va dentro de un PDF con más contexto alrededor — es la única firma de la
    app que se sube como imagen suelta) se compone con `firmaConIdentificacion`
