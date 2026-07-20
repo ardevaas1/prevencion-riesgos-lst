@@ -2911,6 +2911,24 @@ function firmaEstaVacia(canvasId) {
   for (let i = 3; i < data.length; i += 4) if (data[i] !== 0) return false;
   return true;
 }
+// El archivo de la firma de EPP se sube solo (no va dentro de un PDF con
+// más contexto alrededor, a diferencia de las firmas de Charla/HCR/
+// Investigación) — así que se le agrega el nombre y RUT debajo del trazo,
+// para que quien abra el archivo directamente sepa de quién es.
+function firmaConIdentificacion(canvasOriginal, nombre, rut) {
+  const franjaTexto = 26;
+  const c = document.createElement('canvas');
+  c.width = canvasOriginal.width;
+  c.height = canvasOriginal.height + franjaTexto;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, c.width, c.height);
+  ctx.drawImage(canvasOriginal, 0, 0);
+  ctx.fillStyle = '#000';
+  ctx.font = '13px Arial, sans-serif';
+  ctx.fillText(`${nombre}${rut ? ' — ' + rut : ''}`, 8, canvasOriginal.height + 18);
+  return c;
+}
 async function guardarEpp(ev) {
   ev.preventDefault();
   const f = ev.target;
@@ -2920,9 +2938,10 @@ async function guardarEpp(ev) {
     const itemsEpp = recolectarItemsEpp();
     if (itemsEpp.length === 0) { toast('Marca al menos un ítem a entregar', 'error'); return; }
 
-    const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
     const trabNombre = f.trabajador.value.split('|')[0];
     const trabRut = f.trabajador.value.split('|')[1] || '';
+    const canvasFirma = firmaConIdentificacion(canvas, trabNombre, trabRut);
+    const blob = await new Promise(res => canvasFirma.toBlob(res, 'image/png'));
     let firmaLink = '';
     if (blob) {
       const up = await uploadFileTrabajador(blob, trabNombre, 'firma', 'png');
