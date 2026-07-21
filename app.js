@@ -2796,9 +2796,18 @@ async function generarYSubirPdfHcr(datos) {
 // ============================================================
 // MÓDULO: PROCEDIMIENTOS DE TRABAJO SEGURO
 // ============================================================
+let filtroProcedimientos = '';
+function onBuscarProcedimientos(v) {
+  filtroProcedimientos = sinTildes((v || '').trim().toLowerCase());
+  renderProcedimientos();
+}
 function renderProcedimientos() {
-  const items = [...allProcedimientos].reverse();
-  if (items.length === 0) { setListHTML('procedimientos', emptyState('Sin procedimientos', 'Sube el primer PTS')); return; }
+  let items = [...allProcedimientos].reverse();
+  if (filtroProcedimientos) {
+    items = items.filter(p => [p.nombre, p.codigo, p.area]
+      .some(v => sinTildes((v || '').toLowerCase()).includes(filtroProcedimientos)));
+  }
+  if (items.length === 0) { setListHTML('procedimientos', emptyState(filtroProcedimientos ? 'Sin resultados' : 'Sin procedimientos', filtroProcedimientos ? 'Prueba con otro nombre, código o área' : 'Sube el primer PTS')); return; }
   setListHTML('procedimientos', items.map(p => `
     <div class="card card--default">
       <div class="card-icon modulo-icon--cont">${ic('procedimientos',18)}</div>
