@@ -378,23 +378,28 @@ confirmó explícitamente con el cliente que **las firmas digitales se siguen
 capturando en la app en ambos casos** — la plantilla subida solo reemplaza
 cómo se genera el *contenido* de la charla, no el flujo de firmas.
 
-- **Pestaña nueva `PLANTILLAS_CHARLA`** (`N°, Tema, Archivo, Archivo ID,
-  Tipo Archivo, Fecha Registro, Registrado Por`): biblioteca reutilizable de
-  archivos (PDF o imagen) subidos una vez, no atada a ninguna charla en
-  particular. Se administra desde "Charlas" → tarjeta "Charlas ya subidas"
-  (`abrirPlantillasCharla`) → botón "+ Subir" (`abrirFormPlantillaCharla` /
-  `guardarPlantillaCharla`, sube el archivo a la carpeta de Drive
-  `Charlas-Plantillas` con `uploadFile` y agrega la fila).
+- **Pestaña nueva `PLANTILLAS_CHARLA`** (`N°, Código, Nombre, Versión, Fecha
+  Emisión, Archivo, Archivo ID, Tipo Archivo, Fecha Registro, Registrado
+  Por`) — mismos campos de identificación que `PROCEDIMIENTOS` (Código,
+  Nombre, Versión, Fecha de emisión), a pedido explícito del cliente para
+  que las charlas ya preparadas se documenten igual que un PTS: biblioteca
+  reutilizable de archivos (PDF o imagen) subidos una vez, no atada a
+  ninguna charla en particular. Se administra desde "Charlas" → tarjeta
+  "Charlas ya subidas" (`abrirPlantillasCharla`) → botón "+ Subir"
+  (`abrirFormPlantillaCharla` / `guardarPlantillaCharla`, sube el archivo a
+  la carpeta de Drive `Charlas-Plantillas` con `uploadFile` y agrega la
+  fila).
 - **Selector de modo al realizar una charla:** en `panel-realizar-charla`,
   antes del bloque de Tema/Riesgos/Medidas, un radio "Escribir desde cero" /
   "Usar una charla ya subida" (`onCambiarModoCharla`, reutiliza las clases
   `.chk-row-radio` ya usadas en los radios A/B de DIAT/Investigación).
   Eligiendo "plantilla" oculta el bloque de Tema/Riesgos/Medidas y muestra un
-  `<select>` con las plantillas disponibles (`poblarSelectPlantillasCharla`),
-  autocompletando el campo Tema oculto con el tema de la plantilla elegida
-  (`onCambiarPlantillaCharla`) para que se siga guardando igual en la fila de
-  `CHARLAS`. Si no hay ninguna plantilla subida todavía, se muestra un aviso
-  y un atajo directo a "+ Subir una charla nueva".
+  `<select>` con las plantillas disponibles, listadas por Código — Nombre
+  (`poblarSelectPlantillasCharla`), autocompletando el campo Tema oculto con
+  el nombre de la plantilla elegida (`onCambiarPlantillaCharla`) para que se
+  siga guardando igual en la fila de `CHARLAS`. Si no hay ninguna plantilla
+  subida todavía, se muestra un aviso y un atajo directo a "+ Subir una
+  charla nueva".
 - **Generación del documento final según el modo:**
   - "Desde cero": exactamente el flujo ya existente (`generarYSubirPdfCharla`,
     sin cambios).

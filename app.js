@@ -516,7 +516,7 @@ async function cargarTodo(silencioso) {
       fetchSheet(`'${CONFIG.SHEET_INVESTIGACIONES}'!A2:AT2000`),
       fetchSheet(`'${CONFIG.SHEET_HCR}'!A2:V2000`),
       fetchSheet(`'${CONFIG.SHEET_DIAT}'!A2:BA2000`),
-      fetchSheet(`'${CONFIG.SHEET_PLANTILLAS_CHARLA}'!A2:G2000`),
+      fetchSheet(`'${CONFIG.SHEET_PLANTILLAS_CHARLA}'!A2:J2000`),
     ]);
     if (!silencioso) splash(85, 'Preparando la app...');
     allTrabajadores = trab.map((r,i) => rowToTrabajador(r,i));
@@ -612,8 +612,8 @@ function rowToCharla(r, i) {
 // estándar de Mutual ya armado) para poder reutilizarlas en varias charlas
 // reales, en vez de escribir el contenido de cero cada vez.
 function rowToPlantillaCharla(r, i) {
-  return { fila: i+2, n: r[0]||'', tema: r[1]||'', archivo: r[2]||'', archivoId: r[3]||'',
-    tipoArchivo: r[4]||'', fechaRegistro: r[5]||'', registradoPor: r[6]||'' };
+  return { fila: i+2, n: r[0]||'', codigo: r[1]||'', nombre: r[2]||'', version: r[3]||'', fechaEmision: r[4]||'',
+    archivo: r[5]||'', archivoId: r[6]||'', tipoArchivo: r[7]||'', fechaRegistro: r[8]||'', registradoPor: r[9]||'' };
 }
 
 // ============================================================
@@ -1194,8 +1194,8 @@ function renderPlantillasCharla() {
     <div class="card card--default">
       <div class="card-icon modulo-icon--flota">${ic('charlas',18)}</div>
       <div class="card-body">
-        <div class="card-title">${esc(p.tema)}</div>
-        <div class="card-sub">Subida ${esc(p.fechaRegistro)}</div>
+        <div class="card-title">${esc(p.nombre)}</div>
+        <div class="card-sub">${esc(p.codigo)} · v${esc(p.version)} · Emisión ${esc(p.fechaEmision) || '—'}</div>
         <div class="badge-row"><a href="${esc(p.archivo)}" target="_blank" class="badge blue">${ic('documento',12)} Ver archivo</a></div>
       </div>
     </div>`).join('');
@@ -1211,10 +1211,11 @@ async function guardarPlantillaCharla(ev) {
   try {
     const archivo = f.archivo.files[0];
     if (!archivo) { toast('Selecciona un archivo', 'error'); return; }
-    const up = await uploadFile(archivo, 'Charlas-Plantillas', 'plantilla_' + f.tema.value.replace(/\s+/g,'_'));
+    const up = await uploadFile(archivo, 'Charlas-Plantillas', 'plantilla_' + f.nombre.value.replace(/\s+/g,'_'));
     const n = allPlantillasCharla.length + 1;
-    await appendSheet(`'${CONFIG.SHEET_PLANTILLAS_CHARLA}'!A:G`, [[
-      n, f.tema.value, up.link, up.id, archivo.type || '', new Date().toLocaleString('es-CL'), userEmail || ''
+    await appendSheet(`'${CONFIG.SHEET_PLANTILLAS_CHARLA}'!A:J`, [[
+      n, f.codigo.value, f.nombre.value, f.version.value, f.fechaEmision.value,
+      up.link, up.id, archivo.type || '', new Date().toLocaleString('es-CL'), userEmail || ''
     ]]);
     toast('Charla subida ✓', 'ok');
     closePanel('panel-form-plantilla-charla');
@@ -1250,14 +1251,14 @@ function onCambiarModoCharla() {
 function poblarSelectPlantillasCharla() {
   const sel = document.getElementById('sel-plantilla-charla');
   const hayPlantillas = allPlantillasCharla.length > 0;
-  sel.innerHTML = allPlantillasCharla.map(p => `<option value="${p.fila}">${esc(p.tema)} — ${esc(p.fechaRegistro)}</option>`).join('');
+  sel.innerHTML = allPlantillasCharla.map(p => `<option value="${p.fila}">${esc(p.codigo)} — ${esc(p.nombre)}</option>`).join('');
   sel.classList.toggle('hidden', !hayPlantillas);
   document.getElementById('plantilla-charla-vacia').classList.toggle('hidden', hayPlantillas);
   if (hayPlantillas) onCambiarPlantillaCharla(sel);
 }
 function onCambiarPlantillaCharla(sel) {
   const p = allPlantillasCharla.find(x => String(x.fila) === sel.value);
-  if (p) document.querySelector('#form-realizar-charla textarea[name="tema"]').value = p.tema;
+  if (p) document.querySelector('#form-realizar-charla textarea[name="tema"]').value = p.nombre;
 }
 function resetModoCharla() {
   document.querySelector('input[name="modoCharla"][value="cero"]').checked = true;
@@ -1322,7 +1323,7 @@ function guardarDatosCharla(ev) {
     firmaRelator: canvasRelator.toDataURL('image/png'),
     obra: valorObra(f.obra, 'input-charla-obra-otra'),
     fecha: f.fecha.value, hora: f.hora.value,
-    tema: modo === 'plantilla' ? plantilla.tema : f.tema.value,
+    tema: modo === 'plantilla' ? plantilla.nombre : f.tema.value,
     riesgos: modo === 'plantilla' ? '' : f.riesgos.value,
     medidas: modo === 'plantilla' ? '' : f.medidas.value,
     asistentes, asistenteActual: 0,

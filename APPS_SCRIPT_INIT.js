@@ -94,7 +94,8 @@ function inicializarPlanilla() {
   ]);
 
   crearHoja(ss, 'PLANTILLAS_CHARLA', [
-    'N°', 'Tema', 'Archivo', 'Archivo ID', 'Tipo Archivo', 'Fecha Registro', 'Registrado Por'
+    'N°', 'Código', 'Nombre', 'Versión', 'Fecha Emisión', 'Archivo', 'Archivo ID', 'Tipo Archivo',
+    'Fecha Registro', 'Registrado Por'
   ]);
 
   // Elimina la hoja "Hoja 1" / "Sheet1" default si quedó vacía
