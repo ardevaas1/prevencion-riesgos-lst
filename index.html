@@ -185,6 +185,14 @@
     <!-- CHARLAS -->
     <div class="page" id="page-charlas">
       <div class="sec-label">Charlas de Seguridad</div>
+      <div class="card card--default" onclick="abrirPlantillasCharla()">
+        <div class="card-icon modulo-icon--flota"><svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px"><path d="M4 5h16v11H9l-4 4v-4H4Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 9h8M8 12.3h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div>
+        <div class="card-body">
+          <div class="card-title">Charlas ya subidas</div>
+          <div class="card-sub"><span data-count="plantillas-charla">0</span> disponibles para reutilizar</div>
+        </div>
+        <div class="card-chevron"><svg viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      </div>
       <div data-list="charlas"></div>
     </div>
 
@@ -280,7 +288,17 @@
   <div class="dt-page" id="dt-page-procedimientos"><div class="desktop-search"><svg viewBox="0 0 24 24" fill="none" style="width:16px;height:16px;color:var(--ink-soft)"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><input type="text" placeholder="Buscar por nombre del PTS..." oninput="onBuscarProcedimientos(this.value)"></div><div data-list="procedimientos"></div></div>
   <div class="dt-page" id="dt-page-epp"><div data-list="epp"></div></div>
   <div class="dt-page" id="dt-page-trabajadores"><div class="desktop-search"><svg viewBox="0 0 24 24" fill="none" style="width:16px;height:16px;color:var(--ink-soft)"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><input type="text" placeholder="Buscar por nombre, RUT o cargo..." oninput="onBuscarTrabajadores(this.value)"></div><div data-list="trabajadores"></div></div>
-  <div class="dt-page" id="dt-page-charlas"><div data-list="charlas"></div></div>
+  <div class="dt-page" id="dt-page-charlas">
+    <div class="card card--default" onclick="abrirPlantillasCharla()">
+      <div class="card-icon modulo-icon--flota"><svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px"><path d="M4 5h16v11H9l-4 4v-4H4Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 9h8M8 12.3h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div>
+      <div class="card-body">
+        <div class="card-title">Charlas ya subidas</div>
+        <div class="card-sub"><span data-count="plantillas-charla">0</span> disponibles para reutilizar</div>
+      </div>
+      <div class="card-chevron"><svg viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+    </div>
+    <div data-list="charlas"></div>
+  </div>
   <div class="dt-page" id="dt-page-hcr"><div data-list="hcr"></div></div>
 </div>
 
@@ -544,14 +562,64 @@
       </div>
       <div class="form-group"><label>Fecha</label><input type="date" name="fecha" required></div>
       <div class="form-group"><label>Hora</label><input type="time" name="hora" required></div>
-      <div class="form-group"><label>Tema tratado</label><textarea name="tema" required placeholder="Ej: Uso correcto de arnés de seguridad en trabajos en altura"></textarea></div>
-      <div class="form-group"><label>Riesgos</label><textarea name="riesgos"></textarea></div>
-      <div class="form-group"><label>Medidas de control</label><textarea name="medidas"></textarea></div>
+
+      <div class="form-group">
+        <label>¿Cómo quieres armar esta charla?</label>
+        <div class="chk-row">
+          <label class="chk-row-label">
+            <span class="chk-row-checkbox-wrap"><input type="radio" name="modoCharla" value="cero" class="chk-row-input" checked onchange="onCambiarModoCharla()"><span class="chk-row-checkbox chk-row-radio"></span></span>
+            <span>Escribir desde cero</span>
+          </label>
+        </div>
+        <div class="chk-row">
+          <label class="chk-row-label">
+            <span class="chk-row-checkbox-wrap"><input type="radio" name="modoCharla" value="plantilla" class="chk-row-input" onchange="onCambiarModoCharla()"><span class="chk-row-checkbox chk-row-radio"></span></span>
+            <span>Usar una charla ya subida</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="form-group hidden" id="grupo-charla-plantilla">
+        <label>Charla ya subida</label>
+        <select id="sel-plantilla-charla" onchange="onCambiarPlantillaCharla(this)"></select>
+        <div class="card-sub" id="plantilla-charla-vacia" style="margin-top:6px;">Todavía no hay ninguna charla subida.</div>
+        <a class="ficha-link-btn" href="#" onclick="event.preventDefault(); abrirFormPlantillaCharla();" style="margin-top:8px;display:inline-block;">+ Subir una charla nueva</a>
+      </div>
+
+      <div id="grupo-charla-desde-cero">
+        <div class="form-group"><label>Tema tratado</label><textarea name="tema" required placeholder="Ej: Uso correcto de arnés de seguridad en trabajos en altura"></textarea></div>
+        <div class="form-group"><label>Riesgos</label><textarea name="riesgos"></textarea></div>
+        <div class="form-group"><label>Medidas de control</label><textarea name="medidas"></textarea></div>
+      </div>
 
       <div class="sec-label" style="margin-top:18px;">Asistentes</div>
       <div id="checklist-asistentes-charla"></div>
 
       <button class="btn-add" type="submit" style="margin-top:14px;">Continuar a firmas de asistentes</button>
+    </form>
+  </div>
+</div>
+
+<!-- ===== PANEL: Charlas ya subidas (plantillas) ===== -->
+<div class="panel hidden" id="panel-plantillas-charla">
+  <div class="panel-bar"><div class="pnl-back" onclick="closePanel('panel-plantillas-charla')">‹ Volver</div><div class="pnl-title">Charlas ya subidas</div><div class="pnl-action" onclick="abrirFormPlantillaCharla()">+ Subir</div></div>
+  <div class="panel-body">
+    <p style="font-size:13px;color:#666;margin:0 0 14px;">Charlas ya preparadas (ej. un PTS/charla estándar ya armado) que se pueden reutilizar al momento de realizar una charla real, en vez de escribir el contenido de cero cada vez.</p>
+    <div id="lista-plantillas-charla"></div>
+  </div>
+</div>
+
+<!-- ===== PANEL: Subir charla ya preparada ===== -->
+<div class="panel hidden" id="panel-form-plantilla-charla">
+  <div class="panel-bar"><div class="pnl-back" onclick="closePanel('panel-form-plantilla-charla')">‹ Volver</div><div class="pnl-title">Subir charla</div><div></div></div>
+  <div class="panel-body">
+    <form id="form-plantilla-charla" onsubmit="guardarPlantillaCharla(event)">
+      <div class="form-group"><label>Tema</label><select name="tema" id="sel-tema-plantilla-charla" required></select></div>
+      <div class="form-group">
+        <label>Archivo (PDF o imagen)</label>
+        <label class="upload-label" onclick="event.currentTarget.classList.add('selected')"><svg viewBox="0 0 24 24" fill="none" class="inline-ic"><path d="M7 3h7l4 4v14H7Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M14 3v4h4" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg> Subir archivo<input type="file" name="archivo" accept="application/pdf,image/*" required style="display:none"></label>
+      </div>
+      <button class="btn-add" type="submit">Guardar charla</button>
     </form>
   </div>
 </div>

@@ -499,13 +499,14 @@ let allCharlas = [];
 let allInvestigaciones = [];
 let allHcr = [];
 let allDiat = [];
+let allPlantillasCharla = [];
 
 async function cargarTodo(silencioso) {
   if (!silencioso) { splash(20, 'Conectando con Google Sheets...'); }
   else { toast('Actualizando datos...'); }
   try {
     if (!silencioso) splash(45, 'Cargando información...');
-    const [trab, insp, inc, proc, epp, charlas, invest, hcr, diat] = await Promise.all([
+    const [trab, insp, inc, proc, epp, charlas, invest, hcr, diat, plantillasCharla] = await Promise.all([
       fetchSheet(`'${CONFIG.SHEET_TRABAJADORES}'!A2:Z2000`),
       fetchSheet(`'${CONFIG.SHEET_INSPECCIONES}'!A2:M2000`),
       fetchSheet(`'${CONFIG.SHEET_INCIDENTES}'!A2:V2000`),
@@ -515,6 +516,7 @@ async function cargarTodo(silencioso) {
       fetchSheet(`'${CONFIG.SHEET_INVESTIGACIONES}'!A2:AT2000`),
       fetchSheet(`'${CONFIG.SHEET_HCR}'!A2:V2000`),
       fetchSheet(`'${CONFIG.SHEET_DIAT}'!A2:BA2000`),
+      fetchSheet(`'${CONFIG.SHEET_PLANTILLAS_CHARLA}'!A2:G2000`),
     ]);
     if (!silencioso) splash(85, 'Preparando la app...');
     allTrabajadores = trab.map((r,i) => rowToTrabajador(r,i));
@@ -526,8 +528,10 @@ async function cargarTodo(silencioso) {
     allInvestigaciones = invest.map((r,i) => ({ fila: i+2, n: r[0]||'' }));
     allHcr = hcr.map((r,i) => ({ fila: i+2, n: r[0]||'', fecha: r[1]||'', obra: r[2]||'', actividad: r[3]||'', area: r[4]||'', pdf: r[19]||'' }));
     allDiat = diat.map((r,i) => ({ fila: i+2, n: r[0]||'' }));
+    allPlantillasCharla = plantillasCharla.map((r,i) => rowToPlantillaCharla(r,i));
     renderDashboard();
     renderTrabajadores(); renderInspecciones(); renderIncidentes(); renderProcedimientos(); renderEpp(); renderCharlas(); renderHcr();
+    actualizarContadorPlantillasCharla();
     if (!silencioso) splash(100, '¡Listo!');
     else toast('Datos actualizados ✓', 'ok');
   } catch (e) {
@@ -603,6 +607,13 @@ function rowToCharla(r, i) {
   return { fila: i+2, n: r[0]||'', fecha: r[1]||'', tema: r[2]||'', origen: r[3]||'', estado: r[4]||'Pendiente',
     fechaRealizada: r[5]||'', responsable: r[6]||'', relator: r[7]||'', obra: r[8]||'', hora: r[9]||'',
     riesgos: r[10]||'', medidas: r[11]||'', asistentes: r[12]||'', pdf: r[13]||'' };
+}
+// Charlas "ya preparadas" que alguien sube una sola vez (ej. un PTS/charla
+// estándar de Mutual ya armado) para poder reutilizarlas en varias charlas
+// reales, en vez de escribir el contenido de cero cada vez.
+function rowToPlantillaCharla(r, i) {
+  return { fila: i+2, n: r[0]||'', tema: r[1]||'', archivo: r[2]||'', archivoId: r[3]||'',
+    tipoArchivo: r[4]||'', fechaRegistro: r[5]||'', registradoPor: r[6]||'' };
 }
 
 // ============================================================
@@ -1165,6 +1176,54 @@ function renderCharlas() {
     </div>`).join(''));
 }
 
+// ── Charlas ya subidas ("plantillas"): charlas ya preparadas que alguien
+// sube una sola vez (ej. un PTS/charla estándar de Mutual ya armado) para
+// reutilizarlas al momento de realizar una charla real, en vez de escribir
+// tema/riesgos/medidas de cero cada vez. ──
+function actualizarContadorPlantillasCharla() {
+  document.querySelectorAll('[data-count="plantillas-charla"]').forEach(el => el.textContent = allPlantillasCharla.length);
+}
+function abrirPlantillasCharla() {
+  renderPlantillasCharla();
+  openPanel('panel-plantillas-charla');
+}
+function renderPlantillasCharla() {
+  const cont = document.getElementById('lista-plantillas-charla');
+  if (allPlantillasCharla.length === 0) { cont.innerHTML = emptyState('Sin charlas subidas', 'Toca "+ Subir charla" para agregar la primera'); return; }
+  cont.innerHTML = [...allPlantillasCharla].reverse().map(p => `
+    <div class="card card--default">
+      <div class="card-icon modulo-icon--flota">${ic('charlas',18)}</div>
+      <div class="card-body">
+        <div class="card-title">${esc(p.tema)}</div>
+        <div class="card-sub">Subida ${esc(p.fechaRegistro)}</div>
+        <div class="badge-row"><a href="${esc(p.archivo)}" target="_blank" class="badge blue">${ic('documento',12)} Ver archivo</a></div>
+      </div>
+    </div>`).join('');
+}
+function abrirFormPlantillaCharla() {
+  const f = document.getElementById('form-plantilla-charla');
+  f.reset();
+  document.getElementById('sel-tema-plantilla-charla').innerHTML = TEMAS_CHARLA.map(t => `<option>${esc(t)}</option>`).join('');
+  openPanel('panel-form-plantilla-charla');
+}
+async function guardarPlantillaCharla(ev) {
+  ev.preventDefault();
+  const f = ev.target;
+  try {
+    const archivo = f.archivo.files[0];
+    if (!archivo) { toast('Selecciona un archivo', 'error'); return; }
+    const up = await uploadFile(archivo, 'Charlas-Plantillas', 'plantilla_' + f.tema.value.replace(/\s+/g,'_'));
+    const n = allPlantillasCharla.length + 1;
+    await appendSheet(`'${CONFIG.SHEET_PLANTILLAS_CHARLA}'!A:G`, [[
+      n, f.tema.value, up.link, up.id, archivo.type || '', new Date().toLocaleString('es-CL'), userEmail || ''
+    ]]);
+    toast('Charla subida ✓', 'ok');
+    closePanel('panel-form-plantilla-charla');
+    await cargarTodo(true);
+    renderPlantillasCharla();
+  } catch (e) { toast(e.message, 'error'); }
+}
+
 // ── Realizar charla: paso 1 (datos) → paso 2 (firma de asistentes) → PDF ──
 let charlaEnProceso = null;
 
@@ -1181,6 +1240,31 @@ function renderChecklistAsistentesCharla() {
       </label>
     </div>`).join('');
 }
+// Modo de armado de la charla: "cero" (escribir tema/riesgos/medidas, como
+// siempre) o "plantilla" (usar una charla ya subida — ver arriba). En
+// ambos casos el relator y los asistentes igual firman digitalmente.
+function onCambiarModoCharla() {
+  const modo = document.querySelector('input[name="modoCharla"]:checked').value;
+  document.getElementById('grupo-charla-desde-cero').classList.toggle('hidden', modo === 'plantilla');
+  document.getElementById('grupo-charla-plantilla').classList.toggle('hidden', modo !== 'plantilla');
+}
+function poblarSelectPlantillasCharla() {
+  const sel = document.getElementById('sel-plantilla-charla');
+  const hayPlantillas = allPlantillasCharla.length > 0;
+  sel.innerHTML = allPlantillasCharla.map(p => `<option value="${p.fila}">${esc(p.tema)} — ${esc(p.fechaRegistro)}</option>`).join('');
+  sel.classList.toggle('hidden', !hayPlantillas);
+  document.getElementById('plantilla-charla-vacia').classList.toggle('hidden', hayPlantillas);
+  if (hayPlantillas) onCambiarPlantillaCharla(sel);
+}
+function onCambiarPlantillaCharla(sel) {
+  const p = allPlantillasCharla.find(x => String(x.fila) === sel.value);
+  if (p) document.querySelector('#form-realizar-charla textarea[name="tema"]').value = p.tema;
+}
+function resetModoCharla() {
+  document.querySelector('input[name="modoCharla"][value="cero"]').checked = true;
+  poblarSelectPlantillasCharla();
+  onCambiarModoCharla();
+}
 function abrirRealizarCharla(fila) {
   const c = allCharlas.find(x => x.fila === fila);
   if (!c) return;
@@ -1195,6 +1279,7 @@ function abrirRealizarCharla(fila) {
   onCambioObraSelect(selObraCharla1, 'input-charla-obra-otra');
   document.getElementById('panel-realizar-charla-titulo').textContent = 'Realizar charla';
   renderChecklistAsistentesCharla();
+  resetModoCharla();
   openPanel('panel-realizar-charla');
   setTimeout(() => initFirmaPad('firma-canvas-relator'), 80);
 }
@@ -1211,6 +1296,7 @@ function abrirNuevaCharla() {
   onCambioObraSelect(selObraCharla2, 'input-charla-obra-otra');
   document.getElementById('panel-realizar-charla-titulo').textContent = 'Nueva charla';
   renderChecklistAsistentesCharla();
+  resetModoCharla();
   openPanel('panel-realizar-charla');
   setTimeout(() => initFirmaPad('firma-canvas-relator'), 80);
 }
@@ -1218,6 +1304,13 @@ function guardarDatosCharla(ev) {
   ev.preventDefault();
   const f = ev.target;
   if (firmaEstaVacia('firma-canvas-relator')) { toast('Falta la firma del relator', 'error'); return; }
+  const modo = document.querySelector('input[name="modoCharla"]:checked').value;
+  let plantilla = null;
+  if (modo === 'plantilla') {
+    const selPlantilla = document.getElementById('sel-plantilla-charla');
+    plantilla = allPlantillasCharla.find(x => String(x.fila) === selPlantilla.value);
+    if (!plantilla) { toast('Selecciona una charla ya subida, o cambia a "Escribir desde cero"', 'error'); return; }
+  }
   const asistentes = [...document.querySelectorAll('#checklist-asistentes-charla .chk-row')]
     .filter(row => row.querySelector('.chk-row-input').checked)
     .map(row => ({ nombre: row.dataset.nombre, rut: row.dataset.rut, firma: null }));
@@ -1225,11 +1318,14 @@ function guardarDatosCharla(ev) {
   const canvasRelator = document.getElementById('firma-canvas-relator');
   charlaEnProceso = {
     ...charlaEnProceso,
+    modo, plantilla,
     relator: f.relator.value,
     firmaRelator: canvasRelator.toDataURL('image/png'),
     obra: valorObra(f.obra, 'input-charla-obra-otra'),
     fecha: f.fecha.value, hora: f.hora.value,
-    tema: f.tema.value, riesgos: f.riesgos.value, medidas: f.medidas.value,
+    tema: modo === 'plantilla' ? plantilla.tema : f.tema.value,
+    riesgos: modo === 'plantilla' ? '' : f.riesgos.value,
+    medidas: modo === 'plantilla' ? '' : f.medidas.value,
     asistentes, asistenteActual: 0,
   };
   closePanel('panel-realizar-charla');
@@ -1268,7 +1364,9 @@ function cancelarFirmaAsistentes() {
 async function finalizarCharla() {
   try {
     toast('Generando documento...');
-    const pdfLink = await generarYSubirPdfCharla(charlaEnProceso);
+    const pdfLink = charlaEnProceso.modo === 'plantilla'
+      ? await generarPdfCharlaConPlantilla(charlaEnProceso, charlaEnProceso.plantilla)
+      : await generarYSubirPdfCharla(charlaEnProceso);
     const asistentesTxto = charlaEnProceso.asistentes.map(a => `${a.nombre} (${a.rut})`).join('; ');
     await ensureToken();
     if (charlaEnProceso.fila) {
@@ -1372,6 +1470,86 @@ async function generarYSubirPdfCharla(datos) {
 
   // Nombre y firma del relator (línea final, página 2)
   text(p2, datos.relator, 215, 731, 10);
+
+  const bytes = await pdfDoc.save();
+  const blob = new Blob([bytes], { type: 'application/pdf' });
+  const up = await uploadFile(blob, 'Charlas', 'charla_' + (datos.obra || 'obra').replace(/\s+/g,'_'), 'pdf');
+  return up.link;
+}
+
+// Descarga el contenido real de un archivo de Drive que la propia app subió
+// antes (scope drive.file permite leerlo de vuelta) — usado para traer la
+// charla ya subida y pegarle encima la hoja de asistencia/firmas.
+async function descargarArchivoDrive(fileId) {
+  await ensureToken();
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, { headers: authHeader() });
+  if (!res.ok) throw new Error(friendlyErr(res.status, await res.text()));
+  return await res.arrayBuffer();
+}
+
+// ── Generación del PDF cuando se usa una charla "ya subida" (plantilla):
+// no se puede dibujar encima de un PDF externo de formato desconocido, así
+// que se arma un documento nuevo con [páginas de la plantilla] + [una hoja
+// de asistencia y firmas, dibujada desde cero] — el relator y cada
+// asistente igual firman digitalmente en la app, como en el flujo normal.
+async function generarPdfCharlaConPlantilla(datos, plantilla) {
+  const { PDFDocument, rgb, StandardFonts } = PDFLib;
+  const plantillaBytes = await descargarArchivoDrive(plantilla.archivoId);
+  const esPdf = (plantilla.tipoArchivo || '').includes('pdf');
+
+  let pdfDoc;
+  if (esPdf) {
+    pdfDoc = await PDFDocument.load(plantillaBytes);
+  } else {
+    pdfDoc = await PDFDocument.create();
+    const esPng = (plantilla.tipoArchivo || '').includes('png');
+    const img = esPng ? await pdfDoc.embedPng(plantillaBytes) : await pdfDoc.embedJpg(plantillaBytes);
+    const pagina = pdfDoc.addPage([595, 842]);
+    const dims = img.scaleToFit(535, 782);
+    pagina.drawImage(img, { x: (595 - dims.width) / 2, y: (842 - dims.height) / 2, width: dims.width, height: dims.height });
+  }
+
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const W = 595, H = 842;
+  let page = pdfDoc.addPage([W, H]);
+  let y = H - 56;
+  function saltoPagina() { page = pdfDoc.addPage([W, H]); y = H - 56; }
+  function avanzar(alto) { y -= alto; if (y < 70) saltoPagina(); }
+  function campo(label, valor) {
+    page.drawText(`${label}:`, { x: 50, y, size: 10, font: fontBold, color: rgb(0,0,0) });
+    page.drawText(valor || '—', { x: 165, y, size: 10, font, color: rgb(0,0,0) });
+    avanzar(16);
+  }
+  async function firma(dataUrl, x, yBase, w, h) {
+    if (!dataUrl) return;
+    const bytes = Uint8Array.from(atob(dataUrl.split(',')[1]), c => c.charCodeAt(0));
+    const img = await pdfDoc.embedPng(bytes);
+    const dims = img.scaleToFit(w, h);
+    page.drawImage(img, { x, y: yBase, width: dims.width, height: dims.height });
+  }
+
+  page.drawText('Hoja de Asistencia y Firmas — Charla de Seguridad', { x: 50, y, size: 13, font: fontBold, color: rgb(0,0,0) });
+  avanzar(26);
+  campo('Tema', datos.tema);
+  campo('Fecha', ddmmyyyy(datos.fecha));
+  campo('Hora', datos.hora);
+  campo('Obra', datos.obra);
+  campo('Relator', datos.relator);
+  avanzar(6);
+  page.drawText('Firma del relator:', { x: 50, y, size: 10, font: fontBold, color: rgb(0,0,0) });
+  await firma(datos.firmaRelator, 165, y - 22, 130, 28);
+  avanzar(44);
+
+  page.drawText('Asistentes', { x: 50, y, size: 12, font: fontBold, color: rgb(0,0,0) });
+  avanzar(20);
+  for (const a of datos.asistentes) {
+    if (y < 90) saltoPagina();
+    page.drawText(a.nombre, { x: 50, y, size: 10, font, color: rgb(0,0,0) });
+    page.drawText(a.rut, { x: 260, y, size: 10, font, color: rgb(0,0,0) });
+    await firma(a.firma, 350, y - 16, 100, 22);
+    avanzar(32);
+  }
 
   const bytes = await pdfDoc.save();
   const blob = new Blob([bytes], { type: 'application/pdf' });

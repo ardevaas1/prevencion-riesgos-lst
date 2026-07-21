@@ -59,7 +59,7 @@ repositorio de GitHub **separado**.
 - `logo.png`, `logo-white.png`, `logo-transparent.png` — logos LST heredados
   de Flota, cada uno usado en un lugar distinto (ver abajo).
 - `APPS_SCRIPT_INIT.js` — se pega en el Apps Script del Sheet para crear las
-  8 pestañas con encabezados. Es seguro volver a ejecutarlo cuando se agregan
+  11 pestañas con encabezados. Es seguro volver a ejecutarlo cuando se agregan
   columnas/pestañas nuevas (no borra datos existentes).
 - `INSTRUCCIONES_SETUP.md` — guía paso a paso de configuración inicial
   (crear Sheet, carpeta Drive, credenciales Google Cloud, GitHub Pages).
@@ -71,12 +71,13 @@ repositorio de GitHub **separado**.
 - `vendor/pdf-lib.min.js` — librería `pdf-lib` empaquetada localmente (no
   CDN) para generación de PDF offline.
 
-## Estructura de datos (Google Sheet, 10 pestañas)
+## Estructura de datos (Google Sheet, 11 pestañas)
 
 `TRABAJADORES`, `INSPECCIONES`, `CHARLAS`, `INCIDENTES`, `INVESTIGACIONES`,
 `HCR`, `DIAT`, `PROCEDIMIENTOS`, `ENTREGA_EPP`, `USUARIOS` (esta última
 creada pero sin usar todavía — pensada a futuro para roles admin/
-prevencionista/viewer, no implementado).
+prevencionista/viewer, no implementado), `PLANTILLAS_CHARLA` (ver
+"Plantillas de Charla" más abajo).
 
 Columnas agregadas después del lanzamiento inicial (ver `rowToX` en `app.js`
 para el mapeo exacto de índices):
@@ -366,6 +367,58 @@ otras dos (**pendiente**, ver abajo).
   `.epp-item-*` para reutilizarlas también en el checklist de asistentes de
   Charla — cualquier lista futura de "marcar varios de una nómina" puede
   reusar el mismo patrón.
+
+## Plantillas de Charla (subir charlas ya preparadas)
+
+Pedido del cliente: algunas charlas ya vienen prellenadas de antes (un
+PTS/documento estándar armado fuera de la app), así que se necesitaba poder
+subir esos archivos y, al momento de realizar una charla real, elegir entre
+usar uno de los subidos o armar el contenido desde cero como antes. Se
+confirmó explícitamente con el cliente que **las firmas digitales se siguen
+capturando en la app en ambos casos** — la plantilla subida solo reemplaza
+cómo se genera el *contenido* de la charla, no el flujo de firmas.
+
+- **Pestaña nueva `PLANTILLAS_CHARLA`** (`N°, Tema, Archivo, Archivo ID,
+  Tipo Archivo, Fecha Registro, Registrado Por`): biblioteca reutilizable de
+  archivos (PDF o imagen) subidos una vez, no atada a ninguna charla en
+  particular. Se administra desde "Charlas" → tarjeta "Charlas ya subidas"
+  (`abrirPlantillasCharla`) → botón "+ Subir" (`abrirFormPlantillaCharla` /
+  `guardarPlantillaCharla`, sube el archivo a la carpeta de Drive
+  `Charlas-Plantillas` con `uploadFile` y agrega la fila).
+- **Selector de modo al realizar una charla:** en `panel-realizar-charla`,
+  antes del bloque de Tema/Riesgos/Medidas, un radio "Escribir desde cero" /
+  "Usar una charla ya subida" (`onCambiarModoCharla`, reutiliza las clases
+  `.chk-row-radio` ya usadas en los radios A/B de DIAT/Investigación).
+  Eligiendo "plantilla" oculta el bloque de Tema/Riesgos/Medidas y muestra un
+  `<select>` con las plantillas disponibles (`poblarSelectPlantillasCharla`),
+  autocompletando el campo Tema oculto con el tema de la plantilla elegida
+  (`onCambiarPlantillaCharla`) para que se siga guardando igual en la fila de
+  `CHARLAS`. Si no hay ninguna plantilla subida todavía, se muestra un aviso
+  y un atajo directo a "+ Subir una charla nueva".
+- **Generación del documento final según el modo:**
+  - "Desde cero": exactamente el flujo ya existente (`generarYSubirPdfCharla`,
+    sin cambios).
+  - "Plantilla": `generarPdfCharlaConPlantilla(datos, plantilla)` —
+    1. Descarga los bytes del archivo ya subido desde Drive
+       (`descargarArchivoDrive(fileId)`, primera vez que la app **lee** un
+       archivo propio en vez de solo subirlo; funciona con el scope
+       `drive.file` porque el archivo fue creado por la propia app).
+    2. Si es PDF, lo carga tal cual con `PDFDocument.load()` (sus páginas
+       originales quedan intactas, sin tocar — no se puede dibujar firmas
+       encima de un PDF de layout desconocido con coordenadas confiables).
+       Si es imagen (PNG/JPG), crea un PDF nuevo de una página y la incrusta
+       a página completa.
+    3. Agrega una página **nueva, en blanco, al final** ("Hoja de Asistencia
+       y Firmas"), dibujada desde cero con el mismo patrón de texto/firmas
+       que ya se usaba para la Declaración de rechazo del DIAT: Tema, Fecha,
+       Hora, Obra, Relator + su firma, y la lista de asistentes con
+       nombre/RUT + firma de cada uno.
+    4. Sube el PDF combinado a Drive (carpeta `Charlas`, igual que el modo
+       "desde cero") y guarda la fila en `CHARLAS` normalmente.
+  - En ambos modos el flujo de firmas en la app (`panel-firmar-asistente`,
+    firma en cadena por asistente) es idéntico y obligatorio — lo único que
+    cambia es qué función arma el PDF final (`finalizarCharla` decide según
+    `charlaEnProceso.modo`).
 
 ## Generación de PDFs rellenados (Investigación de Accidente)
 
