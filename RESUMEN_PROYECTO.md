@@ -175,8 +175,11 @@ vez de esperar un cambio que nunca ocurre.
    se fuerza a completar nada al momento del registro, igual que las
    alertas de Charla.
 3. **Procedimientos de Trabajo Seguro** — sube PDF a Drive. Tiene buscador
-   por nombre, código o área (`onBuscarProcedimientos` en `app.js`), igual
-   patrón que el buscador de Trabajadores.
+   solo por nombre del PTS (`onBuscarProcedimientos` en `app.js`) — al
+   principio filtraba también por código y área, pero como muchos PTS
+   comparten la misma área (ej. "Autocontrol"), buscar algo como "jornal"
+   traía casi todos los procedimientos de esa área en vez de encontrar el
+   específico.
 4. **Entrega de EPP** — **checklist tipo menú**: se muestran todos los tipos
    de EPP con checkbox + cantidad al lado, se marcan los que correspondan
    (varios a la vez) y se firma una vez al final → se guarda **una sola fila
