@@ -753,7 +753,25 @@ De paso:
   caso) se dejaron fuera de las tarjetas, al final, porque son acciones
   de flujo (no pertenecen a una sección de datos en particular).
 
-## Decisiones de diseño visuales (por qué se ve como se ve)
+## Accesos directos a Drive y Sheets (Inicio)
+
+El cliente pidió dos botones en Inicio para abrir directo la carpeta de
+Drive y el Google Sheet que usa la app (sin tener que ir a buscarlos a
+mano). Se agregaron en la sección "Accesos directos" (nueva, arriba de
+"Sesión") tanto en el Inicio móvil como en `#desktop-home`:
+"Abrir carpeta de Drive" → `https://drive.google.com/drive/folders/{CONFIG.DRIVE_ROOT_FOLDER}`,
+"Abrir Google Sheet" → `https://docs.google.com/spreadsheets/d/{CONFIG.SHEET_ID}/edit`,
+ambos con `target="_blank"`. Los `href` se arman en `configurarAccesosDirectos()`
+(`app.js`, llamada desde `arrancarApp()`) en vez de hardcodearlos en el
+HTML, para no duplicar los IDs de `config.js` en dos archivos.
+
+Son `<a>` estilados como `.action-btn`/`.desktop-refresh-btn` (los mismos
+botones que "Actualizar datos"/"Cerrar sesión") en vez de `<button>` — como
+esas clases nunca se habían usado en un link, se les agregó
+`display:flex;justify-content:center` a la versión `a.` de cada una en
+`style.css` (un `<a>` es inline por defecto, así que `width:100%` solo no
+alcanza para centrar el contenido). Se agregaron dos íconos nuevos al
+catálogo `ICONS` (`carpeta`, `hoja`) para los botones.
 
 - **"Look Flota" en el home (header + tarjetas de módulo + pie de sesión),
   pero en naranjo, no en azul.** El cliente pidió mostrarle el mismo estilo

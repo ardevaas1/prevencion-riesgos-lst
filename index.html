@@ -140,6 +140,10 @@
       <div class="sec-label">Módulos</div>
       <div class="modulos-lista" data-list="modulos-home"></div>
 
+      <div class="sec-label" style="margin-top:24px;">Accesos directos</div>
+      <a class="action-btn" id="link-drive" href="#" target="_blank" rel="noopener"></a>
+      <a class="action-btn" id="link-sheets" style="margin-top:8px;" href="#" target="_blank" rel="noopener"></a>
+
       <div class="sec-label" style="margin-top:24px;">Sesión</div>
       <div class="account-chip"><span class="account-chip-avatar">G</span><span class="account-chip-email" id="chip-footer-email"></span></div>
       <button class="action-btn" onclick="cargarTodo(true)">↻ Actualizar datos</button>
@@ -217,7 +221,11 @@
     <div class="modulos-lista" data-list="modulos-home"></div>
 
     <div class="desktop-home-session">
-      <div class="sec-label">Sesión</div>
+      <div class="sec-label">Accesos directos</div>
+      <a class="desktop-refresh-btn" id="dt-link-drive" href="#" target="_blank" rel="noopener"></a>
+      <a class="desktop-refresh-btn" id="dt-link-sheets" style="margin-top:8px;" href="#" target="_blank" rel="noopener"></a>
+
+      <div class="sec-label" style="margin-top:18px;">Sesión</div>
       <div class="account-chip"><span class="account-chip-avatar">G</span><span class="account-chip-email" id="dt-home-email"></span></div>
       <button class="desktop-refresh-btn" onclick="cargarTodo(true)">↻ Actualizar datos</button>
       <button class="desktop-refresh-btn" style="margin-top:8px;" onclick="signOut()">Cerrar sesión</button>
