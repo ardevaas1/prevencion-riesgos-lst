@@ -174,7 +174,9 @@ vez de esperar un cambio que nunca ocurre.
    resolver primero la atención médica. Ver sección de PDFs más abajo. No
    se fuerza a completar nada al momento del registro, igual que las
    alertas de Charla.
-3. **Procedimientos de Trabajo Seguro** — sube PDF a Drive.
+3. **Procedimientos de Trabajo Seguro** — sube PDF a Drive. Tiene buscador
+   por nombre, código o área (`onBuscarProcedimientos` en `app.js`), igual
+   patrón que el buscador de Trabajadores.
 4. **Entrega de EPP** — **checklist tipo menú**: se muestran todos los tipos
    de EPP con checkbox + cantidad al lado, se marcan los que correspondan
    (varios a la vez) y se firma una vez al final → se guarda **una sola fila
