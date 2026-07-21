@@ -1203,7 +1203,6 @@ function renderPlantillasCharla() {
 function abrirFormPlantillaCharla() {
   const f = document.getElementById('form-plantilla-charla');
   f.reset();
-  document.getElementById('sel-tema-plantilla-charla').innerHTML = TEMAS_CHARLA.map(t => `<option>${esc(t)}</option>`).join('');
   openPanel('panel-form-plantilla-charla');
 }
 async function guardarPlantillaCharla(ev) {
