@@ -370,6 +370,8 @@ const ICONS = {
   firma: '<svg viewBox="0 0 24 24" fill="none"><path d="M4 17c2.5-1 4.5-1 6.5 0s4.5 1 6.5 0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M6 13.5 15 4.5a1.7 1.7 0 0 1 2.4 2.4L8.4 15.9l-3 0.7.6-3.1Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg>',
   obra: '<svg viewBox="0 0 24 24" fill="none"><path d="M4 21V8l6-4 6 4v13" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M14 21v-7h6v7" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 10h.01M12 10h.01M8 14h.01M12 14h.01M8 18h.01M12 18h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
   lupa: '<svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+  carpeta: '<svg viewBox="0 0 24 24" fill="none"><path d="M3 6.5a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v9.5a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>',
+  hoja: '<svg viewBox="0 0 24 24" fill="none"><rect x="4" y="3.5" width="16" height="17" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M4 9h16M4 14.5h16M9.5 9v11.5" stroke="currentColor" stroke-width="1.5"/></svg>',
 };
 function ic(name, size) { return ICONS[name].replace('<svg ', `<svg style="width:${size||14}px;height:${size||14}px;vertical-align:-3px;flex-shrink:0" `); }
 
@@ -396,6 +398,23 @@ function renderModulosHome() {
       <div class="modulo-icon modulo-icon--${m.color}">${ICONS[m.key]}</div>
       <div class="modulo-info"><div class="modulo-nombre">${m.nombre}</div><div class="modulo-desc">${m.desc}</div></div>
     </div>`).join(''));
+}
+// Enlaces directos a la carpeta de Drive y al Google Sheet que usa la app
+// (Inicio, móvil y escritorio) — útiles para revisar archivos/datos crudos
+// sin tener que pasar por la app.
+function configurarAccesosDirectos() {
+  const driveUrl = `https://drive.google.com/drive/folders/${CONFIG.DRIVE_ROOT_FOLDER}`;
+  const sheetsUrl = `https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/edit`;
+  const drive = `${ic('carpeta', 14)} Abrir carpeta de Drive`;
+  const sheets = `${ic('hoja', 14)} Abrir Google Sheet`;
+  ['link-drive', 'dt-link-drive'].forEach(id => {
+    const el = document.getElementById(id);
+    el.href = driveUrl; el.innerHTML = drive;
+  });
+  ['link-sheets', 'dt-link-sheets'].forEach(id => {
+    const el = document.getElementById(id);
+    el.href = sheetsUrl; el.innerHTML = sheets;
+  });
 }
 
 function setListHTML(name, html) {
@@ -3033,6 +3052,7 @@ async function arrancarApp() {
   document.getElementById('dt-footer-email').textContent = userEmail || '';
   document.getElementById('dt-home-email').textContent = userEmail || '';
   renderModulosHome();
+  configurarAccesosDirectos();
 
   await cargarTodo();
 

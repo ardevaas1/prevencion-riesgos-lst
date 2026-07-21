@@ -486,6 +486,9 @@ body.is-offline #app { padding-top: 30px; }
 .ficha-link-btn:active { background: #bbdefb; }
 .action-btn { width: 100%; margin-top: 10px; padding: 10px; border-radius: 10px; border: 1.5px solid var(--accent); color: var(--accent); font-size: 13px; font-weight: 600; background: none; }
 .action-btn:active { background: var(--accent-soft); }
+/* .action-btn también se usa en enlaces <a> (ej. abrir Drive/Sheets) —
+   por defecto un <a> es inline, así que hay que centrar el contenido a mano. */
+a.action-btn { display: flex; align-items: center; justify-content: center; gap: 6px; text-decoration: none; box-sizing: border-box; }
 
 /* ── Alerta de charla / plan de acción sugerido ── */
 .alerta-charla-box {
@@ -902,6 +905,7 @@ body.is-offline #app { padding-top: 30px; }
     transition: background 0.15s;
   }
   .desktop-refresh-btn:hover { background: #dce8f3; }
+  a.desktop-refresh-btn { display: flex; align-items: center; justify-content: center; gap: 6px; text-decoration: none; box-sizing: border-box; }
 
   /* ══════════════════════════════════
      PANEL CENTRAL (vistas)
