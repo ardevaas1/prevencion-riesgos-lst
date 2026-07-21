@@ -293,14 +293,11 @@ async function getTrabajadorFolder(nombreTrabajador) {
   return findOrCreateFolder(nombreTrabajador, raiz);
 }
 
-// Sube un archivo (File o Blob) a una carpeta de Drive ya resuelta. Devuelve {id, name, link}
-async function uploadFileToFolder(fileOrBlob, folderId, prefixName, ext) {
+// Sube un archivo (File o Blob) a una carpeta de Drive ya resuelta, con el
+// nombre exacto indicado. Devuelve {id, name, link}
+async function subirBytesADrive(fileOrBlob, folderId, fileName) {
   await ensureToken();
   toast('Subiendo archivo...');
-  const fecha = new Date().toLocaleDateString('es-CL').replace(/\//g, '-');
-  const hora = new Date().toTimeString().slice(0,5).replace(':','');
-  const extension = ext || (fileOrBlob.name ? fileOrBlob.name.split('.').pop() : 'jpg');
-  const fileName = `${prefixName}_${fecha}_${hora}.${extension}`;
   const mimeType = fileOrBlob.type || 'application/octet-stream';
 
   const b64 = await new Promise((resolve, reject) => {
@@ -328,10 +325,27 @@ async function uploadFileToFolder(fileOrBlob, folderId, prefixName, ext) {
   toast('Archivo subido ✓', 'ok');
   return { id: result.id, name: result.name, link: `https://drive.google.com/file/d/${result.id}/view` };
 }
+// Sube un archivo (File o Blob) a una carpeta de Drive ya resuelta, con un
+// nombre generado a partir de un prefijo + fecha/hora. Devuelve {id, name, link}
+async function uploadFileToFolder(fileOrBlob, folderId, prefixName, ext) {
+  const fecha = new Date().toLocaleDateString('es-CL').replace(/\//g, '-');
+  const hora = new Date().toTimeString().slice(0,5).replace(':','');
+  const extension = ext || (fileOrBlob.name ? fileOrBlob.name.split('.').pop() : 'jpg');
+  const fileName = `${prefixName}_${fecha}_${hora}.${extension}`;
+  return subirBytesADrive(fileOrBlob, folderId, fileName);
+}
 // Sube un archivo a una subcarpeta del módulo (Root/{nombreModulo}/)
 async function uploadFile(fileOrBlob, nombreModulo, prefixName, ext) {
   const folderId = await getModuloFolder(nombreModulo);
   return uploadFileToFolder(fileOrBlob, folderId, prefixName, ext);
+}
+// Sube un archivo preservando su nombre original (sin agregarle fecha/hora)
+// — se usa para las charlas ya subidas, donde el nombre del archivo trae el
+// código de la charla (ej. CHARLA_DE_SEGURIDAD__MAQUINARIA_PESADA_SGSSTRG001.pdf)
+// y es importante que se mantenga igual en Drive para poder ubicarlo por código.
+async function uploadFileConNombreOriginal(file, nombreModulo) {
+  const folderId = await getModuloFolder(nombreModulo);
+  return subirBytesADrive(file, folderId, file.name);
 }
 // Sube un archivo a la carpeta personal del trabajador (Root/Trabajadores/{nombre}/)
 async function uploadFileTrabajador(fileOrBlob, nombreTrabajador, prefixName, ext) {
@@ -516,7 +530,7 @@ async function cargarTodo(silencioso) {
       fetchSheet(`'${CONFIG.SHEET_INVESTIGACIONES}'!A2:AT2000`),
       fetchSheet(`'${CONFIG.SHEET_HCR}'!A2:V2000`),
       fetchSheet(`'${CONFIG.SHEET_DIAT}'!A2:BA2000`),
-      fetchSheet(`'${CONFIG.SHEET_PLANTILLAS_CHARLA}'!A2:L2000`),
+      fetchSheet(`'${CONFIG.SHEET_PLANTILLAS_CHARLA}'!A2:J2000`),
     ]);
     if (!silencioso) splash(85, 'Preparando la app...');
     allTrabajadores = trab.map((r,i) => rowToTrabajador(r,i));
@@ -613,8 +627,7 @@ function rowToCharla(r, i) {
 // reales, en vez de escribir el contenido de cero cada vez.
 function rowToPlantillaCharla(r, i) {
   return { fila: i+2, n: r[0]||'', codigo: r[1]||'', nombre: r[2]||'', version: r[3]||'', fechaEmision: r[4]||'',
-    riesgos: r[5]||'', medidas: r[6]||'',
-    archivo: r[7]||'', archivoId: r[8]||'', tipoArchivo: r[9]||'', fechaRegistro: r[10]||'', registradoPor: r[11]||'' };
+    archivo: r[5]||'', archivoId: r[6]||'', tipoArchivo: r[7]||'', fechaRegistro: r[8]||'', registradoPor: r[9]||'' };
 }
 
 // ============================================================
@@ -1206,18 +1219,39 @@ function abrirFormPlantillaCharla() {
   f.reset();
   openPanel('panel-form-plantilla-charla');
 }
+// El cliente nombra sus archivos como
+// "CHARLA_DE_SEGURIDAD__MAQUINARIA_PESADA_SGSSTRG001.pdf" — el código va al
+// final (letras+números pegados) y el nombre es la parte del medio, con
+// guiones bajos en vez de espacios. Se usa solo para pre-completar el
+// formulario (el usuario igual puede corregir el resultado a mano).
+function parsearNombreArchivoCharla(nombreArchivo) {
+  const sinExtension = (nombreArchivo || '').replace(/\.[a-zA-Z0-9]+$/, '');
+  const m = sinExtension.match(/^(.*)_([A-Za-z]+\d+)$/);
+  if (!m) return null;
+  const nombre = m[1].replace(/^CHARLA_DE_SEGURIDAD_+/i, '').replace(/_+/g, ' ').trim()
+    .toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+  return { codigo: m[2].toUpperCase(), nombre };
+}
+function onSeleccionarArchivoPlantillaCharla(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const datos = parsearNombreArchivoCharla(file.name);
+  if (!datos) return;
+  const f = document.getElementById('form-plantilla-charla');
+  if (!f.codigo.value) f.codigo.value = datos.codigo;
+  if (!f.nombre.value) f.nombre.value = datos.nombre;
+}
 async function guardarPlantillaCharla(ev) {
   ev.preventDefault();
   const f = ev.target;
   try {
     const archivo = f.archivo.files[0];
-    let up = { link: '', id: '' };
-    if (archivo) up = await uploadFile(archivo, 'Charlas-Plantillas', 'plantilla_' + f.nombre.value.replace(/\s+/g,'_'));
+    if (!archivo) { toast('Selecciona el archivo de la charla', 'error'); return; }
+    const up = await uploadFileConNombreOriginal(archivo, 'Charlas-Plantillas');
     const n = allPlantillasCharla.length + 1;
-    await appendSheet(`'${CONFIG.SHEET_PLANTILLAS_CHARLA}'!A:L`, [[
+    await appendSheet(`'${CONFIG.SHEET_PLANTILLAS_CHARLA}'!A:J`, [[
       n, f.codigo.value, f.nombre.value, f.version.value, f.fechaEmision.value,
-      f.riesgos.value, f.medidas.value,
-      up.link, up.id, archivo ? (archivo.type || '') : '', new Date().toLocaleString('es-CL'), userEmail || ''
+      up.link, up.id, archivo.type || '', new Date().toLocaleString('es-CL'), userEmail || ''
     ]]);
     toast('Charla subida ✓', 'ok');
     closePanel('panel-form-plantilla-charla');
@@ -1243,12 +1277,13 @@ function renderChecklistAsistentesCharla() {
     </div>`).join('');
 }
 // Selector opcional para elegir una de las charlas ya subidas (ver arriba).
-// Esas charlas ya vienen con su Tema/Riesgos/Medidas completos de antes, así
-// que al elegir una los campos quedan bloqueados (de solo lectura) — quien
-// dicta la charla real solo llena lo que queda en blanco: Relator + firma,
-// Obra, Fecha, Hora y los Asistentes con su firma. Si se elige "Escribir
-// desde cero", los campos se limpian y quedan editables para escribir el
-// contenido a mano, como siempre.
+// Esas charlas ya traen el Tema/Riesgos/Medidas escritos dentro del propio
+// documento, así que al elegir una se esconden esos campos (no aplican) y en
+// su lugar se piden solo los datos que ese documento deja en blanco: Cargo
+// del relator, Actividad y Duración (además de Relator+firma, Obra, Fecha y
+// Asistentes+firmas, que son comunes a los dos modos). Si se elige "Escribir
+// desde cero" se vuelve al formulario de siempre (Hora, Tema, Riesgos,
+// Medidas), para una charla que no está en la biblioteca.
 function poblarSelectorPlantillaCharla() {
   const sel = document.getElementById('sel-plantilla-charla');
   const hayPlantillas = allPlantillasCharla.length > 0;
@@ -1260,17 +1295,9 @@ function poblarSelectorPlantillaCharla() {
   onElegirPlantillaCharla(sel);
 }
 function onElegirPlantillaCharla(sel) {
-  const f = document.getElementById('form-realizar-charla');
   const p = allPlantillasCharla.find(x => String(x.fila) === sel.value);
-  if (!p) {
-    f.tema.value = ''; f.riesgos.value = ''; f.medidas.value = '';
-    f.tema.readOnly = f.riesgos.readOnly = f.medidas.readOnly = false;
-    return;
-  }
-  f.tema.value = p.nombre;
-  f.riesgos.value = p.riesgos;
-  f.medidas.value = p.medidas;
-  f.tema.readOnly = f.riesgos.readOnly = f.medidas.readOnly = true;
+  document.getElementById('grupo-charla-desde-cero').classList.toggle('hidden', !!p);
+  document.getElementById('grupo-charla-plantilla-real').classList.toggle('hidden', !p);
 }
 function abrirRealizarCharla(fila) {
   const c = allCharlas.find(x => x.fila === fila);
@@ -1311,6 +1338,9 @@ function guardarDatosCharla(ev) {
   ev.preventDefault();
   const f = ev.target;
   if (firmaEstaVacia('firma-canvas-relator')) { toast('Falta la firma del relator', 'error'); return; }
+  const sel = document.getElementById('sel-plantilla-charla');
+  const plantilla = allPlantillasCharla.find(x => String(x.fila) === sel.value) || null;
+  if (!plantilla && !f.tema.value) { toast('Escribe el tema tratado', 'error'); return; }
   const asistentes = [...document.querySelectorAll('#checklist-asistentes-charla .chk-row')]
     .filter(row => row.querySelector('.chk-row-input').checked)
     .map(row => ({ nombre: row.dataset.nombre, rut: row.dataset.rut, firma: null }));
@@ -1318,13 +1348,18 @@ function guardarDatosCharla(ev) {
   const canvasRelator = document.getElementById('firma-canvas-relator');
   charlaEnProceso = {
     ...charlaEnProceso,
+    plantilla,
     relator: f.relator.value,
     firmaRelator: canvasRelator.toDataURL('image/png'),
     obra: valorObra(f.obra, 'input-charla-obra-otra'),
-    fecha: f.fecha.value, hora: f.hora.value,
-    tema: f.tema.value,
-    riesgos: f.riesgos.value,
-    medidas: f.medidas.value,
+    fecha: f.fecha.value,
+    hora: plantilla ? '' : f.hora.value,
+    tema: plantilla ? plantilla.nombre : f.tema.value,
+    riesgos: plantilla ? '' : f.riesgos.value,
+    medidas: plantilla ? '' : f.medidas.value,
+    cargoRelator: plantilla ? f.cargoRelator.value : '',
+    actividad: plantilla ? f.actividad.value : '',
+    duracion: plantilla ? f.duracion.value : '',
     asistentes, asistenteActual: 0,
   };
   closePanel('panel-realizar-charla');
@@ -1363,7 +1398,9 @@ function cancelarFirmaAsistentes() {
 async function finalizarCharla() {
   try {
     toast('Generando documento...');
-    const pdfLink = await generarYSubirPdfCharla(charlaEnProceso);
+    const pdfLink = charlaEnProceso.plantilla
+      ? await generarPdfCharlaSobrePlantilla(charlaEnProceso, charlaEnProceso.plantilla)
+      : await generarYSubirPdfCharla(charlaEnProceso);
     const asistentesTxto = charlaEnProceso.asistentes.map(a => `${a.nombre} (${a.rut})`).join('; ');
     await ensureToken();
     if (charlaEnProceso.fila) {
@@ -1474,6 +1511,146 @@ async function generarYSubirPdfCharla(datos) {
   return up.link;
 }
 
+// ── Charla sobre un archivo ya subido (48 charlas reales del cliente,
+// formato oficial "CHARLA DE SEGURIDAD" con casillero OBRA/TEMA/ACTIVIDAD/
+// DICTADA POR/FECHA/DURACION/FIRMA + tabla NOMBRE/RUT/FIRMA de asistentes):
+// el Tema/Riesgos/Medidas ya vienen escritos en el documento, así que en vez
+// de escribir contenido nuevo, se dibuja solo en los espacios que ese mismo
+// documento trae en blanco. Como el archivo lo sube el cliente, no se puede
+// asumir que esos espacios estén siempre en el mismo píxel exacto (se
+// comprobó que hasta dentro de un mismo documento la fila puede correrse
+// unos pocos puntos entre página y página) — por eso se ubica cada campo
+// leyendo el texto real del PDF con pdf.js en vez de coordenadas fijas.
+async function descargarArchivoDrive(fileId) {
+  await ensureToken();
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, { headers: authHeader() });
+  if (!res.ok) throw new Error(friendlyErr(res.status, await res.text()));
+  return await res.arrayBuffer();
+}
+let _pdfjsLib = null;
+async function cargarPdfJs() {
+  if (_pdfjsLib) return _pdfjsLib;
+  const lib = await import('./vendor/pdf.min.mjs');
+  lib.GlobalWorkerOptions.workerSrc = 'vendor/pdf.worker.min.mjs';
+  _pdfjsLib = lib;
+  return lib;
+}
+// Extrae, por página, cada fragmento de texto con su posición real (x, y en
+// coordenadas PDF de origen abajo-izquierda — el mismo sistema que usa
+// pdf-lib para dibujar, así que las posiciones se pueden reusar tal cual).
+async function extraerTextoPdfJs(bytes) {
+  const pdfjsLib = await cargarPdfJs();
+  const doc = await pdfjsLib.getDocument({ data: bytes }).promise;
+  const paginas = [];
+  for (let p = 1; p <= doc.numPages; p++) {
+    const page = await doc.getPage(p);
+    const contenido = await page.getTextContent();
+    paginas.push(contenido.items.map(it => ({
+      texto: (it.str || '').trim(), x: it.transform[4], y: it.transform[5], ancho: it.width,
+    })).filter(it => it.texto));
+  }
+  return paginas;
+}
+// Ubica, en cada página donde aparezcan, las etiquetas del formato oficial
+// de charla y calcula dónde debería ir el valor de cada una (mismo alto que
+// la etiqueta, un poco a la derecha de su ancho real). Devuelve listas (una
+// posición por cada página en que la etiqueta aparece, porque el casillero
+// se repite igual en todas las páginas del documento) más la ubicación de
+// la tabla de asistentes (página + columnas + la fila real de cada N°).
+function ubicarCamposCharlaSGSST(paginas) {
+  const campos = { obra: [], dictadaPor: [], cargo: [], actividad: [], fecha: [], duracion: [], firmaRelator: [], asistentes: null };
+  const GAP = 8;
+  paginas.forEach((items, pageIdx) => {
+    const buscar = (txt) => items.find(it => it.texto === txt);
+    // Las etiquetas OBRA/ACTIVIDAD/DICTADA POR/FECHA/DURACION tienen su ":"
+    // como un elemento de texto aparte, más a la derecha (para que quede
+    // alineado aunque las etiquetas tengan largos distintos) — hay que
+    // ubicar el valor después de ESE ":", no pegado a la etiqueta.
+    const buscarDosPuntos = (labelItem) => {
+      if (!labelItem) return null;
+      return items.find(it => it.texto === ':' && Math.abs(it.y - labelItem.y) < 2 && it.x > labelItem.x) || labelItem;
+    };
+    const agregar = (lista, labelItem) => {
+      if (!labelItem) return;
+      const ancla = buscarDosPuntos(labelItem);
+      lista.push({ page: pageIdx, x: ancla.x + ancla.ancho + GAP, y: labelItem.y });
+    };
+    agregar(campos.obra, buscar('OBRA'));
+    agregar(campos.dictadaPor, buscar('DICTADA POR'));
+    agregar(campos.cargo, buscar('Cargo:'));
+    agregar(campos.actividad, buscar('ACTIVIDAD'));
+    agregar(campos.fecha, buscar('FECHA'));
+    const duracionItem = buscar('DURACION');
+    agregar(campos.duracion, duracionItem);
+    // La etiqueta de la firma del relator viene en la misma fila que
+    // DURACION, pero el texto puede venir como "FIRMA" o "FIRMA:" según el
+    // documento (se vio incluso distinto entre página 1 y 2 del mismo PDF) —
+    // se ubica por posición (misma fila, más a la derecha), no por texto exacto.
+    if (duracionItem) {
+      const firmaLabel = items.find(it => /^FIRMA:?$/.test(it.texto) && Math.abs(it.y - duracionItem.y) < 2 && it.x > duracionItem.x + 100);
+      if (firmaLabel) campos.firmaRelator.push({ page: pageIdx, x: firmaLabel.x + firmaLabel.ancho + GAP, y: firmaLabel.y });
+    }
+    const nombreH = buscar('NOMBRE'), rutH = buscar('RUT'), firmaH = buscar('FIRMA');
+    if (nombreH && rutH && firmaH && !campos.asistentes) {
+      const filas = items.filter(it => /^\d+\.$/.test(it.texto)).sort((a, b) => b.y - a.y);
+      if (filas.length) campos.asistentes = { page: pageIdx, nombreX: nombreH.x, rutX: rutH.x, firmaX: firmaH.x, filas };
+    }
+  });
+  return campos;
+}
+async function generarPdfCharlaSobrePlantilla(datos, plantilla) {
+  const { PDFDocument, rgb, StandardFonts } = PDFLib;
+  const bytes = await descargarArchivoDrive(plantilla.archivoId);
+  // pdf.js transfiere este buffer a su worker (queda "detached"), así que
+  // hay que copiarlo antes de leerlo — pdf-lib necesita su propia copia intacta.
+  const paginasTexto = await extraerTextoPdfJs(bytes.slice(0));
+  const campos = ubicarCamposCharlaSGSST(paginasTexto);
+
+  const pdfDoc = await PDFDocument.load(bytes);
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const paginas = pdfDoc.getPages();
+
+  function escribir(lista, valor, size) {
+    if (!valor) return;
+    lista.forEach(pos => paginas[pos.page].drawText(valor, { x: pos.x, y: pos.y, size: size || 9, font, color: rgb(0,0,0) }));
+  }
+  async function firmar(lista, dataUrl, w, h) {
+    if (!dataUrl) return;
+    const imgBytes = Uint8Array.from(atob(dataUrl.split(',')[1]), c => c.charCodeAt(0));
+    const img = await pdfDoc.embedPng(imgBytes);
+    const dims = img.scaleToFit(w, h);
+    lista.forEach(pos => paginas[pos.page].drawImage(img, { x: pos.x, y: pos.y - 2, width: dims.width, height: dims.height }));
+  }
+
+  escribir(campos.obra, datos.obra);
+  escribir(campos.dictadaPor, datos.relator);
+  escribir(campos.cargo, datos.cargoRelator);
+  escribir(campos.actividad, datos.actividad);
+  escribir(campos.fecha, ddmmyyyy(datos.fecha));
+  escribir(campos.duracion, datos.duracion);
+  await firmar(campos.firmaRelator, datos.firmaRelator, 90, 20);
+
+  if (campos.asistentes) {
+    const { page, nombreX, rutX, firmaX, filas } = campos.asistentes;
+    const p = paginas[page];
+    for (let i = 0; i < datos.asistentes.length && i < filas.length; i++) {
+      const a = datos.asistentes[i], fila = filas[i];
+      p.drawText(a.nombre, { x: nombreX, y: fila.y, size: 9, font, color: rgb(0,0,0) });
+      p.drawText(a.rut, { x: rutX, y: fila.y, size: 9, font, color: rgb(0,0,0) });
+      if (a.firma) {
+        const imgBytes = Uint8Array.from(atob(a.firma.split(',')[1]), c => c.charCodeAt(0));
+        const img = await pdfDoc.embedPng(imgBytes);
+        const dims = img.scaleToFit(75, 16);
+        p.drawImage(img, { x: firmaX, y: fila.y - 2, width: dims.width, height: dims.height });
+      }
+    }
+  }
+
+  const outBytes = await pdfDoc.save();
+  const blob = new Blob([outBytes], { type: 'application/pdf' });
+  const up = await uploadFile(blob, 'Charlas', 'charla_' + (datos.obra || 'obra').replace(/\s+/g,'_'), 'pdf');
+  return up.link;
+}
 
 // ============================================================
 // MÓDULO: INCIDENTES Y ACCIDENTES (con foto)
