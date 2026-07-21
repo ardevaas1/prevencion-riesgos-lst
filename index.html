@@ -614,7 +614,7 @@
   <div class="panel-bar"><div class="pnl-back" onclick="closePanel('panel-form-plantilla-charla')">‹ Volver</div><div class="pnl-title">Subir charla</div><div></div></div>
   <div class="panel-body">
     <form id="form-plantilla-charla" onsubmit="guardarPlantillaCharla(event)">
-      <div class="form-group"><label>Tema</label><select name="tema" id="sel-tema-plantilla-charla" required></select></div>
+      <div class="form-group"><label>Tema</label><input name="tema" required placeholder="Ej: Uso correcto de arnés de seguridad"></div>
       <div class="form-group">
         <label>Archivo (PDF o imagen)</label>
         <label class="upload-label" onclick="event.currentTarget.classList.add('selected')"><svg viewBox="0 0 24 24" fill="none" class="inline-ic"><path d="M7 3h7l4 4v14H7Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M14 3v4h4" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg> Subir archivo<input type="file" name="archivo" accept="application/pdf,image/*" required style="display:none"></label>
