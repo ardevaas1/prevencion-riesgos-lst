@@ -1242,10 +1242,13 @@ function renderChecklistAsistentesCharla() {
       </label>
     </div>`).join('');
 }
-// Selector opcional para precargar Tema/Riesgos/Medidas desde una charla ya
-// subida (ver arriba) — los campos quedan igual de editables que si se
-// escribieran desde cero, y el relator y los asistentes firman digitalmente
-// igual en ambos casos; solo cambia de dónde sale el texto inicial.
+// Selector opcional para elegir una de las charlas ya subidas (ver arriba).
+// Esas charlas ya vienen con su Tema/Riesgos/Medidas completos de antes, así
+// que al elegir una los campos quedan bloqueados (de solo lectura) — quien
+// dicta la charla real solo llena lo que queda en blanco: Relator + firma,
+// Obra, Fecha, Hora y los Asistentes con su firma. Si se elige "Escribir
+// desde cero", los campos se limpian y quedan editables para escribir el
+// contenido a mano, como siempre.
 function poblarSelectorPlantillaCharla() {
   const sel = document.getElementById('sel-plantilla-charla');
   const hayPlantillas = allPlantillasCharla.length > 0;
@@ -1254,14 +1257,20 @@ function poblarSelectorPlantillaCharla() {
   sel.value = '';
   sel.classList.toggle('hidden', !hayPlantillas);
   document.getElementById('plantilla-charla-vacia').classList.toggle('hidden', hayPlantillas);
+  onElegirPlantillaCharla(sel);
 }
 function onElegirPlantillaCharla(sel) {
-  const p = allPlantillasCharla.find(x => String(x.fila) === sel.value);
-  if (!p) return;
   const f = document.getElementById('form-realizar-charla');
+  const p = allPlantillasCharla.find(x => String(x.fila) === sel.value);
+  if (!p) {
+    f.tema.value = ''; f.riesgos.value = ''; f.medidas.value = '';
+    f.tema.readOnly = f.riesgos.readOnly = f.medidas.readOnly = false;
+    return;
+  }
   f.tema.value = p.nombre;
   f.riesgos.value = p.riesgos;
   f.medidas.value = p.medidas;
+  f.tema.readOnly = f.riesgos.readOnly = f.medidas.readOnly = true;
 }
 function abrirRealizarCharla(fila) {
   const c = allCharlas.find(x => x.fila === fila);
@@ -1271,13 +1280,13 @@ function abrirRealizarCharla(fila) {
   f.reset();
   f.fecha.value = hoyISO();
   f.hora.value = horaActual();
-  f.tema.value = c.tema;
   const selObraCharla1 = document.getElementById('sel-obra-charla');
   selObraCharla1.innerHTML = opcionesObraSelectHTML('');
   onCambioObraSelect(selObraCharla1, 'input-charla-obra-otra');
   document.getElementById('panel-realizar-charla-titulo').textContent = 'Realizar charla';
   renderChecklistAsistentesCharla();
   poblarSelectorPlantillaCharla();
+  f.tema.value = c.tema;
   openPanel('panel-realizar-charla');
   setTimeout(() => initFirmaPad('firma-canvas-relator'), 80);
 }
