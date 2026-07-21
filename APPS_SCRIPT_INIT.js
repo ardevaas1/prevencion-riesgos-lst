@@ -94,7 +94,7 @@ function inicializarPlanilla() {
   ]);
 
   crearHoja(ss, 'PLANTILLAS_CHARLA', [
-    'N°', 'Código', 'Nombre', 'Versión', 'Fecha Emisión', 'Riesgos', 'Medidas de Control',
+    'N°', 'Código', 'Nombre', 'Versión', 'Fecha Emisión',
     'Archivo', 'Archivo ID', 'Tipo Archivo', 'Fecha Registro', 'Registrado Por'
   ]);
 

@@ -70,6 +70,10 @@ repositorio de GitHub **separado**.
   blanco desde cero).
 - `vendor/pdf-lib.min.js` — librería `pdf-lib` empaquetada localmente (no
   CDN) para generación de PDF offline.
+- `vendor/pdf.min.mjs` + `vendor/pdf.worker.min.mjs` — pdf.js (Mozilla),
+  empaquetado localmente, usado solo para **leer** texto de PDFs subidos por
+  el cliente (pdf-lib solo sabe escribir) — ver "Plantillas de Charla" más
+  abajo.
 
 ## Estructura de datos (Google Sheet, 11 pestañas)
 
@@ -368,53 +372,104 @@ otras dos (**pendiente**, ver abajo).
   Charla — cualquier lista futura de "marcar varios de una nómina" puede
   reusar el mismo patrón.
 
-## Plantillas de Charla (subir charlas ya preparadas)
+## Plantillas de Charla (subir charlas ya escritas de antes)
 
-Pedido del cliente: algunas charlas ya vienen prellenadas de antes (un
-PTS/documento estándar armado fuera de la app), así que se necesitaba poder
-subir esos archivos y, al momento de realizar una charla real, elegir entre
-usar uno de los subidos o armar el contenido desde cero como antes.
+El cliente tiene ~48 charlas reales ya redactadas (formato oficial "CHARLA
+DE SEGURIDAD", D.S. 44/2024 — distinto del formato genérico "Charla Diaria
+de Seguridad" de `charla_5min.pdf` usado en "Escribir desde cero"), cada una
+con su propio código (ej. `SGSST-RG-001`) y su Tema/Riesgos/Medidas ya
+escritos dentro del documento (en una tabla Significado/Factores de
+riesgo/Recomendaciones), más un casillero `OBRA/TEMA/ACTIVIDAD/DICTADA
+POR/FECHA/DURACION/FIRMA` y una tabla `NOMBRE/RUT/FIRMA` de asistentes, todo
+en blanco. El pedido: subir esos archivos reales y que, al elegir uno para
+dictar una charla, la app pida **solo** los datos que ese documento deja en
+blanco — no volver a escribir contenido que ya existe, y que las firmas
+queden dibujadas en el mismo documento, no en una hoja aparte.
 
-**Primera versión (descartada):** cargaba el PDF subido tal cual y le
-agregaba una página nueva al final con la hoja de asistencia y firmas. El
-cliente corrigió dos cosas: (1) el Tema/Riesgos/Medidas de la plantilla
-elegida quedaban ocultos y no se podían editar antes de generar el
-documento, y (2) las firmas terminaban en una hoja aparte, no en el mismo
-formato de la charla. **Diseño actual**, corregido según ese feedback:
+**Dos versiones intermedias descartadas** antes de llegar al diseño actual
+(quedan documentadas porque explican por qué el diseño es como es):
+1. Cargaba el PDF subido tal cual y le agregaba una página nueva al final
+   con la hoja de asistencia y firmas — el cliente corrigió que las firmas
+   debían quedar en el mismo formato de la charla, no en una hoja aparte.
+2. El usuario escribía Tema/Riesgos/Medidas a mano una vez al subir la
+   plantilla (reutilizando el mismo `charla_5min.pdf` genérico para
+   generar) — al mostrarle archivos reales del cliente, quedó claro que las
+   48 charlas ya vienen completamente escritas y con **su propio** formato
+   oficial (no el genérico de la app), así que ni siquiera hay que escribir
+   Tema/Riesgos/Medidas: hay que leer/usar el archivo real tal cual y
+   dibujar sobre él.
 
+**Diseño actual — coordenadas ubicadas dinámicamente, no fijas:** al medir
+2 archivos reales de ejemplo (`Maquinaria Pesada` y `Pausas Activas`) se
+confirmó que ambos comparten el mismo layout, pero la posición exacta de
+cada campo varía unos pocos puntos entre documentos — e incluso entre
+páginas de un mismo documento (ej. la etiqueta de firma del relator aparece
+como `"FIRMA"` en una página y `"FIRMA:"` en otra del mismo PDF). Coordenadas
+fijas (medidas a mano, como se hizo para DIAT/Investigación/HCR/Charla
+genérica) no son confiables acá porque el archivo lo genera el cliente, no
+la app. La solución: **leer el texto real de cada PDF al momento de generar**
+y ubicar cada campo por su etiqueta, en vez de asumir píxeles fijos.
+
+- **`vendor/pdf.min.mjs` + `vendor/pdf.worker.min.mjs`** (pdf.js de Mozilla,
+  vendorizados igual que `pdf-lib.min.js` — cacheados por el Service Worker,
+  `sw.js` subido a `v6`). Es la primera vez que la app necesita **leer**
+  texto de un PDF (todo lo anterior con pdf-lib es solo escritura) — pdf-lib
+  no tiene esa capacidad, por eso se suma pdf.js solo para esto. Se carga
+  con `import()` dinámico (`cargarPdfJs()` en `app.js`) porque `app.js` es un
+  script clásico, no un módulo.
+- **`extraerTextoPdfJs(bytes)`**: abre el PDF con pdf.js y devuelve, por
+  página, cada fragmento de texto con su posición real (`x, y` — pdf.js usa
+  el mismo sistema de coordenadas de origen abajo-izquierda que pdf-lib, así
+  que las posiciones se reusan tal cual, sin conversión).
+- **`ubicarCamposCharlaSGSST(paginas)`**: busca, en cada página donde
+  aparezcan, las etiquetas `OBRA/DICTADA POR/Cargo:/ACTIVIDAD/FECHA/DURACION`
+  y calcula la posición del valor a partir del **`":"` real** que trae cada
+  etiqueta como elemento de texto aparte (no pegado a la palabra — por eso
+  "OBRA" y "ACTIVIDAD", de largos distintos, quedan con el `:` alineado en
+  la misma columna; el valor hay que ubicarlo después de ESE `:`, no después
+  del ancho de la palabra). La etiqueta de firma del relator se ubica por
+  posición (misma fila que DURACION, más a la derecha) en vez de por texto
+  exacto, porque el texto real varía (`"FIRMA"` vs `"FIRMA:"`). Para la
+  tabla de asistentes: ubica la fila con `NOMBRE`+`RUT`+`FIRMA` como
+  encabezados y usa la posición real de cada número de fila (`"1."` a
+  `"21."`) como ancla — así no importa si la tabla quedó más arriba o más
+  abajo en un documento específico.
+- **`generarPdfCharlaSobrePlantilla(datos, plantilla)`**: descarga el
+  archivo real desde Drive (`descargarArchivoDrive`, primera vez que la app
+  lee de vuelta un archivo que ella misma subió, con el scope `drive.file`),
+  lo analiza con `extraerTextoPdfJs` (**usando una copia del buffer** —
+  pdf.js transfiere el `ArrayBuffer` a su Web Worker y lo deja "detached",
+  así que hay que copiarlo antes con `.slice(0)` o `PDFDocument.load`
+  después falla), y con `pdf-lib` dibuja Obra/Dictada por/Cargo/Actividad/
+  Fecha/Duración/Firma del relator y la tabla de asistentes **directamente
+  sobre las páginas reales del documento**, en todas las páginas donde cada
+  campo aparezca (el casillero se repite en cada página). El PDF resultante
+  se sube a Drive tal cual — mismo número de páginas que el original, sin
+  agregar ni quitar ninguna.
 - **Pestaña `PLANTILLAS_CHARLA`** (`N°, Código, Nombre, Versión, Fecha
-  Emisión, Riesgos, Medidas de Control, Archivo, Archivo ID, Tipo Archivo,
-  Fecha Registro, Registrado Por`) — mismos campos de identificación que
-  `PROCEDIMIENTOS` (Código, Nombre, Versión, Fecha de emisión), más el
-  contenido reutilizable en sí (Riesgos, Medidas de Control — el Tema es el
-  campo `Nombre`). El archivo adjunto (PDF o imagen) es **opcional**: es
-  solo un respaldo de referencia (ej. el documento original escaneado), ya
-  no se usa para generar el PDF final. Se administra desde "Charlas" →
-  tarjeta "Charlas ya subidas" (`abrirPlantillasCharla`) → botón "+ Subir"
-  (`abrirFormPlantillaCharla` / `guardarPlantillaCharla`).
-- **Al realizar una charla:** en `panel-realizar-charla`, un `<select>`
-  opcional "Cargar desde una charla ya subida" (`poblarSelectorPlantillaCharla`,
-  listado por Código — Nombre) precarga los campos Tema/Riesgos/Medidas
-  (`onElegirPlantillaCharla`). El cliente tiene ~48 charlas ya escritas de
-  antes: la idea es que quien dicta la charla real solo elija cuál de esas
-  usar y llene los espacios que de verdad quedan en blanco (Relator + firma,
-  Obra, Fecha, Hora, Asistentes + firmas) — **no** que vuelva a escribir un
-  contenido que ya existe. Por eso, al elegir una charla de la lista, Tema/
-  Riesgos/Medidas se llenan y quedan **de solo lectura** (`readOnly = true`,
-  estilo gris vía `.form-group textarea[readonly]` en `style.css`); si en
-  cambio se elige "— Escribir desde cero —", esos mismos campos se limpian y
-  vuelven a ser editables, para el caso de una charla nueva que no está en la
-  biblioteca. Si no hay ninguna plantilla subida todavía, se muestra un aviso
-  y un atajo directo a "+ Subir una charla nueva".
-- **Generación del documento:** siempre la misma función ya existente,
-  `generarYSubirPdfCharla` — dibuja Tema/Riesgos/Medidas y las firmas
-  (relator + cada asistente) directamente sobre las coordenadas del PDF
-  plano `plantillas/charla_5min.pdf` (el formato oficial "Charla Diaria de
-  Seguridad" D.S. 44/2024), exactamente igual que si se hubiera escrito
-  desde cero. No hay rama de código por "modo": usar una charla ya subida
-  solo cambia de dónde sale el texto inicial de esos tres campos, nunca cómo
-  ni dónde se dibuja el documento final. Las firmas digitales de relator y
-  asistentes se siguen capturando en la app en ambos casos.
+  Emisión, Archivo, Archivo ID, Tipo Archivo, Fecha Registro, Registrado
+  Por`) — el archivo es obligatorio (es lo único que importa: el contenido
+  real). Al elegir el archivo en "Subir charla", `onSeleccionarArchivoPlantillaCharla`
+  auto-completa Código y Nombre a partir del **nombre del archivo**
+  (`parsearNombreArchivoCharla`, patrón
+  `CHARLA_DE_SEGURIDAD__<NOMBRE>_<CODIGO>.pdf`, ej.
+  `CHARLA_DE_SEGURIDAD__MAQUINARIA_PESADA_SGSSTRG001.pdf` → código
+  `SGSSTRG001`, nombre `Maquinaria Pesada`) — el cliente pidió explícitamente
+  mantener el nombre del archivo porque "van con los códigos". Por eso el
+  archivo se sube a Drive **con su nombre original**, sin la fecha/hora que
+  agrega `uploadFile` normalmente (`uploadFileConNombreOriginal` /
+  `subirBytesADrive`, una variante de `uploadFileToFolder` que no le agrega
+  sufijo al nombre).
+- **Al realizar una charla:** un `<select>` opcional "Cargar desde una
+  charla ya subida" (`poblarSelectorPlantillaCharla`, listado por Código —
+  Nombre). Elegir una oculta el bloque Hora/Tema/Riesgos/Medidas
+  (`grupo-charla-desde-cero`, no aplican — ya están en el documento) y
+  muestra Cargo del relator/Actividad/Duración (`grupo-charla-plantilla-real`,
+  los campos que el documento real sí deja en blanco). Volver a
+  "— Escribir desde cero —" hace lo inverso, para una charla que no está en
+  la biblioteca (usa `generarYSubirPdfCharla` sobre `charla_5min.pdf`, sin
+  cambios respecto al diseño original). En ambos modos el flujo de firma en
+  cadena de asistentes (`panel-firmar-asistente`) es idéntico y obligatorio.
 
 ## Generación de PDFs rellenados (Investigación de Accidente)
 
