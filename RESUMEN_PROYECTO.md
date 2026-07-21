@@ -373,57 +373,43 @@ otras dos (**pendiente**, ver abajo).
 Pedido del cliente: algunas charlas ya vienen prellenadas de antes (un
 PTS/documento estándar armado fuera de la app), así que se necesitaba poder
 subir esos archivos y, al momento de realizar una charla real, elegir entre
-usar uno de los subidos o armar el contenido desde cero como antes. Se
-confirmó explícitamente con el cliente que **las firmas digitales se siguen
-capturando en la app en ambos casos** — la plantilla subida solo reemplaza
-cómo se genera el *contenido* de la charla, no el flujo de firmas.
+usar uno de los subidos o armar el contenido desde cero como antes.
 
-- **Pestaña nueva `PLANTILLAS_CHARLA`** (`N°, Código, Nombre, Versión, Fecha
-  Emisión, Archivo, Archivo ID, Tipo Archivo, Fecha Registro, Registrado
-  Por`) — mismos campos de identificación que `PROCEDIMIENTOS` (Código,
-  Nombre, Versión, Fecha de emisión), a pedido explícito del cliente para
-  que las charlas ya preparadas se documenten igual que un PTS: biblioteca
-  reutilizable de archivos (PDF o imagen) subidos una vez, no atada a
-  ninguna charla en particular. Se administra desde "Charlas" → tarjeta
-  "Charlas ya subidas" (`abrirPlantillasCharla`) → botón "+ Subir"
-  (`abrirFormPlantillaCharla` / `guardarPlantillaCharla`, sube el archivo a
-  la carpeta de Drive `Charlas-Plantillas` con `uploadFile` y agrega la
-  fila).
-- **Selector de modo al realizar una charla:** en `panel-realizar-charla`,
-  antes del bloque de Tema/Riesgos/Medidas, un radio "Escribir desde cero" /
-  "Usar una charla ya subida" (`onCambiarModoCharla`, reutiliza las clases
-  `.chk-row-radio` ya usadas en los radios A/B de DIAT/Investigación).
-  Eligiendo "plantilla" oculta el bloque de Tema/Riesgos/Medidas y muestra un
-  `<select>` con las plantillas disponibles, listadas por Código — Nombre
-  (`poblarSelectPlantillasCharla`), autocompletando el campo Tema oculto con
-  el nombre de la plantilla elegida (`onCambiarPlantillaCharla`) para que se
-  siga guardando igual en la fila de `CHARLAS`. Si no hay ninguna plantilla
-  subida todavía, se muestra un aviso y un atajo directo a "+ Subir una
-  charla nueva".
-- **Generación del documento final según el modo:**
-  - "Desde cero": exactamente el flujo ya existente (`generarYSubirPdfCharla`,
-    sin cambios).
-  - "Plantilla": `generarPdfCharlaConPlantilla(datos, plantilla)` —
-    1. Descarga los bytes del archivo ya subido desde Drive
-       (`descargarArchivoDrive(fileId)`, primera vez que la app **lee** un
-       archivo propio en vez de solo subirlo; funciona con el scope
-       `drive.file` porque el archivo fue creado por la propia app).
-    2. Si es PDF, lo carga tal cual con `PDFDocument.load()` (sus páginas
-       originales quedan intactas, sin tocar — no se puede dibujar firmas
-       encima de un PDF de layout desconocido con coordenadas confiables).
-       Si es imagen (PNG/JPG), crea un PDF nuevo de una página y la incrusta
-       a página completa.
-    3. Agrega una página **nueva, en blanco, al final** ("Hoja de Asistencia
-       y Firmas"), dibujada desde cero con el mismo patrón de texto/firmas
-       que ya se usaba para la Declaración de rechazo del DIAT: Tema, Fecha,
-       Hora, Obra, Relator + su firma, y la lista de asistentes con
-       nombre/RUT + firma de cada uno.
-    4. Sube el PDF combinado a Drive (carpeta `Charlas`, igual que el modo
-       "desde cero") y guarda la fila en `CHARLAS` normalmente.
-  - En ambos modos el flujo de firmas en la app (`panel-firmar-asistente`,
-    firma en cadena por asistente) es idéntico y obligatorio — lo único que
-    cambia es qué función arma el PDF final (`finalizarCharla` decide según
-    `charlaEnProceso.modo`).
+**Primera versión (descartada):** cargaba el PDF subido tal cual y le
+agregaba una página nueva al final con la hoja de asistencia y firmas. El
+cliente corrigió dos cosas: (1) el Tema/Riesgos/Medidas de la plantilla
+elegida quedaban ocultos y no se podían editar antes de generar el
+documento, y (2) las firmas terminaban en una hoja aparte, no en el mismo
+formato de la charla. **Diseño actual**, corregido según ese feedback:
+
+- **Pestaña `PLANTILLAS_CHARLA`** (`N°, Código, Nombre, Versión, Fecha
+  Emisión, Riesgos, Medidas de Control, Archivo, Archivo ID, Tipo Archivo,
+  Fecha Registro, Registrado Por`) — mismos campos de identificación que
+  `PROCEDIMIENTOS` (Código, Nombre, Versión, Fecha de emisión), más el
+  contenido reutilizable en sí (Riesgos, Medidas de Control — el Tema es el
+  campo `Nombre`). El archivo adjunto (PDF o imagen) es **opcional**: es
+  solo un respaldo de referencia (ej. el documento original escaneado), ya
+  no se usa para generar el PDF final. Se administra desde "Charlas" →
+  tarjeta "Charlas ya subidas" (`abrirPlantillasCharla`) → botón "+ Subir"
+  (`abrirFormPlantillaCharla` / `guardarPlantillaCharla`).
+- **Al realizar una charla:** en `panel-realizar-charla`, un `<select>`
+  opcional "Cargar desde una charla ya subida" (`poblarSelectorPlantillaCharla`,
+  listado por Código — Nombre) precarga los campos Tema/Riesgos/Medidas
+  (`onElegirPlantillaCharla`) — esos campos están **siempre visibles y
+  editables**, se hayan precargado desde una plantilla o se escriban desde
+  cero; elegir una plantilla es solo un atajo para no escribir de nuevo un
+  contenido ya conocido, no reemplaza ni oculta el formulario. Si no hay
+  ninguna plantilla subida todavía, se muestra un aviso y un atajo directo a
+  "+ Subir una charla nueva".
+- **Generación del documento:** siempre la misma función ya existente,
+  `generarYSubirPdfCharla` — dibuja Tema/Riesgos/Medidas y las firmas
+  (relator + cada asistente) directamente sobre las coordenadas del PDF
+  plano `plantillas/charla_5min.pdf` (el formato oficial "Charla Diaria de
+  Seguridad" D.S. 44/2024), exactamente igual que si se hubiera escrito
+  desde cero. No hay rama de código por "modo": usar una charla ya subida
+  solo cambia de dónde sale el texto inicial de esos tres campos, nunca cómo
+  ni dónde se dibuja el documento final. Las firmas digitales de relator y
+  asistentes se siguen capturando en la app en ambos casos.
 
 ## Generación de PDFs rellenados (Investigación de Accidente)
 

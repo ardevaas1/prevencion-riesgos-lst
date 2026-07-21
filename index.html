@@ -564,33 +564,15 @@
       <div class="form-group"><label>Hora</label><input type="time" name="hora" required></div>
 
       <div class="form-group">
-        <label>¿Cómo quieres armar esta charla?</label>
-        <div class="chk-row">
-          <label class="chk-row-label">
-            <span class="chk-row-checkbox-wrap"><input type="radio" name="modoCharla" value="cero" class="chk-row-input" checked onchange="onCambiarModoCharla()"><span class="chk-row-checkbox chk-row-radio"></span></span>
-            <span>Escribir desde cero</span>
-          </label>
-        </div>
-        <div class="chk-row">
-          <label class="chk-row-label">
-            <span class="chk-row-checkbox-wrap"><input type="radio" name="modoCharla" value="plantilla" class="chk-row-input" onchange="onCambiarModoCharla()"><span class="chk-row-checkbox chk-row-radio"></span></span>
-            <span>Usar una charla ya subida</span>
-          </label>
-        </div>
-      </div>
-
-      <div class="form-group hidden" id="grupo-charla-plantilla">
-        <label>Charla ya subida</label>
-        <select id="sel-plantilla-charla" onchange="onCambiarPlantillaCharla(this)"></select>
+        <label>Cargar desde una charla ya subida (opcional)</label>
+        <select id="sel-plantilla-charla" onchange="onElegirPlantillaCharla(this)"></select>
         <div class="card-sub" id="plantilla-charla-vacia" style="margin-top:6px;">Todavía no hay ninguna charla subida.</div>
         <a class="ficha-link-btn" href="#" onclick="event.preventDefault(); abrirFormPlantillaCharla();" style="margin-top:8px;display:inline-block;">+ Subir una charla nueva</a>
       </div>
 
-      <div id="grupo-charla-desde-cero">
-        <div class="form-group"><label>Tema tratado</label><textarea name="tema" required placeholder="Ej: Uso correcto de arnés de seguridad en trabajos en altura"></textarea></div>
-        <div class="form-group"><label>Riesgos</label><textarea name="riesgos"></textarea></div>
-        <div class="form-group"><label>Medidas de control</label><textarea name="medidas"></textarea></div>
-      </div>
+      <div class="form-group"><label>Tema tratado</label><textarea name="tema" required placeholder="Ej: Uso correcto de arnés de seguridad en trabajos en altura"></textarea></div>
+      <div class="form-group"><label>Riesgos</label><textarea name="riesgos"></textarea></div>
+      <div class="form-group"><label>Medidas de control</label><textarea name="medidas"></textarea></div>
 
       <div class="sec-label" style="margin-top:18px;">Asistentes</div>
       <div id="checklist-asistentes-charla"></div>
@@ -618,9 +600,11 @@
       <div class="form-group"><label>Nombre de la charla de seguridad</label><input name="nombre" required placeholder="Ej: Uso correcto de arnés de seguridad"></div>
       <div class="form-group"><label>Versión</label><input name="version" value="1"></div>
       <div class="form-group"><label>Fecha de emisión</label><input type="date" name="fechaEmision"></div>
+      <div class="form-group"><label>Riesgos</label><textarea name="riesgos"></textarea></div>
+      <div class="form-group"><label>Medidas de control</label><textarea name="medidas"></textarea></div>
       <div class="form-group">
-        <label>Archivo (PDF o imagen)</label>
-        <label class="upload-label" onclick="event.currentTarget.classList.add('selected')"><svg viewBox="0 0 24 24" fill="none" class="inline-ic"><path d="M7 3h7l4 4v14H7Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M14 3v4h4" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg> Subir archivo<input type="file" name="archivo" accept="application/pdf,image/*" required style="display:none"></label>
+        <label>Archivo de referencia (opcional)</label>
+        <label class="upload-label" onclick="event.currentTarget.classList.add('selected')"><svg viewBox="0 0 24 24" fill="none" class="inline-ic"><path d="M7 3h7l4 4v14H7Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M14 3v4h4" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg> Subir archivo<input type="file" name="archivo" accept="application/pdf,image/*" style="display:none"></label>
       </div>
       <button class="btn-add" type="submit">Guardar charla</button>
     </form>
