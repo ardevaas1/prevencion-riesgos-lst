@@ -395,12 +395,17 @@ formato de la charla. **Diseño actual**, corregido según ese feedback:
 - **Al realizar una charla:** en `panel-realizar-charla`, un `<select>`
   opcional "Cargar desde una charla ya subida" (`poblarSelectorPlantillaCharla`,
   listado por Código — Nombre) precarga los campos Tema/Riesgos/Medidas
-  (`onElegirPlantillaCharla`) — esos campos están **siempre visibles y
-  editables**, se hayan precargado desde una plantilla o se escriban desde
-  cero; elegir una plantilla es solo un atajo para no escribir de nuevo un
-  contenido ya conocido, no reemplaza ni oculta el formulario. Si no hay
-  ninguna plantilla subida todavía, se muestra un aviso y un atajo directo a
-  "+ Subir una charla nueva".
+  (`onElegirPlantillaCharla`). El cliente tiene ~48 charlas ya escritas de
+  antes: la idea es que quien dicta la charla real solo elija cuál de esas
+  usar y llene los espacios que de verdad quedan en blanco (Relator + firma,
+  Obra, Fecha, Hora, Asistentes + firmas) — **no** que vuelva a escribir un
+  contenido que ya existe. Por eso, al elegir una charla de la lista, Tema/
+  Riesgos/Medidas se llenan y quedan **de solo lectura** (`readOnly = true`,
+  estilo gris vía `.form-group textarea[readonly]` en `style.css`); si en
+  cambio se elige "— Escribir desde cero —", esos mismos campos se limpian y
+  vuelven a ser editables, para el caso de una charla nueva que no está en la
+  biblioteca. Si no hay ninguna plantilla subida todavía, se muestra un aviso
+  y un atajo directo a "+ Subir una charla nueva".
 - **Generación del documento:** siempre la misma función ya existente,
   `generarYSubirPdfCharla` — dibuja Tema/Riesgos/Medidas y las firmas
   (relator + cada asistente) directamente sobre las coordenadas del PDF
