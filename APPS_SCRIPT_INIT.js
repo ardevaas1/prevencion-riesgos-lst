@@ -93,11 +93,6 @@ function inicializarPlanilla() {
     'Email', 'Rol', 'Nombre'
   ]);
 
-  crearHoja(ss, 'PLANTILLAS_CHARLA', [
-    'N°', 'Código', 'Nombre', 'Versión', 'Fecha Emisión',
-    'Archivo', 'Archivo ID', 'Tipo Archivo', 'Fecha Registro', 'Registrado Por'
-  ]);
-
   // Elimina la hoja "Hoja 1" / "Sheet1" default si quedó vacía
   const porDefecto = ss.getSheetByName('Hoja 1') || ss.getSheetByName('Sheet1');
   if (porDefecto && porDefecto.getLastRow() === 0 && ss.getSheets().length > 1) {

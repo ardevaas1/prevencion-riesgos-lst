@@ -565,8 +565,6 @@
       <div class="form-group">
         <label>Cargar desde una charla ya subida (opcional)</label>
         <select id="sel-plantilla-charla" onchange="onElegirPlantillaCharla(this)"></select>
-        <div class="card-sub" id="plantilla-charla-vacia" style="margin-top:6px;">Todavía no hay ninguna charla subida.</div>
-        <a class="ficha-link-btn" href="#" onclick="event.preventDefault(); abrirFormPlantillaCharla();" style="margin-top:8px;display:inline-block;">+ Subir una charla nueva</a>
       </div>
 
       <div id="grupo-charla-desde-cero">
@@ -589,31 +587,12 @@
   </div>
 </div>
 
-<!-- ===== PANEL: Charlas ya subidas (plantillas) ===== -->
+<!-- ===== PANEL: Charlas ya subidas (biblioteca, de solo lectura) ===== -->
 <div class="panel hidden" id="panel-plantillas-charla">
-  <div class="panel-bar"><div class="pnl-back" onclick="closePanel('panel-plantillas-charla')">‹ Volver</div><div class="pnl-title">Charlas ya subidas</div><div class="pnl-action" onclick="abrirFormPlantillaCharla()">+ Subir</div></div>
+  <div class="panel-bar"><div class="pnl-back" onclick="closePanel('panel-plantillas-charla')">‹ Volver</div><div class="pnl-title">Charlas ya subidas</div><div></div></div>
   <div class="panel-body">
     <p style="font-size:13px;color:#666;margin:0 0 14px;">Charlas ya escritas de antes (formato oficial "Charla de Seguridad"). Al elegir una para realizar una charla real, solo se piden los datos que el documento deja en blanco — el Tema/Riesgos/Medidas ya vienen redactados en el archivo.</p>
     <div id="lista-plantillas-charla"></div>
-  </div>
-</div>
-
-<!-- ===== PANEL: Subir charla ya preparada ===== -->
-<div class="panel hidden" id="panel-form-plantilla-charla">
-  <div class="panel-bar"><div class="pnl-back" onclick="closePanel('panel-form-plantilla-charla')">‹ Volver</div><div class="pnl-title">Subir charla</div><div></div></div>
-  <div class="panel-body">
-    <form id="form-plantilla-charla" onsubmit="guardarPlantillaCharla(event)">
-      <div class="form-group">
-        <label>Archivo de la charla (PDF)</label>
-        <label class="upload-label" onclick="event.currentTarget.classList.add('selected')"><svg viewBox="0 0 24 24" fill="none" class="inline-ic"><path d="M7 3h7l4 4v14H7Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M14 3v4h4" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg> Subir archivo<input type="file" name="archivo" accept="application/pdf" required style="display:none" onchange="onSeleccionarArchivoPlantillaCharla(this)"></label>
-        <div class="card-sub" style="margin-top:6px;">El Código y el Nombre se completan solos según el nombre del archivo — revísalos y corrígelos si hace falta.</div>
-      </div>
-      <div class="form-group"><label>Código</label><input name="codigo" required placeholder="SGSST-RG-001"></div>
-      <div class="form-group"><label>Nombre de la charla de seguridad</label><input name="nombre" required placeholder="Ej: Uso correcto de arnés de seguridad"></div>
-      <div class="form-group"><label>Versión</label><input name="version" value="1"></div>
-      <div class="form-group"><label>Fecha de emisión</label><input type="date" name="fechaEmision"></div>
-      <button class="btn-add" type="submit">Guardar charla</button>
-    </form>
   </div>
 </div>
 
