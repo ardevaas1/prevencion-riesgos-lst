@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lst-prevencion-shell-v7';
+const CACHE_NAME = 'lst-prevencion-shell-v8';
 const APP_SHELL = [
   './', './index.html', './style.css', './config.js', './app.js',
   './manifest.json', './logo.png', './logo-white.png', './icon-192.png', './icon-512.png',
@@ -12,6 +12,9 @@ const APP_SHELL = [
   './plantillas/charlas/SGSST-RG-006_Uso_de_los_EPP.pdf',
   './plantillas/charlas/SGSST-RG-007_Herramientas_y_Partes_en_Movimiento.pdf',
   './plantillas/charlas/SGSST-RG-008_Manejo_Manual_de_Carga.pdf',
+  './plantillas/charlas/SGSST-RG-009_Proteccion_Respiratoria.pdf',
+  './plantillas/charlas/SGSST-RG-010_Radiacion_UV.pdf',
+  './plantillas/charlas/SGSST-RG-011_Ruido.pdf',
 ];
 
 self.addEventListener('install', (event) => {

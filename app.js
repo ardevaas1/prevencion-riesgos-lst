@@ -28,6 +28,9 @@ const CHARLAS_BIBLIOTECA = [
   { codigo: 'SGSST-RG-006', nombre: 'Uso de los EPP', archivo: 'plantillas/charlas/SGSST-RG-006_Uso_de_los_EPP.pdf' },
   { codigo: 'SGSST-RG-007', nombre: 'Herramientas y Partes en Movimiento', archivo: 'plantillas/charlas/SGSST-RG-007_Herramientas_y_Partes_en_Movimiento.pdf' },
   { codigo: 'SGSST-RG-008', nombre: 'Manejo Manual de Carga', archivo: 'plantillas/charlas/SGSST-RG-008_Manejo_Manual_de_Carga.pdf' },
+  { codigo: 'SGSST-RG-009', nombre: 'Protección Respiratoria', archivo: 'plantillas/charlas/SGSST-RG-009_Proteccion_Respiratoria.pdf' },
+  { codigo: 'SGSST-RG-010', nombre: 'Radiación UV', archivo: 'plantillas/charlas/SGSST-RG-010_Radiacion_UV.pdf' },
+  { codigo: 'SGSST-RG-011', nombre: 'Ruido', archivo: 'plantillas/charlas/SGSST-RG-011_Ruido.pdf' },
 ];
 const NIVELES_RIESGO = [
   { value: 'Bajo',  color: 'green' },
@@ -1481,6 +1484,28 @@ async function cargarPdfJs() {
 // Extrae, por página, cada fragmento de texto con su posición real (x, y en
 // coordenadas PDF de origen abajo-izquierda — el mismo sistema que usa
 // pdf-lib para dibujar, así que las posiciones se pueden reusar tal cual).
+// Algunos PDFs traen una misma palabra partida en dos fragmentos de texto
+// pegados sin espacio real entre ellos (ej. "F" + "IRMA:", visto en uno de
+// los archivos reales — un detalle de cómo Word/el exportador separó los
+// glifos, no algo que dependa de la app) — si no se reconstruyen, la
+// etiqueta "FIRMA:" completa nunca calza con el patrón que se busca más
+// abajo. Se fusionan los fragmentos de una misma fila cuyo espacio entre
+// uno y el siguiente es casi cero (bien distinto del espacio real entre
+// palabras separadas, de varios puntos).
+function fusionarFragmentosPegados(items) {
+  const ordenados = [...items].sort((a, b) => a.y !== b.y ? b.y - a.y : a.x - b.x);
+  const resultado = [];
+  for (const it of ordenados) {
+    const anterior = resultado[resultado.length - 1];
+    if (anterior && Math.abs(anterior.y - it.y) < 0.5 && (it.x - (anterior.x + anterior.ancho)) < 1) {
+      anterior.texto += it.texto;
+      anterior.ancho = (it.x + it.ancho) - anterior.x;
+    } else {
+      resultado.push({ ...it });
+    }
+  }
+  return resultado;
+}
 async function extraerTextoPdfJs(bytes) {
   const pdfjsLib = await cargarPdfJs();
   const doc = await pdfjsLib.getDocument({ data: bytes }).promise;
@@ -1488,9 +1513,10 @@ async function extraerTextoPdfJs(bytes) {
   for (let p = 1; p <= doc.numPages; p++) {
     const page = await doc.getPage(p);
     const contenido = await page.getTextContent();
-    paginas.push(contenido.items.map(it => ({
+    const items = contenido.items.map(it => ({
       texto: (it.str || '').trim(), x: it.transform[4], y: it.transform[5], ancho: it.width,
-    })).filter(it => it.texto));
+    })).filter(it => it.texto);
+    paginas.push(fusionarFragmentosPegados(items));
   }
   return paginas;
 }
