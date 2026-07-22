@@ -466,15 +466,31 @@ dinámicamente:**
     se pega justo después de ESE número (no del encabezado "NOMBRE", que
     queda centrado en la columna), para que quede pegado a la izquierda y
     no le falte espacio a un nombre largo.
-  - **Choque entre campos vecinos**: uno de los 8 archivos reales
-    (`SGSST-RG-003`) tiene "DURACION :" y "FIRMA:" casi pegados en el
-    documento original, sin espacio real para un valor en el medio (defecto
-    del Word original del cliente, no de la app). `ubicarCamposCharlaSGSST`
-    calcula un `limite` por campo (la posición del siguiente texto de esa
-    misma fila) y `escribir()` achica la letra hasta un mínimo razonable y,
-    si de plano no entra, no dibuja nada ahí en vez de escribirse encima de
-    la etiqueta de al lado — el dato igual queda guardado en la fila de
-    `CHARLAS` aunque no haya podido imprimirse en ese documento puntual.
+  - **Choque entre campos vecinos**: dos de los archivos reales
+    (`SGSST-RG-003` y, solo en su página 1, `SGSST-RG-004`) tenían
+    "DURACION :" y "FIRMA:" casi pegados en el documento original, sin
+    espacio real para un valor en el medio (defecto del Word original del
+    cliente, no de la app — el cliente terminó re-exportando esos 2 archivos
+    con más espacio y se reemplazaron en `plantillas/charlas/`).
+    `ubicarCamposCharlaSGSST` calcula un `limite` por campo (la posición del
+    siguiente texto de esa misma fila) y `escribir()` achica la letra hasta
+    un mínimo razonable y, si de plano no entra, no dibuja nada ahí en vez de
+    escribirse encima de la etiqueta de al lado — el dato igual queda
+    guardado en la fila de `CHARLAS` aunque no haya podido imprimirse en ese
+    documento puntual. Como el choque puede darse en una sola página del
+    documento y no en la otra (el mismo casillero repetido puede quedar con
+    espaciados distintos entre página y página), el `limite` se calcula por
+    cada aparición del campo por separado, no una vez por documento.
+  - **Fragmentos de texto pegados**: en `SGSST-RG-010` pdf.js entregó la
+    etiqueta de firma partida en dos fragmentos separados ("F" + "IRMA:",
+    con ~0.1pt de separación entre ellos — un detalle de cómo el PDF
+    codifica esos glifos, no algo controlable) — sin reconstruirla, el
+    patrón `/^FIRMA:?$/` nunca calzaba y la firma del relator no se dibujaba
+    en esa página. `fusionarFragmentosPegados` (dentro de
+    `extraerTextoPdfJs`) une fragmentos de una misma fila cuyo espacio entre
+    uno y el siguiente es casi cero, antes de buscar cualquier etiqueta —
+    protege contra este tipo de particionado en cualquier documento futuro,
+    no solo en el que lo mostró.
   - Firmas (relator y cada asistente) se centran verticalmente en su línea
     con la misma fórmula ya usada en DIAT/Investigación
     (`baseline + capHeight/2`, acá aproximado como `baseline + 3.5`), en vez
