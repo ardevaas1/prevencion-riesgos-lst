@@ -1224,13 +1224,29 @@ function abrirFormPlantillaCharla() {
 // final (letras+números pegados) y el nombre es la parte del medio, con
 // guiones bajos en vez de espacios. Se usa solo para pre-completar el
 // formulario (el usuario igual puede corregir el resultado a mano).
+const CONECTORES_MINUSCULA = ['y','de','del','la','el','los','las','en','a','o','u'];
 function parsearNombreArchivoCharla(nombreArchivo) {
   const sinExtension = (nombreArchivo || '').replace(/\.[a-zA-Z0-9]+$/, '');
-  const m = sinExtension.match(/^(.*)_([A-Za-z]+\d+)$/);
-  if (!m) return null;
-  const nombre = m[1].replace(/^CHARLA_DE_SEGURIDAD_+/i, '').replace(/_+/g, ' ').trim()
-    .toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
-  return { codigo: m[2].toUpperCase(), nombre };
+  // El cliente no siempre nombra los archivos igual: a veces con "_" (ej.
+  // "CHARLA_DE_SEGURIDAD__MAQUINARIA_PESADA_SGSSTRG001"), a veces con
+  // espacios y hasta espacios dobles (ej. "CHARLA DE SEGURIDAD  ACTOS
+  // INSEGUROS SGSST-RG-004"), y el código a veces lleva guiones (SGSST-RG-004)
+  // y a veces no (SGSSTRG001). Por eso se separa por espacios O "_" (fusiona
+  // los repetidos), se toma el último trozo como código (debe tener letras Y
+  // números) y se le saca el prefijo "CHARLA/DE/SEGURIDAD" al resto, venga
+  // como venga escrito.
+  const tokens = sinExtension.split(/[\s_]+/).filter(Boolean);
+  if (tokens.length < 2) return null;
+  const codigo = tokens[tokens.length - 1];
+  if (!/[A-Za-z]/.test(codigo) || !/\d/.test(codigo)) return null;
+  const resto = tokens.slice(0, -1);
+  while (resto.length && /^(CHARLA|DE|SEGURIDAD)$/i.test(resto[0])) resto.shift();
+  if (!resto.length) return null;
+  const nombre = resto.map((palabra, i) => {
+    const min = palabra.toLowerCase();
+    return (i > 0 && CONECTORES_MINUSCULA.includes(min)) ? min : min.replace(/^\w/, c => c.toUpperCase());
+  }).join(' ');
+  return { codigo: codigo.toUpperCase(), nombre };
 }
 function onSeleccionarArchivoPlantillaCharla(input) {
   const file = input.files[0];
