@@ -115,6 +115,19 @@ function crearHoja(ss, nombre, encabezados) {
   rango.setFontWeight('bold').setBackground('#1f6b39').setFontColor('#ffffff');
   sh.setFrozenRows(1);
   sh.autoResizeColumns(1, encabezados.length);
+
+  // Google Sheets extiende solo el formato del encabezado hacia abajo (y
+  // hacia la derecha, más allá de las columnas con datos) cada vez que la
+  // API agrega una fila nueva — por eso las filas que va escribiendo la app
+  // se ven con el mismo verde/letra blanca del encabezado. Esto limpia el
+  // formato de todas las filas de datos (deja fondo blanco y letra negra),
+  // tanto en pestañas nuevas como al volver a ejecutar este script sobre
+  // una pestaña que ya tenía filas verdes.
+  const filasDatos = sh.getMaxRows() - 1;
+  if (filasDatos > 0) {
+    sh.getRange(2, 1, filasDatos, sh.getMaxColumns())
+      .setBackground('#ffffff').setFontColor('#000000').setFontWeight('normal');
+  }
 }
 
 // ------------------------------------------------------------
