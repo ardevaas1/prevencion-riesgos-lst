@@ -12,6 +12,23 @@ const TEMAS_CHARLA = [
   'Izaje de cargas', 'Excavaciones y zanjas', 'Manejo manual de materiales',
   'Extintores y emergencias', 'Señalización y demarcación', 'Vehículos y maquinaria', 'Otro'
 ];
+// Charlas ya escritas por el cliente (formato oficial "CHARLA DE SEGURIDAD",
+// distinto del genérico charla_5min.pdf usado en "Escribir desde cero") —
+// empaquetadas como archivos del proyecto en vez de subirse desde la app:
+// el cliente decidió mandarlas directamente y que esta lista se actualice
+// acá cada vez, en vez de dejar que cualquiera suba charlas nuevas desde el
+// celular. Para agregar una nueva: copiar el PDF a plantillas/charlas/ y
+// agregar su fila acá (y a la lista de cacheo de sw.js).
+const CHARLAS_BIBLIOTECA = [
+  { codigo: 'SGSST-RG-001', nombre: 'Maquinaria Pesada', archivo: 'plantillas/charlas/SGSST-RG-001_Maquinaria_Pesada.pdf' },
+  { codigo: 'SGSST-RG-002', nombre: 'Pausas Activas', archivo: 'plantillas/charlas/SGSST-RG-002_Pausas_Activas.pdf' },
+  { codigo: 'SGSST-RG-003', nombre: 'Trabajo en Equipo', archivo: 'plantillas/charlas/SGSST-RG-003_Trabajo_en_Equipo.pdf' },
+  { codigo: 'SGSST-RG-004', nombre: 'Actos Inseguros', archivo: 'plantillas/charlas/SGSST-RG-004_Actos_Inseguros.pdf' },
+  { codigo: 'SGSST-RG-005', nombre: 'Alcohol y Drogas', archivo: 'plantillas/charlas/SGSST-RG-005_Alcohol_y_Drogas.pdf' },
+  { codigo: 'SGSST-RG-006', nombre: 'Uso de los EPP', archivo: 'plantillas/charlas/SGSST-RG-006_Uso_de_los_EPP.pdf' },
+  { codigo: 'SGSST-RG-007', nombre: 'Herramientas y Partes en Movimiento', archivo: 'plantillas/charlas/SGSST-RG-007_Herramientas_y_Partes_en_Movimiento.pdf' },
+  { codigo: 'SGSST-RG-008', nombre: 'Manejo Manual de Carga', archivo: 'plantillas/charlas/SGSST-RG-008_Manejo_Manual_de_Carga.pdf' },
+];
 const NIVELES_RIESGO = [
   { value: 'Bajo',  color: 'green' },
   { value: 'Medio', color: 'amber' },
@@ -339,14 +356,6 @@ async function uploadFile(fileOrBlob, nombreModulo, prefixName, ext) {
   const folderId = await getModuloFolder(nombreModulo);
   return uploadFileToFolder(fileOrBlob, folderId, prefixName, ext);
 }
-// Sube un archivo preservando su nombre original (sin agregarle fecha/hora)
-// — se usa para las charlas ya subidas, donde el nombre del archivo trae el
-// código de la charla (ej. CHARLA_DE_SEGURIDAD__MAQUINARIA_PESADA_SGSSTRG001.pdf)
-// y es importante que se mantenga igual en Drive para poder ubicarlo por código.
-async function uploadFileConNombreOriginal(file, nombreModulo) {
-  const folderId = await getModuloFolder(nombreModulo);
-  return subirBytesADrive(file, folderId, file.name);
-}
 // Sube un archivo a la carpeta personal del trabajador (Root/Trabajadores/{nombre}/)
 async function uploadFileTrabajador(fileOrBlob, nombreTrabajador, prefixName, ext) {
   const folderId = await getTrabajadorFolder(nombreTrabajador);
@@ -513,14 +522,13 @@ let allCharlas = [];
 let allInvestigaciones = [];
 let allHcr = [];
 let allDiat = [];
-let allPlantillasCharla = [];
 
 async function cargarTodo(silencioso) {
   if (!silencioso) { splash(20, 'Conectando con Google Sheets...'); }
   else { toast('Actualizando datos...'); }
   try {
     if (!silencioso) splash(45, 'Cargando información...');
-    const [trab, insp, inc, proc, epp, charlas, invest, hcr, diat, plantillasCharla] = await Promise.all([
+    const [trab, insp, inc, proc, epp, charlas, invest, hcr, diat] = await Promise.all([
       fetchSheet(`'${CONFIG.SHEET_TRABAJADORES}'!A2:Z2000`),
       fetchSheet(`'${CONFIG.SHEET_INSPECCIONES}'!A2:M2000`),
       fetchSheet(`'${CONFIG.SHEET_INCIDENTES}'!A2:V2000`),
@@ -530,7 +538,6 @@ async function cargarTodo(silencioso) {
       fetchSheet(`'${CONFIG.SHEET_INVESTIGACIONES}'!A2:AT2000`),
       fetchSheet(`'${CONFIG.SHEET_HCR}'!A2:V2000`),
       fetchSheet(`'${CONFIG.SHEET_DIAT}'!A2:BA2000`),
-      fetchSheet(`'${CONFIG.SHEET_PLANTILLAS_CHARLA}'!A2:J2000`),
     ]);
     if (!silencioso) splash(85, 'Preparando la app...');
     allTrabajadores = trab.map((r,i) => rowToTrabajador(r,i));
@@ -542,10 +549,8 @@ async function cargarTodo(silencioso) {
     allInvestigaciones = invest.map((r,i) => ({ fila: i+2, n: r[0]||'' }));
     allHcr = hcr.map((r,i) => ({ fila: i+2, n: r[0]||'', fecha: r[1]||'', obra: r[2]||'', actividad: r[3]||'', area: r[4]||'', pdf: r[19]||'' }));
     allDiat = diat.map((r,i) => ({ fila: i+2, n: r[0]||'' }));
-    allPlantillasCharla = plantillasCharla.map((r,i) => rowToPlantillaCharla(r,i));
     renderDashboard();
     renderTrabajadores(); renderInspecciones(); renderIncidentes(); renderProcedimientos(); renderEpp(); renderCharlas(); renderHcr();
-    actualizarContadorPlantillasCharla();
     if (!silencioso) splash(100, '¡Listo!');
     else toast('Datos actualizados ✓', 'ok');
   } catch (e) {
@@ -622,14 +627,6 @@ function rowToCharla(r, i) {
     fechaRealizada: r[5]||'', responsable: r[6]||'', relator: r[7]||'', obra: r[8]||'', hora: r[9]||'',
     riesgos: r[10]||'', medidas: r[11]||'', asistentes: r[12]||'', pdf: r[13]||'' };
 }
-// Charlas "ya preparadas" que alguien sube una sola vez (ej. un PTS/charla
-// estándar de Mutual ya armado) para poder reutilizarlas en varias charlas
-// reales, en vez de escribir el contenido de cero cada vez.
-function rowToPlantillaCharla(r, i) {
-  return { fila: i+2, n: r[0]||'', codigo: r[1]||'', nombre: r[2]||'', version: r[3]||'', fechaEmision: r[4]||'',
-    archivo: r[5]||'', archivoId: r[6]||'', tipoArchivo: r[7]||'', fechaRegistro: r[8]||'', registradoPor: r[9]||'' };
-}
-
 // ============================================================
 // DASHBOARD
 // ============================================================
@@ -1190,12 +1187,12 @@ function renderCharlas() {
     </div>`).join(''));
 }
 
-// ── Charlas ya subidas ("plantillas"): charlas ya preparadas que alguien
-// sube una sola vez (ej. un PTS/charla estándar de Mutual ya armado) para
-// reutilizarlas al momento de realizar una charla real, en vez de escribir
-// tema/riesgos/medidas de cero cada vez. ──
+// ── Charlas ya subidas ("biblioteca"): charlas oficiales que el cliente ya
+// tiene escritas, empaquetadas como archivos del proyecto (ver
+// CHARLAS_BIBLIOTECA arriba) — ya no se suben desde la app, así que esta
+// lista es de solo lectura.
 function actualizarContadorPlantillasCharla() {
-  document.querySelectorAll('[data-count="plantillas-charla"]').forEach(el => el.textContent = allPlantillasCharla.length);
+  document.querySelectorAll('[data-count="plantillas-charla"]').forEach(el => el.textContent = CHARLAS_BIBLIOTECA.length);
 }
 function abrirPlantillasCharla() {
   renderPlantillasCharla();
@@ -1203,77 +1200,15 @@ function abrirPlantillasCharla() {
 }
 function renderPlantillasCharla() {
   const cont = document.getElementById('lista-plantillas-charla');
-  if (allPlantillasCharla.length === 0) { cont.innerHTML = emptyState('Sin charlas subidas', 'Toca "+ Subir charla" para agregar la primera'); return; }
-  cont.innerHTML = [...allPlantillasCharla].reverse().map(p => `
+  cont.innerHTML = CHARLAS_BIBLIOTECA.map(p => `
     <div class="card card--default">
       <div class="card-icon modulo-icon--flota">${ic('charlas',18)}</div>
       <div class="card-body">
         <div class="card-title">${esc(p.nombre)}</div>
-        <div class="card-sub">${esc(p.codigo)} · v${esc(p.version)} · Emisión ${esc(p.fechaEmision) || '—'}</div>
-        ${p.archivo ? `<div class="badge-row"><a href="${esc(p.archivo)}" target="_blank" class="badge blue">${ic('documento',12)} Ver archivo</a></div>` : ''}
+        <div class="card-sub">${esc(p.codigo)}</div>
+        <div class="badge-row"><a href="${esc(p.archivo)}" target="_blank" class="badge blue">${ic('documento',12)} Ver archivo</a></div>
       </div>
     </div>`).join('');
-}
-function abrirFormPlantillaCharla() {
-  const f = document.getElementById('form-plantilla-charla');
-  f.reset();
-  openPanel('panel-form-plantilla-charla');
-}
-// El cliente nombra sus archivos como
-// "CHARLA_DE_SEGURIDAD__MAQUINARIA_PESADA_SGSSTRG001.pdf" — el código va al
-// final (letras+números pegados) y el nombre es la parte del medio, con
-// guiones bajos en vez de espacios. Se usa solo para pre-completar el
-// formulario (el usuario igual puede corregir el resultado a mano).
-const CONECTORES_MINUSCULA = ['y','de','del','la','el','los','las','en','a','o','u'];
-function parsearNombreArchivoCharla(nombreArchivo) {
-  const sinExtension = (nombreArchivo || '').replace(/\.[a-zA-Z0-9]+$/, '');
-  // El cliente no siempre nombra los archivos igual: a veces con "_" (ej.
-  // "CHARLA_DE_SEGURIDAD__MAQUINARIA_PESADA_SGSSTRG001"), a veces con
-  // espacios y hasta espacios dobles (ej. "CHARLA DE SEGURIDAD  ACTOS
-  // INSEGUROS SGSST-RG-004"), y el código a veces lleva guiones (SGSST-RG-004)
-  // y a veces no (SGSSTRG001). Por eso se separa por espacios O "_" (fusiona
-  // los repetidos), se toma el último trozo como código (debe tener letras Y
-  // números) y se le saca el prefijo "CHARLA/DE/SEGURIDAD" al resto, venga
-  // como venga escrito.
-  const tokens = sinExtension.split(/[\s_]+/).filter(Boolean);
-  if (tokens.length < 2) return null;
-  const codigo = tokens[tokens.length - 1];
-  if (!/[A-Za-z]/.test(codigo) || !/\d/.test(codigo)) return null;
-  const resto = tokens.slice(0, -1);
-  while (resto.length && /^(CHARLA|DE|SEGURIDAD)$/i.test(resto[0])) resto.shift();
-  if (!resto.length) return null;
-  const nombre = resto.map((palabra, i) => {
-    const min = palabra.toLowerCase();
-    return (i > 0 && CONECTORES_MINUSCULA.includes(min)) ? min : min.replace(/^\w/, c => c.toUpperCase());
-  }).join(' ');
-  return { codigo: codigo.toUpperCase(), nombre };
-}
-function onSeleccionarArchivoPlantillaCharla(input) {
-  const file = input.files[0];
-  if (!file) return;
-  const datos = parsearNombreArchivoCharla(file.name);
-  if (!datos) return;
-  const f = document.getElementById('form-plantilla-charla');
-  if (!f.codigo.value) f.codigo.value = datos.codigo;
-  if (!f.nombre.value) f.nombre.value = datos.nombre;
-}
-async function guardarPlantillaCharla(ev) {
-  ev.preventDefault();
-  const f = ev.target;
-  try {
-    const archivo = f.archivo.files[0];
-    if (!archivo) { toast('Selecciona el archivo de la charla', 'error'); return; }
-    const up = await uploadFileConNombreOriginal(archivo, 'Charlas-Plantillas');
-    const n = allPlantillasCharla.length + 1;
-    await appendSheet(`'${CONFIG.SHEET_PLANTILLAS_CHARLA}'!A:J`, [[
-      n, f.codigo.value, f.nombre.value, f.version.value, f.fechaEmision.value,
-      up.link, up.id, archivo.type || '', new Date().toLocaleString('es-CL'), userEmail || ''
-    ]]);
-    toast('Charla subida ✓', 'ok');
-    closePanel('panel-form-plantilla-charla');
-    await cargarTodo(true);
-    renderPlantillasCharla();
-  } catch (e) { toast(e.message, 'error'); }
 }
 
 // ── Realizar charla: paso 1 (datos) → paso 2 (firma de asistentes) → PDF ──
@@ -1302,16 +1237,13 @@ function renderChecklistAsistentesCharla() {
 // Medidas), para una charla que no está en la biblioteca.
 function poblarSelectorPlantillaCharla() {
   const sel = document.getElementById('sel-plantilla-charla');
-  const hayPlantillas = allPlantillasCharla.length > 0;
   sel.innerHTML = '<option value="">— Escribir desde cero —</option>' +
-    allPlantillasCharla.map(p => `<option value="${p.fila}">${esc(p.codigo)} — ${esc(p.nombre)}</option>`).join('');
+    CHARLAS_BIBLIOTECA.map((p, i) => `<option value="${i}">${esc(p.codigo)} — ${esc(p.nombre)}</option>`).join('');
   sel.value = '';
-  sel.classList.toggle('hidden', !hayPlantillas);
-  document.getElementById('plantilla-charla-vacia').classList.toggle('hidden', hayPlantillas);
   onElegirPlantillaCharla(sel);
 }
 function onElegirPlantillaCharla(sel) {
-  const p = allPlantillasCharla.find(x => String(x.fila) === sel.value);
+  const p = CHARLAS_BIBLIOTECA[sel.value] || null;
   document.getElementById('grupo-charla-desde-cero').classList.toggle('hidden', !!p);
   document.getElementById('grupo-charla-plantilla-real').classList.toggle('hidden', !p);
 }
@@ -1355,7 +1287,7 @@ function guardarDatosCharla(ev) {
   const f = ev.target;
   if (firmaEstaVacia('firma-canvas-relator')) { toast('Falta la firma del relator', 'error'); return; }
   const sel = document.getElementById('sel-plantilla-charla');
-  const plantilla = allPlantillasCharla.find(x => String(x.fila) === sel.value) || null;
+  const plantilla = CHARLAS_BIBLIOTECA[sel.value] || null;
   if (!plantilla && !f.tema.value) { toast('Escribe el tema tratado', 'error'); return; }
   const asistentes = [...document.querySelectorAll('#checklist-asistentes-charla .chk-row')]
     .filter(row => row.querySelector('.chk-row-input').checked)
@@ -1527,22 +1459,17 @@ async function generarYSubirPdfCharla(datos) {
   return up.link;
 }
 
-// ── Charla sobre un archivo ya subido (48 charlas reales del cliente,
+// ── Charla sobre un archivo de la biblioteca (charlas reales del cliente,
 // formato oficial "CHARLA DE SEGURIDAD" con casillero OBRA/TEMA/ACTIVIDAD/
 // DICTADA POR/FECHA/DURACION/FIRMA + tabla NOMBRE/RUT/FIRMA de asistentes):
 // el Tema/Riesgos/Medidas ya vienen escritos en el documento, así que en vez
 // de escribir contenido nuevo, se dibuja solo en los espacios que ese mismo
-// documento trae en blanco. Como el archivo lo sube el cliente, no se puede
-// asumir que esos espacios estén siempre en el mismo píxel exacto (se
-// comprobó que hasta dentro de un mismo documento la fila puede correrse
-// unos pocos puntos entre página y página) — por eso se ubica cada campo
-// leyendo el texto real del PDF con pdf.js en vez de coordenadas fijas.
-async function descargarArchivoDrive(fileId) {
-  await ensureToken();
-  const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, { headers: authHeader() });
-  if (!res.ok) throw new Error(friendlyErr(res.status, await res.text()));
-  return await res.arrayBuffer();
-}
+// documento trae en blanco. Como cada archivo lo manda el cliente por
+// separado, no se puede asumir que esos espacios estén siempre en el mismo
+// píxel exacto (se comprobó que hasta dentro de un mismo documento la fila
+// puede correrse unos pocos puntos entre página y página) — por eso se
+// ubica cada campo leyendo el texto real del PDF con pdf.js en vez de
+// coordenadas fijas.
 let _pdfjsLib = null;
 async function cargarPdfJs() {
   if (_pdfjsLib) return _pdfjsLib;
@@ -1586,10 +1513,30 @@ function ubicarCamposCharlaSGSST(paginas) {
       if (!labelItem) return null;
       return items.find(it => it.texto === ':' && Math.abs(it.y - labelItem.y) < 2 && it.x > labelItem.x) || labelItem;
     };
+    // Algunos documentos reales tienen poco espacio entre un campo y el
+    // siguiente (ej. "DURACION :" y "FIRMA:" quedaron casi pegados en uno de
+    // los archivos del cliente, sin espacio real para escribir la duración
+    // en el medio) — se guarda hasta dónde se puede escribir sin invadir el
+    // siguiente texto de esa misma fila, para que `escribir()` pueda achicar
+    // la letra o, si de plano no entra, no dibujar nada ahí en vez de
+    // encimarse con la etiqueta de al lado.
+    const limiteDerecho = (inicio, y) => {
+      let limite = inicio + 400;
+      items.forEach(it => { if (Math.abs(it.y - y) < 2 && it.x > inicio + 1 && it.x < limite) limite = it.x; });
+      return limite;
+    };
     const agregar = (lista, labelItem) => {
       if (!labelItem) return;
       const ancla = buscarDosPuntos(labelItem);
-      lista.push({ page: pageIdx, x: ancla.x + ancla.ancho + GAP, y: labelItem.y });
+      const inicio = ancla.x + ancla.ancho;
+      // El límite se calcula desde el final "crudo" del ancla (antes de
+      // aplicar el GAP) — si se calculara después del GAP, un GAP que ya se
+      // pase de largo (como pasó con "DURACION :" seguido de "FIRMA:" casi
+      // pegado en uno de los documentos) haría que el siguiente texto de la
+      // fila quedara ANTES del punto de partida y el choque nunca se detectara.
+      const limite = limiteDerecho(inicio, labelItem.y);
+      const x = Math.min(inicio + GAP, limite - 2);
+      lista.push({ page: pageIdx, x, y: labelItem.y, limite });
     };
     agregar(campos.obra, buscar('OBRA'));
     agregar(campos.dictadaPor, buscar('DICTADA POR'));
@@ -1609,14 +1556,14 @@ function ubicarCamposCharlaSGSST(paginas) {
     const nombreH = buscar('NOMBRE'), rutH = buscar('RUT'), firmaH = buscar('FIRMA');
     if (nombreH && rutH && firmaH && !campos.asistentes) {
       const filas = items.filter(it => /^\d+\.$/.test(it.texto)).sort((a, b) => b.y - a.y);
-      if (filas.length) campos.asistentes = { page: pageIdx, nombreX: nombreH.x, rutX: rutH.x, firmaX: firmaH.x, filas };
+      if (filas.length) campos.asistentes = { page: pageIdx, rutX: rutH.x, firmaX: firmaH.x, filas };
     }
   });
   return campos;
 }
 async function generarPdfCharlaSobrePlantilla(datos, plantilla) {
   const { PDFDocument, rgb, StandardFonts } = PDFLib;
-  const bytes = await descargarArchivoDrive(plantilla.archivoId);
+  const bytes = await fetch(plantilla.archivo).then(r => r.arrayBuffer());
   // pdf.js transfiere este buffer a su worker (queda "detached"), así que
   // hay que copiarlo antes de leerlo — pdf-lib necesita su propia copia intacta.
   const paginasTexto = await extraerTextoPdfJs(bytes.slice(0));
@@ -1626,16 +1573,39 @@ async function generarPdfCharlaSobrePlantilla(datos, plantilla) {
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const paginas = pdfDoc.getPages();
 
-  function escribir(lista, valor, size) {
+  // El punto (x,y) de cada campo es la posición base (baseline) del texto
+  // vecino que se usó como ancla, no el centro de su casilla — para que la
+  // firma quede centrada en la línea (y no "flotando" muy arriba) hay que
+  // bajarla un poco: se centra su alto alrededor de baseline + capHeight/2
+  // (mismo criterio ya usado para centrar texto en DIAT/Investigación).
+  function escribir(lista, valor, sizeBase) {
     if (!valor) return;
-    lista.forEach(pos => paginas[pos.page].drawText(valor, { x: pos.x, y: pos.y, size: size || 9, font, color: rgb(0,0,0) }));
+    lista.forEach(pos => {
+      const disponible = (pos.limite != null ? pos.limite : Infinity) - pos.x - 2;
+      let size = sizeBase || 9;
+      let texto = valor;
+      // Si el documento no deja suficiente espacio antes del siguiente
+      // texto de la fila (ver limiteDerecho más arriba), se achica la letra
+      // hasta un mínimo razonable y, si aun así no entra, se recorta con
+      // "…" en vez de escribir encima de la etiqueta de al lado.
+      while (size > 6 && font.widthOfTextAtSize(texto, size) > disponible) size -= 0.5;
+      if (font.widthOfTextAtSize(texto, size) > disponible) {
+        while (texto.length > 0 && font.widthOfTextAtSize(texto + '…', size) > disponible) texto = texto.slice(0, -1);
+        texto = texto ? texto + '…' : '';
+      }
+      if (!texto) return;
+      paginas[pos.page].drawText(texto, { x: pos.x, y: pos.y, size, font, color: rgb(0,0,0) });
+    });
   }
   async function firmar(lista, dataUrl, w, h) {
     if (!dataUrl) return;
     const imgBytes = Uint8Array.from(atob(dataUrl.split(',')[1]), c => c.charCodeAt(0));
     const img = await pdfDoc.embedPng(imgBytes);
     const dims = img.scaleToFit(w, h);
-    lista.forEach(pos => paginas[pos.page].drawImage(img, { x: pos.x, y: pos.y - 2, width: dims.width, height: dims.height }));
+    lista.forEach(pos => {
+      const centroLinea = pos.y + 3.5;
+      paginas[pos.page].drawImage(img, { x: pos.x, y: centroLinea - dims.height / 2, width: dims.width, height: dims.height });
+    });
   }
 
   escribir(campos.obra, datos.obra);
@@ -1644,20 +1614,26 @@ async function generarPdfCharlaSobrePlantilla(datos, plantilla) {
   escribir(campos.actividad, datos.actividad);
   escribir(campos.fecha, ddmmyyyy(datos.fecha));
   escribir(campos.duracion, datos.duracion);
-  await firmar(campos.firmaRelator, datos.firmaRelator, 90, 20);
+  await firmar(campos.firmaRelator, datos.firmaRelator, 80, 14);
 
   if (campos.asistentes) {
-    const { page, nombreX, rutX, firmaX, filas } = campos.asistentes;
+    const { page, rutX, firmaX, filas } = campos.asistentes;
     const p = paginas[page];
     for (let i = 0; i < datos.asistentes.length && i < filas.length; i++) {
       const a = datos.asistentes[i], fila = filas[i];
+      // El nombre se pega justo después del número de fila ("1.", "2.", ...)
+      // en vez de alinearse con el encabezado "NOMBRE" (que queda centrado
+      // en la columna) — así un nombre largo tiene todo el ancho de la
+      // columna disponible para la derecha, en vez de arrancar ya corrido.
+      const nombreX = fila.x + fila.ancho + 8;
       p.drawText(a.nombre, { x: nombreX, y: fila.y, size: 9, font, color: rgb(0,0,0) });
       p.drawText(a.rut, { x: rutX, y: fila.y, size: 9, font, color: rgb(0,0,0) });
       if (a.firma) {
         const imgBytes = Uint8Array.from(atob(a.firma.split(',')[1]), c => c.charCodeAt(0));
         const img = await pdfDoc.embedPng(imgBytes);
-        const dims = img.scaleToFit(75, 16);
-        p.drawImage(img, { x: firmaX, y: fila.y - 2, width: dims.width, height: dims.height });
+        const dims = img.scaleToFit(70, 14);
+        const centroLinea = fila.y + 3.5;
+        p.drawImage(img, { x: firmaX, y: centroLinea - dims.height / 2, width: dims.width, height: dims.height });
       }
     }
   }
@@ -3350,6 +3326,7 @@ async function arrancarApp() {
   document.getElementById('dt-home-email').textContent = userEmail || '';
   renderModulosHome();
   configurarAccesosDirectos();
+  actualizarContadorPlantillasCharla();
 
   await cargarTodo();
 
