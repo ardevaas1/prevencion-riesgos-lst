@@ -451,15 +451,21 @@ y ubicar cada campo por su etiqueta, en vez de asumir píxeles fijos.
   Por`) — el archivo es obligatorio (es lo único que importa: el contenido
   real). Al elegir el archivo en "Subir charla", `onSeleccionarArchivoPlantillaCharla`
   auto-completa Código y Nombre a partir del **nombre del archivo**
-  (`parsearNombreArchivoCharla`, patrón
-  `CHARLA_DE_SEGURIDAD__<NOMBRE>_<CODIGO>.pdf`, ej.
-  `CHARLA_DE_SEGURIDAD__MAQUINARIA_PESADA_SGSSTRG001.pdf` → código
-  `SGSSTRG001`, nombre `Maquinaria Pesada`) — el cliente pidió explícitamente
-  mantener el nombre del archivo porque "van con los códigos". Por eso el
-  archivo se sube a Drive **con su nombre original**, sin la fecha/hora que
-  agrega `uploadFile` normalmente (`uploadFileConNombreOriginal` /
-  `subirBytesADrive`, una variante de `uploadFileToFolder` que no le agrega
-  sufijo al nombre).
+  (`parsearNombreArchivoCharla`). El cliente no nombra los 48 archivos todos
+  igual — se probó con 8 reales y aparecieron varias formas: separados por
+  `_` (`CHARLA_DE_SEGURIDAD__MAQUINARIA_PESADA_SGSSTRG001.pdf`) o por
+  espacios, código con guiones (`SGSST-RG-004`) o sin ellos (`SGSSTRG001`), y
+  hasta espacios dobles por error de tipeo (`CHARLA DE SEGURIDAD  ACTOS
+  INSEGUROS SGSST-RG-004.pdf`). Por eso el parseo separa por espacios O `_`
+  indistintamente (colapsando repetidos), toma el último trozo como código
+  (debe tener letras y números) y le saca el prefijo "CHARLA/DE/SEGURIDAD"
+  al resto venga como venga escrito — el resultado siempre queda editable
+  por si el parseo no da con el nombre exacto que se quiere. El cliente
+  pidió explícitamente mantener el nombre del archivo porque "van con los
+  códigos", así que se sube a Drive **con su nombre original**, sin la
+  fecha/hora que agrega `uploadFile` normalmente (`uploadFileConNombreOriginal`
+  / `subirBytesADrive`, una variante de `uploadFileToFolder` que no le
+  agrega sufijo al nombre).
 - **Al realizar una charla:** un `<select>` opcional "Cargar desde una
   charla ya subida" (`poblarSelectorPlantillaCharla`, listado por Código —
   Nombre). Elegir una oculta el bloque Hora/Tema/Riesgos/Medidas
