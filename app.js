@@ -138,6 +138,11 @@ let userRole  = null; // admin | prevencionista | viewer
 // la app muestra únicamente la pantalla fija de esa empresa (mostrarModoSubcontratista),
 // sin sidebar, sin Inicio y sin acceso a ningún otro módulo (ver arrancarApp).
 let miEmpresaSubcontratista = null;
+// true cuando esta cuenta no tiene acceso directo de Editor al Sheet/Drive
+// y en vez de eso se está usando la Web App de Apps Script como proxy
+// (ver llamarWebAppSubcontratista) — se detecta solo, no hay que
+// configurar nada aparte de SUBCONTRATISTAS_WEBAPP_URL en config.js.
+let subcontratistaUsaProxy = false;
 
 // ── OAuth / Google Identity Services ───────────────────────────
 let tokenClient = null;
@@ -244,7 +249,7 @@ function signOut() {
   clearToken();
   localStorage.removeItem(HADLOGIN_KEY);
   localStorage.removeItem(EMAIL_KEY);
-  userEmail = null; userRole = null; miEmpresaSubcontratista = null;
+  userEmail = null; userRole = null; miEmpresaSubcontratista = null; subcontratistaUsaProxy = false;
   document.getElementById('main').classList.add('hidden');
   document.getElementById('desktop-home').classList.add('dt-oculto');
   document.getElementById('desktop-sidebar').classList.add('dt-oculto');
@@ -397,6 +402,27 @@ async function getSubcontratistaFolder(empresa) {
 async function uploadFileSubcontratista(fileOrBlob, empresa, prefixName, ext) {
   const folderId = await getSubcontratistaFolder(empresa);
   return uploadFileToFolder(fileOrBlob, folderId, prefixName, ext);
+}
+
+// Llama a la Web App de Apps Script (ver APPS_SCRIPT_WEBAPP_SUBCONTRATISTAS.js)
+// para cuentas subcontratistas SIN acceso directo al Sheet/Drive — el
+// script corre siempre con los permisos de quien lo desplegó, así que esta
+// llamada no necesita ningún token ni scope de Google por parte de quien
+// la hace. Content-Type "text/plain" a propósito (no "application/json"):
+// Apps Script no responde al preflight OPTIONS que el navegador manda
+// para JSON, así que hay que mandarlo como "simple request" para evitar
+// el error de CORS.
+async function llamarWebAppSubcontratista(accion, datos) {
+  if (!CONFIG.SUBCONTRATISTAS_WEBAPP_URL) throw new Error('Falta configurar SUBCONTRATISTAS_WEBAPP_URL en config.js');
+  const res = await fetch(CONFIG.SUBCONTRATISTAS_WEBAPP_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ accion, correo: userEmail, ...datos }),
+  });
+  if (!res.ok) throw new Error('Error ' + res.status + ' llamando a la Web App de Subcontratistas');
+  const data = await res.json();
+  if (data.error) throw new Error(data.error);
+  return data;
 }
 
 // ── UI helpers ───────────────────────────────────────────────
@@ -570,12 +596,42 @@ async function cargarTodo(silencioso) {
   if (!silencioso) { splash(15, 'Verificando acceso...'); }
   else { toast('Actualizando datos...'); }
   try {
+    // Si en una carga anterior ya detectamos que esta cuenta no tiene
+    // acceso directo al Sheet (ver más abajo), no hace falta repetir ese
+    // intento fallido cada vez — se va derecho por la Web App.
+    if (subcontratistaUsaProxy) {
+      const chequeo = await llamarWebAppSubcontratista('verificarAcceso', {});
+      if (!chequeo.subcontratista) throw new Error('Esta cuenta ya no tiene acceso.');
+      miEmpresaSubcontratista = chequeo.empresa;
+      const { filas } = await llamarWebAppSubcontratista('listarDocumentos', { empresa: miEmpresaSubcontratista });
+      allSubDocs = filas.map((r,i) => rowToSubDoc(r,i));
+      if (!silencioso) splash(100, '¡Listo!'); else toast('Datos actualizados ✓', 'ok');
+      return;
+    }
+
     // USUARIOS se lee primero y aparte: determina si esta cuenta es un
     // subcontratista restringido, ANTES de decidir qué más hace falta
     // cargar (a una cuenta restringida no le pedimos el resto de las hojas
     // de la operación de LST — más rápido y evita traer al navegador datos
     // que esa cuenta de todas formas nunca va a ver en la interfaz).
-    const usuarios = await fetchSheet(`'${CONFIG.SHEET_USUARIOS}'!A2:D2000`);
+    let usuarios;
+    try {
+      usuarios = await fetchSheet(`'${CONFIG.SHEET_USUARIOS}'!A2:D2000`);
+    } catch (errAccesoDirecto) {
+      // Sin acceso directo al Sheet: si hay una Web App configurada
+      // (ver config.js SUBCONTRATISTAS_WEBAPP_URL), puede que esta cuenta
+      // sea justo un subcontratista al que a propósito no se le dio acceso
+      // de Editor — se verifica por ahí antes de darnos por vencidos.
+      if (!CONFIG.SUBCONTRATISTAS_WEBAPP_URL) throw errAccesoDirecto;
+      const chequeo = await llamarWebAppSubcontratista('verificarAcceso', {});
+      if (!chequeo.subcontratista) throw errAccesoDirecto;
+      subcontratistaUsaProxy = true;
+      miEmpresaSubcontratista = chequeo.empresa;
+      const { filas } = await llamarWebAppSubcontratista('listarDocumentos', { empresa: miEmpresaSubcontratista });
+      allSubDocs = filas.map((r,i) => rowToSubDoc(r,i));
+      if (!silencioso) splash(100, '¡Listo!'); else toast('Datos actualizados ✓', 'ok');
+      return;
+    }
     allUsuarios = usuarios.map((r,i) => rowToUsuario(r,i));
     const cuenta = allUsuarios.find(u => u.correo === (userEmail||'').toLowerCase());
     miEmpresaSubcontratista = (cuenta && cuenta.rol === 'subcontratista') ? cuenta.empresa : null;
@@ -3438,11 +3494,32 @@ async function onSubirDocSubcontratista(inputEl, empresa, categoria, item, perio
   if (!file) return;
   try {
     const prefix = [categoria, item, periodo].filter(Boolean).join('_').replace(/\s+/g, '-');
-    const up = await uploadFileSubcontratista(file, empresa, prefix);
-    await appendSheet(`'${CONFIG.SHEET_SUBCONTRATISTAS_DOCS}'!A:H`, [[
-      empresa, categoria, item || '', periodo || '', up.name, up.link,
-      new Date().toLocaleString('es-CL'), userEmail || ''
-    ]]);
+    if (subcontratistaUsaProxy) {
+      // Esta cuenta no tiene acceso directo al Sheet/Drive: el archivo se
+      // manda en base64 a la Web App, que hace la subida real con sus
+      // propios permisos (ver APPS_SCRIPT_WEBAPP_SUBCONTRATISTAS.js).
+      const b64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const fecha = new Date().toLocaleDateString('es-CL').replace(/\//g, '-');
+      const hora = new Date().toTimeString().slice(0,5).replace(':','');
+      const extension = file.name.split('.').pop() || 'bin';
+      toast('Subiendo archivo...');
+      await llamarWebAppSubcontratista('subirDocumento', {
+        empresa, categoria, item: item || '', periodo: periodo || '',
+        nombreArchivo: `${prefix}_${fecha}_${hora}.${extension}`,
+        mimeType: file.type || 'application/octet-stream', contenidoBase64: b64,
+      });
+    } else {
+      const up = await uploadFileSubcontratista(file, empresa, prefix);
+      await appendSheet(`'${CONFIG.SHEET_SUBCONTRATISTAS_DOCS}'!A:H`, [[
+        empresa, categoria, item || '', periodo || '', up.name, up.link,
+        new Date().toLocaleString('es-CL'), userEmail || ''
+      ]]);
+    }
     toast('Documento subido ✓', 'ok');
     await cargarTodo(true);
     if (miEmpresaSubcontratista) mostrarModoSubcontratista(empresa); else abrirDetalleSubcontratista(empresa);

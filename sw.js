@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lst-prevencion-shell-v11';
+const CACHE_NAME = 'lst-prevencion-shell-v12';
 const APP_SHELL = [
   './', './index.html', './style.css', './config.js', './app.js',
   './manifest.json', './logo.png', './logo-white.png', './icon-192.png', './icon-512.png',
