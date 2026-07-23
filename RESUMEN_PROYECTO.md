@@ -1138,21 +1138,37 @@ catálogo `ICONS` (`carpeta`, `hoja`) para los botones.
 
 ## Decisiones de comportamiento
 
-- **Color de las firmas — azul tinta Bic (`#1a2f6b`):** pedido explícito del
-  cliente, para todas las firmas de la app (Charla, Investigación, HCR, EPP)
-  de ahora en adelante. Todos los canvas de firma se inicializan con la
-  misma función (`initFirmaPad` en `app.js`), así que el cambio de color
-  vive en un solo lugar (`ctx.strokeStyle`) y aplica a los 8 canvas de firma
-  que existen (relator/asistente de Charla, investigador, los 3 de
-  jefaturas del HCR + el del trabajador, y EPP). Como las firmas se suben a
-  Drive/se insertan en los PDFs tal cual quedan dibujadas en el canvas (los
-  píxeles ya vienen con este color, no hay una conversión de color aparte
-  en la generación de PDF), no hace falta tocar nada en
-  `generarPdfCharlaSobrePlantilla` ni en los demás generadores. **Ojo:**
-  esto solo afecta firmas hechas de ahora en adelante — las firmas que ya
-  quedaron guardadas en PDFs/Drive antes de este cambio siguen en su color
-  anterior (no hay forma de "repintar" una imagen ya guardada sin
-  regenerar ese documento).
+- **Color y grosor de las firmas — azul tinta Bic (`#1a2f6b`), trazo más
+  grueso:** pedido explícito del cliente, para todas las firmas de la app
+  (Charla, Investigación, HCR, EPP) de ahora en adelante. Todos los canvas
+  de firma se inicializan con la misma función (`initFirmaPad` en
+  `app.js`), así que el color (`ctx.strokeStyle`) y el grosor
+  (`ctx.lineWidth`, 2.2 → 3) viven en un solo lugar y aplican a los 8
+  canvas de firma que existen (relator/asistente de Charla, investigador,
+  los 3 de jefaturas del HCR + el del trabajador, y EPP). Como las firmas
+  se suben a Drive/se insertan en los PDFs tal cual quedan dibujadas en el
+  canvas (los píxeles ya vienen con este color, no hay una conversión de
+  color aparte en la generación de PDF), no hace falta tocar nada en
+  `generarPdfCharlaSobrePlantilla` ni en los demás generadores.
+  - **"Que se noten más" sin agrandar los casilleros del PDF:** el pedido
+    de que las firmas "se vean más grandes" no se resolvió agrandando los
+    casilleros (`scaleToFit(w,h)` en cada generador de PDF) — eso hubiera
+    arriesgado que la firma se meta encima de las etiquetas vecinas, el
+    mismo problema de colisión ya resuelto antes para DURACION/FIRMA. La
+    causa real de que se vieran chicas era otra: el canvas donde se firma
+    es grande (para poder firmar cómodo con el dedo), pero pdf-lib escala
+    la imagen COMPLETA —incluyendo todo el margen vacío alrededor del
+    trazo— al tamaño del casillero, así que un trazo chico en un canvas
+    grande terminaba diminuto. Se agregó `recortarFirma(canvas)` (`app.js`)
+    que recorta el canvas al rectángulo real donde hay tinta (con un margen
+    chico) antes de convertirlo a imagen — mismo casillero de siempre, pero
+    la firma lo aprovecha mucho mejor. Se centralizó en
+    `firmaCanvasADataURL(canvasId)`, usada en todos los puntos donde antes
+    se hacía `canvas.toDataURL('image/png')` directo.
+  - **Ojo:** esto solo afecta firmas hechas de ahora en adelante — las
+    firmas que ya quedaron guardadas en PDFs/Drive antes de este cambio
+    siguen en su color/tamaño anterior (no hay forma de "repintar" una
+    imagen ya guardada sin regenerar ese documento).
 - **Login automático tipo Flota:** primera vez pide elegir cuenta de Google
   (`prompt: 'select_account'`). Después, mientras no se cierre sesión, se
   reconecta sola en segundo plano (`prompt: '', login_hint: email guardado`)

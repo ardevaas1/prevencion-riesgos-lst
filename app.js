@@ -1515,12 +1515,11 @@ function guardarDatosCharla(ev) {
     .filter(row => row.querySelector('.chk-row-input').checked)
     .map(row => ({ nombre: row.dataset.nombre, rut: row.dataset.rut, firma: null }));
 
-  const canvasRelator = document.getElementById('firma-canvas-relator');
   charlaEnProceso = {
     ...charlaEnProceso,
     plantilla,
     relator: f.relator.value,
-    firmaRelator: canvasRelator.toDataURL('image/png'),
+    firmaRelator: firmaCanvasADataURL('firma-canvas-relator'),
     obra: valorObra(f.obra, 'input-charla-obra-otra'),
     fecha: f.fecha.value,
     hora: plantilla ? '' : f.hora.value,
@@ -1555,8 +1554,7 @@ function avanzarAsistente() {
 }
 function confirmarFirmaAsistente() {
   if (firmaEstaVacia('firma-canvas-asistente')) { toast('Falta la firma', 'error'); return; }
-  const canvas = document.getElementById('firma-canvas-asistente');
-  charlaEnProceso.asistentes[charlaEnProceso.asistenteActual].firma = canvas.toDataURL('image/png');
+  charlaEnProceso.asistentes[charlaEnProceso.asistenteActual].firma = firmaCanvasADataURL('firma-canvas-asistente');
   avanzarAsistente();
 }
 function saltarFirmaAsistente() { avanzarAsistente(); }
@@ -2722,7 +2720,7 @@ async function guardarInvestigacion(ev) {
       medida3: f.medida3.value, responsable3: f.responsable3.value, fechaImpl3: f.fechaImpl3.value,
       observaciones: f.observaciones.value,
       investigadorNombreRut: f.investigadorNombreRut.value, investigadorCargo: f.investigadorCargo.value,
-      firmaInvestigador: document.getElementById('firma-canvas-investigador').toDataURL('image/png'),
+      firmaInvestigador: firmaCanvasADataURL('firma-canvas-investigador'),
     };
     const pdfLink = await generarYSubirPdfInvestigacion(datos);
 
@@ -3104,9 +3102,9 @@ function guardarDatosHcr(ev) {
     registros: seleccionadosHcrRadio('reg', HCR_REGISTROS_ADIC.length),
     tareas: [1,2,3,4].map(i => ({ tarea: f['tarea'+i].value, riesgo: f['riesgo'+i].value, medida: f['medida'+i].value })),
     supervisorNombre: f.supervisorNombre.value,
-    firmaSupervisor: document.getElementById('firma-canvas-hcr-supervisor').toDataURL('image/png'),
-    firmaJefeObra: document.getElementById('firma-canvas-hcr-jefeobra').toDataURL('image/png'),
-    firmaPrevencion: document.getElementById('firma-canvas-hcr-prevencion').toDataURL('image/png'),
+    firmaSupervisor: firmaCanvasADataURL('firma-canvas-hcr-supervisor'),
+    firmaJefeObra: firmaCanvasADataURL('firma-canvas-hcr-jefeobra'),
+    firmaPrevencion: firmaCanvasADataURL('firma-canvas-hcr-prevencion'),
     asistentes, asistenteActual: 0,
   };
   closePanel('panel-form-hcr');
@@ -3132,8 +3130,7 @@ function avanzarTrabajadorHcr() {
 }
 function confirmarFirmaTrabajadorHcr() {
   if (firmaEstaVacia('firma-canvas-trabajador-hcr')) { toast('Falta la firma', 'error'); return; }
-  const canvas = document.getElementById('firma-canvas-trabajador-hcr');
-  hcrEnProceso.asistentes[hcrEnProceso.asistenteActual].firma = canvas.toDataURL('image/png');
+  hcrEnProceso.asistentes[hcrEnProceso.asistenteActual].firma = firmaCanvasADataURL('firma-canvas-trabajador-hcr');
   avanzarTrabajadorHcr();
 }
 function saltarFirmaTrabajadorHcr() { avanzarTrabajadorHcr(); }
@@ -3725,8 +3722,9 @@ function initFirmaPad(canvasId) {
   // Azul tinta de lápiz Bic — se pidió explícitamente que TODAS las firmas
   // de la app (Charla, Investigación, HCR, EPP) se vean con este color,
   // no negro/gris. Como initFirmaPad es el único lugar que inicializa
-  // cualquier canvas de firma, cambiar acá alcanza para todas.
-  ctx.strokeStyle = '#1a2f6b'; ctx.lineWidth = 2.2; ctx.lineCap = 'round';
+  // cualquier canvas de firma, cambiar acá alcanza para todas. Trazo un
+  // poco más grueso que antes (2.2 → 3), también a pedido explícito.
+  ctx.strokeStyle = '#1a2f6b'; ctx.lineWidth = 3; ctx.lineCap = 'round';
   let activa = false;
   const pos = (e) => {
     const r = canvas.getBoundingClientRect();
@@ -3750,6 +3748,43 @@ function firmaEstaVacia(canvasId) {
   const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
   for (let i = 3; i < data.length; i += 4) if (data[i] !== 0) return false;
   return true;
+}
+// El canvas de firma es grande (para poder firmar cómodo con el dedo),
+// pero el trazo real ocupa solo una parte chica de ese espacio — al
+// insertarla en el PDF, pdf-lib escala la imagen COMPLETA (con todo el
+// margen vacío alrededor) al tamaño del casillero, así que la firma se
+// veía diminuta aunque el casillero fuera chico. Esto recorta el canvas al
+// rectángulo real donde hay trazo (con un margen chico alrededor), para
+// que al escalar al mismo casillero de siempre la firma se vea bastante
+// más grande y notoria — sin agrandar el casillero ni arriesgar que se
+// meta encima de las etiquetas vecinas.
+function recortarFirma(canvas) {
+  const { width, height } = canvas;
+  const ctx = canvas.getContext('2d');
+  const data = ctx.getImageData(0, 0, width, height).data;
+  let minX = width, minY = height, maxX = -1, maxY = -1;
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (data[(y * width + x) * 4 + 3] > 0) {
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+      }
+    }
+  }
+  if (maxX < 0) return canvas; // canvas vacío, nada que recortar
+  const pad = 6;
+  minX = Math.max(0, minX - pad); minY = Math.max(0, minY - pad);
+  maxX = Math.min(width - 1, maxX + pad); maxY = Math.min(height - 1, maxY + pad);
+  const w = maxX - minX + 1, h = maxY - minY + 1;
+  const recortado = document.createElement('canvas');
+  recortado.width = w; recortado.height = h;
+  recortado.getContext('2d').drawImage(canvas, minX, minY, w, h, 0, 0, w, h);
+  return recortado;
+}
+function firmaCanvasADataURL(canvasId) {
+  return recortarFirma(document.getElementById(canvasId)).toDataURL('image/png');
 }
 // El archivo de la firma de EPP se sube solo (no va dentro de un PDF con
 // más contexto alrededor, a diferencia de las firmas de Charla/HCR/
@@ -3780,7 +3815,7 @@ async function guardarEpp(ev) {
 
     const trabNombre = f.trabajador.value.split('|')[0];
     const trabRut = f.trabajador.value.split('|')[1] || '';
-    const canvasFirma = firmaConIdentificacion(canvas, trabNombre, trabRut);
+    const canvasFirma = firmaConIdentificacion(recortarFirma(canvas), trabNombre, trabRut);
     const blob = await new Promise(res => canvasFirma.toBlob(res, 'image/png'));
     let firmaLink = '';
     if (blob) {
