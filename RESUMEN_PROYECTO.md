@@ -598,6 +598,16 @@ ningún otro módulo de la app.
   "Correos autorizados") como para el admin, que entra por el listado de
   empresas del módulo y ve el detalle en un panel deslizante — así el admin
   puede revisar o subir documentos por una empresa si hace falta.
+- **Diseño de las secciones (`.subcont-section` en `style.css`):** cada
+  sección (Documentos generales, Carpeta de Empresa, Control Mensual,
+  Control de Herramientas, Correos autorizados) va en su propia tarjeta
+  blanca separada, en vez de filas sueltas flotando directo sobre el fondo.
+  Cada ítem de checklist tiene un círculo de estado (`iconoEstadoDoc` —
+  check verde si ya se subió algo, círculo vacío si no) y las secciones con
+  checklist fijo (Carpeta de Empresa, Control Mensual) muestran un badge de
+  avance tipo "3/6" (`progresoBadgeSubcontratista`, se pone verde
+  "completo" cuando llega al total) para ver de un vistazo cuánto falta sin
+  tener que leer cada fila.
 
 ## Generación de PDFs rellenados (Investigación de Accidente)
 
