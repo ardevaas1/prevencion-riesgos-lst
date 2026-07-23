@@ -30,5 +30,5 @@ const CONFIG = {
   // despliegas y pegas la URL acá, esas cuentas ya no necesitan ese acceso
   // (la app cae automáticamente a este camino solo cuando detecta que la
   // cuenta no tiene permiso directo sobre el Sheet).
-  SUBCONTRATISTAS_WEBAPP_URL: '',
+  SUBCONTRATISTAS_WEBAPP_URL: 'https://script.google.com/macros/s/AKfycbweJpxQTzVhSce2dvJsQnxclMVRDMFBLGvd9IL7_UY-LSLJFgFc1x2VvEyl7e7Rr8Xb/exec',
 };
