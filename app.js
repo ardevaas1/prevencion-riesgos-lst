@@ -599,6 +599,24 @@ function closePanel(id) {
   el.addEventListener('transitionend', onEnd, { once: true });
   setTimeout(onEnd, 320);
 }
+// Escala una firma para su casillero en un PDF, priorizando aprovechar el
+// ANCHO completo del casillero en vez de ajustarla entera adentro
+// (img.scaleToFit clásico): la mayoría de los casilleros de firma son
+// mucho más anchos que altos, pero el trazo de una firma real suele ser
+// más parecido a un cuadrado — ajustarla solo por alto dejaba mucho ancho
+// sin usar y se veía chica, aunque el trazo ya viniera recortado al área
+// real de tinta (ver recortarFirma). Se permite pasarse del alto del
+// casillero hasta 1.8x (a pedido explícito: mejor que se note un poco
+// más grande, aunque se pase un poco hacia arriba/abajo de la línea, en
+// vez de verse diminuta) — sigue centrada en la línea por quien la dibuja.
+function escalarFirmaCasillero(img, w, h) {
+  const porAncho = w / img.width;
+  const alturaConAncho = img.height * porAncho;
+  const alturaMaxima = h * 1.8;
+  if (alturaConAncho <= alturaMaxima) return { width: w, height: alturaConAncho };
+  const escala = alturaMaxima / img.height;
+  return { width: img.width * escala, height: alturaMaxima };
+}
 function fmtFecha(d) { return new Date(d).toLocaleDateString('es-CL'); }
 function hoyISO() { return new Date().toISOString().slice(0,10); }
 function horaActual() { return new Date().toTimeString().slice(0,5); }
@@ -1631,7 +1649,7 @@ async function generarYSubirPdfCharla(datos) {
     if (!dataUrl) return;
     const bytes = Uint8Array.from(atob(dataUrl.split(',')[1]), c => c.charCodeAt(0));
     const img = await pdfDoc.embedPng(bytes);
-    const dims = img.scaleToFit(w, h);
+    const dims = escalarFirmaCasillero(img, w, h);
     page.drawImage(img, { x, y: H - top - dims.height, width: dims.width, height: dims.height });
   }
 
@@ -1844,7 +1862,7 @@ async function generarPdfCharlaSobrePlantilla(datos, plantilla) {
     if (!dataUrl) return;
     const imgBytes = Uint8Array.from(atob(dataUrl.split(',')[1]), c => c.charCodeAt(0));
     const img = await pdfDoc.embedPng(imgBytes);
-    const dims = img.scaleToFit(w, h);
+    const dims = escalarFirmaCasillero(img, w, h);
     lista.forEach(pos => {
       const centroLinea = pos.y + 3.5;
       paginas[pos.page].drawImage(img, { x: pos.x, y: centroLinea - dims.height / 2, width: dims.width, height: dims.height });
@@ -1874,7 +1892,7 @@ async function generarPdfCharlaSobrePlantilla(datos, plantilla) {
       if (a.firma) {
         const imgBytes = Uint8Array.from(atob(a.firma.split(',')[1]), c => c.charCodeAt(0));
         const img = await pdfDoc.embedPng(imgBytes);
-        const dims = img.scaleToFit(70, 14);
+        const dims = escalarFirmaCasillero(img, 70, 14);
         const centroLinea = fila.y + 3.5;
         p.drawImage(img, { x: firmaX, y: centroLinea - dims.height / 2, width: dims.width, height: dims.height });
       }
@@ -2802,7 +2820,7 @@ async function generarYSubirPdfInvestigacion(datos) {
     if (!dataUrl) return;
     const bytes = Uint8Array.from(atob(dataUrl.split(',')[1]), c => c.charCodeAt(0));
     const img = await pdfDoc.embedPng(bytes);
-    const dims = img.scaleToFit(w, h);
+    const dims = escalarFirmaCasillero(img, w, h);
     page.drawImage(img, { x, y: H - top - dims.height, width: dims.width, height: dims.height });
   }
   const pages = { p1, p2 };
@@ -3207,7 +3225,7 @@ async function generarYSubirPdfHcr(datos) {
     if (!dataUrl) return;
     const bytes = Uint8Array.from(atob(dataUrl.split(',')[1]), c => c.charCodeAt(0));
     const img = await pdfDoc.embedPng(bytes);
-    const dims = img.scaleToFit(w, h);
+    const dims = escalarFirmaCasillero(img, w, h);
     page.drawImage(img, { x, y: H - top - dims.height, width: dims.width, height: dims.height });
   }
 

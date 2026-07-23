@@ -1150,21 +1150,27 @@ catálogo `ICONS` (`carpeta`, `hoja`) para los botones.
   canvas (los píxeles ya vienen con este color, no hay una conversión de
   color aparte en la generación de PDF), no hace falta tocar nada en
   `generarPdfCharlaSobrePlantilla` ni en los demás generadores.
-  - **"Que se noten más" sin agrandar los casilleros del PDF:** el pedido
-    de que las firmas "se vean más grandes" no se resolvió agrandando los
-    casilleros (`scaleToFit(w,h)` en cada generador de PDF) — eso hubiera
-    arriesgado que la firma se meta encima de las etiquetas vecinas, el
-    mismo problema de colisión ya resuelto antes para DURACION/FIRMA. La
-    causa real de que se vieran chicas era otra: el canvas donde se firma
+  - **"Que se noten más" — dos rondas:** primero se pensó que el problema
+    era solo el margen vacío alrededor del trazo: el canvas donde se firma
     es grande (para poder firmar cómodo con el dedo), pero pdf-lib escala
-    la imagen COMPLETA —incluyendo todo el margen vacío alrededor del
-    trazo— al tamaño del casillero, así que un trazo chico en un canvas
-    grande terminaba diminuto. Se agregó `recortarFirma(canvas)` (`app.js`)
-    que recorta el canvas al rectángulo real donde hay tinta (con un margen
-    chico) antes de convertirlo a imagen — mismo casillero de siempre, pero
-    la firma lo aprovecha mucho mejor. Se centralizó en
-    `firmaCanvasADataURL(canvasId)`, usada en todos los puntos donde antes
-    se hacía `canvas.toDataURL('image/png')` directo.
+    la imagen COMPLETA —incluyendo todo ese margen vacío— al tamaño del
+    casillero, así que un trazo chico en un canvas grande terminaba
+    diminuto. Se agregó `recortarFirma(canvas)` (`app.js`) que recorta el
+    canvas al rectángulo real donde hay tinta (con un margen chico) antes
+    de convertirlo a imagen, centralizado en `firmaCanvasADataURL(canvasId)`
+    (usada en todos los puntos donde antes se hacía
+    `canvas.toDataURL('image/png')` directo) — pero el cliente probó y
+    seguían viéndose chicas: el recorte ayuda, pero `scaleToFit(w,h)` sigue
+    ajustando la firma **entera adentro** del casillero (`Math.min` de las
+    dos proporciones), y como los casilleros de firma son mucho más anchos
+    que altos mientras el trazo de una firma real es más parecido a un
+    cuadrado, sobraba muchísimo ancho sin usar. Se reemplazó por
+    `escalarFirmaCasillero(img, w, h)`: prioriza aprovechar el ANCHO
+    completo del casillero y permite pasarse del alto hasta 1.8x (a pedido
+    explícito del cliente — mejor que se note más grande aunque se pase un
+    poco hacia arriba/abajo de la línea, en vez de verse diminuta pero bien
+    contenida). Con esto una firma ahora ocupa visiblemente más espacio del
+    casillero (verificado renderizando el PDF de prueba a imagen).
   - **Ojo:** esto solo afecta firmas hechas de ahora en adelante — las
     firmas que ya quedaron guardadas en PDFs/Drive antes de este cambio
     siguen en su color/tamaño anterior (no hay forma de "repintar" una
