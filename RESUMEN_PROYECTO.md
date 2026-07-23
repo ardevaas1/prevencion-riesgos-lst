@@ -19,6 +19,19 @@ repositorio de GitHub **separado**.
 - **Base de datos:** Google Sheets, vía Sheets API v4, leído/escrito directo
   desde el navegador con el token OAuth del usuario (`fetchSheet`,
   `appendSheet` en `app.js`).
+  - **Bug de Sheets, no de la app:** cada vez que se agrega una fila nueva
+    por la API, Google Sheets le extiende el formato del encabezado (verde
+    con letra blanca/negrita) a esa fila — pasa siempre, no es algo que
+    ocurrió una sola vez. `appendSheet` ahora limpia el formato de la fila
+    recién escrita en cada llamada (`limpiarFormatoFilaNueva`, deja fondo
+    blanco y letra negra normal), en vez de solo una vez al ejecutar
+    `APPS_SCRIPT_INIT.js` (que sigue sirviendo para limpiar filas viejas de
+    antes de este fix, pero no evitaba que las nuevas volvieran a salir
+    verdes). Como la API de formato pide el `sheetId` numérico (no el
+    nombre de la pestaña), se cachea un mapeo nombre→ID la primera vez
+    (`obtenerSheetIds`). Se dispara sin esperar la respuesta (fire-and-forget,
+    envuelto en try/catch) para no demorar el guardado por algo puramente
+    estético.
 - **Archivos (fotos, firmas, PDFs):** Google Drive API, subida directa
   multipart desde el navegador (`uploadFileToFolder` en `app.js`), a
   subcarpetas que se crean solas la primera vez que se necesitan. Dos formas

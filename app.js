@@ -299,7 +299,57 @@ async function appendSheet(range, values) {
     body: JSON.stringify({ range, majorDimension: 'ROWS', values }),
   });
   if (!res.ok) throw new Error(friendlyErr(res.status, await res.text()));
-  return res.json();
+  const data = await res.json();
+  // Google Sheets le pega el formato del encabezado (verde/negrita) a
+  // cualquier fila nueva agregada por la API — no es algo de una sola vez
+  // (crearHoja en APPS_SCRIPT_INIT.js limpia lo ya existente, pero cada
+  // fila NUEVA sale igual verde). Se limpia acá, en cada append, sin
+  // esperar la respuesta (es solo estética — no debe demorar el guardado
+  // ni bloquear si falla).
+  if (data.updates && data.updates.updatedRange) limpiarFormatoFilaNueva(data.updates.updatedRange);
+  return data;
+}
+
+// Mapa nombre-de-hoja → sheetId numérico (la API de formato lo pide por
+// ID, no por nombre) — se pide una sola vez y se reutiliza.
+let sheetIdsCache = null;
+async function obtenerSheetIds() {
+  if (sheetIdsCache) return sheetIdsCache;
+  await ensureToken();
+  const url = `${SHEETS_BASE}/${CONFIG.SHEET_ID}?fields=sheets.properties(sheetId,title)`;
+  const res = await fetch(url, { headers: authHeader() });
+  if (!res.ok) throw new Error(friendlyErr(res.status, await res.text()));
+  const data = await res.json();
+  sheetIdsCache = {};
+  data.sheets.forEach(s => { sheetIdsCache[s.properties.title] = s.properties.sheetId; });
+  return sheetIdsCache;
+}
+async function limpiarFormatoFilaNueva(updatedRange) {
+  try {
+    const m = /^'?([^'!]+)'?!([A-Za-z]+)(\d+)(?::([A-Za-z]+)(\d+))?$/.exec(updatedRange);
+    if (!m) return;
+    const nombreHoja = m[1], filaInicio = m[3], filaFin = m[5] || m[3];
+    const ids = await obtenerSheetIds();
+    const sheetId = ids[nombreHoja];
+    if (sheetId == null) return;
+    await ensureToken();
+    await fetch(`${SHEETS_BASE}/${CONFIG.SHEET_ID}:batchUpdate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeader() },
+      body: JSON.stringify({
+        requests: [{
+          repeatCell: {
+            range: { sheetId, startRowIndex: parseInt(filaInicio, 10) - 1, endRowIndex: parseInt(filaFin, 10) },
+            cell: { userEnteredFormat: {
+              backgroundColor: { red: 1, green: 1, blue: 1 },
+              textFormat: { foregroundColor: { red: 0, green: 0, blue: 0 }, bold: false },
+            } },
+            fields: 'userEnteredFormat(backgroundColor,textFormat)',
+          },
+        }],
+      }),
+    });
+  } catch (e) { console.warn('No se pudo limpiar el formato de la fila nueva', e); }
 }
 
 // ── Drive API — carpetas y subida de archivos ──────────────────
