@@ -683,6 +683,20 @@ a.action-btn { display: flex; align-items: center; justify-content: center; gap:
 .doc-file-label:active { background: var(--accent-soft); }
 .doc-file-label.selected { border-color: #2e7d32; color: #2e7d32; background: #e8f5e9; border-style: solid; }
 
+/* ── Modo Subcontratista ── pantalla fija e independiente (ver index.html),
+   incluso en escritorio: es intencionalmente una sola columna centrada, sin
+   sidebar, porque esta cuenta no navega a ningún otro lado. */
+.subcontratista-root {
+  position: fixed; inset: 0; z-index: 500;
+  background: var(--bg); overflow-y: auto;
+  scrollbar-width: none; -ms-overflow-style: none;
+}
+.subcontratista-root::-webkit-scrollbar { display: none; }
+.subcontratista-root-content {
+  max-width: 640px; width: 100%; margin: 0 auto;
+  padding: 16px 16px 32px; box-sizing: border-box;
+}
+
 /* ── Login screen ── */
 .login-screen {
   position: fixed; inset: 0;

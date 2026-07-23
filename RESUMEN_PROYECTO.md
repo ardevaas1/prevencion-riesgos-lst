@@ -76,12 +76,21 @@ repositorio de GitHub **separado**.
   la biblioteca (pdf-lib solo sabe escribir) — ver "Plantillas de Charla"
   más abajo.
 
-## Estructura de datos (Google Sheet, 10 pestañas)
+## Estructura de datos (Google Sheet, 13 pestañas)
 
 `TRABAJADORES`, `INSPECCIONES`, `CHARLAS`, `INCIDENTES`, `INVESTIGACIONES`,
-`HCR`, `DIAT`, `PROCEDIMIENTOS`, `ENTREGA_EPP`, `USUARIOS` (esta última
-creada pero sin usar todavía — pensada a futuro para roles admin/
-prevencionista/viewer, no implementado).
+`HCR`, `DIAT`, `PROCEDIMIENTOS`, `ENTREGA_EPP`, `USUARIOS`, `SUBCONTRATISTAS`,
+`SUBCONTRATISTAS_DOCS`.
+
+`USUARIOS` (`Email`, `Rol`, `Nombre`, `Empresa`) estaba creada pero sin usar
+desde el lanzamiento inicial — recién con el módulo Subcontratistas se
+empezó a leer de verdad: una fila con `Rol="subcontratista"` (y `Empresa`
+con el nombre de la empresa) activa el modo restringido para ese correo (ver
+"Módulo Subcontratistas" más abajo). Los roles `admin`/`prevencionista`/
+`viewer` siguen sin aplicar restricciones — cualquier correo que NO
+aparezca en `USUARIOS`, o que aparezca con otro Rol, tiene acceso normal
+completo a la app (compatibilidad con todo el personal actual, que nunca
+estuvo en esta hoja).
 
 Columnas agregadas después del lanzamiento inicial (ver `rowToX` en `app.js`
 para el mapeo exacto de índices):
@@ -268,6 +277,11 @@ vez de esperar un cambio que nunca ocurre.
 7. **Hoja de Control de Riesgos (HCR)** — módulo completamente separado del
    resto (a pedido explícito del cliente), sin relación con Incidentes ni
    Charlas. Ver sección "Generación de PDFs rellenados (HCR)" más abajo.
+8. **Subcontratistas** — para que empresas subcontratistas suban su propia
+   documentación (Carpeta de Empresa, Control Mensual, Control de
+   Herramientas). Cada empresa tiene su propia cuenta restringida, que
+   **no** puede entrar a ningún otro módulo ni ver los documentos de otra
+   empresa. Ver sección "Módulo Subcontratistas" más abajo.
 
 Inspecciones también tiene botón "Cerrar inspección" (Abierta → Cerrada).
 
@@ -515,6 +529,75 @@ dinámicamente:**
   documento**, en todas las páginas donde cada campo aparezca (el casillero
   se repite en cada página). El PDF resultante se sube a Drive tal cual —
   mismo número de páginas que el original, sin agregar ni quitar ninguna.
+
+## Módulo Subcontratistas
+
+Módulo para que empresas subcontratistas suban su propia documentación de
+seguridad, sin que una empresa pueda ver los documentos de otra ni entrar a
+ningún otro módulo de la app.
+
+- **Cómo se autoriza una cuenta subcontratista:** el admin agrega la empresa
+  desde el botón "+" del módulo (`abrirFormSubcontratista` → `guardarSubcontratista`
+  en `app.js`) — nombre de la empresa + correos autorizados (uno por línea).
+  Esto escribe una fila en `SUBCONTRATISTAS` y una fila por correo en
+  `USUARIOS` (`Rol="subcontratista"`, `Empresa=<nombre>`). Se puede agregar
+  más correos después desde el detalle de la empresa (formulario "+ Agregar"
+  al final de la vista, junto a "Correos autorizados").
+- **Modo restringido:** `cargarTodo()` (`app.js`) lee `USUARIOS` primero que
+  cualquier otra hoja y busca el correo logueado. Si tiene
+  `Rol="subcontratista"`, guarda su empresa en `miEmpresaSubcontratista` y
+  **no** carga el resto de las hojas de la operación (Trabajadores,
+  Incidentes, etc. — ni falta que hacen, esa cuenta nunca las va a ver).
+  `arrancarApp()` entonces la manda directo a `mostrarModoSubcontratista()`,
+  una pantalla fija e independiente (`#subcontratista-root` en
+  `index.html`) que reemplaza por completo a `#main`/`#desktop-home`/
+  `#desktop-sidebar` — no hay sidebar, no hay Inicio, no hay ningún botón
+  que lleve a otro módulo. Un correo que NO está en `USUARIOS` (o que está
+  con otro Rol) entra normal, con acceso completo, igual que siempre.
+- **Aislamiento — importante entender su alcance real:** los documentos se
+  guardan en el mismo Drive y el mismo Sheet que usa el resto de la app (así
+  lo pidió el cliente, en vez de una carpeta de Drive separada por empresa
+  con permisos de Google). El aislamiento entre subcontratistas es **a nivel
+  de la interfaz**: la pantalla de cada empresa solo muestra/permite subir
+  sus propios documentos, y una cuenta subcontratista jamás ve el resto de
+  la app. Pero como todas las cuentas necesitan acceso de Editor al mismo
+  Sheet para que la API funcione, alguien con conocimientos técnicos que
+  abriera las herramientas de desarrollador de su navegador podría, en
+  teoría, leer/escribir directamente por la API cualquier pestaña del Sheet
+  (no solo `SUBCONTRATISTAS_DOCS`) — igual que ya pasa hoy con cualquier
+  cuenta interna. Un aislamiento real a nivel de Google (carpeta de Drive
+  separada por empresa, compartida solo con esa cuenta) es técnicamente
+  posible pero exige que cada subcontratista "conecte" su carpeta una vez
+  vía Google Picker (el scope `drive.file` no permite crear archivos en una
+  carpeta ajena que la cuenta no abrió antes con la app) — se dejó fuera por
+  ahora porque agrega fricción de uso y no es el patrón que ya usa Flota.
+- **Las 3 carpetas de cada empresa** (checklist fijo, definido por el
+  cliente — `SUBCONT_CARPETA_EMPRESA`/`SUBCONT_CONTROL_MENSUAL` en
+  `app.js`):
+  - **Carpeta de Empresa** (una sola vez): Reglamento, Certificados
+    mutualidad, Miper, Procedimientos, Certificados EPP, Exámenes
+    ocupacionales.
+  - **Control Mensual** (se repite cada mes — selector `<input type="month">`,
+    mismo ítem con `Periodo="AAAA-MM"` distinto): Capacitaciones
+    específicas, Charlas diarias, Recambio EPP, Inspecciones, AST,
+    Cronograma, Certificados, Exámenes ocupacionales, Informe Mensual,
+    Listado de trabajadores.
+  - **Control de Herramientas y Extensiones Eléctricas**: sin checklist fijo
+    (a pedido explícito del cliente) — solo una carpeta libre donde se van
+    acumulando los archivos que suban.
+  - Además, **Reglamento de Subcontratista** y **Programa personalizado**:
+    un solo documento de cada uno, compartido por todas las empresas (los
+    sube el admin, `empresa="__GLOBAL__"` en `SUBCONTRATISTAS_DOCS`); las
+    cuentas subcontratistas solo pueden verlos, no reemplazarlos.
+- **Historial de subidas:** cada subida es una fila nueva en
+  `SUBCONTRATISTAS_DOCS` (no se sobrescribe la anterior) — la interfaz
+  siempre muestra la más reciente por ítem/período
+  (`ultimoDocSubcontratista`), pero el historial completo queda en el Sheet.
+- **Vista compartida:** el mismo HTML (`renderSubcontratistaDetalleHTML`) se
+  usa tanto para la cuenta subcontratista (pantalla fija, sin la sección
+  "Correos autorizados") como para el admin, que entra por el listado de
+  empresas del módulo y ve el detalle en un panel deslizante — así el admin
+  puede revisar o subir documentos por una empresa si hace falta.
 
 ## Generación de PDFs rellenados (Investigación de Accidente)
 

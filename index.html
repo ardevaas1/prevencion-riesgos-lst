@@ -204,6 +204,12 @@
       <div data-list="hcr"></div>
     </div>
 
+    <!-- SUBCONTRATISTAS (solo cuentas internas — cada empresa entra directo a su propia pantalla, ver #subcontratista-root) -->
+    <div class="page" id="page-subcontratistas">
+      <div class="sec-label">Subcontratistas</div>
+      <div data-list="subcontratistas"></div>
+    </div>
+
   </div>
 
   <!-- FAB agregar (contextual) -->
@@ -270,6 +276,7 @@
     <button class="desktop-nav-item" data-pag="trabajadores" onclick="irPagina('trabajadores')"><span class="dn-ic"><svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px"><circle cx="12" cy="7.5" r="3.5" stroke="currentColor" stroke-width="1.8"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span><span class="dn-lb">Trabajadores</span></button>
     <button class="desktop-nav-item" data-pag="charlas" onclick="irPagina('charlas')"><span class="dn-ic"><svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px"><path d="M4 5h16v11H9l-4 4v-4H4Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 9h8M8 12.3h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span><span class="dn-lb">Charlas de Seguridad</span></button>
     <button class="desktop-nav-item" data-pag="hcr" onclick="irPagina('hcr')"><span class="dn-ic"><svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px"><path d="M12 3 2 20h20L12 3Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M9.5 16h5M12 9v4.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span><span class="dn-lb">HCR</span></button>
+    <button class="desktop-nav-item" data-pag="subcontratistas" onclick="irPagina('subcontratistas')"><span class="dn-ic"><svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px"><path d="M4 21V6a1 1 0 0 1 1-1h6v16" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M11 10.5h8a1 1 0 0 1 1 1V21h-9" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M7 8h.01M7 11h.01M7 14h.01M7 17h.01M14.5 13.5h.01M14.5 16.5h.01M17.5 13.5h.01M17.5 16.5h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span><span class="dn-lb">Subcontratistas</span></button>
   </div>
   <div class="desktop-sidebar-footer">
     <div class="account-chip"><span class="account-chip-avatar">G</span><span class="account-chip-email" id="dt-footer-email"></span></div>
@@ -302,9 +309,34 @@
     <div data-list="charlas"></div>
   </div>
   <div class="dt-page" id="dt-page-hcr"><div data-list="hcr"></div></div>
+  <div class="dt-page" id="dt-page-subcontratistas"><div data-list="subcontratistas"></div></div>
 </div>
 
 </div><!-- /#app -->
+
+<!-- ===== MODO SUBCONTRATISTA ═════════════════════════════════
+     Pantalla fija e independiente del resto de la app: una cuenta
+     autorizada solo como subcontratista (USUARIOS.Rol="subcontratista")
+     nunca ve #main/#desktop-home/#desktop-sidebar — arrancarApp() la trae
+     acá directo y esta es su única pantalla mientras dure la sesión. ===== -->
+<div id="subcontratista-root" class="subcontratista-root hidden">
+  <div class="header">
+    <div class="header-bg header--cont" style="opacity:1;"></div>
+    <div class="header-bg"></div>
+    <div class="logo-badge"><img src="logo.png" class="header-logo" alt="LST"></div>
+    <div class="header-center">
+      <div class="header-title" id="subcontratista-root-empresa">Empresa</div>
+      <div class="header-sub" id="subcontratista-root-email"></div>
+    </div>
+    <div class="header-btn" onclick="cargarTodo(true).then(()=>mostrarModoSubcontratista(miEmpresaSubcontratista))">↻</div>
+  </div>
+  <div class="subcontratista-root-content">
+    <div id="subcontratista-root-body"></div>
+    <div class="sec-label" style="margin-top:24px;">Sesión</div>
+    <div class="account-chip"><span class="account-chip-avatar">G</span><span class="account-chip-email" id="subcontratista-root-email-2"></span></div>
+    <button class="action-btn" onclick="signOut()">Cerrar sesión</button>
+  </div>
+</div>
 
 <!-- ===== PANEL: Nuevo Trabajador ===== -->
 <div class="panel hidden" id="panel-form-trabajador">
@@ -513,6 +545,24 @@
       <button class="btn-add" type="submit">Guardar procedimiento</button>
     </form>
   </div>
+</div>
+
+<!-- ===== PANEL: Nuevo Subcontratista ===== -->
+<div class="panel hidden" id="panel-form-subcontratista">
+  <div class="panel-bar"><div class="pnl-back" onclick="closePanel('panel-form-subcontratista')">‹ Volver</div><div class="pnl-title">Nuevo subcontratista</div><div></div></div>
+  <div class="panel-body">
+    <form id="form-subcontratista" onsubmit="guardarSubcontratista(event)">
+      <div class="form-group"><label>Nombre de la empresa</label><input name="empresa" required></div>
+      <div class="form-group"><label>Correos autorizados (uno por línea)</label><textarea name="correos" required placeholder="correo1@empresa.com&#10;correo2@empresa.com"></textarea></div>
+      <button class="btn-add" type="submit">Guardar</button>
+    </form>
+  </div>
+</div>
+
+<!-- ===== PANEL: Detalle Subcontratista (vista admin) ===== -->
+<div class="panel hidden" id="panel-detalle-subcontratista">
+  <div class="panel-bar"><div class="pnl-back" onclick="closePanel('panel-detalle-subcontratista')">‹ Volver</div><div class="pnl-title" id="pnl-title-detalle-subcontratista">Empresa</div><div></div></div>
+  <div class="panel-body" id="detalle-subcontratista-body"></div>
 </div>
 
 <!-- ===== PANEL: Entrega de EPP ===== -->
@@ -1017,6 +1067,7 @@
     inicio: 'Inicio', inspecciones: 'Inspecciones', incidentes: 'Incidentes y Accidentes',
     procedimientos: 'Procedimientos de Trabajo Seguro', epp: 'Entrega de EPP',
     trabajadores: 'Trabajadores', charlas: 'Charlas de Seguridad', hcr: 'Hoja de Control de Riesgos (HCR)',
+    subcontratistas: 'Subcontratistas',
   };
 
   // Aplica el color del módulo activo a un header (móvil o el del sidebar
@@ -1047,7 +1098,7 @@
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     const map = { inicio:'page-inicio', inspecciones:'page-inspecciones', incidentes:'page-incidentes',
       procedimientos:'page-procedimientos', epp:'page-epp', trabajadores:'page-trabajadores', charlas:'page-charlas',
-      hcr:'page-hcr' };
+      hcr:'page-hcr', subcontratistas:'page-subcontratistas' };
     document.getElementById(map[nombre]).classList.add('active');
 
     // Header móvil: en Inicio muestra el logo (color naranjo de marca);
@@ -1087,7 +1138,7 @@
     const acciones = {
       inspecciones: abrirFormInspeccion, incidentes: abrirFormIncidente,
       procedimientos: abrirFormProcedimiento, epp: abrirFormEpp, trabajadores: abrirFormTrabajador,
-      charlas: abrirNuevaCharla, hcr: abrirNuevoHcr,
+      charlas: abrirNuevaCharla, hcr: abrirNuevoHcr, subcontratistas: abrirFormSubcontratista,
     };
     const fab = document.getElementById('fab-add');
     const dtFab = document.getElementById('dt-fab-add');

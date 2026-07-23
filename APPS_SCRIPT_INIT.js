@@ -90,7 +90,23 @@ function inicializarPlanilla() {
   ]);
 
   crearHoja(ss, 'USUARIOS', [
-    'Email', 'Rol', 'Nombre'
+    'Email', 'Rol', 'Nombre', 'Empresa'
+  ]);
+
+  // Empresas subcontratistas dadas de alta (módulo "Subcontratistas") —
+  // cada una tiene 1+ correos autorizados en USUARIOS (Rol="subcontratista",
+  // Empresa=este mismo nombre), que solo pueden entrar a su propio submódulo.
+  crearHoja(ss, 'SUBCONTRATISTAS', [
+    'Empresa', 'Fecha Alta'
+  ]);
+
+  // Registro de documentos subidos por cada subcontratista. Categoria:
+  // "global" (Reglamento/Programa, comunes a todos, Empresa="__GLOBAL__"),
+  // "empresa" (Carpeta de Empresa, ítem fijo, sin período),
+  // "mensual" (Control Mensual, ítem fijo + Período "AAAA-MM"),
+  // "herramientas" (Control de Herramientas, archivos libres sin ítem fijo).
+  crearHoja(ss, 'SUBCONTRATISTAS_DOCS', [
+    'Empresa', 'Categoria', 'Item', 'Periodo', 'Archivo', 'Link', 'Fecha', 'Subido Por'
   ]);
 
   // Elimina la hoja "Hoja 1" / "Sheet1" default si quedó vacía
@@ -139,7 +155,7 @@ function crearHoja(ss, nombre, encabezados) {
 function agregarmeComoAdmin() {
   const MI_CORREO = 'PON_AQUI_TU_CORREO@gmail.com'; // ← cámbialo
   const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('USUARIOS');
-  sh.appendRow([MI_CORREO.toLowerCase(), 'admin', '']);
+  sh.appendRow([MI_CORREO.toLowerCase(), 'admin', '', '']);
   try { SpreadsheetApp.getUi().alert('Agregado como admin: ' + MI_CORREO); }
   catch (e) { Logger.log('Agregado como admin: ' + MI_CORREO); }
 }
