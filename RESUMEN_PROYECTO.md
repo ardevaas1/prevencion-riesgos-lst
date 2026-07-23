@@ -861,11 +861,20 @@ propio "look Flota" que se le había dado a esta app antes.
 Antes de implementar se preguntó explícitamente (porque nuestros módulos
 no tienen sub-secciones internas como "Registrar/Pendientes/Historial" de
 Movimientos en Flota) si el sidebar dentro de un módulo debía mostrar solo
-ese módulo + "Volver al inicio", o mantener la lista completa de los 7
+ese módulo + "Volver al inicio", o mantener la lista completa de los N
 módulos para saltar entre ellos sin volver a Inicio. El cliente eligió
-**mantener la lista completa** (más rápido para el uso diario) — así que
-el sidebar de escritorio en la práctica se ve casi igual que antes, solo
-que ahora Inicio vive fuera de él.
+al principio **mantener la lista completa** (más rápido para el uso
+diario), pero después de agregar el módulo Subcontratistas (8 módulos en
+total, la lista ya no entraba completa en pantallas más bajas y necesitaba
+scroll) pidió **lo contrario**: que no se pueda saltar de un módulo a otro
+directamente, que haya que volver a Inicio primero — como en Flota. Se
+revirtió: el sidebar dentro de un módulo ahora muestra **solo** un botón
+"‹ Volver a Inicio" (`.desktop-nav-back` en `index.html`), sin lista de
+módulos ni los accesos rápidos de estadísticas que antes también dejaban
+saltar directo a otro módulo (se sacó el bloque `.desktop-stats` clickeable
+del sidebar — esas mismas estadísticas ya se ven en `#desktop-home`, no se
+perdió información, solo el atajo). El mobile nunca tuvo este problema: no
+tiene barra de navegación inferior, así que ya obligaba a volver a Inicio.
 
 Cambios concretos:
 - **Nuevo `#desktop-home`** (`index.html`): página de escritorio completa,
