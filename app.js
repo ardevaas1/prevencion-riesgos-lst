@@ -786,14 +786,30 @@ function onBuscarTrabajadores(v) {
   filtroTrabajadores = sinTildes((v || '').trim().toLowerCase());
   renderTrabajadores();
 }
+// A-Z de las 26 letras del abecedario (sin Ñ aparte — se agrupa con N,
+// como ordena localeCompare('es')) para el índice lateral de Trabajadores.
+const LETRAS_INDICE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 function renderTrabajadores() {
-  let activos = [...allTrabajadores].reverse();
+  let activos = [...allTrabajadores];
   if (filtroTrabajadores) {
     activos = activos.filter(t => [t.nombre, t.rut, t.cargo, t.empresa, t.obra]
       .some(v => sinTildes((v || '').toLowerCase()).includes(filtroTrabajadores)));
   }
-  if (activos.length === 0) { setListHTML('trabajadores', emptyState(filtroTrabajadores ? 'Sin resultados' : 'Sin trabajadores', filtroTrabajadores ? 'Prueba con otro nombre, RUT o cargo' : 'Agrega el primer trabajador')); return; }
-  setListHTML('trabajadores', activos.map(t => `
+  activos.sort((a, b) => sinTildes(a.nombre).localeCompare(sinTildes(b.nombre), 'es', { sensitivity: 'base' }));
+  if (activos.length === 0) {
+    setListHTML('trabajadores', emptyState(filtroTrabajadores ? 'Sin resultados' : 'Sin trabajadores', filtroTrabajadores ? 'Prueba con otro nombre, RUT o cargo' : 'Agrega el primer trabajador'));
+    renderIndiceAlfabeticoTrabajadores(new Set());
+    return;
+  }
+  const letrasConDatos = new Set();
+  let letraAnterior = null;
+  setListHTML('trabajadores', activos.map(t => {
+    const inicial = sinTildes(t.nombre.trim().charAt(0).toUpperCase());
+    const letra = LETRAS_INDICE.includes(inicial) ? inicial : '#';
+    letrasConDatos.add(letra);
+    const header = letra !== letraAnterior ? `<div class="letra-header" data-letra="${letra}">${letra}</div>` : '';
+    letraAnterior = letra;
+    return header + `
     <div class="card card--default" onclick="abrirFichaTrabajador('${esc(t.nombre).replace(/'/g,"\\'")}')">
       <div class="card-icon modulo-icon--inv">${ic('trabajadores',18)}</div>
       <div class="card-body">
@@ -804,7 +820,25 @@ function renderTrabajadores() {
         ${t.obra ? `<span class="badge gray">${ic('obra',11)} ${esc(t.obra)}</span>` : ''}</div>
       </div>
       <div class="card-arrow">›</div>
-    </div>`).join(''));
+    </div>`;
+  }).join(''));
+  renderIndiceAlfabeticoTrabajadores(letrasConDatos);
+}
+// Índice lateral A-Z (mismo patrón que Contactos/WhatsApp): las letras sin
+// ningún trabajador quedan atenuadas y no son clickeables; al tocar una
+// letra activa, salta al encabezado correspondiente en la lista visible
+// (mobile o escritorio, el que esté realmente en pantalla en ese momento).
+function renderIndiceAlfabeticoTrabajadores(letrasConDatos) {
+  const html = LETRAS_INDICE.map(l => letrasConDatos.has(l)
+    ? `<span class="az-item" onclick="saltarALetraTrabajador('${l}')">${l}</span>`
+    : `<span class="az-item az-item--vacia">${l}</span>`).join('');
+  document.querySelectorAll('[data-azindex="trabajadores"]').forEach(el => el.innerHTML = html);
+}
+function saltarALetraTrabajador(letra) {
+  const candidatos = document.querySelectorAll(`[data-list="trabajadores"] [data-letra="${letra}"]`);
+  for (const el of candidatos) {
+    if (el.offsetParent !== null) { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); break; }
+  }
 }
 
 function abrirFichaTrabajador(nombre) {
