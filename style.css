@@ -894,7 +894,9 @@ a.action-btn { display: flex; align-items: center; justify-content: center; gap:
     flex-direction: column;
     padding: 8px 0;
     overflow-y: auto;
+    scrollbar-width: none; -ms-overflow-style: none;
   }
+  .desktop-nav::-webkit-scrollbar { display: none; }
   .desktop-nav-item {
     display: flex;
     align-items: center;
