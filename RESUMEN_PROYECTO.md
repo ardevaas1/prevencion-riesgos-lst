@@ -1007,6 +1007,19 @@ catálogo `ICONS` (`carpeta`, `hoja`) para los botones.
   elementos de texto/ícono pequeños (`.pnl-back`, `.nav-item`,
   `.desktop-nav-item`, `.desktop-refresh-btn`) porque el scale solo no se
   notaba en ellos.
+- **Hover en escritorio:** en mobile el toque ya "avisa" con `:active`, pero
+  en desktop (con mouse) faltaba saber por dónde iba el puntero antes de
+  hacer clic. Se revisó qué clases realmente se usan en el HTML/JS (varias
+  clases heredadas de Flota como `.and-card`/`.cont-card`/`.equipo-card`/
+  `.movh-card`/`.inv-card` tenían reglas de hover pero **cero** uso real en
+  esta app — CSS muerto) y se agregó `:hover` donde faltaba en clases que sí
+  se usan: `.card` (toda fila de lista: Trabajadores, Incidentes,
+  Inspecciones, Procedimientos, EPP, Charlas, HCR), `.az-item` (índice A-Z),
+  `.header-btn`, `.pnl-back`, `.btn-add`, `.login-btn`, `.upload-label`/
+  `.doc-file-label`. El índice A-Z también quedó con `transition` (antes el
+  cambio de color/tamaño al presionar era instantáneo, sin animar) y un
+  `transform: scale(0.8)` más marcado en `:active` para que se sienta el
+  "apretón".
 - **Botones "Cerrar" (`action-btn`) van DENTRO de `.card-body`**, no como
   hermano — si van como hermano, `.card` (que es `display:flex;
   align-items:center`) los pone en fila en vez de apilarlos debajo del
