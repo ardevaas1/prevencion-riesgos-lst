@@ -1138,6 +1138,21 @@ catálogo `ICONS` (`carpeta`, `hoja`) para los botones.
 
 ## Decisiones de comportamiento
 
+- **Color de las firmas — azul tinta Bic (`#1a2f6b`):** pedido explícito del
+  cliente, para todas las firmas de la app (Charla, Investigación, HCR, EPP)
+  de ahora en adelante. Todos los canvas de firma se inicializan con la
+  misma función (`initFirmaPad` en `app.js`), así que el cambio de color
+  vive en un solo lugar (`ctx.strokeStyle`) y aplica a los 8 canvas de firma
+  que existen (relator/asistente de Charla, investigador, los 3 de
+  jefaturas del HCR + el del trabajador, y EPP). Como las firmas se suben a
+  Drive/se insertan en los PDFs tal cual quedan dibujadas en el canvas (los
+  píxeles ya vienen con este color, no hay una conversión de color aparte
+  en la generación de PDF), no hace falta tocar nada en
+  `generarPdfCharlaSobrePlantilla` ni en los demás generadores. **Ojo:**
+  esto solo afecta firmas hechas de ahora en adelante — las firmas que ya
+  quedaron guardadas en PDFs/Drive antes de este cambio siguen en su color
+  anterior (no hay forma de "repintar" una imagen ya guardada sin
+  regenerar ese documento).
 - **Login automático tipo Flota:** primera vez pide elegir cuenta de Google
   (`prompt: 'select_account'`). Después, mientras no se cierre sesión, se
   reconecta sola en segundo plano (`prompt: '', login_hint: email guardado`)

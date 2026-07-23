@@ -3722,7 +3722,11 @@ function initFirmaPad(canvasId) {
   canvas.width = canvas.clientWidth; canvas.height = 180;
   const ctx = canvas.getContext('2d');
   firmaCtx = ctx;
-  ctx.strokeStyle = '#1a1a1a'; ctx.lineWidth = 2.2; ctx.lineCap = 'round';
+  // Azul tinta de lápiz Bic — se pidió explícitamente que TODAS las firmas
+  // de la app (Charla, Investigación, HCR, EPP) se vean con este color,
+  // no negro/gris. Como initFirmaPad es el único lugar que inicializa
+  // cualquier canvas de firma, cambiar acá alcanza para todas.
+  ctx.strokeStyle = '#1a2f6b'; ctx.lineWidth = 2.2; ctx.lineCap = 'round';
   let activa = false;
   const pos = (e) => {
     const r = canvas.getBoundingClientRect();
