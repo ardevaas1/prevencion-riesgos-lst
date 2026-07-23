@@ -22,4 +22,13 @@ const CONFIG = {
   DRIVE_ROOT_FOLDER: '1evnqIfGtNCO_hQq9rwgBWMZgk647zMIe',
 
   SCOPES: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file',
+
+  // URL de la Web App de Apps Script para el módulo Subcontratistas (ver
+  // APPS_SCRIPT_WEBAPP_SUBCONTRATISTAS.js) — deja vacío ('') si no la vas a
+  // usar: en ese caso, las cuentas subcontratistas necesitan acceso directo
+  // de Editor al Sheet y al Drive, igual que el resto de la app. Si la
+  // despliegas y pegas la URL acá, esas cuentas ya no necesitan ese acceso
+  // (la app cae automáticamente a este camino solo cuando detecta que la
+  // cuenta no tiene permiso directo sobre el Sheet).
+  SUBCONTRATISTAS_WEBAPP_URL: '',
 };

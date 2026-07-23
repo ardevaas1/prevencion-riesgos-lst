@@ -59,8 +59,14 @@ repositorio de GitHub **separado**.
 - `logo.png`, `logo-white.png`, `logo-transparent.png` — logos LST heredados
   de Flota, cada uno usado en un lugar distinto (ver abajo).
 - `APPS_SCRIPT_INIT.js` — se pega en el Apps Script del Sheet para crear las
-  10 pestañas con encabezados. Es seguro volver a ejecutarlo cuando se agregan
+  13 pestañas con encabezados. Es seguro volver a ejecutarlo cuando se agregan
   columnas/pestañas nuevas (no borra datos existentes).
+- `APPS_SCRIPT_WEBAPP_SUBCONTRATISTAS.js` — **opcional**: Web App de Apps
+  Script que evita tener que darle acceso de Editor del Sheet/Drive a cada
+  cuenta subcontratista (ver "Módulo Subcontratistas" más abajo). Se
+  despliega aparte (no se pega junto con `APPS_SCRIPT_INIT.js`, aunque puede
+  vivir en el mismo proyecto de Apps Script), y su URL se pega en
+  `config.js` → `SUBCONTRATISTAS_WEBAPP_URL`.
 - `INSTRUCCIONES_SETUP.md` — guía paso a paso de configuración inicial
   (crear Sheet, carpeta Drive, credenciales Google Cloud, GitHub Pages).
 - `plantillas/` — PDFs originales del cliente usados como base para la
@@ -560,17 +566,47 @@ ningún otro módulo de la app.
   con permisos de Google). El aislamiento entre subcontratistas es **a nivel
   de la interfaz**: la pantalla de cada empresa solo muestra/permite subir
   sus propios documentos, y una cuenta subcontratista jamás ve el resto de
-  la app. Pero como todas las cuentas necesitan acceso de Editor al mismo
-  Sheet para que la API funcione, alguien con conocimientos técnicos que
+  la app. Si a esa cuenta se le da acceso de Editor directo al Sheet/Drive
+  (como a cualquier cuenta interna), alguien con conocimientos técnicos que
   abriera las herramientas de desarrollador de su navegador podría, en
   teoría, leer/escribir directamente por la API cualquier pestaña del Sheet
-  (no solo `SUBCONTRATISTAS_DOCS`) — igual que ya pasa hoy con cualquier
-  cuenta interna. Un aislamiento real a nivel de Google (carpeta de Drive
-  separada por empresa, compartida solo con esa cuenta) es técnicamente
-  posible pero exige que cada subcontratista "conecte" su carpeta una vez
-  vía Google Picker (el scope `drive.file` no permite crear archivos en una
-  carpeta ajena que la cuenta no abrió antes con la app) — se dejó fuera por
-  ahora porque agrega fricción de uso y no es el patrón que ya usa Flota.
+  (no solo `SUBCONTRATISTAS_DOCS`).
+- **Cómo evitar darle ese acceso directo — Web App de Apps Script como
+  proxy** (`APPS_SCRIPT_WEBAPP_SUBCONTRATISTAS.js`, opcional): el cliente
+  prefirió no tener que otorgarle acceso de Editor del Sheet/Drive a cada
+  subcontratista. Se agregó un endpoint de Apps Script que corre siempre
+  con los permisos de quien lo despliega (el admin), sin importar qué
+  cuenta lo llame — así una cuenta subcontratista no necesita NINGÚN
+  permiso directo sobre el Sheet ni el Drive.
+  - `cargarTodo()` (`app.js`) intenta primero el camino de siempre
+    (`fetchSheet` directo sobre `USUARIOS`). Si esa cuenta no tiene acceso
+    (falla con 403) y hay una `SUBCONTRATISTAS_WEBAPP_URL` configurada en
+    `config.js`, cae automáticamente al proxy: llama a la Web App
+    (`llamarWebAppSubcontratista('verificarAcceso', ...)`) para confirmar
+    que es un subcontratista legítimo y obtener su empresa, y de ahí en
+    adelante toda la sesión (`subcontratistaUsaProxy = true`) usa la Web
+    App tanto para leer documentos (`listarDocumentos`) como para subir
+    archivos nuevos (`subirDocumento`, mandando el archivo en base64) —
+    nunca intenta la API de Sheets/Drive directo de nuevo. Si NO hay Web
+    App configurada, o la cuenta sí tiene acceso directo, todo sigue
+    funcionando exactamente igual que antes (cero cambios para cuentas
+    internas ni para subcontratistas a las que sí se les dio acceso
+    directo).
+  - **Nivel de seguridad del proxy:** no valida criptográficamente que
+    quien llama es realmente el correo que dice ser (no verifica un token
+    firmado de Google) — solo confía en el correo que manda la app, y antes
+    de hacer cualquier cosa confirma que ese correo esté registrado como
+    `subcontratista` en `USUARIOS` con la empresa que está pidiendo. Es un
+    nivel razonable para este caso de uso, documentado explícitamente en el
+    propio archivo del script.
+  - Alternativa que se consideró y se descartó: aislamiento real a nivel de
+    Google (carpeta de Drive separada por empresa, compartida solo con esa
+    cuenta) — es técnicamente posible pero exige que cada subcontratista
+    "conecte" su carpeta una vez vía Google Picker (el scope `drive.file`
+    no permite crear archivos en una carpeta ajena que la cuenta no abrió
+    antes con la app), lo que agrega fricción de uso; el proxy de Apps
+    Script resuelve el mismo problema (no depender de la confianza en el
+    Sheet compartido) sin esa fricción.
 - **Las 3 carpetas de cada empresa** (checklist fijo, definido por el
   cliente — `SUBCONT_CARPETA_EMPRESA`/`SUBCONT_CONTROL_MENSUAL` en
   `app.js`):
