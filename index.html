@@ -75,7 +75,8 @@
   @keyframes loginSpin { to { transform: rotate(360deg); } }
 
   /* ── Versión escritorio: sidebar + panel central ── */
-  .dt-page { padding: 0 24px 24px; overflow-y:auto; }
+  .dt-page { padding: 0 24px 24px; overflow-y:auto; scrollbar-width:none; -ms-overflow-style:none; }
+  .dt-page::-webkit-scrollbar { display:none; }
   .dt-page .sec-label:first-child { margin-top: 4px; }
   @media (min-width: 900px) {
     #login-screen { width:100%; }
