@@ -222,7 +222,16 @@ vez de esperar un cambio que nunca ocurre.
    antes de subirse: agrega "Nombre — RUT" en una franja blanca debajo del
    trazo, para que quien abra el archivo directo sepa de quién es sin tener
    que cruzarlo con la fila del Sheet.
-5. **Trabajadores** — alta de nómina, con Obra. Al tocar un trabajador se abre
+5. **Trabajadores** — alta de nómina, con Obra. **La lista se ordena
+   alfabéticamente por nombre** (`localeCompare('es')`, ignorando
+   tildes/mayúsculas — Ñ queda entre N y O, como corresponde en español),
+   agrupada con un encabezado de letra pegajoso (`position: sticky`) que
+   queda fijo arriba mientras se hace scroll por ese grupo. Al lado, un
+   **índice A-Z fijo** (`.az-index`, mismo patrón que Contactos/WhatsApp)
+   permite saltar directo a una letra — las letras sin ningún trabajador
+   quedan atenuadas y no son clickeables. Si se filtra por el buscador, el
+   índice y los encabezados se recalculan sobre el resultado filtrado. Al
+   tocar un trabajador se abre
    su **ficha con historial**: EPP entregado, incidentes relacionados, y dos
    secciones nuevas — **Contrato de trabajo** (fecha inicio/término o
    "Indefinido", badge Vigente/Vencido, subir/ver PDF) y **Examen de altura
