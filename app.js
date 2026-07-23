@@ -3331,16 +3331,25 @@ function docsSubcontratista(empresa, categoria, item, periodo) {
 // Sheet); para mostrar el estado del ítem alcanza con la más reciente.
 function ultimoDocSubcontratista(lista) { return lista.length ? lista[lista.length - 1] : null; }
 
+// Círculo de estado (check verde si ya se subió algo, vacío si no) — mismo
+// lenguaje visual en todos los ítems de checklist del módulo, para que se
+// note de un vistazo qué falta sin tener que leer cada fila.
+function iconoEstadoDoc(subido) {
+  return `<div class="subcont-row-icon${subido ? ' ok' : ''}">${subido
+    ? '<svg viewBox="0 0 24 24" fill="none" style="width:14px;height:14px"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+    : '<svg viewBox="0 0 24 24" fill="none" style="width:8px;height:8px"><circle cx="12" cy="12" r="8" fill="currentColor"/></svg>'}</div>`;
+}
 function filaChecklistSubcontratista(empresa, categoria, item, periodo) {
   const doc = ultimoDocSubcontratista(docsSubcontratista(empresa, categoria, item, periodo));
   return `
-    <div class="doc-row">
-      <div>
-        <div style="font-weight:500;">${esc(item)}</div>
-        ${doc ? `<div style="font-size:11px;color:#888;">Subido ${esc((doc.fecha||'').split(',')[0] || doc.fecha)}</div>` : ''}
+    <div class="subcont-row">
+      ${iconoEstadoDoc(!!doc)}
+      <div class="subcont-row-body">
+        <div class="subcont-row-nombre">${esc(item)}</div>
+        <div class="subcont-row-fecha">${doc ? 'Subido ' + esc((doc.fecha||'').split(',')[0] || doc.fecha) : 'Pendiente'}</div>
       </div>
-      <div style="display:flex;align-items:center;gap:8px;">
-        ${doc ? `<a class="badge blue" href="${esc(doc.link)}" target="_blank">${ic('documento',12)} Ver</a>` : '<span style="font-size:12px;color:#aaa;">Sin subir</span>'}
+      <div class="subcont-row-actions">
+        ${doc ? `<a class="badge blue" href="${esc(doc.link)}" target="_blank">${ic('documento',12)} Ver</a>` : ''}
         <label class="doc-file-label${doc ? ' selected' : ''}" style="width:auto;padding:6px 12px;font-size:12px;">
           ${doc ? 'Reemplazar' : '+ Subir'}
           <input type="file" style="display:none" onchange="onSubirDocSubcontratista(this,'${esc(empresa)}','${categoria}','${esc(item)}','${periodo||''}')">
@@ -3350,13 +3359,23 @@ function filaChecklistSubcontratista(empresa, categoria, item, periodo) {
 }
 function filaGlobalSubcontratista(item, doc, esRestringido) {
   return `
-    <div class="doc-row">
-      <div style="font-weight:500;">${esc(item)}</div>
-      <div style="display:flex;align-items:center;gap:8px;">
-        ${doc ? `<a class="badge blue" href="${esc(doc.link)}" target="_blank">${ic('documento',12)} Ver documento</a>` : '<span style="font-size:12px;color:#aaa;">Sin subir</span>'}
+    <div class="subcont-row">
+      ${iconoEstadoDoc(!!doc)}
+      <div class="subcont-row-body">
+        <div class="subcont-row-nombre">${esc(item)}</div>
+        <div class="subcont-row-fecha">${doc ? 'Subido ' + esc((doc.fecha||'').split(',')[0] || doc.fecha) : 'Pendiente'}</div>
+      </div>
+      <div class="subcont-row-actions">
+        ${doc ? `<a class="badge blue" href="${esc(doc.link)}" target="_blank">${ic('documento',12)} Ver</a>` : ''}
         ${!esRestringido ? `<label class="doc-file-label${doc ? ' selected' : ''}" style="width:auto;padding:6px 12px;font-size:12px;">${doc ? 'Reemplazar' : '+ Subir'}<input type="file" style="display:none" onchange="onSubirDocGlobalSubcontratista(this,'${esc(item)}')"></label>` : ''}
       </div>
     </div>`;
+}
+function contarSubidosSubcontratista(empresa, categoria, items, periodo) {
+  return items.filter(item => ultimoDocSubcontratista(docsSubcontratista(empresa, categoria, item, periodo))).length;
+}
+function progresoBadgeSubcontratista(subidos, total) {
+  return `<span class="subcont-progress${subidos === total ? ' completo' : ''}">${subidos}/${total}</span>`;
 }
 
 function renderSubcontratistaDetalleHTML(empresa, esRestringido) {
@@ -3364,32 +3383,53 @@ function renderSubcontratistaDetalleHTML(empresa, esRestringido) {
   const programa = ultimoDocSubcontratista(docsSubcontratista('__GLOBAL__', 'global', 'Programa personalizado'));
   const correos = allUsuarios.filter(u => u.empresa === empresa && u.rol === 'subcontratista');
   const herramientas = docsSubcontratista(empresa, 'herramientas').slice().reverse();
+  const subidosEmpresa = contarSubidosSubcontratista(empresa, 'empresa', SUBCONT_CARPETA_EMPRESA, null);
+  const subidosMensual = contarSubidosSubcontratista(empresa, 'mensual', SUBCONT_CONTROL_MENSUAL, mesControlSubcontratista);
 
   return `
-    <div class="ficha-sec-title">Documentos generales</div>
-    ${filaGlobalSubcontratista('Reglamento de Subcontratista', reglamento, esRestringido)}
-    ${filaGlobalSubcontratista('Programa personalizado', programa, esRestringido)}
+    <div class="subcont-section">
+      <div class="subcont-section-head"><div class="subcont-section-title">Documentos generales</div></div>
+      ${filaGlobalSubcontratista('Reglamento de Subcontratista', reglamento, esRestringido)}
+      ${filaGlobalSubcontratista('Programa personalizado', programa, esRestringido)}
+    </div>
 
-    <div class="ficha-sec-title" style="margin-top:20px;">Carpeta de empresa</div>
-    ${SUBCONT_CARPETA_EMPRESA.map(item => filaChecklistSubcontratista(empresa, 'empresa', item, null)).join('')}
+    <div class="subcont-section">
+      <div class="subcont-section-head">
+        <div class="subcont-section-title">Carpeta de empresa</div>
+        ${progresoBadgeSubcontratista(subidosEmpresa, SUBCONT_CARPETA_EMPRESA.length)}
+      </div>
+      ${SUBCONT_CARPETA_EMPRESA.map(item => filaChecklistSubcontratista(empresa, 'empresa', item, null)).join('')}
+    </div>
 
-    <div class="ficha-sec-title" style="margin-top:20px;">Control mensual</div>
-    <input type="month" value="${mesControlSubcontratista}" onchange="onCambioMesSubcontratista(this.value,'${esc(empresa)}',${esRestringido})" style="margin-bottom:10px;padding:8px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit;">
-    ${SUBCONT_CONTROL_MENSUAL.map(item => filaChecklistSubcontratista(empresa, 'mensual', item, mesControlSubcontratista)).join('')}
+    <div class="subcont-section">
+      <div class="subcont-section-head">
+        <div class="subcont-section-title">Control mensual</div>
+        ${progresoBadgeSubcontratista(subidosMensual, SUBCONT_CONTROL_MENSUAL.length)}
+      </div>
+      <div class="subcont-mes-picker">
+        <svg viewBox="0 0 24 24" fill="none" style="width:16px;height:16px;color:var(--ink-soft);flex-shrink:0"><path d="M4 21V8l8-5 8 5v13" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M4 11h16" stroke="currentColor" stroke-width="1.5"/></svg>
+        <input type="month" value="${mesControlSubcontratista}" onchange="onCambioMesSubcontratista(this.value,'${esc(empresa)}',${esRestringido})">
+      </div>
+      ${SUBCONT_CONTROL_MENSUAL.map(item => filaChecklistSubcontratista(empresa, 'mensual', item, mesControlSubcontratista)).join('')}
+    </div>
 
-    <div class="ficha-sec-title" style="margin-top:20px;">Control de herramientas y extensiones eléctricas</div>
-    ${herramientas.length ? herramientas.map(d => `
-      <div class="doc-row"><a class="badge blue" href="${esc(d.link)}" target="_blank">${ic('documento',12)} ${esc(d.archivo)}</a><span style="font-size:11px;color:#888;">${esc((d.fecha||'').split(',')[0] || d.fecha)}</span></div>
-    `).join('') : '<div class="empty-sub" style="padding:8px 0;">Sin archivos subidos</div>'}
-    <label class="upload-label">+ Subir archivo<input type="file" style="display:none" onchange="onSubirDocSubcontratista(this,'${esc(empresa)}','herramientas','','')"></label>
+    <div class="subcont-section">
+      <div class="subcont-section-head"><div class="subcont-section-title">Control de herramientas y extensiones eléctricas</div></div>
+      ${herramientas.length ? herramientas.map(d => `
+        <div class="doc-row"><a class="badge blue" href="${esc(d.link)}" target="_blank">${ic('documento',12)} ${esc(d.archivo)}</a><span style="font-size:11px;color:#888;">${esc((d.fecha||'').split(',')[0] || d.fecha)}</span></div>
+      `).join('') : '<div class="empty-sub" style="padding:8px 0;">Sin archivos subidos</div>'}
+      <label class="upload-label" style="margin-top:10px;">+ Subir archivo<input type="file" style="display:none" onchange="onSubirDocSubcontratista(this,'${esc(empresa)}','herramientas','','')"></label>
+    </div>
 
     ${!esRestringido ? `
-    <div class="ficha-sec-title" style="margin-top:20px;">Correos autorizados</div>
-    ${correos.map(c => `<div class="doc-row"><span>${esc(c.correo)}</span></div>`).join('') || '<div class="empty-sub">Sin correos asignados todavía</div>'}
-    <form onsubmit="onAgregarCorreoSubcontratista(event,'${esc(empresa)}')" style="display:flex;gap:8px;margin-top:8px;">
-      <input name="correo" type="email" placeholder="correo@empresa.com" required style="flex:1;padding:10px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit;">
-      <button class="btn-add" type="submit" style="width:auto;padding:10px 16px;">+ Agregar</button>
-    </form>` : ''}
+    <div class="subcont-section">
+      <div class="subcont-section-head"><div class="subcont-section-title">Correos autorizados</div></div>
+      ${correos.map(c => `<div class="doc-row"><span>${esc(c.correo)}</span></div>`).join('') || '<div class="empty-sub">Sin correos asignados todavía</div>'}
+      <form onsubmit="onAgregarCorreoSubcontratista(event,'${esc(empresa)}')" style="display:flex;gap:8px;margin-top:10px;">
+        <input name="correo" type="email" placeholder="correo@empresa.com" required style="flex:1;padding:10px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit;">
+        <button class="btn-add" type="submit" style="width:auto;padding:10px 16px;">+ Agregar</button>
+      </form>
+    </div>` : ''}
   `;
 }
 
