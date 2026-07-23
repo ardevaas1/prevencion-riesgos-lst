@@ -32,6 +32,21 @@ const CHARLAS_BIBLIOTECA = [
   { codigo: 'SGSST-RG-010', nombre: 'Radiación UV', archivo: 'plantillas/charlas/SGSST-RG-010_Radiacion_UV.pdf' },
   { codigo: 'SGSST-RG-011', nombre: 'Ruido', archivo: 'plantillas/charlas/SGSST-RG-011_Ruido.pdf' },
 ];
+// Checklist fijo de documentos del módulo Subcontratistas — mismo listado
+// para todas las empresas (definido por el cliente, ver carpetas reales de
+// Drive que usan hoy). "Carpeta de Empresa" se sube una sola vez; "Control
+// Mensual" se repite mes a mes (mismo ítem, distinto Período "AAAA-MM").
+// "Control de Herramientas" no tiene checklist: es una carpeta libre.
+const SUBCONT_CARPETA_EMPRESA = [
+  'Reglamento', 'Certificados mutualidad', 'Miper', 'Procedimientos',
+  'Certificados EPP', 'Exámenes ocupacionales',
+];
+const SUBCONT_CONTROL_MENSUAL = [
+  'Capacitaciones específicas', 'Charlas diarias', 'Recambio EPP', 'Inspecciones',
+  'AST', 'Cronograma', 'Certificados', 'Exámenes ocupacionales',
+  'Informe Mensual', 'Listado de trabajadores',
+];
+
 const NIVELES_RIESGO = [
   { value: 'Bajo',  color: 'green' },
   { value: 'Medio', color: 'amber' },
@@ -117,6 +132,12 @@ function sugerirPlanAccion(descripcion, causas) {
 
 let userEmail = null;
 let userRole  = null; // admin | prevencionista | viewer
+
+// Si el correo logueado aparece en USUARIOS con Rol="subcontratista", queda
+// aquí el nombre de SU empresa (no null) — eso activa el modo restringido:
+// la app muestra únicamente la pantalla fija de esa empresa (mostrarModoSubcontratista),
+// sin sidebar, sin Inicio y sin acceso a ningún otro módulo (ver arrancarApp).
+let miEmpresaSubcontratista = null;
 
 // ── OAuth / Google Identity Services ───────────────────────────
 let tokenClient = null;
@@ -223,11 +244,12 @@ function signOut() {
   clearToken();
   localStorage.removeItem(HADLOGIN_KEY);
   localStorage.removeItem(EMAIL_KEY);
-  userEmail = null; userRole = null;
+  userEmail = null; userRole = null; miEmpresaSubcontratista = null;
   document.getElementById('main').classList.add('hidden');
   document.getElementById('desktop-home').classList.add('dt-oculto');
   document.getElementById('desktop-sidebar').classList.add('dt-oculto');
   document.getElementById('desktop-main').classList.add('dt-oculto');
+  document.getElementById('subcontratista-root').classList.add('hidden');
   mostrarLogin('Usa tu cuenta corporativa autorizada', false);
 }
 
@@ -364,6 +386,18 @@ async function uploadFileTrabajador(fileOrBlob, nombreTrabajador, prefixName, ex
   const folderId = await getTrabajadorFolder(nombreTrabajador);
   return uploadFileToFolder(fileOrBlob, folderId, prefixName, ext);
 }
+// Carpeta de cada subcontratista (Root/Subcontratistas/{empresa}/) — mismo
+// Drive que usa el resto de la app (así lo pidió el cliente); el
+// aislamiento entre empresas es a nivel de la interfaz y de a quién se le
+// entrega el correo/USUARIOS, igual que ya funciona hoy el resto de la app.
+async function getSubcontratistaFolder(empresa) {
+  const raiz = await getModuloFolder('Subcontratistas');
+  return findOrCreateFolder(empresa, raiz);
+}
+async function uploadFileSubcontratista(fileOrBlob, empresa, prefixName, ext) {
+  const folderId = await getSubcontratistaFolder(empresa);
+  return uploadFileToFolder(fileOrBlob, folderId, prefixName, ext);
+}
 
 // ── UI helpers ───────────────────────────────────────────────
 function splash(pct, hint) {
@@ -398,6 +432,7 @@ const ICONS = {
   lupa: '<svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
   carpeta: '<svg viewBox="0 0 24 24" fill="none"><path d="M3 6.5a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v9.5a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>',
   hoja: '<svg viewBox="0 0 24 24" fill="none"><rect x="4" y="3.5" width="16" height="17" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M4 9h16M4 14.5h16M9.5 9v11.5" stroke="currentColor" stroke-width="1.5"/></svg>',
+  subcontratistas: '<svg viewBox="0 0 24 24" fill="none"><path d="M4 21V6a1 1 0 0 1 1-1h6v16" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M11 10.5h8a1 1 0 0 1 1 1V21h-9" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M7 8h.01M7 11h.01M7 14h.01M7 17h.01M14.5 13.5h.01M14.5 16.5h.01M17.5 13.5h.01M17.5 16.5h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
 };
 function ic(name, size) { return ICONS[name].replace('<svg ', `<svg style="width:${size||14}px;height:${size||14}px;vertical-align:-3px;flex-shrink:0" `); }
 
@@ -407,6 +442,7 @@ function ic(name, size) { return ICONS[name].replace('<svg ', `<svg style="width
 const MODULOS_COLOR = {
   inspecciones: 'flota', incidentes: 'and', procedimientos: 'cont',
   epp: 'mov', trabajadores: 'inv', charlas: 'flota', hcr: 'and',
+  subcontratistas: 'cont',
 };
 
 function renderModulosHome() {
@@ -418,6 +454,7 @@ function renderModulosHome() {
     { key: 'trabajadores', nombre: 'Trabajadores', desc: 'Nómina de la obra' },
     { key: 'charlas', nombre: 'Charlas de Seguridad', desc: 'Alertas generadas por inspecciones' },
     { key: 'hcr', nombre: 'Hoja de Control de Riesgos (HCR)', desc: 'Registro diario por cuadrilla, antes de ejecutar el trabajo' },
+    { key: 'subcontratistas', nombre: 'Subcontratistas', desc: 'Documentación y control por empresa' },
   ].map(m => ({ ...m, color: MODULOS_COLOR[m.key] }));
   setListHTML('modulos-home', modulos.map(m => `
     <div class="modulo-card modulo-card--${m.color}" onclick="irPagina('${m.key}')">
@@ -525,13 +562,39 @@ let allCharlas = [];
 let allInvestigaciones = [];
 let allHcr = [];
 let allDiat = [];
+let allUsuarios = [];
+let allSubcontratistas = [];
+let allSubDocs = [];
 
 async function cargarTodo(silencioso) {
-  if (!silencioso) { splash(20, 'Conectando con Google Sheets...'); }
+  if (!silencioso) { splash(15, 'Verificando acceso...'); }
   else { toast('Actualizando datos...'); }
   try {
-    if (!silencioso) splash(45, 'Cargando información...');
-    const [trab, insp, inc, proc, epp, charlas, invest, hcr, diat] = await Promise.all([
+    // USUARIOS se lee primero y aparte: determina si esta cuenta es un
+    // subcontratista restringido, ANTES de decidir qué más hace falta
+    // cargar (a una cuenta restringida no le pedimos el resto de las hojas
+    // de la operación de LST — más rápido y evita traer al navegador datos
+    // que esa cuenta de todas formas nunca va a ver en la interfaz).
+    const usuarios = await fetchSheet(`'${CONFIG.SHEET_USUARIOS}'!A2:D2000`);
+    allUsuarios = usuarios.map((r,i) => rowToUsuario(r,i));
+    const cuenta = allUsuarios.find(u => u.correo === (userEmail||'').toLowerCase());
+    miEmpresaSubcontratista = (cuenta && cuenta.rol === 'subcontratista') ? cuenta.empresa : null;
+
+    if (!silencioso) splash(40, 'Cargando información...');
+
+    if (miEmpresaSubcontratista) {
+      const [subs, docs] = await Promise.all([
+        fetchSheet(`'${CONFIG.SHEET_SUBCONTRATISTAS}'!A2:B2000`),
+        fetchSheet(`'${CONFIG.SHEET_SUBCONTRATISTAS_DOCS}'!A2:H2000`),
+      ]);
+      allSubcontratistas = subs.map((r,i) => rowToSubcontratista(r,i));
+      allSubDocs = docs.map((r,i) => rowToSubDoc(r,i));
+      if (!silencioso) splash(100, '¡Listo!');
+      else toast('Datos actualizados ✓', 'ok');
+      return;
+    }
+
+    const [trab, insp, inc, proc, epp, charlas, invest, hcr, diat, subs, docs] = await Promise.all([
       fetchSheet(`'${CONFIG.SHEET_TRABAJADORES}'!A2:Z2000`),
       fetchSheet(`'${CONFIG.SHEET_INSPECCIONES}'!A2:M2000`),
       fetchSheet(`'${CONFIG.SHEET_INCIDENTES}'!A2:V2000`),
@@ -541,6 +604,8 @@ async function cargarTodo(silencioso) {
       fetchSheet(`'${CONFIG.SHEET_INVESTIGACIONES}'!A2:AT2000`),
       fetchSheet(`'${CONFIG.SHEET_HCR}'!A2:V2000`),
       fetchSheet(`'${CONFIG.SHEET_DIAT}'!A2:BA2000`),
+      fetchSheet(`'${CONFIG.SHEET_SUBCONTRATISTAS}'!A2:B2000`),
+      fetchSheet(`'${CONFIG.SHEET_SUBCONTRATISTAS_DOCS}'!A2:H2000`),
     ]);
     if (!silencioso) splash(85, 'Preparando la app...');
     allTrabajadores = trab.map((r,i) => rowToTrabajador(r,i));
@@ -552,8 +617,11 @@ async function cargarTodo(silencioso) {
     allInvestigaciones = invest.map((r,i) => ({ fila: i+2, n: r[0]||'' }));
     allHcr = hcr.map((r,i) => ({ fila: i+2, n: r[0]||'', fecha: r[1]||'', obra: r[2]||'', actividad: r[3]||'', area: r[4]||'', pdf: r[19]||'' }));
     allDiat = diat.map((r,i) => ({ fila: i+2, n: r[0]||'' }));
+    allSubcontratistas = subs.map((r,i) => rowToSubcontratista(r,i));
+    allSubDocs = docs.map((r,i) => rowToSubDoc(r,i));
     renderDashboard();
     renderTrabajadores(); renderInspecciones(); renderIncidentes(); renderProcedimientos(); renderEpp(); renderCharlas(); renderHcr();
+    renderSubcontratistas();
     if (!silencioso) splash(100, '¡Listo!');
     else toast('Datos actualizados ✓', 'ok');
   } catch (e) {
@@ -610,6 +678,17 @@ function rowToProcedimiento(r, i) {
 function rowToEpp(r, i) {
   return { fila: i+2, n: r[0]||'', fecha: r[1]||'', trabajador: r[2]||'', rut: r[3]||'', epp: r[4]||'',
     cantidad: r[5]||'', firma: r[6]||'', responsable: r[7]||'', fechaRegistro: r[8]||'' };
+}
+function rowToUsuario(r, i) {
+  return { fila: i+2, correo: (r[0]||'').trim().toLowerCase(), rol: (r[1]||'').trim().toLowerCase(),
+    nombre: r[2]||'', empresa: r[3]||'' };
+}
+function rowToSubcontratista(r, i) {
+  return { fila: i+2, empresa: r[0]||'', fechaAlta: r[1]||'' };
+}
+function rowToSubDoc(r, i) {
+  return { fila: i+2, empresa: r[0]||'', categoria: r[1]||'', item: r[2]||'', periodo: r[3]||'',
+    archivo: r[4]||'', link: r[5]||'', fecha: r[6]||'', subidoPor: r[7]||'' };
 }
 // Una entrega de EPP es UNA fila con todos los ítems juntos en la columna
 // "EPP Entregado" (ej. "Casco (1); Guantes (2)"), igual que "Asistentes"
@@ -3171,6 +3250,194 @@ async function guardarProcedimiento(ev) {
 }
 
 // ============================================================
+// MÓDULO: SUBCONTRATISTAS
+// ------------------------------------------------------------
+// Dos vistas comparten el mismo HTML (renderSubcontratistaDetalleHTML):
+//  - Admin (interno): entra por el listado de empresas (renderSubcontratistas,
+//    página normal del módulo) y ve el detalle dentro de un panel deslizante.
+//  - Cuenta subcontratista (USUARIOS.Rol="subcontratista"): NUNCA ve el
+//    listado ni ningún otro módulo — arrancarApp() la manda directo a
+//    mostrarModoSubcontratista(), una pantalla fija aparte (#subcontratista-root)
+//    con SOLO la empresa que le corresponde.
+// ============================================================
+function renderSubcontratistas() {
+  if (allSubcontratistas.length === 0) {
+    setListHTML('subcontratistas', emptyState('Sin subcontratistas', 'Agrega el primero con el botón +'));
+    return;
+  }
+  setListHTML('subcontratistas', allSubcontratistas.map(s => {
+    const correos = allUsuarios.filter(u => u.empresa === s.empresa && u.rol === 'subcontratista').length;
+    return `
+    <div class="card card--default" onclick="abrirDetalleSubcontratista('${esc(s.empresa)}')">
+      <div class="card-icon modulo-icon--cont">${ic('subcontratistas',18)}</div>
+      <div class="card-body">
+        <div class="card-title">${esc(s.empresa)}</div>
+        <div class="card-sub">${correos} correo(s) autorizado(s)</div>
+      </div>
+      <div class="card-chevron"><svg viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+    </div>`;
+  }).join(''));
+}
+
+function abrirFormSubcontratista() {
+  const f = document.getElementById('form-subcontratista');
+  f.reset();
+  openPanel('panel-form-subcontratista');
+}
+async function guardarSubcontratista(ev) {
+  ev.preventDefault();
+  const f = ev.target;
+  try {
+    const empresa = f.empresa.value.trim();
+    if (allSubcontratistas.some(s => s.empresa.toLowerCase() === empresa.toLowerCase())) {
+      toast('Ya existe un subcontratista con ese nombre', 'error');
+      return;
+    }
+    const correos = f.correos.value.split('\n').map(s => s.trim()).filter(Boolean);
+    await appendSheet(`'${CONFIG.SHEET_SUBCONTRATISTAS}'!A:B`, [[empresa, new Date().toLocaleString('es-CL')]]);
+    if (correos.length) {
+      await appendSheet(`'${CONFIG.SHEET_USUARIOS}'!A:D`, correos.map(c => [c.toLowerCase(), 'subcontratista', '', empresa]));
+    }
+    toast('Subcontratista agregado ✓', 'ok');
+    closePanel('panel-form-subcontratista');
+    await cargarTodo(true);
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+let empresaSubcontratistaActual = null;
+let mesControlSubcontratista = new Date().toISOString().slice(0,7);
+
+function abrirDetalleSubcontratista(empresa) {
+  empresaSubcontratistaActual = empresa;
+  document.getElementById('pnl-title-detalle-subcontratista').textContent = empresa;
+  document.getElementById('detalle-subcontratista-body').innerHTML = renderSubcontratistaDetalleHTML(empresa, false);
+  openPanel('panel-detalle-subcontratista');
+}
+// Pantalla fija de la cuenta subcontratista — sin panel, sin "Volver"
+// (no hay a dónde volver: esta ES toda su app).
+function mostrarModoSubcontratista(empresa) {
+  document.getElementById('subcontratista-root').classList.remove('hidden');
+  document.getElementById('subcontratista-root-empresa').textContent = empresa;
+  document.getElementById('subcontratista-root-email').textContent = userEmail || '';
+  document.getElementById('subcontratista-root-email-2').textContent = userEmail || '';
+  document.getElementById('subcontratista-root-body').innerHTML = renderSubcontratistaDetalleHTML(empresa, true);
+}
+
+function docsSubcontratista(empresa, categoria, item, periodo) {
+  return allSubDocs.filter(d => d.empresa === empresa && d.categoria === categoria &&
+    (item == null || d.item === item) && (periodo == null || d.periodo === periodo));
+}
+// Cada subida nueva se agrega como fila aparte (queda historial en el
+// Sheet); para mostrar el estado del ítem alcanza con la más reciente.
+function ultimoDocSubcontratista(lista) { return lista.length ? lista[lista.length - 1] : null; }
+
+function filaChecklistSubcontratista(empresa, categoria, item, periodo) {
+  const doc = ultimoDocSubcontratista(docsSubcontratista(empresa, categoria, item, periodo));
+  return `
+    <div class="doc-row">
+      <div>
+        <div style="font-weight:500;">${esc(item)}</div>
+        ${doc ? `<div style="font-size:11px;color:#888;">Subido ${esc((doc.fecha||'').split(',')[0] || doc.fecha)}</div>` : ''}
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        ${doc ? `<a class="badge blue" href="${esc(doc.link)}" target="_blank">${ic('documento',12)} Ver</a>` : '<span style="font-size:12px;color:#aaa;">Sin subir</span>'}
+        <label class="doc-file-label${doc ? ' selected' : ''}" style="width:auto;padding:6px 12px;font-size:12px;">
+          ${doc ? 'Reemplazar' : '+ Subir'}
+          <input type="file" style="display:none" onchange="onSubirDocSubcontratista(this,'${esc(empresa)}','${categoria}','${esc(item)}','${periodo||''}')">
+        </label>
+      </div>
+    </div>`;
+}
+function filaGlobalSubcontratista(item, doc, esRestringido) {
+  return `
+    <div class="doc-row">
+      <div style="font-weight:500;">${esc(item)}</div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        ${doc ? `<a class="badge blue" href="${esc(doc.link)}" target="_blank">${ic('documento',12)} Ver documento</a>` : '<span style="font-size:12px;color:#aaa;">Sin subir</span>'}
+        ${!esRestringido ? `<label class="doc-file-label${doc ? ' selected' : ''}" style="width:auto;padding:6px 12px;font-size:12px;">${doc ? 'Reemplazar' : '+ Subir'}<input type="file" style="display:none" onchange="onSubirDocGlobalSubcontratista(this,'${esc(item)}')"></label>` : ''}
+      </div>
+    </div>`;
+}
+
+function renderSubcontratistaDetalleHTML(empresa, esRestringido) {
+  const reglamento = ultimoDocSubcontratista(docsSubcontratista('__GLOBAL__', 'global', 'Reglamento de Subcontratista'));
+  const programa = ultimoDocSubcontratista(docsSubcontratista('__GLOBAL__', 'global', 'Programa personalizado'));
+  const correos = allUsuarios.filter(u => u.empresa === empresa && u.rol === 'subcontratista');
+  const herramientas = docsSubcontratista(empresa, 'herramientas').slice().reverse();
+
+  return `
+    <div class="ficha-sec-title">Documentos generales</div>
+    ${filaGlobalSubcontratista('Reglamento de Subcontratista', reglamento, esRestringido)}
+    ${filaGlobalSubcontratista('Programa personalizado', programa, esRestringido)}
+
+    <div class="ficha-sec-title" style="margin-top:20px;">Carpeta de empresa</div>
+    ${SUBCONT_CARPETA_EMPRESA.map(item => filaChecklistSubcontratista(empresa, 'empresa', item, null)).join('')}
+
+    <div class="ficha-sec-title" style="margin-top:20px;">Control mensual</div>
+    <input type="month" value="${mesControlSubcontratista}" onchange="onCambioMesSubcontratista(this.value,'${esc(empresa)}',${esRestringido})" style="margin-bottom:10px;padding:8px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit;">
+    ${SUBCONT_CONTROL_MENSUAL.map(item => filaChecklistSubcontratista(empresa, 'mensual', item, mesControlSubcontratista)).join('')}
+
+    <div class="ficha-sec-title" style="margin-top:20px;">Control de herramientas y extensiones eléctricas</div>
+    ${herramientas.length ? herramientas.map(d => `
+      <div class="doc-row"><a class="badge blue" href="${esc(d.link)}" target="_blank">${ic('documento',12)} ${esc(d.archivo)}</a><span style="font-size:11px;color:#888;">${esc((d.fecha||'').split(',')[0] || d.fecha)}</span></div>
+    `).join('') : '<div class="empty-sub" style="padding:8px 0;">Sin archivos subidos</div>'}
+    <label class="upload-label">+ Subir archivo<input type="file" style="display:none" onchange="onSubirDocSubcontratista(this,'${esc(empresa)}','herramientas','','')"></label>
+
+    ${!esRestringido ? `
+    <div class="ficha-sec-title" style="margin-top:20px;">Correos autorizados</div>
+    ${correos.map(c => `<div class="doc-row"><span>${esc(c.correo)}</span></div>`).join('') || '<div class="empty-sub">Sin correos asignados todavía</div>'}
+    <form onsubmit="onAgregarCorreoSubcontratista(event,'${esc(empresa)}')" style="display:flex;gap:8px;margin-top:8px;">
+      <input name="correo" type="email" placeholder="correo@empresa.com" required style="flex:1;padding:10px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit;">
+      <button class="btn-add" type="submit" style="width:auto;padding:10px 16px;">+ Agregar</button>
+    </form>` : ''}
+  `;
+}
+
+async function onSubirDocSubcontratista(inputEl, empresa, categoria, item, periodo) {
+  const file = inputEl.files[0];
+  if (!file) return;
+  try {
+    const prefix = [categoria, item, periodo].filter(Boolean).join('_').replace(/\s+/g, '-');
+    const up = await uploadFileSubcontratista(file, empresa, prefix);
+    await appendSheet(`'${CONFIG.SHEET_SUBCONTRATISTAS_DOCS}'!A:H`, [[
+      empresa, categoria, item || '', periodo || '', up.name, up.link,
+      new Date().toLocaleString('es-CL'), userEmail || ''
+    ]]);
+    toast('Documento subido ✓', 'ok');
+    await cargarTodo(true);
+    if (miEmpresaSubcontratista) mostrarModoSubcontratista(empresa); else abrirDetalleSubcontratista(empresa);
+  } catch (e) { toast(e.message, 'error'); }
+}
+async function onSubirDocGlobalSubcontratista(inputEl, item) {
+  const file = inputEl.files[0];
+  if (!file) return;
+  try {
+    const up = await uploadFileSubcontratista(file, '__GLOBAL__', item.replace(/\s+/g, '-'));
+    await appendSheet(`'${CONFIG.SHEET_SUBCONTRATISTAS_DOCS}'!A:H`, [[
+      '__GLOBAL__', 'global', item, '', up.name, up.link,
+      new Date().toLocaleString('es-CL'), userEmail || ''
+    ]]);
+    toast('Documento actualizado ✓', 'ok');
+    await cargarTodo(true);
+    if (empresaSubcontratistaActual) abrirDetalleSubcontratista(empresaSubcontratistaActual);
+  } catch (e) { toast(e.message, 'error'); }
+}
+function onCambioMesSubcontratista(valor, empresa, esRestringido) {
+  mesControlSubcontratista = valor;
+  if (esRestringido) mostrarModoSubcontratista(empresa); else abrirDetalleSubcontratista(empresa);
+}
+async function onAgregarCorreoSubcontratista(ev, empresa) {
+  ev.preventDefault();
+  const correo = ev.target.correo.value.trim().toLowerCase();
+  try {
+    await appendSheet(`'${CONFIG.SHEET_USUARIOS}'!A:D`, [[correo, 'subcontratista', '', empresa]]);
+    toast('Correo agregado ✓', 'ok');
+    await cargarTodo(true);
+    abrirDetalleSubcontratista(empresa);
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+// ============================================================
 // MÓDULO: ENTREGA DE EPP (con firma)
 // ============================================================
 function opcionesEppDisponibles() {
@@ -3390,19 +3657,32 @@ async function arrancarApp() {
 
   await cargarTodo();
 
-  // Revela la app con una pequeña animación de aparición, en vez de
-  // que todo salte de golpe apenas termina de cargar. Siempre arranca en
-  // Inicio: en escritorio esa es la página completa sin sidebar
-  // (desktop-home); el sidebar + panel central solo aparecen al entrar
-  // a un módulo (ver irPagina en index.html).
-  const main = document.getElementById('main');
-  const dtHome = document.getElementById('desktop-home');
-  irPagina('inicio');
-  main.classList.remove('hidden');
-  [main, dtHome].forEach(el => el.classList.add('app-enter'));
-  setTimeout(() => [main, dtHome].forEach(el => el.classList.remove('app-enter')), 500);
-
   const splashEl = document.getElementById('splash');
+
+  // Una cuenta subcontratista (USUARIOS.Rol="subcontratista") nunca ve
+  // Inicio ni el resto de los módulos — cargarTodo() ya detectó esto y dejó
+  // el nombre de su empresa en miEmpresaSubcontratista. Se le muestra
+  // directamente su pantalla fija (#subcontratista-root) en vez de #main/
+  // #desktop-home, que quedan ocultos igual que si nunca hubieran existido.
+  if (miEmpresaSubcontratista) {
+    mostrarModoSubcontratista(miEmpresaSubcontratista);
+    const root = document.getElementById('subcontratista-root');
+    root.classList.add('app-enter');
+    setTimeout(() => root.classList.remove('app-enter'), 500);
+  } else {
+    // Revela la app con una pequeña animación de aparición, en vez de
+    // que todo salte de golpe apenas termina de cargar. Siempre arranca en
+    // Inicio: en escritorio esa es la página completa sin sidebar
+    // (desktop-home); el sidebar + panel central solo aparecen al entrar
+    // a un módulo (ver irPagina en index.html).
+    const main = document.getElementById('main');
+    const dtHome = document.getElementById('desktop-home');
+    irPagina('inicio');
+    main.classList.remove('hidden');
+    [main, dtHome].forEach(el => el.classList.add('app-enter'));
+    setTimeout(() => [main, dtHome].forEach(el => el.classList.remove('app-enter')), 500);
+  }
+
   splashEl.style.opacity = '0';
   setTimeout(() => { splashEl.classList.add('hidden'); splashEl.style.opacity = ''; }, 380);
 }
