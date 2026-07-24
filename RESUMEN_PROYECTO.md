@@ -121,7 +121,10 @@ para el mapeo exacto de índices):
   (U), `Teléfono` (V), `Pueblo Originario` (W), `Tipo Contrato` (X), `Tipo
   Ingreso` (Y), `Categoría Ocupacional` (Z) — datos personales estáticos
   (no cambian entre incidentes), ver "Datos personales del trabajador
-  (prellenado de DIAT/Investigación)" más abajo.
+  (prellenado de DIAT/Investigación)" más abajo. `Correo` (AA, opcional).
+  `Especialidades Supervisor` (AB, lista separada por `; `, solo aplica si
+  `Es Supervisor` = "Sí" — vacío = supervisor general) ver "Supervisor de
+  obra" en Módulos de la app.
 - `INSPECCIONES`: `Obra` (M).
 - `INCIDENTES`: `Respaldo Cierre` (N), `Obra` (O), `Días Perdidos` (P),
   `Investigación Estado` (Q), `Investigación Responsable` (R), `Investigación
@@ -268,13 +271,24 @@ vez de esperar un cambio que nunca ocurre.
    `panel-editar-altura`). Replica el patrón de ficha de equipo de Flota.
    **Supervisor de obra:** un trabajador se puede marcar como supervisor
    (checkbox al crearlo, o botón "Marcar como supervisor de esta obra" /
-   "Quitar rol de supervisor" en su ficha — `toggleSupervisor` en `app.js`).
+   "Editar rol de supervisor" en su ficha, que abre `panel-editar-supervisor`
+   — `abrirEditarSupervisor` / `guardarSupervisor` en `app.js`).
    No hay asignación individual de a quién supervisa: **un supervisor queda
    a cargo automáticamente de todos los trabajadores Activos de su misma
-   Obra** (`supervisorDeObra(obra)` / `trabajadoresACargoDe(supervisor)` en
-   `app.js`), mismo patrón simple de "Obra" que ya usa el resto de la app —
+   Obra** (`supervisorDeObra(obra, tema)` / `trabajadoresACargoDe(supervisor)`
+   en `app.js`), mismo patrón simple de "Obra" que ya usa el resto de la app —
    decisión tomada para no tener que mantener una lista de asignaciones
-   aparte. Efectos concretos de marcar a alguien como supervisor:
+   aparte. Como en una misma obra puede haber varios supervisores cubriendo
+   distintas cosas (ej. uno de trabajo en altura, otro de EPP), cada
+   supervisor puede marcar además sus **especialidades** (checklist con el
+   mismo catálogo de Temas de Charla/Inspección, columna "Especialidades
+   Supervisor" en `TRABAJADORES`, opcional). Si no se marca ninguna
+   especialidad queda como **supervisor general** de la obra (cubre
+   cualquier tema). `supervisorDeObra(obra, tema)` primero busca un
+   supervisor de esa obra cuyas especialidades incluyan el tema pedido; si
+   nadie calza, cae al supervisor general de la obra y, si tampoco hay, al
+   primer supervisor activo que encuentre. Efectos concretos de marcar a
+   alguien como supervisor:
    - Su ficha muestra la sección **"Trabajadores a cargo"**: lista de sus
      compañeros de obra con la cantidad de incidentes abiertos de cada uno,
      y el total histórico del equipo.
@@ -283,9 +297,13 @@ vez de esperar un cambio que nunca ocurre.
    - Al **registrar una Charla** y elegir la Obra, si esa obra tiene
      supervisor su nombre se sugiere automáticamente como Relator (solo si
      el campo estaba vacío, no pisa algo ya escrito) — `onCambioObraCharla`
-     en `app.js`.
+     en `app.js`. Usa el supervisor general/primero de la obra (todavía no
+     se cruza con el tema de la charla en este punto del flujo).
    - El **detalle de un Incidente** muestra quién es el "Supervisor
-     responsable" (según la Obra del trabajador involucrado).
+     responsable": se adivina la especialidad del incidente con el mismo
+     motor de palabras clave que sugiere charlas (`sugerirTemaCharla` sobre
+     descripción + causas + área) y se busca ese supervisor en la Obra del
+     trabajador involucrado.
    - **No hay control de acceso/permisos real todavía** (la hoja `USUARIOS`
      sigue sin usarse para eso, ver "Pendiente" más abajo) — "tener la
      facultad de hacer charlas" se implementó como sugerencia/prellenado,

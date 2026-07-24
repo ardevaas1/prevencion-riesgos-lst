@@ -24,7 +24,8 @@ function inicializarPlanilla() {
     'Obra', 'Fecha Inicio Contrato', 'Fecha Término Contrato', 'Archivo Contrato',
     'Fecha Vigencia Examen Altura', 'Archivo Examen Altura', 'Es Supervisor',
     'Fecha Nacimiento', 'Sexo', 'Nacionalidad', 'Dirección', 'Comuna', 'Teléfono',
-    'Pueblo Originario', 'Tipo Contrato', 'Tipo Ingreso', 'Categoría Ocupacional'
+    'Pueblo Originario', 'Tipo Contrato', 'Tipo Ingreso', 'Categoría Ocupacional',
+    'Correo'
   ]);
 
   crearHoja(ss, 'INSPECCIONES', [
