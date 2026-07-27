@@ -31,6 +31,15 @@ const CHARLAS_BIBLIOTECA = [
   { codigo: 'SGSST-RG-009', nombre: 'Protección Respiratoria', archivo: 'plantillas/charlas/SGSST-RG-009_Proteccion_Respiratoria.pdf' },
   { codigo: 'SGSST-RG-010', nombre: 'Radiación UV', archivo: 'plantillas/charlas/SGSST-RG-010_Radiacion_UV.pdf' },
   { codigo: 'SGSST-RG-011', nombre: 'Ruido', archivo: 'plantillas/charlas/SGSST-RG-011_Ruido.pdf' },
+  { codigo: 'SGSST-RG-012', nombre: 'Sílice', archivo: 'plantillas/charlas/SGSST-RG-012_Silice.pdf' },
+  { codigo: 'SGSST-RG-013', nombre: 'Accidente de Trayecto', archivo: 'plantillas/charlas/SGSST-RG-013_Accidente_de_Trayecto.pdf' },
+  { codigo: 'SGSST-RG-014', nombre: 'Arnés de Seguridad', archivo: 'plantillas/charlas/SGSST-RG-014_Arnes_de_Seguridad.pdf' },
+  { codigo: 'SGSST-RG-015', nombre: 'Calzado de Seguridad', archivo: 'plantillas/charlas/SGSST-RG-015_Calzado_de_Seguridad.pdf' },
+  { codigo: 'SGSST-RG-016', nombre: 'Extintor', archivo: 'plantillas/charlas/SGSST-RG-016_Extintor.pdf' },
+  { codigo: 'SGSST-RG-017', nombre: 'Incidente', archivo: 'plantillas/charlas/SGSST-RG-017_Incidente.pdf' },
+  { codigo: 'SGSST-RG-018', nombre: 'Orden y Aseo', archivo: 'plantillas/charlas/SGSST-RG-018_Orden_y_Aseo.pdf' },
+  { codigo: 'SGSST-RG-019', nombre: 'Músculos de Espalda y Huesos', archivo: 'plantillas/charlas/SGSST-RG-019_Musculos_de_Espalda_y_Huesos.pdf' },
+  { codigo: 'SGSST-RG-020', nombre: 'Prevención de Caídas', archivo: 'plantillas/charlas/SGSST-RG-020_Prevencion_de_Caidas.pdf' },
 ];
 // Checklist fijo de documentos del módulo Subcontratistas — mismo listado
 // para todas las empresas (definido por el cliente, ver carpetas reales de
