@@ -3628,7 +3628,6 @@ function progresoBadgeSubcontratista(subidos, total) {
 
 function renderSubcontratistaDetalleHTML(empresa, esRestringido) {
   const reglamento = ultimoDocSubcontratista(docsSubcontratista('__GLOBAL__', 'global', 'Reglamento de Subcontratista'));
-  const programa = ultimoDocSubcontratista(docsSubcontratista('__GLOBAL__', 'global', 'Programa personalizado'));
   const correos = allUsuarios.filter(u => u.empresa === empresa && u.rol === 'subcontratista');
   const herramientas = docsSubcontratista(empresa, 'herramientas').slice().reverse();
   const subidosEmpresa = contarSubidosSubcontratista(empresa, 'empresa', SUBCONT_CARPETA_EMPRESA, null);
@@ -3638,16 +3637,14 @@ function renderSubcontratistaDetalleHTML(empresa, esRestringido) {
     <div class="subcont-section">
       <div class="subcont-section-head"><div class="subcont-section-title">Documentos generales</div></div>
       ${filaGlobalSubcontratista('Reglamento de Subcontratista', reglamento, esRestringido)}
-      ${filaGlobalSubcontratista('Programa personalizado', programa, esRestringido)}
-    </div>
-
-    <div class="subcont-section">
-      <div class="subcont-section-head"><div class="subcont-section-title">Programas personalizados</div></div>
-      <div class="form-group" style="margin-bottom:0;">
-        <select onchange="onSeleccionarProgramaPersonalizado(this)">
-          <option value="">— Selecciona un programa para descargar —</option>
-          ${PROGRAMAS_PERSONALIZADOS.map(p => `<option value="${esc(p.archivo)}">${esc(p.codigo)} — ${esc(p.nombre)}</option>`).join('')}
-        </select>
+      <div class="subcont-row" style="display:block;">
+        <div class="subcont-row-nombre">Programa personalizado</div>
+        <div class="form-group" style="margin:8px 0 0;">
+          <select onchange="onSeleccionarProgramaPersonalizado(this)">
+            <option value="">— Selecciona uno para descargar —</option>
+            ${PROGRAMAS_PERSONALIZADOS.map(p => `<option value="${esc(p.archivo)}">${esc(p.codigo)} — ${esc(p.nombre)}</option>`).join('')}
+          </select>
+        </div>
       </div>
     </div>
 

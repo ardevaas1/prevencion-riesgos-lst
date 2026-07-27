@@ -655,13 +655,13 @@ ningún otro módulo de la app.
   - **Control de Herramientas y Extensiones Eléctricas**: sin checklist fijo
     (a pedido explícito del cliente) — solo una carpeta libre donde se van
     acumulando los archivos que suban.
-  - Además, **Reglamento de Subcontratista** y **Programa personalizado**:
-    un solo documento de cada uno, compartido por todas las empresas (los
-    sube el admin, `empresa="__GLOBAL__"` en `SUBCONTRATISTAS_DOCS`); las
-    cuentas subcontratistas solo pueden verlos, no reemplazarlos.
-  - **Programas personalizados (plural):** sección aparte con un `<select>`
-    ("Selecciona un programa para descargar") listado desde
-    `PROGRAMAS_PERSONALIZADOS` en `app.js` — mismo patrón que
+  - Además, **Reglamento de Subcontratista**: un solo documento, compartido
+    por todas las empresas (lo sube el admin, `empresa="__GLOBAL__"` en
+    `SUBCONTRATISTAS_DOCS`); las cuentas subcontratistas solo pueden verlo,
+    no reemplazarlo.
+  - **Programa personalizado:** en la misma fila de "Documentos generales"
+    (no aparte) va un `<select>` ("Selecciona uno para descargar") listado
+    desde `PROGRAMAS_PERSONALIZADOS` en `app.js` — mismo patrón que
     `CHARLAS_BIBLIOTECA`: son formatos/pautas propios de LST en blanco
     (Inspección/Observación, Check List Orden y Aseo, Observación de
     Conducta, Inspección de Andamios, Inspección de EPP, Autorización de
@@ -671,9 +671,11 @@ ningún otro módulo de la app.
     proyecto en `plantillas/programas/` (no pasan por Sheets/Drive, se leen
     con `fetch()` directo). Elegir uno del `<select>` lo abre en una pestaña
     nueva (`onSeleccionarProgramaPersonalizado`) y el select vuelve al
-    placeholder — no hay botón aparte ni estado de "seleccionado". Para
-    agregar uno nuevo: copiar el PDF a esa carpeta, agregar su fila al
-    array y a la lista de cacheo de `sw.js` (igual que con Charlas).
+    placeholder — no hay botón aparte ni estado de "seleccionado". Reemplazó
+    al viejo slot de un solo documento "Programa personalizado" (subida
+    manual del admin, `empresa="__GLOBAL__"`), que nunca se llegó a usar.
+    Para agregar un programa nuevo: copiar el PDF a esa carpeta, agregar su
+    fila al array y a la lista de cacheo de `sw.js` (igual que con Charlas).
 - **Historial de subidas:** cada subida es una fila nueva en
   `SUBCONTRATISTAS_DOCS` (no se sobrescribe la anterior) — la interfaz
   siempre muestra la más reciente por ítem/período
