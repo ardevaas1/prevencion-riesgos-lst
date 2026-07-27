@@ -89,7 +89,10 @@ repositorio de GitHub **separado**.
   blanco desde cero). `plantillas/charlas/` — biblioteca de charlas ya
   escritas del cliente (ver "Plantillas de Charla" más abajo).
 - `vendor/pdf-lib.min.js` — librería `pdf-lib` empaquetada localmente (no
-  CDN) para generación de PDF offline.
+  CDN) para generación de PDF offline. Se carga **bajo demanda** (no en un
+  `<script>` de `index.html`): `cargarPdfLib()` en `app.js` la inyecta la
+  primera vez que hace falta generar un PDF, para no sumar ~525KB al arranque
+  de la app cuando no se va a usar en esa sesión.
 - `vendor/pdf.min.mjs` + `vendor/pdf.worker.min.mjs` — pdf.js (Mozilla),
   empaquetado localmente, usado solo para **leer** texto de las charlas de
   la biblioteca (pdf-lib solo sabe escribir) — ver "Plantillas de Charla"
@@ -1240,6 +1243,41 @@ la vista móvil, alimentadas por los mismos datos vía atributo `data-list`
 ese `data-list`, sea la versión móvil o la de escritorio — evita duplicar
 lógica de render). Los formularios se abren como panel lateral (drawer)
 con overlay oscuro detrás, en vez de pantalla completa.
+
+## Rendimiento / tiempos de carga
+
+Optimizaciones aplicadas para que la app arranque más rápido, sin cambiar
+comportamiento visible:
+
+- **Un solo round-trip a Sheets en vez de ~11:** `cargarTodo()` pedía cada
+  pestaña (Trabajadores, Inspecciones, Incidentes, Procedimientos, EPP,
+  Charlas, Investigaciones, HCR, DIAT, Subcontratistas, Docs) con su propio
+  `fetchSheet()` (aunque en paralelo con `Promise.all`, seguían siendo ~11
+  requests HTTP separados). Ahora usa `fetchSheetsBatch()` (`app.js`), que
+  llama una sola vez a `spreadsheets.values:batchGet` con todos los rangos —
+  la API de Sheets soporta pedir varios rangos en una misma llamada. El
+  fetch inicial de `USUARIOS` (necesario para decidir si la cuenta es
+  subcontratista antes de saber qué más pedir) se mantiene aparte, como
+  antes.
+- **`pdf-lib.min.js` (≈525KB) ya no bloquea el arranque:** antes se cargaba
+  en un `<script>` normal en `index.html`, en cada carga de la app, aunque
+  solo hace falta al generar un PDF (Charla, DIAT, Investigación, HCR).
+  Ahora `cargarPdfLib()` en `app.js` lo inyecta dinámicamente la primera vez
+  que una de esas funciones lo necesita. (`pdf.min.mjs`/pdf.js ya se cargaba
+  así, con `import()` dinámico — ver "Vendorizar pdf.js" en Plantillas de
+  Charla.)
+- **`preconnect` a Google Fonts** (`fonts.googleapis.com` /
+  `fonts.gstatic.com`) en `index.html`, para adelantar el DNS/TLS de esos
+  dominios mientras se descarga el resto.
+- **Service Worker (`sw.js`) pasó de "network-first" a
+  "stale-while-revalidate"** para el shell estático (HTML/CSS/JS/plantillas
+  PDF, ver `APP_SHELL`): antes cada carga esperaba la respuesta de red antes
+  de mostrar algo (el caché era solo un respaldo para cuando no había
+  conexión). Ahora responde al toque con lo que ya esté en caché y
+  actualiza el caché en segundo plano para la próxima carga — no arriesga
+  mostrar datos de negocio viejos porque los datos reales (Sheets/Drive) son
+  fetches a otro origen, que el Service Worker ni intercepta (ver el chequeo
+  `url.origin !== location.origin`).
 
 ## Pendiente / ideas no implementadas
 

@@ -258,6 +258,24 @@ function signOut() {
   mostrarLogin('Usa tu cuenta corporativa autorizada', false);
 }
 
+// pdf-lib.min.js (≈525KB) solo hace falta al generar un PDF (Charla, DIAT,
+// Investigación, HCR) — antes se cargaba en un <script> bloqueante en TODA
+// carga de la app. Se carga bajo demanda, una sola vez, justo antes del
+// primer uso real.
+let pdfLibPromise = null;
+function cargarPdfLib() {
+  if (window.PDFLib) return Promise.resolve(window.PDFLib);
+  if (!pdfLibPromise) {
+    pdfLibPromise = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'vendor/pdf-lib.min.js';
+      s.onload = () => resolve(window.PDFLib);
+      s.onerror = () => { pdfLibPromise = null; reject(new Error('No se pudo cargar pdf-lib')); };
+      document.head.appendChild(s);
+    });
+  }
+  return pdfLibPromise;
+}
 async function ensureToken() {
   if (tokenValido()) return;
   return new Promise((resolve, reject) => {
@@ -289,6 +307,18 @@ async function fetchSheet(range) {
   const res = await fetch(url, { headers: authHeader() });
   if (!res.ok) throw new Error(friendlyErr(res.status, await res.text()));
   return (await res.json()).values || [];
+}
+// Trae varios rangos en una sola llamada HTTP (values:batchGet) en vez de
+// una request por hoja — cargarTodo() pedía hasta 11 hojas por separado;
+// agrupadas así el arranque de la app pasa de ~11 round-trips a 1 sola.
+async function fetchSheetsBatch(ranges) {
+  await ensureToken();
+  const query = ranges.map(r => `ranges=${encodeURIComponent(r)}`).join('&');
+  const url = `${SHEETS_BASE}/${CONFIG.SHEET_ID}/values:batchGet?${query}`;
+  const res = await fetch(url, { headers: authHeader() });
+  if (!res.ok) throw new Error(friendlyErr(res.status, await res.text()));
+  const data = await res.json();
+  return ranges.map((r, i) => (data.valueRanges[i] && data.valueRanges[i].values) || []);
 }
 async function appendSheet(range, values) {
   await ensureToken();
@@ -707,9 +737,9 @@ async function cargarTodo(silencioso) {
     if (!silencioso) splash(40, 'Cargando información...');
 
     if (miEmpresaSubcontratista) {
-      const [subs, docs] = await Promise.all([
-        fetchSheet(`'${CONFIG.SHEET_SUBCONTRATISTAS}'!A2:B2000`),
-        fetchSheet(`'${CONFIG.SHEET_SUBCONTRATISTAS_DOCS}'!A2:H2000`),
+      const [subs, docs] = await fetchSheetsBatch([
+        `'${CONFIG.SHEET_SUBCONTRATISTAS}'!A2:B2000`,
+        `'${CONFIG.SHEET_SUBCONTRATISTAS_DOCS}'!A2:H2000`,
       ]);
       allSubcontratistas = subs.map((r,i) => rowToSubcontratista(r,i));
       allSubDocs = docs.map((r,i) => rowToSubDoc(r,i));
@@ -718,18 +748,18 @@ async function cargarTodo(silencioso) {
       return;
     }
 
-    const [trab, insp, inc, proc, epp, charlas, invest, hcr, diat, subs, docs] = await Promise.all([
-      fetchSheet(`'${CONFIG.SHEET_TRABAJADORES}'!A2:AB2000`),
-      fetchSheet(`'${CONFIG.SHEET_INSPECCIONES}'!A2:M2000`),
-      fetchSheet(`'${CONFIG.SHEET_INCIDENTES}'!A2:V2000`),
-      fetchSheet(`'${CONFIG.SHEET_PROCEDIMIENTOS}'!A2:I2000`),
-      fetchSheet(`'${CONFIG.SHEET_EPP}'!A2:I2000`),
-      fetchSheet(`'${CONFIG.SHEET_CHARLAS}'!A2:N2000`),
-      fetchSheet(`'${CONFIG.SHEET_INVESTIGACIONES}'!A2:AT2000`),
-      fetchSheet(`'${CONFIG.SHEET_HCR}'!A2:V2000`),
-      fetchSheet(`'${CONFIG.SHEET_DIAT}'!A2:BA2000`),
-      fetchSheet(`'${CONFIG.SHEET_SUBCONTRATISTAS}'!A2:B2000`),
-      fetchSheet(`'${CONFIG.SHEET_SUBCONTRATISTAS_DOCS}'!A2:H2000`),
+    const [trab, insp, inc, proc, epp, charlas, invest, hcr, diat, subs, docs] = await fetchSheetsBatch([
+      `'${CONFIG.SHEET_TRABAJADORES}'!A2:AB2000`,
+      `'${CONFIG.SHEET_INSPECCIONES}'!A2:M2000`,
+      `'${CONFIG.SHEET_INCIDENTES}'!A2:V2000`,
+      `'${CONFIG.SHEET_PROCEDIMIENTOS}'!A2:I2000`,
+      `'${CONFIG.SHEET_EPP}'!A2:I2000`,
+      `'${CONFIG.SHEET_CHARLAS}'!A2:N2000`,
+      `'${CONFIG.SHEET_INVESTIGACIONES}'!A2:AT2000`,
+      `'${CONFIG.SHEET_HCR}'!A2:V2000`,
+      `'${CONFIG.SHEET_DIAT}'!A2:BA2000`,
+      `'${CONFIG.SHEET_SUBCONTRATISTAS}'!A2:B2000`,
+      `'${CONFIG.SHEET_SUBCONTRATISTAS_DOCS}'!A2:H2000`,
     ]);
     if (!silencioso) splash(85, 'Preparando la app...');
     allTrabajadores = trab.map((r,i) => rowToTrabajador(r,i));
@@ -1676,7 +1706,7 @@ async function finalizarCharla() {
 // campo, medidas a mano sobre la plantilla original) ──────────────────
 function ddmmyyyy(iso) { return (iso || hoyISO()).split('-').reverse().join('-'); }
 async function generarYSubirPdfCharla(datos) {
-  const { PDFDocument, rgb, StandardFonts } = PDFLib;
+  const { PDFDocument, rgb, StandardFonts } = await cargarPdfLib();
   const templateBytes = await fetch('plantillas/charla_5min.pdf').then(r => r.arrayBuffer());
   const pdfDoc = await PDFDocument.load(templateBytes);
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
@@ -1882,7 +1912,7 @@ function ubicarCamposCharlaSGSST(paginas) {
   return campos;
 }
 async function generarPdfCharlaSobrePlantilla(datos, plantilla) {
-  const { PDFDocument, rgb, StandardFonts } = PDFLib;
+  const { PDFDocument, rgb, StandardFonts } = await cargarPdfLib();
   const bytes = await fetch(plantilla.archivo).then(r => r.arrayBuffer());
   // pdf.js transfiere este buffer a su worker (queda "detached"), así que
   // hay que copiarlo antes de leerlo — pdf-lib necesita su propia copia intacta.
@@ -2433,7 +2463,7 @@ async function guardarResultadoAtencionMedica(estado, pdfLink) {
 }
 
 async function generarYSubirPdfDiat(datos) {
-  const { PDFDocument, rgb, StandardFonts } = PDFLib;
+  const { PDFDocument, rgb, StandardFonts } = await cargarPdfLib();
   const templateBytes = await fetch('plantillas/diat.pdf').then(r => r.arrayBuffer());
   const pdfDoc = await PDFDocument.load(templateBytes);
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
@@ -2591,7 +2621,7 @@ async function guardarDeclaracion(ev) {
   } catch (e) { toast(e.message, 'error'); }
 }
 async function generarPdfDeclaracion(datos) {
-  const { PDFDocument, rgb, StandardFonts } = PDFLib;
+  const { PDFDocument, rgb, StandardFonts } = await cargarPdfLib();
   const pdfDoc = await PDFDocument.create();
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
@@ -2845,7 +2875,7 @@ async function guardarInvestigacion(ev) {
 // medido con pdfplumber sobre la plantilla, usando la altura de mayúscula de
 // la fuente para el offset del baseline en vez de un valor a ojo) ──────────
 async function generarYSubirPdfInvestigacion(datos) {
-  const { PDFDocument, rgb, StandardFonts } = PDFLib;
+  const { PDFDocument, rgb, StandardFonts } = await cargarPdfLib();
   const templateBytes = await fetch('plantillas/investigacion_accidente.pdf').then(r => r.arrayBuffer());
   const pdfDoc = await PDFDocument.load(templateBytes);
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
@@ -3250,7 +3280,7 @@ async function finalizarHcr() {
 // en Investigación, coordenadas medidas con pdfplumber (franjas de checkbox
 // compartidas entre secciones apiladas en la misma columna). ──────────────
 async function generarYSubirPdfHcr(datos) {
-  const { PDFDocument, rgb, StandardFonts } = PDFLib;
+  const { PDFDocument, rgb, StandardFonts } = await cargarPdfLib();
   const templateBytes = await fetch('plantillas/hcr.pdf').then(r => r.arrayBuffer());
   const pdfDoc = await PDFDocument.load(templateBytes);
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
