@@ -1284,15 +1284,29 @@ comportamiento visible:
 - **`preconnect` a Google Fonts** (`fonts.googleapis.com` /
   `fonts.gstatic.com`) en `index.html`, para adelantar el DNS/TLS de esos
   dominios mientras se descarga el resto.
-- **Service Worker (`sw.js`) pasó de "network-first" a
-  "stale-while-revalidate"** para el shell estático (HTML/CSS/JS/plantillas
-  PDF, ver `APP_SHELL`): antes cada carga esperaba la respuesta de red antes
-  de mostrar algo (el caché era solo un respaldo para cuando no había
-  conexión). Ahora responde al toque con lo que ya esté en caché y
-  actualiza el caché en segundo plano para la próxima carga — no arriesga
-  mostrar datos de negocio viejos porque los datos reales (Sheets/Drive) son
-  fetches a otro origen, que el Service Worker ni intercepta (ver el chequeo
-  `url.origin !== location.origin`).
+- **Service Worker (`sw.js`) — estrategia mixta, no la misma para todo:**
+  - **`ARCHIVOS_CODIGO`** (`index.html`, `style.css`, `config.js`, `app.js`,
+    `manifest.json`, y cualquier navegación) sigue siendo **network-first**
+    (intenta la red primero, cae al caché solo sin conexión). Es la parte
+    que cambia seguido mientras se sigue desarrollando la app, así que un
+    deploy nuevo tiene que verse con un solo reload.
+  - **El resto del `APP_SHELL`** (PDFs de plantilla, `vendor/pdf-lib.min.js`,
+    `vendor/pdf.min.mjs`/`pdf.worker.min.mjs`) usa
+    **stale-while-revalidate**: responde al toque con lo que ya esté en
+    caché (son archivos pesados que casi no cambian) y actualiza en segundo
+    plano para la próxima carga.
+  - **Por qué la mezcla:** la primera versión de este cambio puso TODO en
+    stale-while-revalidate y causó un bug real — se agregó la sección
+    "Programas personalizados" a `app.js`, se hizo deploy, y quien abrió la
+    app después de eso seguía viendo la versión vieja (sin esa sección)
+    porque el Service Worker sirvió el `app.js` cacheado en vez de pedir el
+    nuevo — se necesitaban DOS reloads para verlo (uno para que la red
+    actualizara el caché en segundo plano, otro para que ese caché ya
+    actualizado se sirviera). Nunca arriesga mostrar datos de negocio
+    viejos de todas formas: los datos reales (Sheets/Drive) son fetches a
+    otro origen, que el Service Worker ni intercepta (ver el chequeo
+    `url.origin !== location.origin`) — el bug era solo de código/UI vieja,
+    no de datos.
 
 ## Pendiente / ideas no implementadas
 

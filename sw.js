@@ -1,4 +1,12 @@
-const CACHE_NAME = 'lst-prevencion-shell-v17';
+const CACHE_NAME = 'lst-prevencion-shell-v18';
+// Archivos de código/shell: cambian seguido mientras se sigue desarrollando
+// la app — necesitan "network-first" (siempre intentar la versión más
+// nueva) para que un cambio recién publicado se vea de inmediato con un
+// solo reload, en vez de quedar pegado en una versión cacheada vieja hasta
+// el SEGUNDO reload (eso fue justo lo que pasó al pasar todo a
+// stale-while-revalidate: "Programas personalizados" no se veía porque el
+// navegador seguía sirviendo el app.js de antes del cambio).
+const ARCHIVOS_CODIGO = ['./', './index.html', './style.css', './config.js', './app.js', './manifest.json'];
 const APP_SHELL = [
   './', './index.html', './style.css', './config.js', './app.js',
   './manifest.json', './logo.png', './logo-white.png', './icon-192.png', './icon-512.png',
@@ -49,22 +57,39 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Stale-while-revalidate: responde al toque con lo que haya en caché (carga
-// instantánea) y en paralelo pide la versión fresca a la red para dejarla
-// lista para la PRÓXIMA carga — antes era "network-first" (esperaba la red
-// siempre, y el caché era solo un respaldo para cuando no había conexión).
-// Esto no arriesga mostrar datos de negocio viejos: los datos reales
-// (Sheets/Drive) son fetches cross-origin que ni pasan por acá (ver el
-// chequeo de origin más abajo), esto solo cachea el shell estático de la app
-// (HTML/CSS/JS/PDFs de plantilla).
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   if (url.origin !== location.origin) return;
   if (event.request.method !== 'GET') return;
 
+  const esArchivoDeCodigo = event.request.mode === 'navigate'
+    || ARCHIVOS_CODIGO.some((a) => url.pathname.endsWith(a.replace('./', '/')));
+
   event.respondWith(
     (async () => {
       const cache = await caches.open(CACHE_NAME);
+
+      if (esArchivoDeCodigo) {
+        // Network-first: intenta siempre la red primero, para que un
+        // cambio recién publicado se vea con un solo reload. El caché
+        // queda solo como respaldo para cuando no hay conexión.
+        try {
+          const fresh = await fetch(event.request);
+          if (fresh && fresh.status === 200) cache.put(event.request, fresh.clone());
+          return fresh;
+        } catch (err) {
+          const cached = await cache.match(event.request);
+          return cached || new Response(
+            '<h1>Sin conexión</h1><p>No se pudo cargar esta página y no hay una copia guardada.</p>',
+            { headers: { 'Content-Type': 'text/html; charset=UTF-8' } }
+          );
+        }
+      }
+
+      // Stale-while-revalidate para el resto (PDFs de plantilla, librerías
+      // vendorizadas): responde al toque con lo que haya en caché y
+      // actualiza en segundo plano para la próxima carga — son archivos
+      // pesados que casi no cambian, no vale la pena esperar la red cada vez.
       const cached = await cache.match(event.request);
       const actualizarEnSegundoPlano = fetch(event.request)
         .then((fresh) => { if (fresh && fresh.status === 200) cache.put(event.request, fresh.clone()); return fresh; })
