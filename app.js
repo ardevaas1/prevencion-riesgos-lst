@@ -3615,9 +3615,21 @@ function filaGlobalSubcontratista(item, doc, esRestringido) {
     </div>`;
 }
 function onSeleccionarProgramaPersonalizado(sel) {
-  if (!sel.value) return;
-  window.open(sel.value, '_blank');
-  sel.selectedIndex = 0;
+  const preview = sel.closest('.subcont-row').querySelector('.programa-preview');
+  if (!sel.value) { preview.innerHTML = ''; return; }
+  const p = PROGRAMAS_PERSONALIZADOS.find(x => x.archivo === sel.value);
+  if (!p) { preview.innerHTML = ''; return; }
+  preview.innerHTML = `
+    <div class="subcont-row" style="margin-top:8px;padding:10px;background:var(--neutral-soft);border-radius:10px;border-bottom:none;">
+      ${iconoEstadoDoc(true)}
+      <div class="subcont-row-body">
+        <div class="subcont-row-nombre">${esc(p.nombre)}</div>
+        <div class="subcont-row-fecha">${esc(p.codigo)}</div>
+      </div>
+      <div class="subcont-row-actions">
+        <a class="badge blue" href="${esc(p.archivo)}" target="_blank">${ic('documento',12)} Descargar</a>
+      </div>
+    </div>`;
 }
 function contarSubidosSubcontratista(empresa, categoria, items, periodo) {
   return items.filter(item => ultimoDocSubcontratista(docsSubcontratista(empresa, categoria, item, periodo))).length;
@@ -3641,10 +3653,11 @@ function renderSubcontratistaDetalleHTML(empresa, esRestringido) {
         <div class="subcont-row-nombre">Programa personalizado</div>
         <div class="form-group" style="margin:8px 0 0;">
           <select onchange="onSeleccionarProgramaPersonalizado(this)">
-            <option value="">— Selecciona uno para descargar —</option>
+            <option value="">— Selecciona uno para ver —</option>
             ${PROGRAMAS_PERSONALIZADOS.map(p => `<option value="${esc(p.archivo)}">${esc(p.codigo)} — ${esc(p.nombre)}</option>`).join('')}
           </select>
         </div>
+        <div class="programa-preview"></div>
       </div>
     </div>
 

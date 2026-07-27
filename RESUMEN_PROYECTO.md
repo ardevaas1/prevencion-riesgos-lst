@@ -660,8 +660,8 @@ ningún otro módulo de la app.
     `SUBCONTRATISTAS_DOCS`); las cuentas subcontratistas solo pueden verlo,
     no reemplazarlo.
   - **Programa personalizado:** en la misma fila de "Documentos generales"
-    (no aparte) va un `<select>` ("Selecciona uno para descargar") listado
-    desde `PROGRAMAS_PERSONALIZADOS` en `app.js` — mismo patrón que
+    (no aparte) va un `<select>` ("Selecciona uno para ver") listado desde
+    `PROGRAMAS_PERSONALIZADOS` en `app.js` — mismo patrón que
     `CHARLAS_BIBLIOTECA`: son formatos/pautas propios de LST en blanco
     (Inspección/Observación, Check List Orden y Aseo, Observación de
     Conducta, Inspección de Andamios, Inspección de EPP, Autorización de
@@ -669,13 +669,16 @@ ningún otro módulo de la app.
     Excavación, Inspección de Esmeril Angular, Charla de Seguridad, HCR —
     códigos `SGSST-PER-001` a `011`), empaquetados como archivos del
     proyecto en `plantillas/programas/` (no pasan por Sheets/Drive, se leen
-    con `fetch()` directo). Elegir uno del `<select>` lo abre en una pestaña
-    nueva (`onSeleccionarProgramaPersonalizado`) y el select vuelve al
-    placeholder — no hay botón aparte ni estado de "seleccionado". Reemplazó
-    al viejo slot de un solo documento "Programa personalizado" (subida
-    manual del admin, `empresa="__GLOBAL__"`), que nunca se llegó a usar.
-    Para agregar un programa nuevo: copiar el PDF a esa carpeta, agregar su
-    fila al array y a la lista de cacheo de `sw.js` (igual que con Charlas).
+    con `fetch()` directo). Elegir uno **no lo abre directo**: muestra una
+    tarjeta de vista previa (nombre + código + botón "Descargar")
+    debajo del `<select>`, así se ve claramente cuál se eligió antes de
+    tocar el link (`onSeleccionarProgramaPersonalizado` arma esa tarjeta a
+    partir de `PROGRAMAS_PERSONALIZADOS`, buscándolo por su ruta de
+    archivo). Reemplazó al viejo slot de un solo documento "Programa
+    personalizado" (subida manual del admin, `empresa="__GLOBAL__"`), que
+    nunca se llegó a usar. Para agregar un programa nuevo: copiar el PDF a
+    esa carpeta, agregar su fila al array y a la lista de cacheo de
+    `sw.js` (igual que con Charlas).
 - **Historial de subidas:** cada subida es una fila nueva en
   `SUBCONTRATISTAS_DOCS` (no se sobrescribe la anterior) — la interfaz
   siempre muestra la más reciente por ítem/período
