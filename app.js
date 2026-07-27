@@ -41,6 +41,26 @@ const CHARLAS_BIBLIOTECA = [
   { codigo: 'SGSST-RG-019', nombre: 'Músculos de Espalda y Huesos', archivo: 'plantillas/charlas/SGSST-RG-019_Musculos_de_Espalda_y_Huesos.pdf' },
   { codigo: 'SGSST-RG-020', nombre: 'Prevención de Caídas', archivo: 'plantillas/charlas/SGSST-RG-020_Prevencion_de_Caidas.pdf' },
 ];
+// Formatos/programas personalizados de LST (formularios en blanco: pautas de
+// inspección, autorizaciones, registro de asistencia, etc.) que el cliente
+// quiere disponibles para que cualquier subcontratista los pueda descargar
+// — mismo patrón que CHARLAS_BIBLIOTECA: catálogo estático empaquetado en el
+// repo (plantillas/programas/), sin pasar por Sheets/Drive. Para agregar uno
+// nuevo: copiar el PDF a esa carpeta, agregar su fila acá y a la lista de
+// cacheo de sw.js.
+const PROGRAMAS_PERSONALIZADOS = [
+  { codigo: 'SGSST-PER-001', nombre: 'Inspección - Observación', archivo: 'plantillas/programas/SGSST-PER-001_Inspeccion_Observacion.pdf' },
+  { codigo: 'SGSST-PER-002', nombre: 'Check List Orden y Aseo', archivo: 'plantillas/programas/SGSST-PER-002_Check_List_Orden_y_Aseo.pdf' },
+  { codigo: 'SGSST-PER-003', nombre: 'Observación de Conducta', archivo: 'plantillas/programas/SGSST-PER-003_Observacion_de_Conducta.pdf' },
+  { codigo: 'SGSST-PER-004', nombre: 'Inspección de Seguridad — Andamios', archivo: 'plantillas/programas/SGSST-PER-004_Inspeccion_Seguridad_Andamios.pdf' },
+  { codigo: 'SGSST-PER-005', nombre: 'Inspección de EPP', archivo: 'plantillas/programas/SGSST-PER-005_Inspeccion_de_EPP.pdf' },
+  { codigo: 'SGSST-PER-006', nombre: 'Autorización de Trabajos en Altura', archivo: 'plantillas/programas/SGSST-PER-006_Autorizacion_Trabajos_en_Altura.pdf' },
+  { codigo: 'SGSST-PER-007', nombre: 'Inspección de Elementos de Izaje', archivo: 'plantillas/programas/SGSST-PER-007_Inspeccion_Elementos_de_Izaje.pdf' },
+  { codigo: 'SGSST-PER-008', nombre: 'Inspección de Seguridad — Excavación', archivo: 'plantillas/programas/SGSST-PER-008_Inspeccion_Seguridad_Excavacion.pdf' },
+  { codigo: 'SGSST-PER-009', nombre: 'Inspección de Seguridad — Esmeril Angular', archivo: 'plantillas/programas/SGSST-PER-009_Inspeccion_Seguridad_Esmeril_Angular.pdf' },
+  { codigo: 'SGSST-PER-010', nombre: 'Charla de Seguridad', archivo: 'plantillas/programas/SGSST-PER-010_Charla_de_Seguridad.pdf' },
+  { codigo: 'SGSST-PER-011', nombre: 'Hoja de Control de Riesgos (HCR)', archivo: 'plantillas/programas/SGSST-PER-011_Hoja_de_Control_de_Riesgos_HCR.pdf' },
+];
 // Checklist fijo de documentos del módulo Subcontratistas — mismo listado
 // para todas las empresas (definido por el cliente, ver carpetas reales de
 // Drive que usan hoy). "Carpeta de Empresa" se sube una sola vez; "Control
@@ -3594,6 +3614,11 @@ function filaGlobalSubcontratista(item, doc, esRestringido) {
       </div>
     </div>`;
 }
+function onSeleccionarProgramaPersonalizado(sel) {
+  if (!sel.value) return;
+  window.open(sel.value, '_blank');
+  sel.selectedIndex = 0;
+}
 function contarSubidosSubcontratista(empresa, categoria, items, periodo) {
   return items.filter(item => ultimoDocSubcontratista(docsSubcontratista(empresa, categoria, item, periodo))).length;
 }
@@ -3614,6 +3639,16 @@ function renderSubcontratistaDetalleHTML(empresa, esRestringido) {
       <div class="subcont-section-head"><div class="subcont-section-title">Documentos generales</div></div>
       ${filaGlobalSubcontratista('Reglamento de Subcontratista', reglamento, esRestringido)}
       ${filaGlobalSubcontratista('Programa personalizado', programa, esRestringido)}
+    </div>
+
+    <div class="subcont-section">
+      <div class="subcont-section-head"><div class="subcont-section-title">Programas personalizados</div></div>
+      <div class="form-group" style="margin-bottom:0;">
+        <select onchange="onSeleccionarProgramaPersonalizado(this)">
+          <option value="">— Selecciona un programa para descargar —</option>
+          ${PROGRAMAS_PERSONALIZADOS.map(p => `<option value="${esc(p.archivo)}">${esc(p.codigo)} — ${esc(p.nombre)}</option>`).join('')}
+        </select>
+      </div>
     </div>
 
     <div class="subcont-section">
