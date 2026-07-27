@@ -3627,7 +3627,7 @@ function onSeleccionarProgramaPersonalizado(sel) {
         <div class="subcont-row-fecha">${esc(p.codigo)}</div>
       </div>
       <div class="subcont-row-actions">
-        <a class="badge blue" href="${esc(p.archivo)}" target="_blank">${ic('documento',12)} Descargar</a>
+        <a class="badge blue" href="${esc(p.archivo)}" target="_blank">${ic('documento',12)} Abrir</a>
       </div>
     </div>`;
 }
