@@ -1128,6 +1128,12 @@
   function irPagina(nombre) {
     if (!TITULOS_PAGINA[nombre]) nombre = 'inicio';
 
+    // Siempre arranca scrolleado arriba del todo — sin esto, el contenedor
+    // se queda con el scroll donde haya quedado la navegación anterior (ej.
+    // venir de más abajo en Trabajadores) en vez de mostrar el principio.
+    document.getElementById('pages').scrollTop = 0;
+    document.getElementById('desktop-home').scrollTop = 0;
+
     // ── Móvil ──
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     const map = { inicio:'page-inicio', inspecciones:'page-inspecciones', incidentes:'page-incidentes',

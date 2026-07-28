@@ -1000,7 +1000,10 @@ function renderSelectorObraActiva(permiteCancelar) {
       <div class="card-arrow">›</div>
     </button>`).join('')}
   `;
-  document.getElementById('pantalla-elegir-obra').classList.remove('hidden');
+  const pantalla = document.getElementById('pantalla-elegir-obra');
+  pantalla.classList.remove('hidden');
+  pantalla.classList.add('app-enter');
+  setTimeout(() => pantalla.classList.remove('app-enter'), 500);
 }
 function abrirSelectorObraActiva() { renderSelectorObraActiva(true); }
 function cerrarSelectorObraActiva() { document.getElementById('pantalla-elegir-obra').classList.add('hidden'); }
@@ -1010,17 +1013,17 @@ function seleccionarObraActiva(obra) {
   actualizarChipObraActiva();
   renderModulosPrincipales();
   cerrarSelectorObraActiva();
+  // Siempre se entra (o se vuelve a entrar) por Inicio, scrolleado arriba
+  // del todo — tanto la primera vez (recién ahora se revela la app) como en
+  // un cambio posterior (ya se estaba viendo otro módulo). Con animación de
+  // aparición en los dos casos, para que se sienta como un "entrar" y no un
+  // simple refresco silencioso de datos.
   const main = document.getElementById('main');
-  // Si #main todavía está oculto es la elección inicial (recién ahora se
-  // revela la app); si ya estaba visible es un cambio posterior, y basta con
-  // re-renderizar donde ya se estaba, sin forzar la vuelta a Inicio.
-  if (main.classList.contains('hidden')) {
-    const dtHome = document.getElementById('desktop-home');
-    irPagina('inicio');
-    main.classList.remove('hidden');
-    [main, dtHome].forEach(el => el.classList.add('app-enter'));
-    setTimeout(() => [main, dtHome].forEach(el => el.classList.remove('app-enter')), 500);
-  }
+  const dtHome = document.getElementById('desktop-home');
+  irPagina('inicio');
+  main.classList.remove('hidden');
+  [main, dtHome].forEach(el => el.classList.add('app-enter'));
+  setTimeout(() => [main, dtHome].forEach(el => el.classList.remove('app-enter')), 500);
 }
 // Al elegir la Obra en el formulario de Charla, si esa obra tiene un
 // supervisor asignado se sugiere su nombre como Relator (solo si el campo

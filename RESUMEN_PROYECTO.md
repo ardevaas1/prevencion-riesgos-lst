@@ -175,7 +175,12 @@ pantalla, con un botón "Cancelar" que esta vez sí aparece (en la elección
 inicial no hay nada que cancelar: hay que elegir para poder seguir).
 `signOut()` borra la Obra activa junto con la sesión, para que la próxima
 cuenta que entre (puede ser otra persona, en un dispositivo compartido)
-vuelva a elegir la suya.
+vuelva a elegir la suya. Elegir/cambiar la Obra **siempre** entra por Inicio
+(nunca deja a medio módulo) y con animación (`.app-enter`, la misma que usa
+el arranque normal de la app) tanto la primera vez como en un cambio
+posterior — antes solo animaba la primera vez. `irPagina()` además
+resetea el scroll a 0 en cada navegación (`#pages` en móvil, `#desktop-home`
+en escritorio), para no arrastrar el scroll de donde se venía.
 
 Con una Obra activa específica (no "todas"), **todos los módulos filtran
 por esa Obra** — Dashboard (tarjetas de Inicio + Índices de seguridad,
