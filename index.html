@@ -138,6 +138,7 @@
       <div class="header-title" id="header-title">Prevención de Riesgos</div>
       <div class="header-sub" id="chip-email"></div>
     </div>
+    <div class="header-btn btn-obra-activa" onclick="abrirSelectorObraActiva()" title="Cambiar obra"><svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px"><path d="M4 21V8l6-4 6 4v13" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M14 21v-7h6v7" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></div>
     <div class="header-btn" onclick="cargarTodo(true)">↻</div>
   </div>
 
@@ -164,8 +165,7 @@
 
       <div class="sec-label" style="margin-top:24px;">Sesión</div>
       <div class="account-chip"><span class="account-chip-avatar">G</span><span class="account-chip-email" id="chip-footer-email"></span></div>
-      <button class="action-btn" onclick="abrirSelectorObraActiva()"><svg viewBox="0 0 24 24" fill="none" class="inline-ic"><path d="M4 21V8l6-4 6 4v13" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M14 21v-7h6v7" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg> Obra: <span class="chip-obra-activa-texto">Todas las obras</span></button>
-      <button class="action-btn" style="margin-top:8px;" onclick="cargarTodo(true)">↻ Actualizar datos</button>
+      <button class="action-btn" onclick="cargarTodo(true)">↻ Actualizar datos</button>
       <button class="action-btn" style="margin-top:8px;" onclick="signOut()">Cerrar sesión</button>
     </div>
 
@@ -237,6 +237,7 @@
 <!-- ===== INICIO ESCRITORIO (página completa, sin sidebar) ===== -->
 <div class="desktop-home dt-oculto" id="desktop-home">
   <div class="desktop-home-header">
+    <div class="header-btn header-btn--top-right btn-obra-activa" onclick="abrirSelectorObraActiva()" title="Cambiar obra"><svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px"><path d="M4 21V8l6-4 6 4v13" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M14 21v-7h6v7" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></div>
     <div class="logo-badge"><img src="logo.png" alt="LST"></div>
     <div class="desktop-home-title">Prevención de Riesgos</div>
     <div class="desktop-home-sub">Constructora LST</div>
@@ -262,8 +263,7 @@
 
       <div class="sec-label" style="margin-top:18px;">Sesión</div>
       <div class="account-chip"><span class="account-chip-avatar">G</span><span class="account-chip-email" id="dt-home-email"></span></div>
-      <button class="desktop-refresh-btn" onclick="abrirSelectorObraActiva()"><svg viewBox="0 0 24 24" fill="none" class="inline-ic"><path d="M4 21V8l6-4 6 4v13" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M14 21v-7h6v7" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg> Obra: <span class="chip-obra-activa-texto">Todas las obras</span></button>
-      <button class="desktop-refresh-btn" style="margin-top:8px;" onclick="cargarTodo(true)">↻ Actualizar datos</button>
+      <button class="desktop-refresh-btn" onclick="cargarTodo(true)">↻ Actualizar datos</button>
       <button class="desktop-refresh-btn" style="margin-top:8px;" onclick="signOut()">Cerrar sesión</button>
     </div>
   </div>
@@ -279,14 +279,14 @@
       <div class="desktop-sidebar-title">Prevención de Riesgos</div>
       <div class="desktop-sidebar-sub" id="dt-chip-email"></div>
     </div>
+    <div class="header-btn btn-obra-activa" style="margin-left:auto;" onclick="abrirSelectorObraActiva()" title="Cambiar obra"><svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px"><path d="M4 21V8l6-4 6 4v13" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M14 21v-7h6v7" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></div>
   </div>
   <div class="desktop-nav desktop-nav--back">
     <button class="desktop-nav-item desktop-nav-back" onclick="irPagina('inicio')"><span class="dn-ic">‹</span><span class="dn-lb">Volver a Inicio</span></button>
   </div>
   <div class="desktop-sidebar-footer">
     <div class="account-chip"><span class="account-chip-avatar">G</span><span class="account-chip-email" id="dt-footer-email"></span></div>
-    <button class="desktop-refresh-btn" onclick="abrirSelectorObraActiva()"><svg viewBox="0 0 24 24" fill="none" class="inline-ic"><path d="M4 21V8l6-4 6 4v13" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M14 21v-7h6v7" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg> Obra: <span class="chip-obra-activa-texto">Todas las obras</span></button>
-    <button class="desktop-refresh-btn" style="margin-top:8px;" onclick="cargarTodo(true)">↻ Actualizar datos</button>
+    <button class="desktop-refresh-btn" onclick="cargarTodo(true)">↻ Actualizar datos</button>
     <button class="desktop-refresh-btn" style="margin-top:8px;" onclick="signOut()">Cerrar sesión</button>
   </div>
 </div>

@@ -865,6 +865,7 @@ a.action-btn { display: flex; align-items: center; justify-content: center; gap:
     background: var(--bg);
   }
   .desktop-home-header {
+    position: relative;
     flex-shrink: 0;
     padding: 44px 20px 36px;
     display: flex; flex-direction: column; align-items: center; gap: 10px;
@@ -875,6 +876,7 @@ a.action-btn { display: flex; align-items: center; justify-content: center; gap:
       linear-gradient(135deg, #c06f0a 0%, var(--accent) 55%, #ffb462 100%);
     box-shadow: 0 2px 14px rgba(229,141,23,0.25);
   }
+  .header-btn--top-right { position: absolute; top: 18px; right: 18px; }
   .desktop-home-header .logo-badge { width: 64px; height: 64px; border-radius: 18px; }
   .desktop-home-header .logo-badge img { width: 70%; height: 70%; }
   .desktop-home-title { font-size: 22px; font-weight: 700; color: #fff; }

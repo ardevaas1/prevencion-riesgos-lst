@@ -169,10 +169,14 @@ dinámico que ya usan los `<select>` de Obra en los formularios) más la
 opción **"Todas las obras"** (ve todo sin filtrar, útil para un
 administrador). Queda guardada en `localStorage` (`obraActiva` en `app.js`)
 para no volver a preguntar la próxima vez, y se puede cambiar después desde
-el botón **"Obra: ..."** en la sección Sesión (Inicio móvil, Inicio
-escritorio y pie del sidebar) — `abrirSelectorObraActiva()` reabre la misma
-pantalla, con un botón "Cancelar" que esta vez sí aparece (en la elección
-inicial no hay nada que cancelar: hay que elegir para poder seguir).
+el botón con ícono de obra que vive **arriba, en el header** (`.btn-obra-activa`
+— header móvil junto al botón ↻, header del sidebar de escritorio, y esquina
+superior derecha del Inicio de escritorio), visible siempre, en cualquier
+módulo — no solo desde Inicio/Sesión como al principio. Su `title` (tooltip)
+muestra la obra actual (`actualizarChipObraActiva()`). `abrirSelectorObraActiva()`
+reabre la misma pantalla, con un botón "Cancelar" que esta vez sí aparece (en
+la elección inicial no hay nada que cancelar: hay que elegir para poder
+seguir).
 `signOut()` borra la Obra activa junto con la sesión, para que la próxima
 cuenta que entre (puede ser otra persona, en un dispositivo compartido)
 vuelva a elegir la suya. Elegir/cambiar la Obra **siempre** entra por Inicio
