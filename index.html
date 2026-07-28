@@ -110,6 +110,21 @@
   <div class="splash-hint" id="splash-hint">Conectando...</div>
 </div>
 
+<!-- SELECTOR DE OBRA ACTIVA: se muestra la primera vez que una cuenta
+     interna entra (antes de #main) y también al reabrirlo después desde
+     "Cambiar obra" — ver seleccionarObraActiva()/abrirSelectorObraActiva()
+     en app.js. No aplica a cuentas subcontratista (van directo a
+     #subcontratista-root, que no se filtra por obra). -->
+<div id="pantalla-elegir-obra" class="login-screen hidden">
+  <div class="login-box login-box--ancho">
+    <button type="button" class="elegir-obra-cerrar hidden" id="btn-cerrar-elegir-obra" onclick="cerrarSelectorObraActiva()">‹ Cancelar</button>
+    <div class="entry-logo-wrap"><img src="logo-white.png" alt="LST" class="login-logo"></div>
+    <div class="login-title">¿En qué obra estás?</div>
+    <div class="login-sub">Vas a ver solo la información de esa obra (Subcontratistas no se filtra)</div>
+    <div id="lista-elegir-obra" class="elegir-obra-lista"></div>
+  </div>
+</div>
+
 <div id="app">
 
 <!-- APP PRINCIPAL (móvil) -->
@@ -149,7 +164,8 @@
 
       <div class="sec-label" style="margin-top:24px;">Sesión</div>
       <div class="account-chip"><span class="account-chip-avatar">G</span><span class="account-chip-email" id="chip-footer-email"></span></div>
-      <button class="action-btn" onclick="cargarTodo(true)">↻ Actualizar datos</button>
+      <button class="action-btn" onclick="abrirSelectorObraActiva()"><svg viewBox="0 0 24 24" fill="none" class="inline-ic"><path d="M4 21V8l6-4 6 4v13" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M14 21v-7h6v7" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg> Obra: <span class="chip-obra-activa-texto">Todas las obras</span></button>
+      <button class="action-btn" style="margin-top:8px;" onclick="cargarTodo(true)">↻ Actualizar datos</button>
       <button class="action-btn" style="margin-top:8px;" onclick="signOut()">Cerrar sesión</button>
     </div>
 
@@ -246,7 +262,8 @@
 
       <div class="sec-label" style="margin-top:18px;">Sesión</div>
       <div class="account-chip"><span class="account-chip-avatar">G</span><span class="account-chip-email" id="dt-home-email"></span></div>
-      <button class="desktop-refresh-btn" onclick="cargarTodo(true)">↻ Actualizar datos</button>
+      <button class="desktop-refresh-btn" onclick="abrirSelectorObraActiva()"><svg viewBox="0 0 24 24" fill="none" class="inline-ic"><path d="M4 21V8l6-4 6 4v13" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M14 21v-7h6v7" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg> Obra: <span class="chip-obra-activa-texto">Todas las obras</span></button>
+      <button class="desktop-refresh-btn" style="margin-top:8px;" onclick="cargarTodo(true)">↻ Actualizar datos</button>
       <button class="desktop-refresh-btn" style="margin-top:8px;" onclick="signOut()">Cerrar sesión</button>
     </div>
   </div>
@@ -268,7 +285,8 @@
   </div>
   <div class="desktop-sidebar-footer">
     <div class="account-chip"><span class="account-chip-avatar">G</span><span class="account-chip-email" id="dt-footer-email"></span></div>
-    <button class="desktop-refresh-btn" onclick="cargarTodo(true)">↻ Actualizar datos</button>
+    <button class="desktop-refresh-btn" onclick="abrirSelectorObraActiva()"><svg viewBox="0 0 24 24" fill="none" class="inline-ic"><path d="M4 21V8l6-4 6 4v13" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M14 21v-7h6v7" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg> Obra: <span class="chip-obra-activa-texto">Todas las obras</span></button>
+    <button class="desktop-refresh-btn" style="margin-top:8px;" onclick="cargarTodo(true)">↻ Actualizar datos</button>
     <button class="desktop-refresh-btn" style="margin-top:8px;" onclick="signOut()">Cerrar sesión</button>
   </div>
 </div>

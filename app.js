@@ -278,7 +278,9 @@ function signOut() {
   clearToken();
   localStorage.removeItem(HADLOGIN_KEY);
   localStorage.removeItem(EMAIL_KEY);
+  localStorage.removeItem(OBRA_ACTIVA_KEY);
   userEmail = null; userRole = null; miEmpresaSubcontratista = null; subcontratistaUsaProxy = false;
+  obraActiva = null;
   document.getElementById('main').classList.add('hidden');
   document.getElementById('desktop-home').classList.add('dt-oculto');
   document.getElementById('desktop-sidebar').classList.add('dt-oculto');
@@ -719,6 +721,19 @@ let allUsuarios = [];
 let allSubcontratistas = [];
 let allSubDocs = [];
 
+// Renderiza todos los módulos "principales" de una sola vez — se llama tanto
+// al terminar de cargar datos como al elegir/cambiar la Obra activa (ver
+// "Selector de Obra activa" más abajo), para no repetir esta lista en los
+// dos lugares. Subcontratistas y Procedimientos NO se filtran por obra (ver
+// esos render*): Subcontratistas es por diseño un módulo aparte, ajeno a la
+// Obra; Procedimientos es una biblioteca general de documentos que hoy no
+// tiene ese campo en el modelo de datos.
+function renderModulosPrincipales() {
+  renderDashboard();
+  renderTrabajadores(); renderInspecciones(); renderIncidentes(); renderProcedimientos(); renderEpp(); renderCharlas(); renderHcr();
+  renderSubcontratistas();
+}
+
 async function cargarTodo(silencioso) {
   if (!silencioso) { splash(15, 'Verificando acceso...'); }
   else { toast('Actualizando datos...'); }
@@ -802,9 +817,7 @@ async function cargarTodo(silencioso) {
     allDiat = diat.map((r,i) => ({ fila: i+2, n: r[0]||'' }));
     allSubcontratistas = subs.map((r,i) => rowToSubcontratista(r,i));
     allSubDocs = docs.map((r,i) => rowToSubDoc(r,i));
-    renderDashboard();
-    renderTrabajadores(); renderInspecciones(); renderIncidentes(); renderProcedimientos(); renderEpp(); renderCharlas(); renderHcr();
-    renderSubcontratistas();
+    renderModulosPrincipales();
     if (!silencioso) splash(100, '¡Listo!');
     else toast('Datos actualizados ✓', 'ok');
   } catch (e) {
@@ -911,13 +924,15 @@ function rowToCharla(r, i) {
 // DASHBOARD
 // ============================================================
 function renderDashboard() {
-  const abiertas = allInspecciones.filter(i => i.estado !== 'Cerrada').length;
-  const incAbiertos = allIncidentes.filter(i => i.estado !== 'Cerrado').length;
-  const charlasPend = allCharlas.filter(c => c.estado === 'Pendiente').length;
-  setStat('trabajadores', allTrabajadores.filter(t=>t.estado==='Activo').length);
-  setStat('inspecciones', abiertas);
-  setStat('incidentes', incAbiertos);
-  setStat('charlas', charlasPend);
+  const obraSel = obraFiltroActivo();
+  const trab = obraSel ? allTrabajadores.filter(t => t.obra === obraSel) : allTrabajadores;
+  const insp = obraSel ? allInspecciones.filter(i => i.obra === obraSel) : allInspecciones;
+  const inc = obraSel ? allIncidentes.filter(i => i.obra === obraSel) : allIncidentes;
+  const cha = obraSel ? allCharlas.filter(c => c.obra === obraSel) : allCharlas;
+  setStat('trabajadores', trab.filter(t=>t.estado==='Activo').length);
+  setStat('inspecciones', insp.filter(i => i.estado !== 'Cerrada').length);
+  setStat('incidentes', inc.filter(i => i.estado !== 'Cerrado').length);
+  setStat('charlas', cha.filter(c => c.estado === 'Pendiente').length);
   renderEstadisticasSeguridad();
 }
 
@@ -936,6 +951,61 @@ function opcionesObraSelectHTML(actual) {
 }
 function onCambioObraSelect(selEl, otroId) {
   document.getElementById(otroId).classList.toggle('hidden', selEl.value !== '__otra__');
+}
+
+// ── Obra activa (filtro global de toda la app) ─────────────────────────
+// Al entrar (cuenta interna, no subcontratista) se elige una Obra una sola
+// vez — renderSelectorObraActiva() desde arrancarApp() — y desde ahí TODOS los
+// módulos muestran solo lo de esa Obra, salvo Subcontratistas (módulo aparte
+// por diseño) y Procedimientos (biblioteca general, sin campo Obra en el
+// modelo de datos). Queda guardada en localStorage para no volver a
+// preguntar la próxima vez; se puede cambiar después desde "Cambiar obra"
+// en la sección Sesión. 'todas' = sin filtro (ve todo, como antes de esta
+// función existir).
+const OBRA_ACTIVA_KEY = 'obraActiva';
+let obraActiva = localStorage.getItem(OBRA_ACTIVA_KEY) || null;
+// Devuelve la obra por la que hay que filtrar, o null si no corresponde
+// filtrar (todavía no se eligió ninguna, o se eligió "todas").
+function obraFiltroActivo() {
+  return (obraActiva && obraActiva !== 'todas') ? obraActiva : null;
+}
+// Para preseleccionar el <select> de Obra en los formularios de "Nuevo/a X"
+// cuando ya hay una Obra activa — así no hay que volver a elegirla a mano.
+function obraPreseleccionada() { return obraFiltroActivo() || ''; }
+function actualizarChipObraActiva() {
+  const texto = obraFiltroActivo() || 'Todas las obras';
+  document.querySelectorAll('.chip-obra-activa-texto').forEach(el => { el.textContent = texto; });
+}
+// permiteCancelar=true cuando se reabre después (botón "Cambiar obra" con
+// la app ya visible) — muestra un botón para cerrar sin cambiar nada. En la
+// elección inicial (justo después de cargarTodo(), #main todavía oculto) no
+// hay nada que cancelar: hay que elegir sí o sí para poder seguir.
+function renderSelectorObraActiva(permiteCancelar) {
+  document.getElementById('btn-cerrar-elegir-obra').classList.toggle('hidden', !permiteCancelar);
+  document.getElementById('lista-elegir-obra').innerHTML =
+    opcionesObrasDisponibles().map(o => `<button type="button" class="elegir-obra-item" data-obra="${esc(o)}" onclick="seleccionarObraActiva(this.dataset.obra)">${ic('obra',16)} ${esc(o)}</button>`).join('')
+    + `<button type="button" class="elegir-obra-item elegir-obra-item--todas" data-obra="todas" onclick="seleccionarObraActiva(this.dataset.obra)">${ic('obra',16)} Todas las obras</button>`;
+  document.getElementById('pantalla-elegir-obra').classList.remove('hidden');
+}
+function abrirSelectorObraActiva() { renderSelectorObraActiva(true); }
+function cerrarSelectorObraActiva() { document.getElementById('pantalla-elegir-obra').classList.add('hidden'); }
+function seleccionarObraActiva(obra) {
+  obraActiva = obra;
+  localStorage.setItem(OBRA_ACTIVA_KEY, obra);
+  actualizarChipObraActiva();
+  renderModulosPrincipales();
+  cerrarSelectorObraActiva();
+  const main = document.getElementById('main');
+  // Si #main todavía está oculto es la elección inicial (recién ahora se
+  // revela la app); si ya estaba visible es un cambio posterior, y basta con
+  // re-renderizar donde ya se estaba, sin forzar la vuelta a Inicio.
+  if (main.classList.contains('hidden')) {
+    const dtHome = document.getElementById('desktop-home');
+    irPagina('inicio');
+    main.classList.remove('hidden');
+    [main, dtHome].forEach(el => el.classList.add('app-enter'));
+    setTimeout(() => [main, dtHome].forEach(el => el.classList.remove('app-enter')), 500);
+  }
 }
 // Al elegir la Obra en el formulario de Charla, si esa obra tiene un
 // supervisor asignado se sugiere su nombre como Relator (solo si el campo
@@ -1030,18 +1100,24 @@ function graficoIndice(nombre, color, valorActual, valorPrev, anioActual, format
     </div>`;
 }
 function renderEstadisticasSeguridad() {
+  // Si hay una Obra activa global, los índices quedan fijos en esa obra —
+  // el selector propio de este panel (para comparar obras entre sí) solo
+  // tiene sentido cuando se está viendo "Todas las obras".
+  const obraGlobal = obraFiltroActivo();
+  if (obraGlobal) obraDashboardSel = obraGlobal;
   const obras = opcionesObrasDisponibles();
   if (obraDashboardSel !== 'todas' && !obras.includes(obraDashboardSel)) obraDashboardSel = 'todas';
   const st = calcularEstadisticasSeguridad(obraDashboardSel, 0);
   const stPrev = calcularEstadisticasSeguridad(obraDashboardSel, 1);
 
   setListHTML('stats-seguridad', `
+    ${obraGlobal ? '' : `
     <div class="stats-obra-bar">${ic('obra',16)}
       <select id="sel-obra-dashboard" class="obra-selector" onchange="onCambioObraDashboard()">
         <option value="todas" ${obraDashboardSel==='todas'?'selected':''}>Todas las obras</option>
         ${obras.map(o => `<option ${o===obraDashboardSel?'selected':''}>${esc(o)}</option>`).join('')}
       </select>
-    </div>
+    </div>`}
     <div class="indices-grid">
       ${graficoIndice('Tasa Accidentabilidad', 'blue', st.tasaAccidentabilidad, stPrev.tasaAccidentabilidad, st.anio, v => v.toFixed(1)+'%')}
       ${graficoIndice('Índice Frecuencia', 'amber', st.indiceFrecuencia, stPrev.indiceFrecuencia, st.anio, v => Math.round(v))}
@@ -1067,7 +1143,8 @@ function onBuscarTrabajadores(v) {
 // como ordena localeCompare('es')) para el índice lateral de Trabajadores.
 const LETRAS_INDICE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 function renderTrabajadores() {
-  let activos = [...allTrabajadores];
+  const obraSel = obraFiltroActivo();
+  let activos = obraSel ? allTrabajadores.filter(t => t.obra === obraSel) : [...allTrabajadores];
   if (filtroTrabajadores) {
     activos = activos.filter(t => [t.nombre, t.rut, t.cargo, t.empresa, t.obra]
       .some(v => sinTildes((v || '').toLowerCase()).includes(filtroTrabajadores)));
@@ -1357,13 +1434,15 @@ async function guardarDatosPersonales(ev) {
   } catch (e) { toast(e.message, 'error'); }
 }
 function selectTrabajadoresOptions() {
-  return allTrabajadores.filter(t=>t.estado==='Activo').map(t => `<option value="${esc(t.nombre)}|${esc(t.rut)}">${esc(t.nombre)} — ${esc(t.rut)}</option>`).join('');
+  const obraSel = obraFiltroActivo();
+  return allTrabajadores.filter(t => t.estado==='Activo' && (!obraSel || t.obra === obraSel))
+    .map(t => `<option value="${esc(t.nombre)}|${esc(t.rut)}">${esc(t.nombre)} — ${esc(t.rut)}</option>`).join('');
 }
 function abrirFormTrabajador() {
   const f = document.getElementById('form-trabajador');
   f.reset();
   const selObra = document.getElementById('sel-obra-trabajador');
-  selObra.innerHTML = opcionesObraSelectHTML('');
+  selObra.innerHTML = opcionesObraSelectHTML(obraPreseleccionada());
   onCambioObraSelect(selObra, 'input-trabajador-obra-otra');
   renderChecklistEspecialidades('checklist-especialidades-trabajador');
   document.getElementById('grupo-especialidades-trabajador').classList.add('hidden');
@@ -1453,7 +1532,8 @@ async function guardarSupervisor(ev) {
 // MÓDULO: INSPECCIONES (con foto + alerta de charla)
 // ============================================================
 function renderInspecciones() {
-  const items = [...allInspecciones].reverse();
+  const obraSel = obraFiltroActivo();
+  const items = (obraSel ? allInspecciones.filter(i => i.obra === obraSel) : [...allInspecciones]).reverse();
   if (items.length === 0) { setListHTML('inspecciones', emptyState('Sin inspecciones', 'Registra la primera inspección')); return; }
   setListHTML('inspecciones', items.map(i => {
     const meta = NIVELES_RIESGO.find(n=>n.value===i.riesgo) || NIVELES_RIESGO[0];
@@ -1486,7 +1566,7 @@ function abrirFormInspeccion() {
   f.fecha.value = hoyISO();
   document.getElementById('sel-tema-inspeccion').innerHTML = TEMAS_CHARLA.map(t=>`<option>${t}</option>`).join('');
   const selObra = document.getElementById('sel-obra-inspeccion');
-  selObra.innerHTML = opcionesObraSelectHTML('');
+  selObra.innerHTML = opcionesObraSelectHTML(obraPreseleccionada());
   onCambioObraSelect(selObra, 'input-inspeccion-obra-otra');
   openPanel('panel-form-inspeccion');
 }
@@ -1530,7 +1610,8 @@ function mostrarAlertaCharla(tema, area) {
 // MÓDULO: CHARLAS (alertas generadas por inspecciones)
 // ============================================================
 function renderCharlas() {
-  const items = [...allCharlas].reverse();
+  const obraSel = obraFiltroActivo();
+  const items = (obraSel ? allCharlas.filter(c => c.obra === obraSel) : [...allCharlas]).reverse();
   if (items.length === 0) { setListHTML('charlas', emptyState('Sin charlas registradas', 'Toca "+" para registrar una charla')); return; }
   setListHTML('charlas', items.map(c => `
     <div class="card card--default">
@@ -1573,7 +1654,8 @@ function renderPlantillasCharla() {
 let charlaEnProceso = null;
 
 function renderChecklistAsistentesCharla() {
-  const activos = allTrabajadores.filter(t => t.estado === 'Activo');
+  const obraSel = obraFiltroActivo();
+  const activos = allTrabajadores.filter(t => t.estado === 'Activo' && (!obraSel || t.obra === obraSel));
   document.getElementById('checklist-asistentes-charla').innerHTML = activos.map(t => `
     <div class="chk-row" data-nombre="${esc(t.nombre)}" data-rut="${esc(t.rut)}">
       <label class="chk-row-label">
@@ -1614,7 +1696,7 @@ function abrirRealizarCharla(fila) {
   f.fecha.value = hoyISO();
   f.hora.value = horaActual();
   const selObraCharla1 = document.getElementById('sel-obra-charla');
-  selObraCharla1.innerHTML = opcionesObraSelectHTML('');
+  selObraCharla1.innerHTML = opcionesObraSelectHTML(obraPreseleccionada());
   onCambioObraSelect(selObraCharla1, 'input-charla-obra-otra');
   document.getElementById('panel-realizar-charla-titulo').textContent = 'Realizar charla';
   renderChecklistAsistentesCharla();
@@ -1632,7 +1714,7 @@ function abrirNuevaCharla() {
   f.fecha.value = hoyISO();
   f.hora.value = horaActual();
   const selObraCharla2 = document.getElementById('sel-obra-charla');
-  selObraCharla2.innerHTML = opcionesObraSelectHTML('');
+  selObraCharla2.innerHTML = opcionesObraSelectHTML(obraPreseleccionada());
   onCambioObraSelect(selObraCharla2, 'input-charla-obra-otra');
   document.getElementById('panel-realizar-charla-titulo').textContent = 'Nueva charla';
   renderChecklistAsistentesCharla();
@@ -2027,7 +2109,8 @@ async function generarPdfCharlaSobrePlantilla(datos, plantilla) {
 // MÓDULO: INCIDENTES Y ACCIDENTES (con foto)
 // ============================================================
 function renderIncidentes() {
-  const items = [...allIncidentes].reverse();
+  const obraSel = obraFiltroActivo();
+  const items = (obraSel ? allIncidentes.filter(i => i.obra === obraSel) : [...allIncidentes]).reverse();
   if (items.length === 0) { setListHTML('incidentes', emptyState('Sin incidentes registrados', '')); return; }
   setListHTML('incidentes', items.map(i => `
     <div class="card card--default" onclick="abrirDetalleIncidente(${i.fila})">
@@ -2127,7 +2210,7 @@ function abrirFormIncidente() {
   document.getElementById('sel-trabajador-incidente').innerHTML =
     '<option value="">— Selecciona (opcional) —</option>' + selectTrabajadoresOptions();
   const selObra = document.getElementById('sel-obra-incidente');
-  selObra.innerHTML = opcionesObraSelectHTML('');
+  selObra.innerHTML = opcionesObraSelectHTML(obraPreseleccionada());
   onCambioObraSelect(selObra, 'input-incidente-obra-otra');
   openPanel('panel-form-incidente');
 }
@@ -3169,7 +3252,8 @@ function renderChecklistsHcr() {
 }
 
 function renderHcr() {
-  const items = [...allHcr].reverse();
+  const obraSel = obraFiltroActivo();
+  const items = (obraSel ? allHcr.filter(h => h.obra === obraSel) : [...allHcr]).reverse();
   if (items.length === 0) { setListHTML('hcr', emptyState('Sin HCR registradas', 'Toca "+" para registrar una')); return; }
   setListHTML('hcr', items.map(h => `
     <div class="card card--default">
@@ -3184,7 +3268,8 @@ function renderHcr() {
 
 let hcrEnProceso = null;
 function renderChecklistTrabajadoresHcr() {
-  const activos = allTrabajadores.filter(t => t.estado === 'Activo');
+  const obraSel = obraFiltroActivo();
+  const activos = allTrabajadores.filter(t => t.estado === 'Activo' && (!obraSel || t.obra === obraSel));
   document.getElementById('checklist-trabajadores-hcr').innerHTML = activos.map(t => `
     <div class="chk-row" data-nombre="${esc(t.nombre)}" data-rut="${esc(t.rut)}">
       <label class="chk-row-label">
@@ -3202,7 +3287,7 @@ function abrirNuevoHcr() {
   f.reset();
   f.fecha.value = hoyISO();
   const selObraHcr = document.getElementById('sel-obra-hcr');
-  selObraHcr.innerHTML = opcionesObraSelectHTML('');
+  selObraHcr.innerHTML = opcionesObraSelectHTML(obraPreseleccionada());
   onCambioObraSelect(selObraHcr, 'input-hcr-obra-otra');
   renderChecklistsHcr();
   renderChecklistTrabajadoresHcr();
@@ -3779,13 +3864,20 @@ function opcionesEppDisponibles() {
 }
 
 function renderEpp() {
-  if (allEpp.length === 0) { setListHTML('epp', emptyState('Sin entregas registradas', '')); return; }
+  // EPP no tiene su propia columna Obra — se filtra por la Obra del
+  // trabajador al que se le entregó (buscado por nombre, igual que el resto
+  // de la app cruza Trabajadores por nombre en vez de un ID).
+  const obraSel = obraFiltroActivo();
+  const eppObra = obraSel
+    ? allEpp.filter(e => { const t = allTrabajadores.find(x => x.nombre === e.trabajador); return t && t.obra === obraSel; })
+    : allEpp;
+  if (eppObra.length === 0) { setListHTML('epp', emptyState('Sin entregas registradas', '')); return; }
   // Cada fila ya es una entrega completa (todos sus ítems juntos); se
   // mantiene el agrupado por fecha+trabajador+firma solo por compatibilidad
   // con filas antiguas, de antes de combinar los ítems en una sola fila.
   const grupos = {};
   const orden = [];
-  allEpp.forEach(e => {
+  eppObra.forEach(e => {
     const key = e.fecha + '|' + e.trabajador + '|' + e.firma;
     if (!grupos[key]) { grupos[key] = { fecha: e.fecha, trabajador: e.trabajador, firma: e.firma, items: [] }; orden.push(key); }
     grupos[key].items.push(...itemsDeFilaEpp(e).map(x => `${x.item} (${x.cantidad})`));
@@ -4040,7 +4132,13 @@ async function arrancarApp() {
     const root = document.getElementById('subcontratista-root');
     root.classList.add('app-enter');
     setTimeout(() => root.classList.remove('app-enter'), 500);
+  } else if (!obraActiva) {
+    // Primera vez que esta cuenta entra (o cerró sesión/cambió de
+    // dispositivo): hay que elegir la Obra activa antes de ver la app.
+    // seleccionarObraActiva() es quien revela #main una vez elegida.
+    renderSelectorObraActiva(false);
   } else {
+    actualizarChipObraActiva();
     // Revela la app con una pequeña animación de aparición, en vez de
     // que todo salte de golpe apenas termina de cargar. Siempre arranca en
     // Inicio: en escritorio esa es la página completa sin sidebar

@@ -769,6 +769,28 @@ a.action-btn { display: flex; align-items: center; justify-content: center; gap:
 .login-btn:active { transform: scale(0.97); box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
 .login-hint { font-size: 12px; color: #475569; margin-top: 16px; }
 
+/* ── Selector de Obra activa (pantalla "¿En qué obra estás?") ── */
+.login-box--ancho { max-width: 420px; position: relative; }
+.elegir-obra-cerrar {
+  position: absolute; top: 8px; left: 8px;
+  background: none; border: none; color: #64748b;
+  font-size: 13px; font-weight: 600; cursor: pointer; padding: 6px 8px;
+}
+.elegir-obra-lista {
+  display: flex; flex-direction: column; gap: 10px; width: 100%;
+  max-height: 46vh; overflow-y: auto; padding: 2px 2px 2px 2px;
+}
+.elegir-obra-item {
+  display: flex; align-items: center; gap: 10px;
+  background: rgba(255,255,255,0.06); border: 1.5px solid rgba(255,255,255,0.14);
+  border-radius: 10px; padding: 13px 16px;
+  font-size: 14px; font-weight: 600; color: #f1f5f9;
+  cursor: pointer; width: 100%; text-align: left;
+  transition: background 0.15s, border-color 0.15s;
+}
+.elegir-obra-item:active { background: rgba(255,255,255,0.16); }
+.elegir-obra-item--todas { border-color: var(--accent); color: var(--accent); margin-top: 2px; }
+
 /* ── Doc open button ── */
 .doc-open-btn {
   background: var(--accent-soft); color: #1565c0;

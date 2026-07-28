@@ -160,6 +160,50 @@ llama a `onCambioObraSelect(...)` a mano justo después de rellenar el
 select, para que el input de texto quede visible desde el principio en
 vez de esperar un cambio que nunca ocurre.
 
+## Obra activa (filtro global)
+
+Una cuenta interna (no subcontratista) elige una Obra la **primera vez** que
+entra, antes de ver cualquier módulo — pantalla `#pantalla-elegir-obra` en
+`index.html`, listado con `opcionesObrasDisponibles()` (mismo catálogo
+dinámico que ya usan los `<select>` de Obra en los formularios) más la
+opción **"Todas las obras"** (ve todo sin filtrar, útil para un
+administrador). Queda guardada en `localStorage` (`obraActiva` en `app.js`)
+para no volver a preguntar la próxima vez, y se puede cambiar después desde
+el botón **"Obra: ..."** en la sección Sesión (Inicio móvil, Inicio
+escritorio y pie del sidebar) — `abrirSelectorObraActiva()` reabre la misma
+pantalla, con un botón "Cancelar" que esta vez sí aparece (en la elección
+inicial no hay nada que cancelar: hay que elegir para poder seguir).
+`signOut()` borra la Obra activa junto con la sesión, para que la próxima
+cuenta que entre (puede ser otra persona, en un dispositivo compartido)
+vuelva a elegir la suya.
+
+Con una Obra activa específica (no "todas"), **todos los módulos filtran
+por esa Obra** — Dashboard (tarjetas de Inicio + Índices de seguridad,
+que además esconden su propio selector de obra: no tiene sentido tenerlo
+si ya está fijo en una), Trabajadores, Inspecciones, Incidentes, Charlas,
+HCR, y los checklists de trabajadores dentro de esos formularios
+(Asistentes de Charla, Cuadrilla de HCR, selector de Trabajador en
+Incidentes/EPP). Los formularios de "Nuevo/a X" además preseleccionan esa
+Obra en su `<select>` (`obraPreseleccionada()`), en vez de dejarlo vacío.
+**EPP no tiene columna Obra propia**: se filtra buscando la Obra del
+trabajador de cada entrega por nombre (`renderEpp`).
+
+**Quedan sin filtrar, a propósito** (decisión del cliente): **Subcontratistas**
+(módulo aparte por diseño, ya aislado por empresa en vez de por Obra) y
+**Procedimientos de Trabajo Seguro** (biblioteca general de documentos, hoy
+sin campo Obra en su modelo de datos — agregarlo sería un cambio de modelo
+de datos más grande, no pedido).
+
+`renderModulosPrincipales()` agrupa el render de todos los módulos filtrables
+(se llama tanto al terminar `cargarTodo()` como al elegir/cambiar la Obra
+activa, para no repetir esa lista dos veces). Los arrays `allTrabajadores`/
+`allInspecciones`/etc. **nunca se filtran en sí mismos** — siguen completos
+todo el tiempo; el filtro se aplica solo al momento de armar cada lista en
+pantalla (`obraFiltroActivo()` devuelve la Obra a filtrar, o `null` si no
+corresponde filtrar). Esto es intencional: funciones que ya cruzan datos
+por Obra con un parámetro explícito (`supervisorDeObra(obra, tema)`,
+`trabajadoresACargoDe`, etc.) siguen funcionando igual sin tocarlas.
+
 ## Módulos de la app
 
 1. **Inspecciones** — foto de registro. Al guardar, **genera automáticamente
