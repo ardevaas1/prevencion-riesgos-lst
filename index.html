@@ -138,8 +138,13 @@
       <div class="header-title" id="header-title">Prevención de Riesgos</div>
       <div class="header-sub" id="chip-email"></div>
     </div>
-    <div class="header-btn btn-obra-activa" onclick="abrirSelectorObraActiva()" title="Cambiar obra"><svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px"><path d="M4 21V8l6-4 6 4v13" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M14 21v-7h6v7" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></div>
     <div class="header-btn" onclick="cargarTodo(true)">↻</div>
+  </div>
+
+  <div class="obra-bar btn-obra-activa" onclick="abrirSelectorObraActiva()" title="Volver a seleccionar obra">
+    <div class="obra-bar-icon"><svg viewBox="0 0 24 24" fill="none" style="width:16px;height:16px"><path d="M4 21V8l6-4 6 4v13" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M14 21v-7h6v7" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></div>
+    <div class="obra-bar-nombre">Obra: <b class="obra-bar-nombre-actual">Todas las obras</b></div>
+    <div class="obra-bar-accion">Cambiar obra ›</div>
   </div>
 
   <div class="pages" id="pages">
@@ -237,10 +242,14 @@
 <!-- ===== INICIO ESCRITORIO (página completa, sin sidebar) ===== -->
 <div class="desktop-home dt-oculto" id="desktop-home">
   <div class="desktop-home-header">
-    <div class="header-btn header-btn--top-right btn-obra-activa" onclick="abrirSelectorObraActiva()" title="Cambiar obra"><svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px"><path d="M4 21V8l6-4 6 4v13" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M14 21v-7h6v7" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></div>
     <div class="logo-badge"><img src="logo.png" alt="LST"></div>
     <div class="desktop-home-title">Prevención de Riesgos</div>
     <div class="desktop-home-sub">Constructora LST</div>
+  </div>
+  <div class="obra-bar obra-bar--ancho btn-obra-activa" onclick="abrirSelectorObraActiva()" title="Volver a seleccionar obra">
+    <div class="obra-bar-icon"><svg viewBox="0 0 24 24" fill="none" style="width:16px;height:16px"><path d="M4 21V8l6-4 6 4v13" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M14 21v-7h6v7" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></div>
+    <div class="obra-bar-nombre">Obra: <b class="obra-bar-nombre-actual">Todas las obras</b></div>
+    <div class="obra-bar-accion">Cambiar obra ›</div>
   </div>
   <div class="desktop-home-body">
     <div class="desktop-home-stats">
@@ -279,7 +288,11 @@
       <div class="desktop-sidebar-title">Prevención de Riesgos</div>
       <div class="desktop-sidebar-sub" id="dt-chip-email"></div>
     </div>
-    <div class="header-btn btn-obra-activa" style="margin-left:auto;" onclick="abrirSelectorObraActiva()" title="Cambiar obra"><svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px"><path d="M4 21V8l6-4 6 4v13" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M14 21v-7h6v7" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></div>
+  </div>
+  <div class="obra-bar btn-obra-activa" onclick="abrirSelectorObraActiva()" title="Volver a seleccionar obra">
+    <div class="obra-bar-icon"><svg viewBox="0 0 24 24" fill="none" style="width:16px;height:16px"><path d="M4 21V8l6-4 6 4v13" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M14 21v-7h6v7" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></div>
+    <div class="obra-bar-nombre">Obra: <b class="obra-bar-nombre-actual">Todas las obras</b></div>
+    <div class="obra-bar-accion">Cambiar obra ›</div>
   </div>
   <div class="desktop-nav desktop-nav--back">
     <button class="desktop-nav-item desktop-nav-back" onclick="irPagina('inicio')"><span class="dn-ic">‹</span><span class="dn-lb">Volver a Inicio</span></button>

@@ -222,6 +222,29 @@ body.is-offline #app { padding-top: 30px; }
 .header-btn { width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,0.18); color: #fff; font-size: 18px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
 .header-btn:active { background: rgba(255,255,255,0.3); }
 
+/* ── Barra de Obra activa: mucho más notoria que un botón chico en el
+   header — franja completa, siempre visible debajo del header (o del hero
+   de Inicio en escritorio), con el nombre de la obra y una acción con
+   texto explícito para volver a elegir otra. ── */
+.obra-bar {
+  display: flex; align-items: center; gap: 10px;
+  background: #fff; border-bottom: 1px solid var(--line);
+  padding: 10px 16px; cursor: pointer; flex-shrink: 0;
+  transition: background 0.15s;
+}
+.obra-bar:active { background: var(--neutral-soft); }
+.obra-bar-icon {
+  flex-shrink: 0; width: 28px; height: 28px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center; color: #fff;
+  background: linear-gradient(145deg, var(--accent), var(--accent-dark));
+}
+.obra-bar-nombre {
+  flex: 1; min-width: 0; font-size: 13px; color: var(--ink-soft);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.obra-bar-nombre b { color: var(--ink); font-weight: 700; }
+.obra-bar-accion { flex-shrink: 0; font-size: 12.5px; font-weight: 700; color: var(--accent-dark); }
+
 /* ── Pages ── */
 .pages { flex: 1; overflow-y: auto; overflow-x: hidden; scrollbar-width: none; -ms-overflow-style: none; }
 .pages::-webkit-scrollbar { display: none; }
@@ -865,7 +888,6 @@ a.action-btn { display: flex; align-items: center; justify-content: center; gap:
     background: var(--bg);
   }
   .desktop-home-header {
-    position: relative;
     flex-shrink: 0;
     padding: 44px 20px 36px;
     display: flex; flex-direction: column; align-items: center; gap: 10px;
@@ -876,11 +898,11 @@ a.action-btn { display: flex; align-items: center; justify-content: center; gap:
       linear-gradient(135deg, #c06f0a 0%, var(--accent) 55%, #ffb462 100%);
     box-shadow: 0 2px 14px rgba(229,141,23,0.25);
   }
-  .header-btn--top-right { position: absolute; top: 18px; right: 18px; }
   .desktop-home-header .logo-badge { width: 64px; height: 64px; border-radius: 18px; }
   .desktop-home-header .logo-badge img { width: 70%; height: 70%; }
   .desktop-home-title { font-size: 22px; font-weight: 700; color: #fff; }
   .desktop-home-sub { font-size: 13px; color: rgba(255,255,255,0.85); }
+  .obra-bar--ancho { max-width: 1180px; margin: 0 auto; width: 100%; padding: 12px 24px; box-sizing: border-box; }
   .desktop-home-body {
     flex: 1; max-width: 1180px; margin: 0 auto; width: 100%;
     padding: 32px 24px 60px;

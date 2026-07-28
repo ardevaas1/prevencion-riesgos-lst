@@ -974,11 +974,11 @@ function obraFiltroActivo() {
 function obraPreseleccionada() { return obraFiltroActivo() || ''; }
 function actualizarChipObraActiva() {
   const texto = obraFiltroActivo() || 'Todas las obras';
-  // El botón para cambiar de obra vive arriba, en el header (móvil,
-  // sidebar de escritorio e Inicio de escritorio) para que se pueda abrir
-  // desde cualquier módulo sin tener que ir a la sección Sesión — el
-  // tooltip deja ver cuál está activa sin tener que abrirlo.
-  document.querySelectorAll('.btn-obra-activa').forEach(el => { el.title = `Obra actual: ${texto} — tocar para cambiar`; });
+  // Franja "Obra: ..." con acción "Cambiar obra ›" — vive arriba (móvil,
+  // sidebar de escritorio e Inicio de escritorio), siempre visible en
+  // cualquier módulo, para que se note y quede claro qué se puede hacer
+  // (antes era un botón de solo ícono, difícil de notar).
+  document.querySelectorAll('.obra-bar-nombre-actual').forEach(el => { el.textContent = texto; });
 }
 // permiteCancelar=true cuando se reabre después (botón "Cambiar obra" con
 // la app ya visible) — muestra un botón para cerrar sin cambiar nada. En la
