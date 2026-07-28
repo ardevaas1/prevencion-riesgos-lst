@@ -224,26 +224,33 @@ body.is-offline #app { padding-top: 30px; }
 
 /* ── Barra de Obra activa: mucho más notoria que un botón chico en el
    header — franja completa, siempre visible debajo del header (o del hero
-   de Inicio en escritorio), con el nombre de la obra y una acción con
-   texto explícito para volver a elegir otra. ── */
+   de Inicio en escritorio). Fondo teñido de color (no blanco liso) y el
+   NOMBRE de la obra como elemento grande/en negrita — es el dato que hay
+   que poder ver de un vistazo sin tener que leer con atención; la acción
+   "Cambiar" queda más chica al lado, es secundaria. ── */
 .obra-bar {
-  display: flex; align-items: center; gap: 10px;
-  background: #fff; border-bottom: 1px solid var(--line);
-  padding: 10px 16px; cursor: pointer; flex-shrink: 0;
+  display: flex; align-items: center; gap: 12px;
+  background: var(--accent-soft); border-bottom: 1px solid rgba(var(--accent-rgb),0.28);
+  padding: 11px 16px; cursor: pointer; flex-shrink: 0;
   transition: background 0.15s;
 }
-.obra-bar:active { background: var(--neutral-soft); }
+.obra-bar:active { background: rgba(var(--accent-rgb),0.2); }
 .obra-bar-icon {
-  flex-shrink: 0; width: 28px; height: 28px; border-radius: 8px;
+  flex-shrink: 0; width: 34px; height: 34px; border-radius: 10px;
   display: flex; align-items: center; justify-content: center; color: #fff;
   background: linear-gradient(145deg, var(--accent), var(--accent-dark));
+  box-shadow: 0 2px 6px rgba(var(--accent-rgb),0.4);
 }
-.obra-bar-nombre {
-  flex: 1; min-width: 0; font-size: 13px; color: var(--ink-soft);
+.obra-bar-texto { flex: 1; min-width: 0; }
+.obra-bar-label {
+  font-size: 10.5px; font-weight: 700; color: var(--accent-dark);
+  text-transform: uppercase; letter-spacing: 0.5px;
+}
+.obra-bar-nombre-actual {
+  font-size: 15px; font-weight: 800; color: var(--ink); margin-top: 1px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.obra-bar-nombre b { color: var(--ink); font-weight: 700; }
-.obra-bar-accion { flex-shrink: 0; font-size: 12.5px; font-weight: 700; color: var(--accent-dark); }
+.obra-bar-accion { flex-shrink: 0; font-size: 12px; font-weight: 700; color: var(--accent-dark); }
 
 /* ── Pages ── */
 .pages { flex: 1; overflow-y: auto; overflow-x: hidden; scrollbar-width: none; -ms-overflow-style: none; }

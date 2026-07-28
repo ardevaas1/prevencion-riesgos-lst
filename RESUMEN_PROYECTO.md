@@ -169,14 +169,17 @@ dinámico que ya usan los `<select>` de Obra en los formularios) más la
 opción **"Todas las obras"** (ve todo sin filtrar, útil para un
 administrador). Queda guardada en `localStorage` (`obraActiva` en `app.js`)
 para no volver a preguntar la próxima vez, y se puede cambiar después desde
-la **franja "Obra: ... · Cambiar obra ›"** (`.obra-bar`) que vive **arriba,
-debajo del header** — en móvil, del sidebar de escritorio y del hero de
-Inicio en escritorio —, visible siempre, en cualquier módulo. Es a
-propósito una franja completa con texto (nombre de la obra + acción "Cambiar
-obra ›"), no un botón de solo ícono: un ícono chico en el header pasaba
-desapercibido; la franja se nota. `actualizarChipObraActiva()` mantiene el
-nombre (`.obra-bar-nombre-actual`) al día. `abrirSelectorObraActiva()` reabre
-la misma pantalla, con un botón "Cancelar" que esta vez sí aparece (en la
+la **franja "OBRA ACTIVA"** (`.obra-bar`) que vive **arriba, debajo del
+header** — en móvil, del sidebar de escritorio y del hero de Inicio en
+escritorio —, visible siempre, en cualquier módulo. A propósito no es un
+botón de solo ícono (pasaba desapercibido): fondo teñido de color y el
+**nombre de la obra en grande/negrita** como elemento principal (etiqueta
+"OBRA ACTIVA" chica arriba, nombre grande abajo), con "Cambiar ›" como
+acción secundaria más chica al lado — el dato que hay que poder leer de un
+vistazo es cuál obra está activa, no el botón para cambiarla.
+`actualizarChipObraActiva()` mantiene el nombre (`.obra-bar-nombre-actual`)
+al día. `abrirSelectorObraActiva()` reabre la misma pantalla, con un botón
+"Cancelar" que esta vez sí aparece (en la
 elección inicial no hay nada que cancelar: hay que elegir para poder
 seguir).
 `signOut()` borra la Obra activa junto con la sesión, para que la próxima
