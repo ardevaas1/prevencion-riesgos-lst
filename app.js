@@ -982,9 +982,24 @@ function actualizarChipObraActiva() {
 // hay nada que cancelar: hay que elegir sí o sí para poder seguir.
 function renderSelectorObraActiva(permiteCancelar) {
   document.getElementById('btn-cerrar-elegir-obra').classList.toggle('hidden', !permiteCancelar);
-  document.getElementById('lista-elegir-obra').innerHTML =
-    opcionesObrasDisponibles().map(o => `<button type="button" class="elegir-obra-item" data-obra="${esc(o)}" onclick="seleccionarObraActiva(this.dataset.obra)">${ic('obra',16)} ${esc(o)}</button>`).join('')
-    + `<button type="button" class="elegir-obra-item elegir-obra-item--todas" data-obra="todas" onclick="seleccionarObraActiva(this.dataset.obra)">${ic('obra',16)} Todas las obras</button>`;
+  const obras = opcionesObrasDisponibles();
+  // "Todas las obras" queda fijo arriba (con su propio color, para
+  // distinguirla del resto) en vez de al final de la lista — si hay muchas
+  // obras, antes había que scrollear toda la lista para llegar a ella.
+  document.getElementById('lista-elegir-obra').innerHTML = `
+    <button type="button" class="elegir-obra-item elegir-obra-item--todas" data-obra="todas" onclick="seleccionarObraActiva(this.dataset.obra)">
+      <div class="elegir-obra-icon elegir-obra-icon--todas">${ic('obra',18)}</div>
+      <div class="elegir-obra-nombre">Todas las obras</div>
+      <div class="card-arrow">›</div>
+    </button>
+    ${obras.length ? '<div class="elegir-obra-divider"></div>' : ''}
+    ${obras.map(o => `
+    <button type="button" class="elegir-obra-item" data-obra="${esc(o)}" onclick="seleccionarObraActiva(this.dataset.obra)">
+      <div class="elegir-obra-icon">${ic('obra',18)}</div>
+      <div class="elegir-obra-nombre">${esc(o)}</div>
+      <div class="card-arrow">›</div>
+    </button>`).join('')}
+  `;
   document.getElementById('pantalla-elegir-obra').classList.remove('hidden');
 }
 function abrirSelectorObraActiva() { renderSelectorObraActiva(true); }

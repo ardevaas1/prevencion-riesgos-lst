@@ -796,20 +796,33 @@ a.action-btn { display: flex; align-items: center; justify-content: center; gap:
   font-size: 13px; font-weight: 600; cursor: pointer; padding: 6px 8px;
 }
 .elegir-obra-lista {
-  display: flex; flex-direction: column; gap: 10px; width: 100%;
-  max-height: 46vh; overflow-y: auto; padding: 2px;
+  display: flex; flex-direction: column; gap: 8px; width: 100%;
+  max-height: 50vh; overflow-y: auto; padding: 3px;
 }
+/* Mismo lenguaje visual que las tarjetas del resto de la app (.card /
+   .card-icon en Trabajadores, Inspecciones, etc.): ícono en badge de color,
+   texto, flecha — en vez de un botón de texto plano. */
 .elegir-obra-item {
-  display: flex; align-items: center; gap: 10px;
-  background: #fff; border: 1.5px solid var(--line);
-  border-radius: 10px; padding: 13px 16px;
-  font-size: 14px; font-weight: 600; color: var(--ink);
+  display: flex; align-items: center; gap: 12px;
+  background: #fff; border: 1px solid var(--line);
+  border-radius: 12px; padding: 12px 14px;
   cursor: pointer; width: 100%; text-align: left;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-  transition: background 0.15s, border-color 0.15s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  transition: box-shadow 0.15s, transform 0.1s, border-color 0.15s;
 }
-.elegir-obra-item:active { background: var(--neutral-soft); }
-.elegir-obra-item--todas { border-color: var(--accent); color: var(--accent-dark); background: var(--accent-soft); margin-top: 2px; }
+.elegir-obra-item:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+.elegir-obra-item:active { transform: scale(0.98); background: var(--neutral-soft); }
+.elegir-obra-icon {
+  flex-shrink: 0; width: 36px; height: 36px; border-radius: 11px;
+  display: flex; align-items: center; justify-content: center; color: #fff;
+  background: linear-gradient(145deg, var(--accent), var(--accent-dark));
+  box-shadow: 0 3px 8px rgba(var(--accent-rgb),0.3);
+}
+.elegir-obra-icon--todas { background: linear-gradient(145deg, #5fb878, #2f8a4d); box-shadow: 0 3px 8px rgba(47,138,77,0.3); }
+.elegir-obra-nombre { flex: 1; min-width: 0; font-size: 14px; font-weight: 600; color: var(--ink); }
+.elegir-obra-item--todas { border-color: rgba(47,138,77,0.35); }
+.elegir-obra-item--todas .elegir-obra-nombre { font-weight: 700; }
+.elegir-obra-divider { height: 1px; background: var(--line); margin: 6px 4px 8px; flex-shrink: 0; }
 
 /* ── Doc open button ── */
 .doc-open-btn {
