@@ -580,11 +580,22 @@ body.is-offline #app { padding-top: 30px; }
   text-decoration: none;
 }
 .ficha-link-btn:active { background: #bbdefb; }
-.action-btn { width: 100%; margin-top: 10px; padding: 10px; border-radius: 10px; border: 1.5px solid var(--accent); color: var(--accent); font-size: 13px; font-weight: 600; background: none; }
+.action-btn {
+  width: 100%; margin-top: 10px; padding: 10px; border-radius: 10px;
+  border: 1.5px solid var(--accent); color: var(--accent);
+  font-size: 13px; font-weight: 600; background: none;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  cursor: pointer; box-sizing: border-box;
+}
 .action-btn:active { background: var(--accent-soft); }
-/* .action-btn también se usa en enlaces <a> (ej. abrir Drive/Sheets) —
-   por defecto un <a> es inline, así que hay que centrar el contenido a mano. */
-a.action-btn { display: flex; align-items: center; justify-content: center; gap: 6px; text-decoration: none; box-sizing: border-box; }
+/* Cerrar sesión es una acción distinta a "Actualizar datos"/Drive/Sheets
+   (termina la sesión, no es un atajo de uso frecuente) — se distingue con
+   un tono neutro en vez del mismo naranjo que el resto, para que no
+   compitan visualmente por la misma atención. */
+.action-btn--salir { border-color: var(--line); color: var(--ink-soft); }
+.action-btn--salir:active { background: var(--neutral-soft); }
+/* .action-btn también se usa en enlaces <a> (ej. abrir Drive/Sheets). */
+a.action-btn { text-decoration: none; }
 
 /* ── Alerta de charla / plan de acción sugerido ── */
 .alerta-charla-box {
@@ -1068,10 +1079,17 @@ a.action-btn { display: flex; align-items: center; justify-content: center; gap:
     font-weight: 600;
     border: none;
     cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    box-sizing: border-box;
     transition: background 0.15s;
   }
   .desktop-refresh-btn:hover { background: #dce8f3; }
-  a.desktop-refresh-btn { display: flex; align-items: center; justify-content: center; gap: 6px; text-decoration: none; box-sizing: border-box; }
+  /* Cerrar sesión: tono neutro en vez del mismo naranjo que Actualizar
+     datos/Drive/Sheets — es una acción distinta (termina la sesión), no un
+     atajo de uso frecuente, y no debería competir visualmente con esos. */
+  .desktop-refresh-btn--salir { color: var(--ink-soft); }
+  .desktop-refresh-btn--salir:hover { background: #e4e4e7; }
+  a.desktop-refresh-btn { text-decoration: none; }
 
   /* ══════════════════════════════════
      PANEL CENTRAL (vistas)

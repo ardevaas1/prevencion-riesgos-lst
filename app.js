@@ -570,6 +570,8 @@ const ICONS = {
   carpeta: '<svg viewBox="0 0 24 24" fill="none"><path d="M3 6.5a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v9.5a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>',
   hoja: '<svg viewBox="0 0 24 24" fill="none"><rect x="4" y="3.5" width="16" height="17" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M4 9h16M4 14.5h16M9.5 9v11.5" stroke="currentColor" stroke-width="1.5"/></svg>',
   subcontratistas: '<svg viewBox="0 0 24 24" fill="none"><path d="M4 21V6a1 1 0 0 1 1-1h6v16" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M11 10.5h8a1 1 0 0 1 1 1V21h-9" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M7 8h.01M7 11h.01M7 14h.01M7 17h.01M14.5 13.5h.01M14.5 16.5h.01M17.5 13.5h.01M17.5 16.5h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+  refrescar: '<svg viewBox="0 0 24 24" fill="none"><path d="M4 12a8 8 0 0 1 13.66-5.66M20 12a8 8 0 0 1-13.66 5.66" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M17 3v4h-4M7 21v-4h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  salir: '<svg viewBox="0 0 24 24" fill="none"><path d="M9 21H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 17l5-5-5-5M21 12H9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
 };
 function ic(name, size) { return ICONS[name].replace('<svg ', `<svg style="width:${size||14}px;height:${size||14}px;vertical-align:-3px;flex-shrink:0" `); }
 
