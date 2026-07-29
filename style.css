@@ -1006,18 +1006,24 @@ a.action-btn { text-decoration: none; }
     border-bottom: 1px solid var(--line);
     flex-shrink: 0;
   }
+  /* Mismo patrón que .stat en móvil: tarjeta blanca con borde fino y solo
+     el NÚMERO en color — antes cada tarjeta tenía toda la superficie
+     teñida de un pastel distinto (verde/amarillo/rojo/naranjo) una al
+     lado de la otra, y se sentía muy cargado. */
   .desktop-stat {
+    background: #fff; border: 1px solid var(--line);
     border-radius: 10px;
     padding: 10px 8px;
     text-align: center;
     cursor: pointer;
-    transition: opacity 0.15s;
+    transition: transform 0.1s, box-shadow 0.15s;
   }
-  .desktop-stat:hover { opacity: 0.8; }
-  .desktop-stat.green  { background: #e8f5e9; }
-  .desktop-stat.amber  { background: #fff8e1; }
-  .desktop-stat.red    { background: #ffebee; }
-  .desktop-stat.blue   { background: var(--accent-soft); }
+  .desktop-stat:hover { box-shadow: 0 4px 10px rgba(0,0,0,0.06); }
+  .desktop-stat:active { transform: scale(0.97); }
+  .desktop-stat.green .desktop-stat-n { color: #2e7d32; }
+  .desktop-stat.amber .desktop-stat-n { color: #e65100; }
+  .desktop-stat.red   .desktop-stat-n { color: #c62828; }
+  .desktop-stat.blue  .desktop-stat-n { color: #1565c0; }
   .desktop-stat-n {
     font-size: 22px; font-weight: 700; color: var(--ink); line-height: 1;
   }
