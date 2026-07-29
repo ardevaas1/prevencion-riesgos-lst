@@ -222,17 +222,18 @@ body.is-offline #app { padding-top: 30px; }
 
 /* ── Barra de Obra activa: mucho más notoria que un botón chico en el
    header — franja completa, siempre visible debajo del header (o del hero
-   de Inicio en escritorio). Fondo teñido de color (no blanco liso) y el
-   NOMBRE de la obra como elemento grande/en negrita — es el dato que hay
-   que poder ver de un vistazo sin tener que leer con atención; la acción
-   "Cambiar" queda más chica al lado, es secundaria. ── */
+   de Inicio en escritorio), con el NOMBRE de la obra como elemento grande/
+   en negrita (la acción "Cambiar" queda más chica al lado, es secundaria).
+   Fondo blanco a propósito (no teñido de color): justo debajo va un header
+   naranjo — dos franjas naranjas seguidas se sentían "cargado"; el ícono
+   ya aporta el color suficiente para que la franja no pase desapercibida. ── */
 .obra-bar {
   display: flex; align-items: center; gap: 12px;
-  background: var(--accent-soft); border-bottom: 1px solid rgba(var(--accent-rgb),0.28);
+  background: #fff; border-bottom: 1px solid var(--line);
   padding: 11px 16px; cursor: pointer; flex-shrink: 0;
   transition: background 0.15s;
 }
-.obra-bar:active { background: rgba(var(--accent-rgb),0.2); }
+.obra-bar:active { background: var(--neutral-soft); }
 .obra-bar-icon {
   flex-shrink: 0; width: 34px; height: 34px; border-radius: 10px;
   display: flex; align-items: center; justify-content: center; color: #fff;
