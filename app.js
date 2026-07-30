@@ -580,8 +580,8 @@ function ic(name, size) { return ICONS[name].replace('<svg ', `<svg style="width
 // módulo activo, igual que en Flota).
 const MODULOS_COLOR = {
   inspecciones: 'flota', incidentes: 'and', procedimientos: 'cont',
-  epp: 'mov', trabajadores: 'inv', charlas: 'morado', hcr: 'teal',
-  subcontratistas: 'indigo',
+  epp: 'mov', trabajadores: 'inv', charlas: 'flota', hcr: 'and',
+  subcontratistas: 'cont',
 };
 
 function renderModulosHome() {

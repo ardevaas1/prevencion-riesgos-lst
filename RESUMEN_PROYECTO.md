@@ -1062,13 +1062,13 @@ Cambios concretos:
   `style.css`, que no existía porque ningún módulo propio usaba ese
   color de header hasta ahora. El mapeo módulo → color vive en
   `MODULOS_COLOR` (`app.js`, nuevo, top-level), compartido entre
-  `renderModulosHome()` y `irPagina()`. Solo había 5 temas de color
+  `renderModulosHome()` y `irPagina()`. Solo hay 5 temas de color
   (`flota`/`inv`/`cont`/`mov`/`and`, heredados de Flota) para 8 módulos, así
-  que 3 se repetían (Charlas = Inspecciones, HCR = Incidentes,
-  Subcontratistas = Procedimientos). Se agregaron 3 temas nuevos
-  (`morado`, `teal`, `indigo` — con su `.header--X`, `.modulo-icon--X` y
-  `.modulo-card--X::before` en `style.css`) y se reasignaron esos 3 módulos,
-  para que los 8 tengan un color distinto.
+  que 3 quedan repetidos a propósito (Charlas = Inspecciones, HCR =
+  Incidentes, Subcontratistas = Procedimientos) — se probó darle un color
+  nuevo a cada uno (agregando 3 temas más) pero el resultado se sentía
+  "muy colorido"; el cliente prefirió volver a los 5 de siempre aunque
+  se repitan.
 - **Íconos de "Módulos" en Inicio de escritorio, a la misma altura:** las
   tarjetas cuadradas (`aspect-ratio:1/1`) usaban `justify-content:center`,
   así que cada una centraba su propio bloque de contenido — como el
