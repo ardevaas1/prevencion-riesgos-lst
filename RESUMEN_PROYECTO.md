@@ -1062,7 +1062,22 @@ Cambios concretos:
   `style.css`, que no existía porque ningún módulo propio usaba ese
   color de header hasta ahora. El mapeo módulo → color vive en
   `MODULOS_COLOR` (`app.js`, nuevo, top-level), compartido entre
-  `renderModulosHome()` y `irPagina()`.
+  `renderModulosHome()` y `irPagina()`. Solo había 5 temas de color
+  (`flota`/`inv`/`cont`/`mov`/`and`, heredados de Flota) para 8 módulos, así
+  que 3 se repetían (Charlas = Inspecciones, HCR = Incidentes,
+  Subcontratistas = Procedimientos). Se agregaron 3 temas nuevos
+  (`morado`, `teal`, `indigo` — con su `.header--X`, `.modulo-icon--X` y
+  `.modulo-card--X::before` en `style.css`) y se reasignaron esos 3 módulos,
+  para que los 8 tengan un color distinto.
+- **Íconos de "Módulos" en Inicio de escritorio, a la misma altura:** las
+  tarjetas cuadradas (`aspect-ratio:1/1`) usaban `justify-content:center`,
+  así que cada una centraba su propio bloque de contenido — como el
+  nombre del módulo ocupa 1 o 2 líneas según cuál sea, el ícono terminaba
+  en una altura distinta en cada tarjeta. Se cambió a `justify-content:
+  flex-start` (empaqueta desde arriba, altura del ícono ya no depende del
+  texto) y además `.modulo-nombre` reserva el alto de 2 líneas siempre
+  (`min-height`), para que la descripción de abajo también arranque
+  siempre a la misma altura.
 - `arrancarApp()` ya no revela `desktop-sidebar`/`desktop-main`
   directamente; llama a `irPagina('inicio')` (que decide mostrar
   `desktop-home`) y anima ese contenedor en vez de los otros dos. `signOut()`

@@ -213,6 +213,9 @@ body.is-offline #app { padding-top: 30px; }
 .header--mov  { background: radial-gradient(ellipse 320px 140px at 30% -40%, rgba(255,255,255,0.16), transparent 60%), linear-gradient(135deg, #1f6b39 0%, #2f8a4d 55%, #6fcf8b 100%); }
 .header--and  { background: radial-gradient(ellipse 320px 140px at 30% -40%, rgba(255,255,255,0.16), transparent 60%), linear-gradient(135deg, #9c2f2f 0%, #d64545 55%, #e79494 100%); }
 .header--flota { background: radial-gradient(ellipse 320px 140px at 30% -40%, rgba(255,255,255,0.16), transparent 60%), linear-gradient(135deg, #2f6f9e 0%, #4a8ec2 55%, #8fc3e8 100%); }
+.header--morado { background: radial-gradient(ellipse 320px 140px at 30% -40%, rgba(255,255,255,0.16), transparent 60%), linear-gradient(135deg, #5e3494 0%, #7c4dbd 55%, #c9a8e8 100%); }
+.header--teal { background: radial-gradient(ellipse 320px 140px at 30% -40%, rgba(255,255,255,0.16), transparent 60%), linear-gradient(135deg, #00695c 0%, #26a69a 55%, #80cbc4 100%); }
+.header--indigo { background: radial-gradient(ellipse 320px 140px at 30% -40%, rgba(255,255,255,0.16), transparent 60%), linear-gradient(135deg, #3949ab 0%, #5c6bc0 55%, #9fa8da 100%); }
 .header-logo { height: 36px; width: auto; object-fit: contain; }
 .header-center { flex: 1; }
 .header-title { font-size: 16px; font-weight: 700; color: #fff; line-height: 1.2; }
@@ -946,7 +949,12 @@ a.action-btn { text-decoration: none; }
     align-items: center;
     text-align: center;
     aspect-ratio: 1 / 1;
-    justify-content: center;
+    /* flex-start (no center): con justify-content:center cada tarjeta
+       centraba su propio bloque de contenido, y como el título ocupa 1 o 2
+       líneas según el módulo, el ícono terminaba en una altura distinta en
+       cada tarjeta. Empacado desde arriba, el ícono queda siempre a la
+       misma altura sin importar cuánto texto tenga cada una. */
+    justify-content: flex-start;
     padding: 24px 16px;
   }
   .desktop-home .modulo-icon {
@@ -954,6 +962,10 @@ a.action-btn { text-decoration: none; }
   }
   .desktop-home .modulo-icon svg { width: 30px; height: 30px; }
   .desktop-home .modulo-info { flex: none; }
+  /* Reserva el alto de 2 líneas siempre (algunos nombres de módulo son
+     cortos y ocupan 1 línea, otros 2) — así la descripción de abajo
+     también arranca a la misma altura en todas las tarjetas. */
+  .desktop-home .modulo-nombre { min-height: 2.4em; display: flex; align-items: center; justify-content: center; }
   .desktop-home-session { max-width: 360px; margin: 36px auto 0; }
 
   /* ── Shell: ocultar todo lo móvil ── */
@@ -1655,6 +1667,9 @@ a.action-btn { text-decoration: none; }
 .modulo-card--cont::before  { background: #93613a; }
 .modulo-card--mov::before   { background: #2f8a4d; }
 .modulo-card--and::before   { background: #9c2f2f; }
+.modulo-card--morado::before { background: #5e3494; }
+.modulo-card--teal::before   { background: #00695c; }
+.modulo-card--indigo::before { background: #3949ab; }
 
 .modulo-card:active { transform: scale(0.97); box-shadow: 0 4px 14px rgba(0,0,0,0.1); border-color: var(--accent); }
 .modulo-icon {
@@ -1669,6 +1684,9 @@ a.action-btn { text-decoration: none; }
 .modulo-icon--cont  { background: linear-gradient(145deg, #c08a5a, #93613a); }
 .modulo-icon--mov   { background: linear-gradient(145deg, #5fb878, #2f8a4d); }
 .modulo-icon--and   { background: linear-gradient(145deg, #d64545, #9c2f2f); }
+.modulo-icon--morado { background: linear-gradient(145deg, #9c6fd6, #5e3494); }
+.modulo-icon--teal    { background: linear-gradient(145deg, #4db6ac, #00695c); }
+.modulo-icon--indigo  { background: linear-gradient(145deg, #7986cb, #3949ab); }
 .modulo-info { flex: 1; }
 .modulo-nombre { font-size: 15px; font-weight: 700; color: var(--ink); line-height: 1.2; }
 .modulo-desc { font-size: 11.5px; color: #888; margin-top: 4px; line-height: 1.4; }
