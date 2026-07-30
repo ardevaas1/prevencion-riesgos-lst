@@ -260,14 +260,24 @@ body.is-offline #app { padding-top: 30px; }
 
 /* ── Stats ── */
 .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 18px; }
-.stat { background: #fff; border-radius: 12px; padding: 12px 6px; text-align: center; border: 1px solid var(--line); cursor: pointer; transition: transform 0.1s; }
+.stat { background: #fff; border-radius: 12px; padding: 12px 6px; text-align: center; border: 1px solid var(--line); cursor: pointer; transition: transform 0.1s, box-shadow 0.15s; }
 .stat:active { transform: scale(0.97); }
+.stat-icon {
+  width: 28px; height: 28px; border-radius: 9px; margin: 0 auto 6px;
+  display: flex; align-items: center; justify-content: center; color: #fff;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+}
+.stat-icon svg { width: 15px; height: 15px; }
 .stat-n { font-size: 24px; font-weight: 700; line-height: 1; }
 .stat-l { font-size: 10px; color: #888; margin-top: 4px; font-weight: 500; }
 .stat.green .stat-n { color: #2e7d32; }
 .stat.amber .stat-n { color: #e65100; }
 .stat.red   .stat-n { color: #c62828; }
 .stat.blue  .stat-n { color: #1565c0; }
+.stat.green .stat-icon { background: linear-gradient(145deg, #66bb6a, #2e7d32); }
+.stat.amber .stat-icon { background: linear-gradient(145deg, #f5a623, #e65100); }
+.stat.red   .stat-icon { background: linear-gradient(145deg, #e57373, #c62828); }
+.stat.blue  .stat-icon { background: linear-gradient(145deg, #5aa8da, #1565c0); }
 
 /* ── Estadísticas de seguridad (selector de obra + índices) ── */
 .stats-obra-bar { display: flex; align-items: center; gap: 8px; color: var(--ink-soft); margin-bottom: 10px; }
@@ -1020,10 +1030,20 @@ a.action-btn { text-decoration: none; }
   }
   .desktop-stat:hover { box-shadow: 0 4px 10px rgba(0,0,0,0.06); }
   .desktop-stat:active { transform: scale(0.97); }
+  .desktop-stat-icon {
+    width: 32px; height: 32px; border-radius: 10px; margin: 0 auto 6px;
+    display: flex; align-items: center; justify-content: center; color: #fff;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  }
+  .desktop-stat-icon svg { width: 17px; height: 17px; }
   .desktop-stat.green .desktop-stat-n { color: #2e7d32; }
   .desktop-stat.amber .desktop-stat-n { color: #e65100; }
   .desktop-stat.red   .desktop-stat-n { color: #c62828; }
   .desktop-stat.blue  .desktop-stat-n { color: #1565c0; }
+  .desktop-stat.green .desktop-stat-icon { background: linear-gradient(145deg, #66bb6a, #2e7d32); }
+  .desktop-stat.amber .desktop-stat-icon { background: linear-gradient(145deg, #f5a623, #e65100); }
+  .desktop-stat.red   .desktop-stat-icon { background: linear-gradient(145deg, #e57373, #c62828); }
+  .desktop-stat.blue  .desktop-stat-icon { background: linear-gradient(145deg, #5aa8da, #1565c0); }
   .desktop-stat-n {
     font-size: 22px; font-weight: 700; color: var(--ink); line-height: 1;
   }
