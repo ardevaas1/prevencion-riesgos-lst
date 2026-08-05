@@ -778,6 +778,16 @@ que Trabajadores/Inspecciones/...).
   después va marcando los días en que se cumplieron (`abrirMarcarDias`, una
   grilla de checkboxes 1..días-del-mes que escribe en la columna `Dias
   Marcados`).
+- **Sugerencia automática al marcar días (`diasConEvidenciaActividad`):**
+  como la persona que marca los días no siempre tiene cómo acordarse de
+  memoria si algo se hizo, si el nombre de la actividad menciona "charla",
+  "hcr" o "inspec" se cruza automáticamente contra los registros reales de
+  esos módulos (Charlas por `Relator`+`Fecha Realizada`, HCR y Inspecciones
+  por su Supervisor/Inspector, todos filtrados por Obra y mes) y esos días
+  quedan pre-marcados con un punto verde en la esquina — la persona igual
+  puede desmarcarlos o marcar días adicionales a mano. Actividades sin
+  módulo equivalente (ej. "Reunión de coordinación") no tienen de dónde
+  sacarse solas y siguen siendo 100% manuales.
 - **% de cumplimiento:** `cumplimientoActividad` compara los días marcados
   contra los que "tocaban" según la frecuencia (`ocurrenciasEsperadas`: Diaria
   = todos los días del mes, Semanal = `⌈días/7⌉`, Quincenal = 2, Mensual =

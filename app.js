@@ -823,7 +823,7 @@ async function cargarTodo(silencioso) {
     allEpp = epp.map((r,i) => rowToEpp(r,i));
     allCharlas = charlas.map((r,i) => rowToCharla(r,i));
     allInvestigaciones = invest.map((r,i) => ({ fila: i+2, n: r[0]||'' }));
-    allHcr = hcr.map((r,i) => ({ fila: i+2, n: r[0]||'', fecha: r[1]||'', obra: r[2]||'', actividad: r[3]||'', area: r[4]||'', pdf: r[19]||'' }));
+    allHcr = hcr.map((r,i) => ({ fila: i+2, n: r[0]||'', fecha: r[1]||'', obra: r[2]||'', actividad: r[3]||'', area: r[4]||'', supervisor: r[15]||'', pdf: r[19]||'' }));
     allDiat = diat.map((r,i) => ({ fila: i+2, n: r[0]||'' }));
     allSubcontratistas = subs.map((r,i) => rowToSubcontratista(r,i));
     allSubDocs = docs.map((r,i) => rowToSubDoc(r,i));
@@ -4368,6 +4368,32 @@ async function guardarActividadPrograma(ev) {
 }
 
 // ── Marcar días cumplidos de una actividad ──────────────────────────────
+// Cruce automático con otros módulos que SÍ registran una fecha real de
+// ejecución (Charlas, HCR, Inspecciones) — solo una sugerencia (ver
+// abrirMarcarDias): si el nombre de la actividad menciona alguna de esas
+// palabras clave, se buscan registros reales de ese supervisor en esa obra
+// durante el mes, y esos días quedan pre-marcados (pero se pueden
+// desmarcar). Actividades sin módulo equivalente (ej. "Reunión de
+// coordinación") no tienen de dónde sacarse solas y siguen siendo 100%
+// manuales.
+function diasConEvidenciaActividad(a) {
+  const texto = sinTildes(a.actividad.toLowerCase());
+  const enMes = (fecha) => !!fecha && fecha.slice(0,7) === a.mes;
+  const dias = new Set();
+  if (texto.includes('charla')) {
+    allCharlas.filter(c => c.obra === a.obra && c.relator === a.supervisor && enMes(c.fechaRealizada))
+      .forEach(c => dias.add(parseInt(c.fechaRealizada.slice(8,10), 10)));
+  }
+  if (texto.includes('hcr')) {
+    allHcr.filter(h => h.obra === a.obra && h.supervisor === a.supervisor && enMes(h.fecha))
+      .forEach(h => dias.add(parseInt(h.fecha.slice(8,10), 10)));
+  }
+  if (texto.includes('inspec')) {
+    allInspecciones.filter(i => i.obra === a.obra && i.inspector === a.supervisor && enMes(i.fecha))
+      .forEach(i => dias.add(parseInt(i.fecha.slice(8,10), 10)));
+  }
+  return dias;
+}
 let marcarDiasFila = null;
 function abrirMarcarDias(fila) {
   const a = allProgramaPersonalizado.find(x => x.fila === fila);
@@ -4376,12 +4402,18 @@ function abrirMarcarDias(fila) {
   document.getElementById('pnl-title-marcar-dias').textContent = a.actividad;
   document.getElementById('marcar-dias-info').textContent = `${a.supervisor} · ${a.frecuencia} · ${nombreMes(a.mes)}`;
   const dias = diasEnMes(a.mes);
-  const marcados = new Set(a.diasMarcados);
-  document.getElementById('marcar-dias-grid').innerHTML = Array.from({length: dias}, (_, i) => i+1).map(d => `
-    <label class="marcar-dia${marcados.has(d) ? ' checked' : ''}">
-      <input type="checkbox" value="${d}" ${marcados.has(d) ? 'checked' : ''} onchange="this.closest('.marcar-dia').classList.toggle('checked', this.checked)">
+  const marcadosGuardados = new Set(a.diasMarcados);
+  const diasEvidencia = diasConEvidenciaActividad(a);
+  document.getElementById('marcar-dias-aviso').classList.toggle('hidden', diasEvidencia.size === 0);
+  document.getElementById('marcar-dias-grid').innerHTML = Array.from({length: dias}, (_, i) => i+1).map(d => {
+    const auto = diasEvidencia.has(d) && !marcadosGuardados.has(d);
+    const checked = marcadosGuardados.has(d) || diasEvidencia.has(d);
+    return `
+    <label class="marcar-dia${checked ? ' checked' : ''}${auto ? ' auto' : ''}">
+      <input type="checkbox" value="${d}" ${checked ? 'checked' : ''} onchange="this.closest('.marcar-dia').classList.toggle('checked', this.checked)">
       <span>${d}</span>
-    </label>`).join('');
+    </label>`;
+  }).join('');
   openPanel('panel-marcar-dias');
 }
 async function guardarMarcarDias() {

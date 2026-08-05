@@ -584,6 +584,9 @@ body.is-offline #app { padding-top: 30px; }
 }
 .marcar-dia input { display: none; }
 .marcar-dia.checked { background: var(--accent); border-color: var(--accent); color: #fff; }
+.marcar-dia.auto { position: relative; }
+.marcar-dia.auto::after { content: ''; position: absolute; top: 4px; right: 4px; width: 6px; height: 6px; border-radius: 50%; background: #2e7d32; }
+.marcar-dia.auto.checked::after { background: #fff; }
 .subcont-mes-picker {
   display: flex; align-items: center; gap: 10px;
   background: var(--neutral-soft); border-radius: 10px; padding: 9px 12px;
