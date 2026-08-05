@@ -4217,10 +4217,41 @@ function eppEntregadoSupervisorMes(supervisor, mes) {
 function personalNuevoSupervisorMes(supervisor, mes) {
   return trabajadoresACargoDe(supervisor).filter(t => (t.fechaIngreso||'').slice(0,7) === mes).length;
 }
+// Totales reales de la Obra (sin duplicar): como "a cargo" de un supervisor
+// hoy es todo el resto de la obra (no hay asignación 1 a 1 por supervisor,
+// ver trabajadoresACargoDe), sumar el EPP/personal nuevo de cada supervisor
+// cuenta la misma entrega varias veces si hay más de un supervisor en la
+// obra. Estas dos funciones dan el total real de la obra, una sola vez.
+function eppEntregadoObraMes(obra, mes) {
+  const nombresObra = new Set(allTrabajadores.filter(t => t.obra === obra).map(t => t.nombre));
+  return allEpp.filter(e => nombresObra.has(e.trabajador) && (e.fecha||'').slice(0,7) === mes).length;
+}
+function personalNuevoObraMes(obra, mes) {
+  return allTrabajadores.filter(t => t.obra === obra && (t.fechaIngreso||'').slice(0,7) === mes).length;
+}
+// Desglose por tipo de EPP entregado en la obra durante el mes (para el
+// informe) — reutiliza itemsDeFilaEpp, que ya separa la celda combinada
+// "Casco (1); Guantes (2)" de cada entrega en ítems individuales.
+function itemsEppObraMes(obra, mes) {
+  const nombresObra = new Set(allTrabajadores.filter(t => t.obra === obra).map(t => t.nombre));
+  const entregas = allEpp.filter(e => nombresObra.has(e.trabajador) && (e.fecha||'').slice(0,7) === mes);
+  const conteo = {};
+  entregas.forEach(e => itemsDeFilaEpp(e).forEach(it => {
+    const cant = parseInt(it.cantidad, 10) || 1;
+    conteo[it.item] = (conteo[it.item] || 0) + cant;
+  }));
+  const totalItems = Object.values(conteo).reduce((s, v) => s + v, 0);
+  return { entregas: entregas.length, items: conteo, totalItems };
+}
 
 // ── Render del módulo ──────────────────────────────────────────────────
 let mesProgramaSel = mesActualISO();
 let obraProgramaSel = 'todas';
+// Nombre de quien genera el informe (para la portada del PDF, "Realizado
+// por") — se recuerda en localStorage para no tener que volver a escribirlo
+// cada vez que se genera un informe nuevo.
+const RESPONSABLE_INFORME_KEY = 'programaResponsableInforme';
+function onCambioResponsableInforme(v) { localStorage.setItem(RESPONSABLE_INFORME_KEY, v.trim()); }
 function onCambioMesPrograma(v) { mesProgramaSel = v; renderProgramaPersonalizado(); }
 function onCambioObraPrograma(v) { obraProgramaSel = v; renderProgramaPersonalizado(); }
 function renderProgramaPersonalizado() {
@@ -4252,6 +4283,9 @@ function renderProgramaPersonalizado() {
   }
   const total = pctTotalPrograma(grupos);
   const resultadoTotal = resultadoPrograma(total);
+  const eppObra = eppEntregadoObraMes(obraEfectiva, mesProgramaSel);
+  const nuevosObra = personalNuevoObraMes(obraEfectiva, mesProgramaSel);
+  const responsableGuardado = localStorage.getItem(RESPONSABLE_INFORME_KEY) || '';
   setListHTML('programapersonalizado', `
     ${selectorObraHtml}${selectorMesHtml}
     <div class="card card--default">
@@ -4259,10 +4293,18 @@ function renderProgramaPersonalizado() {
       <div class="card-body">
         <div class="card-title">Cumplimiento total — ${esc(nombreMes(mesProgramaSel))}</div>
         <div class="card-sub">${grupos.length} supervisor(es) con programa cargado</div>
-        <div class="badge-row"><span class="badge ${resultadoTotal.color}">${total}% · ${resultadoTotal.label}</span></div>
+        <div class="badge-row">
+          <span class="badge ${resultadoTotal.color}">${total}% · ${resultadoTotal.label}</span>
+          <span class="badge blue">${ic('epp',11)} ${eppObra} EPP entregado(s) en la obra</span>
+          <span class="badge gray">${ic('trabajadores',11)} ${nuevosObra} ingreso(s) nuevo(s)</span>
+        </div>
       </div>
     </div>
-    <button class="action-btn" onclick="generarInformeProgramaPersonalizado('${esc(obraEfectiva)}','${mesProgramaSel}')">${ic('documento',14)} Generar informe PDF</button>
+    <div class="form-group" style="margin-top:14px;">
+      <label>Responsable del informe (aparece en la portada del PDF)</label>
+      <input id="input-responsable-informe" value="${esc(responsableGuardado)}" placeholder="Nombre de quien realiza el informe" oninput="onCambioResponsableInforme(this.value)">
+    </div>
+    <button class="action-btn" onclick="generarInformeProgramaPersonalizado('${esc(obraEfectiva)}','${mesProgramaSel}', document.getElementById('input-responsable-informe').value)">${ic('documento',14)} Generar informe PDF</button>
     <div class="sec-label" style="margin-top:14px;">Por supervisor</div>
     ${grupos.map(g => `
     <div class="card card--default" onclick="abrirDetalleProgramaSupervisor('${esc(obraEfectiva)}','${mesProgramaSel}','${esc(g.supervisor).replace(/'/g,"\\'")}')">
@@ -4501,7 +4543,7 @@ async function dibujarPaginaGrillaSupervisor(pdfDoc, ctx, encabezadoFn, obra, me
   ];
   dibujarFilaTabla(page, 40, y, totalCols, font, fontBold, 16, rgb(0.94,0.94,0.94), negro, grisLinea);
 }
-async function generarInformeProgramaPersonalizado(obra, mes) {
+async function generarInformeProgramaPersonalizado(obra, mes, responsable) {
   toast('Generando informe...', 'ok');
   try {
     const { PDFDocument, rgb, StandardFonts } = await cargarPdfLib();
@@ -4515,6 +4557,15 @@ async function generarInformeProgramaPersonalizado(obra, mes) {
     const grupos = agruparProgramaPorSupervisor(obra, mes);
     const total = pctTotalPrograma(grupos);
     const resultadoTotal = resultadoPrograma(total);
+    // Totales reales de la obra (no la suma de lo que muestra cada
+    // supervisor, que se repite entre ellos — ver eppEntregadoObraMes).
+    // eppEntregadoObraMes cuenta ENTREGAS (mismo criterio que la columna
+    // "EPP" por supervisor); itemsEppObraMes desglosa por tipo de EPP, para
+    // la sección aparte con el detalle.
+    const eppEntregasObra = eppEntregadoObraMes(obra, mes);
+    const eppItemsObra = itemsEppObraMes(obra, mes);
+    const nuevosObra = personalNuevoObraMes(obra, mes);
+    const nombreResponsable = (responsable || '').trim() || 'Prevención de Riesgos';
     const negro = rgb(0,0,0), gris = rgb(0.4,0.4,0.4), grisLinea = rgb(0.75,0.75,0.75);
     const colorResultado = { green: rgb(0.18,0.49,0.2), blue: rgb(0.08,0.4,0.75), amber: rgb(0.9,0.35,0), red: rgb(0.78,0.16,0.16) };
 
@@ -4542,7 +4593,7 @@ async function generarInformeProgramaPersonalizado(obra, mes) {
     y -= 100;
     page.drawText('REALIZADO POR', { x: 80, y, size: 9, font: fontBold, color: gris });
     page.drawLine({ start: { x: 80, y: y - 24 }, end: { x: 280, y: y - 24 }, thickness: 0.8, color: negro });
-    page.drawText('Prevención de Riesgos', { x: 80, y: y - 36, size: 9, font, color: gris });
+    page.drawText(nombreResponsable, { x: 80, y: y - 36, size: 9, font, color: gris });
     page.drawText('REVISADO Y APROBADO POR', { x: 332, y, size: 9, font: fontBold, color: gris });
     page.drawLine({ start: { x: 332, y: y - 24 }, end: { x: 532, y: y - 24 }, thickness: 0.8, color: negro });
     page.drawText('Jefatura de Obra', { x: 332, y: y - 36, size: 9, font, color: gris });
@@ -4597,10 +4648,10 @@ async function generarInformeProgramaPersonalizado(obra, mes) {
       ], font, fontBold, 18, null, negro, grisLinea);
     });
     y = dibujarFilaTabla(page, 40, y, [
-      { w: 150, text: 'TOTAL', bold: true },
+      { w: 150, text: 'TOTAL OBRA', bold: true },
       { w: 80, text: total + '%', bold: true, align: 'center' },
-      { w: 60, text: String(grupos.reduce((s,g)=>s+g.epp,0)), bold: true, align: 'center' },
-      { w: 60, text: String(grupos.reduce((s,g)=>s+g.nuevos,0)), bold: true, align: 'center' },
+      { w: 60, text: String(eppEntregasObra), bold: true, align: 'center' },
+      { w: 60, text: String(nuevosObra), bold: true, align: 'center' },
       { w: 122, text: resultadoTotal.label, bold: true, align: 'center', color: colorResultado[resultadoTotal.color] },
     ], font, fontBold, 20, rgb(0.94,0.94,0.94), negro, grisLinea);
 
@@ -4613,6 +4664,10 @@ async function generarInformeProgramaPersonalizado(obra, mes) {
       page.drawText(`${rango}: ${label}`, { x: 54, y: y - 8, size: 8, font, color: gris });
       y -= 12;
     });
+    y -= 14;
+    // Conclusión automática — se redacta sola a partir de los mismos
+    // números de arriba (no es un texto fijo): cambia si cambian los datos.
+    parrafo('Conclusión', `En resumen, el cumplimiento con las actividades de prevención del programa personalizado durante ${nombreMes(mes)} es de un ${total}% (${resultadoTotal.label}), considerando que cada uno de los ${grupos.length} supervisor(es) de la obra ${obra} responde por su propio programa de actividades. En el período se entregaron ${eppItemsObra.totalItems} implemento(s) de protección personal (en ${eppItemsObra.entregas} entrega(s)) y se incorporaron ${nuevosObra} trabajador(es) nuevo(s) a la obra.`);
 
     // ---- Página 4: Índices de seguridad de la obra ----
     page = pdfDoc.addPage([612, 792]);
@@ -4632,6 +4687,22 @@ async function generarInformeProgramaPersonalizado(obra, mes) {
     });
     y -= 10;
     page.drawText(`Acumulado ${st.anio} · ${st.nAccidentes} accidente(s) con tiempo perdido · ${Math.round(st.horasHombre).toLocaleString('es-CL')} HH trabajadas (estimadas).`, { x: 40, y, size: 9, font, color: gris });
+
+    y -= 40;
+    page.drawText('ENTREGA DE EPP EN LA OBRA', { x: 40, y, size: 12, font: fontBold, color: negro });
+    y -= 20;
+    page.drawText(`${eppItemsObra.entregas} entrega(s) registrada(s) en ${nombreMes(mes)} · ${eppItemsObra.totalItems} implemento(s) en total.`, { x: 40, y, size: 10, font, color: negro });
+    y -= 20;
+    const itemsOrdenados = Object.entries(eppItemsObra.items).sort((a, b) => b[1] - a[1]);
+    if (itemsOrdenados.length === 0) {
+      page.drawText('Sin entregas de EPP registradas en el período.', { x: 40, y, size: 9, font, color: gris });
+    } else {
+      itemsOrdenados.forEach(([item, cantidad]) => {
+        page.drawText(`${item}`, { x: 40, y, size: 9, font, color: negro });
+        page.drawText(String(cantidad), { x: 420, y, size: 9, font: fontBold, color: negro });
+        y -= 15;
+      });
+    }
 
     // ---- Páginas 5+: grilla día a día por supervisor (horizontal, para que
     // entren los 28-31 días como columnas) ----
