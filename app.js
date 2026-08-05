@@ -4566,8 +4566,79 @@ async function generarInformeProgramaPersonalizado(obra, mes, responsable) {
     const eppItemsObra = itemsEppObraMes(obra, mes);
     const nuevosObra = personalNuevoObraMes(obra, mes);
     const nombreResponsable = (responsable || '').trim() || 'Prevención de Riesgos';
-    const negro = rgb(0,0,0), gris = rgb(0.4,0.4,0.4), grisLinea = rgb(0.75,0.75,0.75);
+    const negro = rgb(0,0,0), gris = rgb(0.4,0.4,0.4), grisLinea = rgb(0.75,0.75,0.75), grisClaro = rgb(0.85,0.85,0.85);
     const colorResultado = { green: rgb(0.18,0.49,0.2), blue: rgb(0.08,0.4,0.75), amber: rgb(0.9,0.35,0), red: rgb(0.78,0.16,0.16) };
+
+    // Gráfico de barras del % de cumplimiento por supervisor — pdf-lib no
+    // trae gráficos, se dibuja a mano con rectángulos escalados al máximo
+    // de 100%. yBase = línea de base (eje) de las barras.
+    function dibujarBarrasCumplimiento(page, x, yBase, gruposChart) {
+      const anchoBarra = 46, gapBarras = 22, alturaMax = 110;
+      let cx = x;
+      const tituloTxt = 'CUMPLIMIENTO POR SUPERVISOR';
+      page.drawText(tituloTxt, { x, y: yBase + alturaMax + 34, size: 11, font: fontBold, color: negro });
+      gruposChart.forEach(g => {
+        const h = Math.max(3, (g.pct / 100) * alturaMax);
+        page.drawRectangle({ x: cx, y: yBase, width: anchoBarra, height: h, color: colorResultado[g.resultado.color] });
+        const valTxt = g.pct + '%';
+        const valW = fontBold.widthOfTextAtSize(valTxt, 9);
+        page.drawText(valTxt, { x: cx + (anchoBarra - valW) / 2, y: yBase + h + 5, size: 9, font: fontBold, color: negro });
+        const partes = g.supervisor.split(' ');
+        [partes[0] || '', partes.slice(1).join(' ')].forEach((linea, i) => {
+          const lw = font.widthOfTextAtSize(linea, 7.5);
+          page.drawText(linea, { x: cx + (anchoBarra - lw) / 2, y: yBase - 12 - i * 10, size: 7.5, font, color: gris });
+        });
+        cx += anchoBarra + gapBarras;
+      });
+      page.drawLine({ start: { x: x - 10, y: yBase }, end: { x: cx - gapBarras + 10, y: yBase }, thickness: 0.8, color: grisLinea });
+    }
+    // Gráfico comparativo año actual vs. año anterior para un índice de
+    // seguridad — mismo criterio visual que la tarjeta de índices del
+    // Dashboard de la app (barra pálida = año anterior, barra sólida = actual).
+    function dibujarComparativoIndice(page, x, yBase, opts) {
+      const { nombre, actual, prev, anioActual, color, fmt } = opts;
+      const anchoBarra = 26, gapBarras = 10, alturaMax = 70;
+      const max = Math.max(actual, prev, 0.0001);
+      const hPrev = Math.max(3, (prev / max) * alturaMax);
+      const hAct = Math.max(3, (actual / max) * alturaMax);
+      const anchoGrupo = anchoBarra * 2 + gapBarras;
+      const nombreW = fontBold.widthOfTextAtSize(nombre, 9);
+      page.drawText(nombre, { x: x + anchoGrupo / 2 - nombreW / 2, y: yBase + alturaMax + 34, size: 9, font: fontBold, color: negro });
+      page.drawRectangle({ x, y: yBase, width: anchoBarra, height: hPrev, color: grisClaro });
+      const prevTxt = fmt(prev);
+      page.drawText(prevTxt, { x: x + (anchoBarra - font.widthOfTextAtSize(prevTxt, 7.5)) / 2, y: yBase + hPrev + 4, size: 7.5, font, color: gris });
+      const anioPrevTxt = String(anioActual - 1);
+      page.drawText(anioPrevTxt, { x: x + (anchoBarra - font.widthOfTextAtSize(anioPrevTxt, 7)) / 2, y: yBase - 11, size: 7, font, color: gris });
+      const x2 = x + anchoBarra + gapBarras;
+      page.drawRectangle({ x: x2, y: yBase, width: anchoBarra, height: hAct, color });
+      const actTxt = fmt(actual);
+      page.drawText(actTxt, { x: x2 + (anchoBarra - fontBold.widthOfTextAtSize(actTxt, 8.5)) / 2, y: yBase + hAct + 4, size: 8.5, font: fontBold, color: negro });
+      const anioActTxt = String(anioActual);
+      page.drawText(anioActTxt, { x: x2 + (anchoBarra - font.widthOfTextAtSize(anioActTxt, 7)) / 2, y: yBase - 11, size: 7, font, color: gris });
+      page.drawLine({ start: { x: x - 6, y: yBase }, end: { x: x2 + anchoBarra + 6, y: yBase }, thickness: 0.6, color: grisLinea });
+    }
+    // Lista de barras horizontales genérica (label + barra + cantidad),
+    // reutilizada para cada desglose de "Estado general de la obra" y para
+    // el detalle de EPP — pares ya viene ordenado de mayor a menor.
+    function dibujarListaBarras(page, x, y, anchoCol, pares, colorBarra) {
+      if (pares.length === 0) {
+        page.drawText('Sin datos en el período.', { x, y, size: 8.5, font, color: gris });
+        return y - 14;
+      }
+      const xBarraOffset = Math.min(120, anchoCol * 0.45);
+      const anchoMaxBarra = anchoCol - xBarraOffset - 26;
+      const max = Math.max(...pares.map(([, c]) => c));
+      pares.forEach(([label, cantidad]) => {
+        const labelCorto = font.widthOfTextAtSize(label, 8.5) > xBarraOffset - 6
+          ? label.slice(0, Math.floor((xBarraOffset - 6) / 4.6)) + '…' : label;
+        page.drawText(labelCorto, { x, y: y + 1, size: 8.5, font, color: negro });
+        const w = Math.max(3, (cantidad / max) * anchoMaxBarra);
+        page.drawRectangle({ x: x + xBarraOffset, y, width: w, height: 9, color: colorBarra });
+        page.drawText(String(cantidad), { x: x + xBarraOffset + w + 5, y: y + 1, size: 8.5, font: fontBold, color: negro });
+        y -= 15;
+      });
+      return y;
+    }
 
     function encabezado(page, W, H) {
       page.drawImage(logoImg, { x: 40, y: H - 46, width: logoDim.width, height: logoDim.height });
@@ -4617,11 +4688,73 @@ async function generarInformeProgramaPersonalizado(obra, mes, responsable) {
       lines.forEach(line => { page.drawText(line, { x: 40, y, size, font, color: negro }); y -= lineHeight; });
       y -= 16;
     }
-    parrafo('1. Objetivo General', `Dar seguimiento al cumplimiento del Programa Personalizado de actividades de prevención de riesgos de los supervisores de la obra ${obra}, durante ${nombreMes(mes)}.`);
+    parrafo('1. Objetivo General', `Presentar la situación general de prevención de riesgos de la obra ${obra} durante ${nombreMes(mes)}, junto con el cumplimiento del Programa Personalizado de actividades de cada supervisor.`);
     parrafo('2. Objetivo Específico', `Medir el porcentaje de cumplimiento de cada actividad comprometida por cada supervisor según su frecuencia (diaria, semanal, quincenal o mensual), evidenciando su aporte individual a la gestión preventiva.`);
-    parrafo('3. Alcance', `Este informe aplica a todos los supervisores con programa personalizado cargado en la obra ${obra} durante ${nombreMes(mes)}, e incorpora además la entrega de EPP y el ingreso de personal nuevo a cargo de cada uno, junto con los índices de seguridad vigentes de la obra.`);
+    parrafo('3. Alcance', `Este informe cubre la dotación, inspecciones, incidentes y accidentes, charlas y HCR de la obra ${obra} durante ${nombreMes(mes)}, además del cumplimiento del programa personalizado, la entrega de EPP, el ingreso de personal nuevo y los índices de seguridad vigentes de la obra.`);
 
-    // ---- Página 3: Resumen ----
+    // ---- Página 3: Estado general de la obra ----
+    page = pdfDoc.addPage([612, 792]);
+    encabezado(page, 612, 792);
+    y = 792 - 90;
+    page.drawText('ESTADO GENERAL DE LA OBRA', { x: 40, y, size: 12, font: fontBold, color: negro });
+    y -= 10;
+    page.drawText(`${obra} · ${nombreMes(mes)}`, { x: 40, y: y - 10, size: 9, font, color: gris });
+
+    const trabajadoresObraLista = allTrabajadores.filter(t => t.obra === obra && t.estado === 'Activo');
+    const porCargo = Object.entries(trabajadoresObraLista.reduce((acc, t) => {
+      const c = t.cargo || 'Sin cargo'; acc[c] = (acc[c] || 0) + 1; return acc;
+    }, {})).sort((a, b) => b[1] - a[1]).slice(0, 6);
+
+    const inspMes = allInspecciones.filter(i => i.obra === obra && (i.fecha || '').slice(0, 7) === mes);
+    const inspAbiertas = inspMes.filter(i => i.estado !== 'Cerrada').length;
+    const porRiesgo = Object.entries(inspMes.reduce((acc, i) => {
+      const r = i.riesgo || 'Sin dato'; acc[r] = (acc[r] || 0) + 1; return acc;
+    }, {})).sort((a, b) => b[1] - a[1]);
+
+    const incMes = allIncidentes.filter(i => i.obra === obra && (i.fecha || '').slice(0, 7) === mes);
+    const diasPerdidosMes = incMes.reduce((s, i) => s + (i.diasPerdidos || 0), 0);
+    const porTipoIncidente = Object.entries(incMes.reduce((acc, i) => {
+      const t = i.tipo || 'Sin tipo'; acc[t] = (acc[t] || 0) + 1; return acc;
+    }, {})).sort((a, b) => b[1] - a[1]);
+
+    const charlasRealizadasMes = allCharlas.filter(c => c.obra === obra && c.estado === 'Realizada' && (c.fechaRealizada || '').slice(0, 7) === mes).length;
+    const charlasPendientes = allCharlas.filter(c => c.obra === obra && c.estado === 'Pendiente').length;
+    const hcrMes = allHcr.filter(h => h.obra === obra && (h.fecha || '').slice(0, 7) === mes).length;
+
+    const colIzq = 40, colDer = 326, anchoCol = 246;
+    let yFila1 = y - 40;
+    // Dotación (arriba-izquierda)
+    page.drawText('DOTACIÓN DE LA OBRA', { x: colIzq, y: yFila1, size: 10, font: fontBold, color: negro });
+    let yc = yFila1 - 18;
+    page.drawText(`Trabajadores activos: ${trabajadoresObraLista.length}`, { x: colIzq, y: yc, size: 9, font, color: negro }); yc -= 13;
+    page.drawText(`Ingresos nuevos este mes: ${nuevosObra}`, { x: colIzq, y: yc, size: 9, font, color: negro }); yc -= 16;
+    page.drawText('Por cargo:', { x: colIzq, y: yc, size: 8.5, font: fontBold, color: gris }); yc -= 13;
+    dibujarListaBarras(page, colIzq, yc, anchoCol, porCargo, colorResultado.blue);
+
+    // Inspecciones (arriba-derecha)
+    page.drawText('INSPECCIONES DEL MES', { x: colDer, y: yFila1, size: 10, font: fontBold, color: negro });
+    yc = yFila1 - 18;
+    page.drawText(`Total: ${inspMes.length}   Abiertas: ${inspAbiertas}   Cerradas: ${inspMes.length - inspAbiertas}`, { x: colDer, y: yc, size: 9, font, color: negro }); yc -= 16;
+    page.drawText('Por nivel de riesgo:', { x: colDer, y: yc, size: 8.5, font: fontBold, color: gris }); yc -= 13;
+    dibujarListaBarras(page, colDer, yc, anchoCol, porRiesgo, colorResultado.amber);
+
+    let yFila2 = yFila1 - 230;
+    // Incidentes y accidentes (abajo-izquierda)
+    page.drawText('INCIDENTES Y ACCIDENTES DEL MES', { x: colIzq, y: yFila2, size: 10, font: fontBold, color: negro });
+    yc = yFila2 - 18;
+    page.drawText(`Total: ${incMes.length}   Días perdidos: ${diasPerdidosMes}`, { x: colIzq, y: yc, size: 9, font, color: negro }); yc -= 16;
+    page.drawText('Por tipo:', { x: colIzq, y: yc, size: 8.5, font: fontBold, color: gris }); yc -= 13;
+    dibujarListaBarras(page, colIzq, yc, anchoCol, porTipoIncidente, colorResultado.red);
+
+    // Charlas y HCR (abajo-derecha)
+    page.drawText('CHARLAS Y HCR', { x: colDer, y: yFila2, size: 10, font: fontBold, color: negro });
+    yc = yFila2 - 18;
+    page.drawText(`Charlas dictadas este mes: ${charlasRealizadasMes}`, { x: colDer, y: yc, size: 9, font, color: negro }); yc -= 13;
+    page.drawText(`Charlas pendientes: ${charlasPendientes}`, { x: colDer, y: yc, size: 9, font, color: negro }); yc -= 13;
+    page.drawText(`HCR registrados este mes: ${hcrMes}`, { x: colDer, y: yc, size: 9, font, color: negro }); yc -= 16;
+    dibujarListaBarras(page, colDer, yc, anchoCol, [['Charlas', charlasRealizadasMes], ['HCR', hcrMes]].filter(([, c]) => c > 0), colorResultado.green);
+
+    // ---- Página 4: Resumen del Programa Personalizado ----
     page = pdfDoc.addPage([612, 792]);
     encabezado(page, 612, 792);
     y = 792 - 90;
@@ -4669,42 +4802,59 @@ async function generarInformeProgramaPersonalizado(obra, mes, responsable) {
     // números de arriba (no es un texto fijo): cambia si cambian los datos.
     parrafo('Conclusión', `En resumen, el cumplimiento con las actividades de prevención del programa personalizado durante ${nombreMes(mes)} es de un ${total}% (${resultadoTotal.label}), considerando que cada uno de los ${grupos.length} supervisor(es) de la obra ${obra} responde por su propio programa de actividades. En el período se entregaron ${eppItemsObra.totalItems} implemento(s) de protección personal (en ${eppItemsObra.entregas} entrega(s)) y se incorporaron ${nuevosObra} trabajador(es) nuevo(s) a la obra.`);
 
-    // ---- Página 4: Índices de seguridad de la obra ----
+    y -= 20;
+    dibujarBarrasCumplimiento(page, 40, y - 130, grupos);
+
+    // ---- Página 5: Índices de seguridad de la obra ----
     page = pdfDoc.addPage([612, 792]);
     encabezado(page, 612, 792);
     y = 792 - 90;
     page.drawText('ÍNDICES DE SEGURIDAD DE LA OBRA', { x: 40, y, size: 12, font: fontBold, color: negro });
     y -= 24;
     const st = calcularEstadisticasSeguridad(obra, 0);
+    const stPrev = calcularEstadisticasSeguridad(obra, 1);
     [
       ['Tasa Accidentabilidad', st.tasaAccidentabilidad.toFixed(1) + '%'],
       ['Índice de Frecuencia', String(Math.round(st.indiceFrecuencia))],
       ['Índice de Gravedad', String(Math.round(st.indiceGravedad))],
+      ['Horas Hombre Trabajadas (estimadas)', Math.round(st.horasHombre).toLocaleString('es-CL')],
     ].forEach(([label, valor]) => {
       page.drawText(label, { x: 40, y, size: 11, font, color: negro });
       page.drawText(valor, { x: 420, y, size: 11, font: fontBold, color: negro });
       y -= 20;
     });
-    y -= 10;
-    page.drawText(`Acumulado ${st.anio} · ${st.nAccidentes} accidente(s) con tiempo perdido · ${Math.round(st.horasHombre).toLocaleString('es-CL')} HH trabajadas (estimadas).`, { x: 40, y, size: 9, font, color: gris });
+    y -= 6;
+    page.drawText(`Acumulado ${st.anio} · ${st.nAccidentes} accidente(s) con tiempo perdido.`, { x: 40, y, size: 9, font, color: gris });
 
     y -= 40;
+    const yBaseIndices = y - 90;
+    dibujarComparativoIndice(page, 40, yBaseIndices, { nombre: 'Tasa Accident.', actual: st.tasaAccidentabilidad, prev: stPrev.tasaAccidentabilidad, anioActual: st.anio, color: colorResultado.blue, fmt: v => v.toFixed(1) + '%' });
+    dibujarComparativoIndice(page, 200, yBaseIndices, { nombre: 'Índice Frecuencia', actual: st.indiceFrecuencia, prev: stPrev.indiceFrecuencia, anioActual: st.anio, color: colorResultado.amber, fmt: v => String(Math.round(v)) });
+    dibujarComparativoIndice(page, 360, yBaseIndices, { nombre: 'Índice Gravedad', actual: st.indiceGravedad, prev: stPrev.indiceGravedad, anioActual: st.anio, color: colorResultado.red, fmt: v => String(Math.round(v)) });
+
+    y = yBaseIndices - 40;
     page.drawText('ENTREGA DE EPP EN LA OBRA', { x: 40, y, size: 12, font: fontBold, color: negro });
     y -= 20;
     page.drawText(`${eppItemsObra.entregas} entrega(s) registrada(s) en ${nombreMes(mes)} · ${eppItemsObra.totalItems} implemento(s) en total.`, { x: 40, y, size: 10, font, color: negro });
-    y -= 20;
+    y -= 22;
     const itemsOrdenados = Object.entries(eppItemsObra.items).sort((a, b) => b[1] - a[1]);
     if (itemsOrdenados.length === 0) {
       page.drawText('Sin entregas de EPP registradas en el período.', { x: 40, y, size: 9, font, color: gris });
     } else {
+      // Barras horizontales: ancho proporcional a la cantidad, con el
+      // nombre del ítem a la izquierda y el número al final de la barra.
+      const maxCantidad = Math.max(...itemsOrdenados.map(([, c]) => c));
+      const anchoMaxBarra = 260, xBarras = 190;
       itemsOrdenados.forEach(([item, cantidad]) => {
-        page.drawText(`${item}`, { x: 40, y, size: 9, font, color: negro });
-        page.drawText(String(cantidad), { x: 420, y, size: 9, font: fontBold, color: negro });
-        y -= 15;
+        page.drawText(item, { x: 40, y: y + 2, size: 9, font, color: negro });
+        const w = Math.max(4, (cantidad / maxCantidad) * anchoMaxBarra);
+        page.drawRectangle({ x: xBarras, y, width: w, height: 10, color: colorResultado.blue });
+        page.drawText(String(cantidad), { x: xBarras + w + 6, y: y + 2, size: 9, font: fontBold, color: negro });
+        y -= 17;
       });
     }
 
-    // ---- Páginas 5+: grilla día a día por supervisor (horizontal, para que
+    // ---- Páginas 6+: grilla día a día por supervisor (horizontal, para que
     // entren los 28-31 días como columnas) ----
     const ctx = { font, fontBold, negro, gris, grisLinea, colorResultado, rgb };
     for (const g of grupos) {
