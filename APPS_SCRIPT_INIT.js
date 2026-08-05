@@ -110,6 +110,11 @@ function inicializarPlanilla() {
     'Empresa', 'Categoria', 'Item', 'Periodo', 'Archivo', 'Link', 'Fecha', 'Subido Por'
   ]);
 
+  crearHoja(ss, 'PROGRAMA_PERSONALIZADO', [
+    'N°', 'Obra', 'Mes', 'Supervisor', 'Cargo', 'Actividad', 'Frecuencia',
+    'Dias Marcados', 'Fecha Registro', 'Registrado Por'
+  ]);
+
   // Elimina la hoja "Hoja 1" / "Sheet1" default si quedó vacía
   const porDefecto = ss.getSheetByName('Hoja 1') || ss.getSheetByName('Sheet1');
   if (porDefecto && porDefecto.getLastRow() === 0 && ss.getSheets().length > 1) {

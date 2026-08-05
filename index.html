@@ -236,6 +236,12 @@
       <div data-list="subcontratistas"></div>
     </div>
 
+    <!-- PROGRAMA PERSONALIZADO -->
+    <div class="page" id="page-programapersonalizado">
+      <div class="sec-label">Programa Personalizado</div>
+      <div data-list="programapersonalizado"></div>
+    </div>
+
   </div>
 
   <!-- FAB agregar (contextual) -->
@@ -338,6 +344,7 @@
   </div>
   <div class="dt-page" id="dt-page-hcr"><div data-list="hcr"></div></div>
   <div class="dt-page" id="dt-page-subcontratistas"><div data-list="subcontratistas"></div></div>
+  <div class="dt-page" id="dt-page-programapersonalizado"><div data-list="programapersonalizado"></div></div>
 </div>
 
 </div><!-- /#app -->
@@ -626,6 +633,58 @@
       </div>
       <button class="btn-add" type="submit">Guardar entrega</button>
     </form>
+  </div>
+</div>
+
+<!-- ===== PANEL: Nueva actividad del Programa Personalizado ===== -->
+<div class="panel hidden" id="panel-form-actividad-programa">
+  <div class="panel-bar"><div class="pnl-back" onclick="closePanel('panel-form-actividad-programa')">‹ Volver</div><div class="pnl-title">Nueva actividad</div><div></div></div>
+  <div class="panel-body">
+    <form id="form-actividad-programa" onsubmit="guardarActividadPrograma(event)">
+      <div class="form-group">
+        <label>Obra</label>
+        <select name="obra" onchange="onCambioObraProgramaForm(this)" required></select>
+        <input type="text" id="input-actividad-obra-otra" class="hidden" placeholder="Nombre de la obra" style="margin-top:8px;">
+      </div>
+      <div class="form-group"><label>Mes</label><input type="month" name="mes" required></div>
+      <div class="form-group"><label>Supervisor</label><select name="supervisor" onchange="onCambioSupervisorPrograma(this)" required></select></div>
+      <div class="form-group"><label>Cargo</label><input name="cargo" readonly></div>
+      <div class="form-group"><label>Actividad</label><input name="actividad" required placeholder="Ej: Charla 5 minutos" list="lista-actividades-programa">
+        <datalist id="lista-actividades-programa">
+          <option value="Charla 5 minutos"></option>
+          <option value="Inspección de EPP"></option>
+          <option value="HCR"></option>
+          <option value="Inspección de orden y aseo"></option>
+          <option value="Observación de conductas"></option>
+          <option value="Reunión de coordinación"></option>
+        </datalist>
+      </div>
+      <div class="form-group"><label>Frecuencia</label>
+        <select name="frecuencia" required>
+          <option value="Diaria">Diaria</option>
+          <option value="Semanal">Semanal</option>
+          <option value="Quincenal">Quincenal</option>
+          <option value="Mensual">Mensual</option>
+        </select>
+      </div>
+      <button class="btn-add" type="submit">Guardar actividad</button>
+    </form>
+  </div>
+</div>
+
+<!-- ===== PANEL: Detalle Programa Personalizado (por supervisor) ===== -->
+<div class="panel hidden" id="panel-detalle-programa">
+  <div class="panel-bar"><div class="pnl-back" onclick="closePanel('panel-detalle-programa')">‹ Volver</div><div class="pnl-title" id="pnl-title-detalle-programa">Supervisor</div><div></div></div>
+  <div class="panel-body" id="detalle-programa-body"></div>
+</div>
+
+<!-- ===== PANEL: Marcar días cumplidos ===== -->
+<div class="panel hidden" id="panel-marcar-dias">
+  <div class="panel-bar"><div class="pnl-back" onclick="closePanel('panel-marcar-dias')">‹ Volver</div><div class="pnl-title" id="pnl-title-marcar-dias">Actividad</div><div></div></div>
+  <div class="panel-body">
+    <div class="card-sub" id="marcar-dias-info" style="margin-bottom:10px;"></div>
+    <div class="marcar-dias-grid" id="marcar-dias-grid"></div>
+    <button class="btn-add" style="margin-top:16px;" onclick="guardarMarcarDias()">Guardar días</button>
   </div>
 </div>
 
@@ -1123,7 +1182,7 @@
     inicio: 'Inicio', inspecciones: 'Inspecciones', incidentes: 'Incidentes y Accidentes',
     procedimientos: 'Procedimientos de Trabajo Seguro', epp: 'Entrega de EPP',
     trabajadores: 'Trabajadores', charlas: 'Charlas de Seguridad', hcr: 'Hoja de Control de Riesgos (HCR)',
-    subcontratistas: 'Subcontratistas',
+    subcontratistas: 'Subcontratistas', programapersonalizado: 'Programa Personalizado',
   };
 
   // Aplica el color del módulo activo a un header (móvil o el del sidebar
@@ -1160,7 +1219,7 @@
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     const map = { inicio:'page-inicio', inspecciones:'page-inspecciones', incidentes:'page-incidentes',
       procedimientos:'page-procedimientos', epp:'page-epp', trabajadores:'page-trabajadores', charlas:'page-charlas',
-      hcr:'page-hcr', subcontratistas:'page-subcontratistas' };
+      hcr:'page-hcr', subcontratistas:'page-subcontratistas', programapersonalizado:'page-programapersonalizado' };
     document.getElementById(map[nombre]).classList.add('active');
 
     // Header móvil: en Inicio muestra el logo (color naranjo de marca);
@@ -1201,6 +1260,7 @@
       inspecciones: abrirFormInspeccion, incidentes: abrirFormIncidente,
       procedimientos: abrirFormProcedimiento, epp: abrirFormEpp, trabajadores: abrirFormTrabajador,
       charlas: abrirNuevaCharla, hcr: abrirNuevoHcr, subcontratistas: abrirFormSubcontratista,
+      programapersonalizado: () => abrirFormActividadPrograma(),
     };
     const fab = document.getElementById('fab-add');
     const dtFab = document.getElementById('dt-fab-add');

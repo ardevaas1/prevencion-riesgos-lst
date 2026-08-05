@@ -12,6 +12,9 @@ const TEMAS_CHARLA = [
   'Izaje de cargas', 'Excavaciones y zanjas', 'Manejo manual de materiales',
   'Extintores y emergencias', 'Señalización y demarcación', 'Vehículos y maquinaria', 'Otro'
 ];
+// Frecuencia esperada de cada actividad del Programa Personalizado — define
+// cuántas veces al mes debería marcarse (ver ocurrenciasEsperadas).
+const PROGRAMA_FRECUENCIAS = ['Diaria', 'Semanal', 'Quincenal', 'Mensual'];
 // Charlas ya escritas por el cliente (formato oficial "CHARLA DE SEGURIDAD",
 // distinto del genérico charla_5min.pdf usado en "Escribir desde cero") —
 // empaquetadas como archivos del proyecto en vez de subirse desde la app:
@@ -572,6 +575,7 @@ const ICONS = {
   subcontratistas: '<svg viewBox="0 0 24 24" fill="none"><path d="M4 21V6a1 1 0 0 1 1-1h6v16" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M11 10.5h8a1 1 0 0 1 1 1V21h-9" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M7 8h.01M7 11h.01M7 14h.01M7 17h.01M14.5 13.5h.01M14.5 16.5h.01M17.5 13.5h.01M17.5 16.5h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
   refrescar: '<svg viewBox="0 0 24 24" fill="none"><path d="M4 12a8 8 0 0 1 13.66-5.66M20 12a8 8 0 0 1-13.66 5.66" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M17 3v4h-4M7 21v-4h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   salir: '<svg viewBox="0 0 24 24" fill="none"><path d="M9 21H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 17l5-5-5-5M21 12H9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  programapersonalizado: '<svg viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="17" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M8 2.5v3M16 2.5v3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M4 9.5h16" stroke="currentColor" stroke-width="1.5"/><path d="M8 13.5l2 2 4-4.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>',
 };
 function ic(name, size) { return ICONS[name].replace('<svg ', `<svg style="width:${size||14}px;height:${size||14}px;vertical-align:-3px;flex-shrink:0" `); }
 
@@ -581,7 +585,7 @@ function ic(name, size) { return ICONS[name].replace('<svg ', `<svg style="width
 const MODULOS_COLOR = {
   inspecciones: 'flota', incidentes: 'and', procedimientos: 'cont',
   epp: 'mov', trabajadores: 'inv', charlas: 'flota', hcr: 'and',
-  subcontratistas: 'cont',
+  subcontratistas: 'cont', programapersonalizado: 'mov',
 };
 
 function renderModulosHome() {
@@ -594,6 +598,7 @@ function renderModulosHome() {
     { key: 'charlas', nombre: 'Charlas de Seguridad', desc: 'Alertas generadas por inspecciones' },
     { key: 'hcr', nombre: 'Hoja de Control de Riesgos (HCR)', desc: 'Registro diario por cuadrilla, antes de ejecutar el trabajo' },
     { key: 'subcontratistas', nombre: 'Subcontratistas', desc: 'Documentación y control por empresa' },
+    { key: 'programapersonalizado', nombre: 'Programa Personalizado', desc: 'Cumplimiento mensual por supervisor' },
   ].map(m => ({ ...m, color: MODULOS_COLOR[m.key] }));
   setListHTML('modulos-home', modulos.map(m => `
     <div class="modulo-card modulo-card--${m.color}" onclick="irPagina('${m.key}')">
@@ -722,6 +727,7 @@ let allDiat = [];
 let allUsuarios = [];
 let allSubcontratistas = [];
 let allSubDocs = [];
+let allProgramaPersonalizado = [];
 
 // Renderiza todos los módulos "principales" de una sola vez — se llama tanto
 // al terminar de cargar datos como al elegir/cambiar la Obra activa (ver
@@ -734,6 +740,7 @@ function renderModulosPrincipales() {
   renderDashboard();
   renderTrabajadores(); renderInspecciones(); renderIncidentes(); renderProcedimientos(); renderEpp(); renderCharlas(); renderHcr();
   renderSubcontratistas();
+  renderProgramaPersonalizado();
 }
 
 async function cargarTodo(silencioso) {
@@ -794,7 +801,7 @@ async function cargarTodo(silencioso) {
       return;
     }
 
-    const [trab, insp, inc, proc, epp, charlas, invest, hcr, diat, subs, docs] = await fetchSheetsBatch([
+    const [trab, insp, inc, proc, epp, charlas, invest, hcr, diat, subs, docs, prog] = await fetchSheetsBatch([
       `'${CONFIG.SHEET_TRABAJADORES}'!A2:AB2000`,
       `'${CONFIG.SHEET_INSPECCIONES}'!A2:M2000`,
       `'${CONFIG.SHEET_INCIDENTES}'!A2:V2000`,
@@ -806,6 +813,7 @@ async function cargarTodo(silencioso) {
       `'${CONFIG.SHEET_DIAT}'!A2:BA2000`,
       `'${CONFIG.SHEET_SUBCONTRATISTAS}'!A2:B2000`,
       `'${CONFIG.SHEET_SUBCONTRATISTAS_DOCS}'!A2:H2000`,
+      `'${CONFIG.SHEET_PROGRAMA_PERSONALIZADO}'!A2:J4000`,
     ]);
     if (!silencioso) splash(85, 'Preparando la app...');
     allTrabajadores = trab.map((r,i) => rowToTrabajador(r,i));
@@ -819,6 +827,7 @@ async function cargarTodo(silencioso) {
     allDiat = diat.map((r,i) => ({ fila: i+2, n: r[0]||'' }));
     allSubcontratistas = subs.map((r,i) => rowToSubcontratista(r,i));
     allSubDocs = docs.map((r,i) => rowToSubDoc(r,i));
+    allProgramaPersonalizado = prog.map((r,i) => rowToProgramaPersonalizado(r,i));
     renderModulosPrincipales();
     if (!silencioso) splash(100, '¡Listo!');
     else toast('Datos actualizados ✓', 'ok');
@@ -902,6 +911,15 @@ function rowToSubcontratista(r, i) {
 function rowToSubDoc(r, i) {
   return { fila: i+2, empresa: r[0]||'', categoria: r[1]||'', item: r[2]||'', periodo: r[3]||'',
     archivo: r[4]||'', link: r[5]||'', fecha: r[6]||'', subidoPor: r[7]||'' };
+}
+// Una fila = una actividad del "Programa Personalizado" de UN supervisor en
+// UN mes (ej. "Charla 5 minutos", frecuencia Diaria) — Dias Marcados guarda
+// los días del mes en que se cumplió, separados por coma ("1,2,5,9,...").
+function rowToProgramaPersonalizado(r, i) {
+  return { fila: i+2, n: r[0]||'', obra: r[1]||'', mes: r[2]||'', supervisor: r[3]||'', cargo: r[4]||'',
+    actividad: r[5]||'', frecuencia: r[6]||'',
+    diasMarcados: (r[7]||'').split(',').map(x => parseInt(x.trim(), 10)).filter(n => !isNaN(n)),
+    fechaRegistro: r[8]||'', registradoPor: r[9]||'' };
 }
 // Una entrega de EPP es UNA fila con todos los ítems juntos en la columna
 // "EPP Entregado" (ej. "Casco (1); Guantes (2)"), igual que "Asistentes"
@@ -4117,6 +4135,485 @@ async function guardarEpp(ev) {
     toast(`Entrega registrada ✓ (${itemsEpp.length} ítem${itemsEpp.length>1?'s':''})`, 'ok');
     closePanel('panel-form-epp');
     cargarTodo(true);
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+// ============================================================
+// MÓDULO: PROGRAMA PERSONALIZADO (cumplimiento mensual por supervisor)
+// ============================================================
+// Carga manual mes a mes (no se calcula solo, a pedido explícito): cada
+// actividad del programa de un supervisor es una fila en
+// PROGRAMA_PERSONALIZADO, y "Dias Marcados" guarda los días del mes en que
+// se cumplió. El % de cada actividad sale de comparar los días marcados
+// contra los que le tocaban según su frecuencia (ver ocurrenciasEsperadas);
+// el % del supervisor es el promedio de sus actividades, y el % total del
+// programa el promedio entre supervisores — mismo criterio que el informe
+// en Excel que se está digitalizando acá.
+function mesActualISO() { return new Date().toISOString().slice(0,7); }
+function diasEnMes(mesISO) {
+  const [a, m] = mesISO.split('-').map(Number);
+  return new Date(a, m, 0).getDate();
+}
+const NOMBRES_MES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+function nombreMes(mesISO) {
+  const [a, m] = mesISO.split('-').map(Number);
+  return `${NOMBRES_MES[m-1]} ${a}`;
+}
+function ocurrenciasEsperadas(frecuencia, mesISO) {
+  const dias = diasEnMes(mesISO);
+  if (frecuencia === 'Semanal') return Math.ceil(dias / 7);
+  if (frecuencia === 'Quincenal') return 2;
+  if (frecuencia === 'Mensual') return 1;
+  return dias; // Diaria
+}
+function cumplimientoActividad(act) {
+  const esperadas = ocurrenciasEsperadas(act.frecuencia, act.mes);
+  if (esperadas <= 0) return 0;
+  return Math.min(100, Math.round((act.diasMarcados.length / esperadas) * 100));
+}
+function resultadoPrograma(pct) {
+  if (pct >= 81) return { label: 'Excelente', color: 'green' };
+  if (pct >= 61) return { label: 'Bueno', color: 'blue' };
+  if (pct >= 41) return { label: 'Regular', color: 'amber' };
+  if (pct >= 21) return { label: 'Malo', color: 'amber' };
+  return { label: 'Muy Malo', color: 'red' };
+}
+function actividadesPrograma(obra, mes) {
+  return allProgramaPersonalizado.filter(a => a.obra === obra && a.mes === mes);
+}
+// Agrupa las actividades de una Obra/Mes por supervisor, con su % de
+// cumplimiento (promedio de sus actividades) y las métricas de EPP/personal
+// nuevo del período (ver eppEntregadoSupervisorMes / personalNuevoSupervisorMes).
+function agruparProgramaPorSupervisor(obra, mes) {
+  const acts = actividadesPrograma(obra, mes);
+  const porSupervisor = {};
+  const orden = [];
+  acts.forEach(a => {
+    if (!porSupervisor[a.supervisor]) { porSupervisor[a.supervisor] = { supervisor: a.supervisor, cargo: a.cargo, actividades: [] }; orden.push(a.supervisor); }
+    porSupervisor[a.supervisor].actividades.push(a);
+  });
+  return orden.map(nombre => {
+    const g = porSupervisor[nombre];
+    const pcts = g.actividades.map(cumplimientoActividad);
+    g.pct = pcts.length ? Math.round(pcts.reduce((s,v)=>s+v,0) / pcts.length) : 0;
+    g.resultado = resultadoPrograma(g.pct);
+    const trabSup = allTrabajadores.find(t => t.nombre === nombre && t.obra === obra);
+    g.epp = trabSup ? eppEntregadoSupervisorMes(trabSup, mes) : 0;
+    g.nuevos = trabSup ? personalNuevoSupervisorMes(trabSup, mes) : 0;
+    return g;
+  });
+}
+function pctTotalPrograma(grupos) {
+  if (!grupos.length) return 0;
+  return Math.round(grupos.reduce((s,g)=>s+g.pct,0) / grupos.length);
+}
+
+// ── Métricas de EPP y personal nuevo por supervisor ("a cargo" = mismos
+// trabajadores activos de su Obra, ver trabajadoresACargoDe) ──────────────
+function eppEntregadoSupervisorMes(supervisor, mes) {
+  const nombresACargo = new Set(trabajadoresACargoDe(supervisor).map(t => t.nombre));
+  return allEpp.filter(e => nombresACargo.has(e.trabajador) && (e.fecha||'').slice(0,7) === mes).length;
+}
+function personalNuevoSupervisorMes(supervisor, mes) {
+  return trabajadoresACargoDe(supervisor).filter(t => (t.fechaIngreso||'').slice(0,7) === mes).length;
+}
+
+// ── Render del módulo ──────────────────────────────────────────────────
+let mesProgramaSel = mesActualISO();
+let obraProgramaSel = 'todas';
+function onCambioMesPrograma(v) { mesProgramaSel = v; renderProgramaPersonalizado(); }
+function onCambioObraPrograma(v) { obraProgramaSel = v; renderProgramaPersonalizado(); }
+function renderProgramaPersonalizado() {
+  const obraGlobal = obraFiltroActivo();
+  const obras = opcionesObrasDisponibles();
+  const obraEfectiva = obraGlobal || (obraProgramaSel !== 'todas' && obras.includes(obraProgramaSel) ? obraProgramaSel : null);
+
+  const selectorObraHtml = obraGlobal ? '' : `
+    <div class="stats-obra-bar">${ic('obra',16)}
+      <select class="obra-selector" onchange="onCambioObraPrograma(this.value)">
+        <option value="todas">Elige una obra...</option>
+        ${obras.map(o => `<option value="${esc(o)}" ${o===obraProgramaSel?'selected':''}>${esc(o)}</option>`).join('')}
+      </select>
+    </div>`;
+  const selectorMesHtml = `
+    <div class="stats-obra-bar">${ic('programapersonalizado',16)}
+      <input type="month" class="obra-selector" value="${mesProgramaSel}" onchange="onCambioMesPrograma(this.value)">
+    </div>`;
+
+  if (!obraEfectiva) {
+    setListHTML('programapersonalizado', selectorObraHtml + selectorMesHtml + emptyState('Elige una obra', 'Selecciona una obra arriba para ver su Programa Personalizado'));
+    return;
+  }
+
+  const grupos = agruparProgramaPorSupervisor(obraEfectiva, mesProgramaSel);
+  if (grupos.length === 0) {
+    setListHTML('programapersonalizado', selectorObraHtml + selectorMesHtml + emptyState('Sin actividades cargadas', `Agrega las actividades del programa de ${nombreMes(mesProgramaSel)} con el botón +`));
+    return;
+  }
+  const total = pctTotalPrograma(grupos);
+  const resultadoTotal = resultadoPrograma(total);
+  setListHTML('programapersonalizado', `
+    ${selectorObraHtml}${selectorMesHtml}
+    <div class="card card--default">
+      <div class="card-icon modulo-icon--mov">${ic('programapersonalizado',18)}</div>
+      <div class="card-body">
+        <div class="card-title">Cumplimiento total — ${esc(nombreMes(mesProgramaSel))}</div>
+        <div class="card-sub">${grupos.length} supervisor(es) con programa cargado</div>
+        <div class="badge-row"><span class="badge ${resultadoTotal.color}">${total}% · ${resultadoTotal.label}</span></div>
+      </div>
+    </div>
+    <button class="action-btn" onclick="generarInformeProgramaPersonalizado('${esc(obraEfectiva)}','${mesProgramaSel}')">${ic('documento',14)} Generar informe PDF</button>
+    <div class="sec-label" style="margin-top:14px;">Por supervisor</div>
+    ${grupos.map(g => `
+    <div class="card card--default" onclick="abrirDetalleProgramaSupervisor('${esc(obraEfectiva)}','${mesProgramaSel}','${esc(g.supervisor).replace(/'/g,"\\'")}')">
+      <div class="card-icon modulo-icon--mov">${ic('trabajadores',18)}</div>
+      <div class="card-body">
+        <div class="card-title">${esc(g.supervisor)}</div>
+        <div class="card-sub">${esc(g.cargo)} · ${g.actividades.length} actividad(es)</div>
+        <div class="badge-row">
+          <span class="badge ${g.resultado.color}">${g.pct}% · ${g.resultado.label}</span>
+          <span class="badge blue">${ic('epp',11)} ${g.epp} EPP</span>
+          <span class="badge gray">${ic('trabajadores',11)} ${g.nuevos} nuevo(s)</span>
+        </div>
+      </div>
+      <div class="card-arrow">›</div>
+    </div>`).join('')}
+  `);
+}
+
+// ── Detalle por supervisor ──────────────────────────────────────────────
+let programaDetalleCtx = null; // { obra, mes, supervisor }
+function abrirDetalleProgramaSupervisor(obra, mes, supervisor) {
+  programaDetalleCtx = { obra, mes, supervisor };
+  document.getElementById('pnl-title-detalle-programa').textContent = supervisor;
+  renderDetalleProgramaSupervisor();
+  openPanel('panel-detalle-programa');
+}
+function renderDetalleProgramaSupervisor() {
+  const { obra, mes, supervisor } = programaDetalleCtx;
+  const acts = actividadesPrograma(obra, mes).filter(a => a.supervisor === supervisor);
+  const trabSup = allTrabajadores.find(t => t.nombre === supervisor && t.obra === obra);
+  const epp = trabSup ? eppEntregadoSupervisorMes(trabSup, mes) : 0;
+  const nuevos = trabSup ? personalNuevoSupervisorMes(trabSup, mes) : 0;
+  document.getElementById('detalle-programa-body').innerHTML = `
+    <div class="badge-row" style="margin-bottom:12px;">
+      <span class="badge blue">${ic('epp',11)} ${epp} EPP entregado(s) en ${esc(nombreMes(mes))}</span>
+      <span class="badge gray">${ic('trabajadores',11)} ${nuevos} ingreso(s) nuevo(s)</span>
+    </div>
+    <button class="action-btn" onclick="abrirFormActividadPrograma('${esc(obra)}','${esc(mes)}','${esc(supervisor).replace(/'/g,"\\'")}')">+ Agregar actividad</button>
+    <div class="sec-label" style="margin-top:14px;">Actividades</div>
+    ${acts.length === 0 ? emptyState('Sin actividades', 'Agrega la primera actividad del programa') : acts.map(a => {
+      const pct = cumplimientoActividad(a);
+      const r = resultadoPrograma(pct);
+      return `
+      <div class="card card--default" onclick="abrirMarcarDias(${a.fila})">
+        <div class="card-icon modulo-icon--mov">${ic('programapersonalizado',18)}</div>
+        <div class="card-body">
+          <div class="card-title">${esc(a.actividad)}</div>
+          <div class="card-sub">${esc(a.frecuencia)} · ${a.diasMarcados.length}/${ocurrenciasEsperadas(a.frecuencia, a.mes)} días marcados</div>
+          <div class="badge-row"><span class="badge ${r.color}">${pct}%</span></div>
+        </div>
+        <div class="card-arrow">›</div>
+      </div>`;
+    }).join('')}
+  `;
+}
+
+// ── Agregar actividad ────────────────────────────────────────────────
+function abrirFormActividadPrograma(obra, mes, supervisor) {
+  const f = document.getElementById('form-actividad-programa');
+  f.reset();
+  const obraDefault = obra || (programaDetalleCtx && programaDetalleCtx.obra) || obraFiltroActivo() || (obraProgramaSel !== 'todas' ? obraProgramaSel : '');
+  const mesDefault = mes || (programaDetalleCtx && programaDetalleCtx.mes) || mesProgramaSel;
+  f.obra.innerHTML = opcionesObraSelectHTML(obraDefault);
+  f.mes.value = mesDefault;
+  onCambioObraProgramaForm(f.obra);
+  if (supervisor) setTimeout(() => { f.supervisor.value = supervisor; onCambioSupervisorPrograma(f.supervisor); }, 0);
+  openPanel('panel-form-actividad-programa');
+}
+function onCambioObraProgramaForm(selEl) {
+  onCambioObraSelect(selEl, 'input-actividad-obra-otra');
+  const f = selEl.form;
+  const obra = valorObra(selEl, 'input-actividad-obra-otra');
+  const sups = allTrabajadores.filter(t => t.esSupervisor && t.obra === obra && t.estado === 'Activo');
+  f.supervisor.innerHTML = '<option value="">— Selecciona un supervisor —</option>' +
+    sups.map(s => `<option value="${esc(s.nombre)}">${esc(s.nombre)}</option>`).join('');
+  f.cargo.value = '';
+}
+function onCambioSupervisorPrograma(selEl) {
+  const f = selEl.form;
+  const obra = valorObra(f.obra, 'input-actividad-obra-otra');
+  const t = allTrabajadores.find(x => x.nombre === selEl.value && x.obra === obra);
+  f.cargo.value = t ? t.cargo : '';
+}
+async function guardarActividadPrograma(ev) {
+  ev.preventDefault();
+  const f = ev.target;
+  try {
+    const obra = valorObra(f.obra, 'input-actividad-obra-otra');
+    if (!obra) { toast('Selecciona la obra', 'error'); return; }
+    if (!f.supervisor.value) { toast('Selecciona el supervisor', 'error'); return; }
+    const actividad = f.actividad.value.trim();
+    if (!actividad) { toast('Escribe la actividad', 'error'); return; }
+    await appendSheet(`'${CONFIG.SHEET_PROGRAMA_PERSONALIZADO}'!A:J`, [[
+      allProgramaPersonalizado.length + 1, obra, f.mes.value, f.supervisor.value, f.cargo.value,
+      actividad, f.frecuencia.value, '', new Date().toLocaleString('es-CL'), userEmail || ''
+    ]]);
+    toast('Actividad agregada ✓', 'ok');
+    closePanel('panel-form-actividad-programa');
+    obraProgramaSel = obra; mesProgramaSel = f.mes.value;
+    await cargarTodo(true);
+    if (programaDetalleCtx) renderDetalleProgramaSupervisor();
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+// ── Marcar días cumplidos de una actividad ──────────────────────────────
+let marcarDiasFila = null;
+function abrirMarcarDias(fila) {
+  const a = allProgramaPersonalizado.find(x => x.fila === fila);
+  if (!a) return;
+  marcarDiasFila = fila;
+  document.getElementById('pnl-title-marcar-dias').textContent = a.actividad;
+  document.getElementById('marcar-dias-info').textContent = `${a.supervisor} · ${a.frecuencia} · ${nombreMes(a.mes)}`;
+  const dias = diasEnMes(a.mes);
+  const marcados = new Set(a.diasMarcados);
+  document.getElementById('marcar-dias-grid').innerHTML = Array.from({length: dias}, (_, i) => i+1).map(d => `
+    <label class="marcar-dia${marcados.has(d) ? ' checked' : ''}">
+      <input type="checkbox" value="${d}" ${marcados.has(d) ? 'checked' : ''} onchange="this.closest('.marcar-dia').classList.toggle('checked', this.checked)">
+      <span>${d}</span>
+    </label>`).join('');
+  openPanel('panel-marcar-dias');
+}
+async function guardarMarcarDias() {
+  try {
+    const dias = [...document.querySelectorAll('#marcar-dias-grid input:checked')].map(i => i.value);
+    await ensureToken();
+    const urlDias = `${SHEETS_BASE}/${CONFIG.SHEET_ID}/values/${encodeURIComponent(`'${CONFIG.SHEET_PROGRAMA_PERSONALIZADO}'!H${marcarDiasFila}`)}?valueInputOption=USER_ENTERED`;
+    await fetch(urlDias, { method:'PUT', headers:{ 'Content-Type':'application/json', ...authHeader() },
+      body: JSON.stringify({ values: [[dias.join(',')]] }) });
+    const urlFecha = `${SHEETS_BASE}/${CONFIG.SHEET_ID}/values/${encodeURIComponent(`'${CONFIG.SHEET_PROGRAMA_PERSONALIZADO}'!I${marcarDiasFila}`)}?valueInputOption=USER_ENTERED`;
+    await fetch(urlFecha, { method:'PUT', headers:{ 'Content-Type':'application/json', ...authHeader() },
+      body: JSON.stringify({ values: [[new Date().toLocaleString('es-CL')]] }) });
+    toast('Días guardados ✓', 'ok');
+    closePanel('panel-marcar-dias');
+    await cargarTodo(true);
+    if (programaDetalleCtx) renderDetalleProgramaSupervisor();
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+// ── Generador del informe PDF (portada + objetivos + resumen + índices +
+// grilla día a día por supervisor) — desde cero con pdf-lib, sin plantilla
+// (a diferencia de Charla/DIAT/Investigación/HCR, este informe no viene de
+// un PDF del cliente que se pueda rellenar por encima). Usa logo.png (el
+// logo azul actual — logo-transparent.png tiene el logo verde antiguo y no
+// debe usarse), embebido con embedJpg porque logo.png está codificado como
+// JPEG pese a su extensión.
+function dibujarFilaTabla(page, x, y, cols, font, fontBold, rowH, fillColor, textColorDefault, borderColor) {
+  let cx = x;
+  cols.forEach(c => {
+    if (fillColor) page.drawRectangle({ x: cx, y: y - rowH, width: c.w, height: rowH, color: fillColor });
+    page.drawRectangle({ x: cx, y: y - rowH, width: c.w, height: rowH, borderColor, borderWidth: 0.6 });
+    const useFont = c.bold ? fontBold : font;
+    const size = c.size || 9;
+    const txt = String(c.text ?? '');
+    const tw = useFont.widthOfTextAtSize(txt, size);
+    let tx = cx + 4;
+    if (c.align === 'center') tx = cx + (c.w - tw) / 2;
+    if (c.align === 'right') tx = cx + c.w - tw - 4;
+    page.drawText(txt, { x: tx, y: y - rowH + (rowH - size) / 2 + 1, size, font: useFont, color: c.color || textColorDefault });
+    cx += c.w;
+  });
+  return y - rowH;
+}
+async function dibujarPaginaGrillaSupervisor(pdfDoc, ctx, encabezadoFn, obra, mes, g) {
+  const { font, fontBold, negro, gris, grisLinea, colorResultado, rgb } = ctx;
+  const W = 792, H = 612;
+  const page = pdfDoc.addPage([W, H]);
+  encabezadoFn(page, W, H);
+  let y = H - 74;
+  page.drawText(`PROGRAMA DE ACTIVIDADES — ${g.supervisor}`, { x: 40, y, size: 12, font: fontBold, color: negro });
+  y -= 15;
+  page.drawText(`${g.cargo || ''} · Obra: ${obra} · Mes: ${nombreMes(mes)}`, { x: 40, y, size: 9, font, color: gris });
+  y -= 20;
+
+  const dias = diasEnMes(mes);
+  const colAct = 140, colFrec = 55, colPct = 42;
+  const anchoDias = W - 80 - colAct - colFrec - colPct;
+  const colDia = anchoDias / dias;
+
+  const headerCols = [
+    { w: colAct, text: 'Actividad', bold: true },
+    { w: colFrec, text: 'Frecuencia', bold: true, align: 'center', size: 7 },
+    ...Array.from({length: dias}, (_, i) => ({ w: colDia, text: String(i+1), bold: true, align: 'center', size: 6.5 })),
+    { w: colPct, text: '%', bold: true, align: 'center' },
+  ];
+  y = dibujarFilaTabla(page, 40, y, headerCols, font, fontBold, 16, rgb(0.94,0.94,0.94), negro, grisLinea);
+
+  g.actividades.forEach(a => {
+    const pct = cumplimientoActividad(a);
+    const marcados = new Set(a.diasMarcados);
+    const cols = [
+      { w: colAct, text: a.actividad, size: 7 },
+      { w: colFrec, text: a.frecuencia, align: 'center', size: 6.5 },
+      ...Array.from({length: dias}, (_, i) => ({ w: colDia, text: marcados.has(i+1) ? 'X' : '', align: 'center', size: 6.5 })),
+      { w: colPct, text: pct + '%', align: 'center', size: 7 },
+    ];
+    y = dibujarFilaTabla(page, 40, y, cols, font, fontBold, 13, null, negro, grisLinea);
+  });
+
+  const r = g.resultado;
+  const totalCols = [
+    { w: colAct + colFrec, text: 'TOTAL', bold: true },
+    ...Array.from({length: dias}, () => ({ w: colDia, text: '' })),
+    { w: colPct, text: g.pct + '%', bold: true, align: 'center', color: colorResultado[r.color] },
+  ];
+  dibujarFilaTabla(page, 40, y, totalCols, font, fontBold, 16, rgb(0.94,0.94,0.94), negro, grisLinea);
+}
+async function generarInformeProgramaPersonalizado(obra, mes) {
+  toast('Generando informe...', 'ok');
+  try {
+    const { PDFDocument, rgb, StandardFonts } = await cargarPdfLib();
+    const pdfDoc = await PDFDocument.create();
+    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+    const logoBytes = await fetch('logo.png').then(r => r.arrayBuffer());
+    const logoImg = await pdfDoc.embedJpg(logoBytes);
+    const logoDim = logoImg.scale(26 / logoImg.height);
+
+    const grupos = agruparProgramaPorSupervisor(obra, mes);
+    const total = pctTotalPrograma(grupos);
+    const resultadoTotal = resultadoPrograma(total);
+    const negro = rgb(0,0,0), gris = rgb(0.4,0.4,0.4), grisLinea = rgb(0.75,0.75,0.75);
+    const colorResultado = { green: rgb(0.18,0.49,0.2), blue: rgb(0.08,0.4,0.75), amber: rgb(0.9,0.35,0), red: rgb(0.78,0.16,0.16) };
+
+    function encabezado(page, W, H) {
+      page.drawImage(logoImg, { x: 40, y: H - 46, width: logoDim.width, height: logoDim.height });
+      const tituloTxt = 'INFORME PROGRAMA PERSONALIZADO';
+      page.drawText(tituloTxt, { x: W/2 - fontBold.widthOfTextAtSize(tituloTxt, 13)/2, y: H - 40, size: 13, font: fontBold, color: negro });
+      const info = `${obra} · ${nombreMes(mes)}`;
+      page.drawText(info, { x: W - 40 - font.widthOfTextAtSize(info, 9), y: H - 40, size: 9, font, color: gris });
+      page.drawLine({ start: { x: 40, y: H - 58 }, end: { x: W - 40, y: H - 58 }, thickness: 1, color: grisLinea });
+    }
+
+    // ---- Página 1: Portada ----
+    let page = pdfDoc.addPage([612, 792]);
+    encabezado(page, 612, 792);
+    let y = 792 - 220;
+    const titulo = 'INFORME PROGRAMA PERSONALIZADO';
+    page.drawText(titulo, { x: 306 - fontBold.widthOfTextAtSize(titulo, 22)/2, y, size: 22, font: fontBold, color: negro });
+    y -= 30;
+    const sub = `${obra} — ${nombreMes(mes)}`;
+    page.drawText(sub, { x: 306 - font.widthOfTextAtSize(sub, 13)/2, y, size: 13, font, color: gris });
+    y -= 60;
+    const resTxt = `Resultado del período: ${total}% — ${resultadoTotal.label}`;
+    page.drawText(resTxt, { x: 306 - fontBold.widthOfTextAtSize(resTxt, 13)/2, y, size: 13, font: fontBold, color: colorResultado[resultadoTotal.color] || negro });
+    y -= 100;
+    page.drawText('REALIZADO POR', { x: 80, y, size: 9, font: fontBold, color: gris });
+    page.drawLine({ start: { x: 80, y: y - 24 }, end: { x: 280, y: y - 24 }, thickness: 0.8, color: negro });
+    page.drawText('Prevención de Riesgos', { x: 80, y: y - 36, size: 9, font, color: gris });
+    page.drawText('REVISADO Y APROBADO POR', { x: 332, y, size: 9, font: fontBold, color: gris });
+    page.drawLine({ start: { x: 332, y: y - 24 }, end: { x: 532, y: y - 24 }, thickness: 0.8, color: negro });
+    page.drawText('Jefatura de Obra', { x: 332, y: y - 36, size: 9, font, color: gris });
+
+    // ---- Página 2: Objetivo / alcance ----
+    page = pdfDoc.addPage([612, 792]);
+    encabezado(page, 612, 792);
+    y = 792 - 90;
+    function parrafo(tituloTxt, texto) {
+      page.drawText(tituloTxt, { x: 40, y, size: 11, font: fontBold, color: negro });
+      y -= 18;
+      const maxWidth = 532, size = 10, lineHeight = 14;
+      const words = texto.split(/\s+/);
+      let current = '';
+      const lines = [];
+      for (const w of words) {
+        const test = current ? current + ' ' + w : w;
+        if (font.widthOfTextAtSize(test, size) > maxWidth && current) { lines.push(current); current = w; } else current = test;
+      }
+      if (current) lines.push(current);
+      lines.forEach(line => { page.drawText(line, { x: 40, y, size, font, color: negro }); y -= lineHeight; });
+      y -= 16;
+    }
+    parrafo('1. Objetivo General', `Dar seguimiento al cumplimiento del Programa Personalizado de actividades de prevención de riesgos de los supervisores de la obra ${obra}, durante ${nombreMes(mes)}.`);
+    parrafo('2. Objetivo Específico', `Medir el porcentaje de cumplimiento de cada actividad comprometida por cada supervisor según su frecuencia (diaria, semanal, quincenal o mensual), evidenciando su aporte individual a la gestión preventiva.`);
+    parrafo('3. Alcance', `Este informe aplica a todos los supervisores con programa personalizado cargado en la obra ${obra} durante ${nombreMes(mes)}, e incorpora además la entrega de EPP y el ingreso de personal nuevo a cargo de cada uno, junto con los índices de seguridad vigentes de la obra.`);
+
+    // ---- Página 3: Resumen ----
+    page = pdfDoc.addPage([612, 792]);
+    encabezado(page, 612, 792);
+    y = 792 - 90;
+    page.drawText('ACTIVIDADES CONTROL PREVENTIVO EN OBRA', { x: 40, y, size: 12, font: fontBold, color: negro });
+    y -= 16;
+    page.drawText('Meta: cumplir con el 95% del programa personalizado de cada supervisor.', { x: 40, y, size: 9, font, color: gris });
+    y -= 24;
+
+    const colsResumen = [
+      { w: 150, text: 'Supervisor', bold: true },
+      { w: 80, text: nombreMes(mes).split(' ')[0] + ' %', bold: true, align: 'center' },
+      { w: 60, text: 'EPP', bold: true, align: 'center' },
+      { w: 60, text: 'Nuevos', bold: true, align: 'center' },
+      { w: 122, text: 'Resultado', bold: true, align: 'center' },
+    ];
+    y = dibujarFilaTabla(page, 40, y, colsResumen, font, fontBold, 20, rgb(0.94,0.94,0.94), negro, grisLinea);
+    grupos.forEach(g => {
+      y = dibujarFilaTabla(page, 40, y, [
+        { w: 150, text: g.supervisor },
+        { w: 80, text: g.pct + '%', align: 'center' },
+        { w: 60, text: String(g.epp), align: 'center' },
+        { w: 60, text: String(g.nuevos), align: 'center' },
+        { w: 122, text: g.resultado.label, align: 'center', color: colorResultado[g.resultado.color] },
+      ], font, fontBold, 18, null, negro, grisLinea);
+    });
+    y = dibujarFilaTabla(page, 40, y, [
+      { w: 150, text: 'TOTAL', bold: true },
+      { w: 80, text: total + '%', bold: true, align: 'center' },
+      { w: 60, text: String(grupos.reduce((s,g)=>s+g.epp,0)), bold: true, align: 'center' },
+      { w: 60, text: String(grupos.reduce((s,g)=>s+g.nuevos,0)), bold: true, align: 'center' },
+      { w: 122, text: resultadoTotal.label, bold: true, align: 'center', color: colorResultado[resultadoTotal.color] },
+    ], font, fontBold, 20, rgb(0.94,0.94,0.94), negro, grisLinea);
+
+    y -= 20;
+    page.drawText('Escala de resultado:', { x: 40, y, size: 9, font: fontBold, color: negro });
+    y -= 14;
+    const leyenda = [['81-100','Excelente','green'],['61-80','Bueno','blue'],['41-60','Regular','amber'],['21-40','Malo','amber'],['Menor a 20','Muy Malo','red']];
+    leyenda.forEach(([rango, label, color]) => {
+      page.drawRectangle({ x: 40, y: y - 8, width: 8, height: 8, color: colorResultado[color] });
+      page.drawText(`${rango}: ${label}`, { x: 54, y: y - 8, size: 8, font, color: gris });
+      y -= 12;
+    });
+
+    // ---- Página 4: Índices de seguridad de la obra ----
+    page = pdfDoc.addPage([612, 792]);
+    encabezado(page, 612, 792);
+    y = 792 - 90;
+    page.drawText('ÍNDICES DE SEGURIDAD DE LA OBRA', { x: 40, y, size: 12, font: fontBold, color: negro });
+    y -= 24;
+    const st = calcularEstadisticasSeguridad(obra, 0);
+    [
+      ['Tasa Accidentabilidad', st.tasaAccidentabilidad.toFixed(1) + '%'],
+      ['Índice de Frecuencia', String(Math.round(st.indiceFrecuencia))],
+      ['Índice de Gravedad', String(Math.round(st.indiceGravedad))],
+    ].forEach(([label, valor]) => {
+      page.drawText(label, { x: 40, y, size: 11, font, color: negro });
+      page.drawText(valor, { x: 420, y, size: 11, font: fontBold, color: negro });
+      y -= 20;
+    });
+    y -= 10;
+    page.drawText(`Acumulado ${st.anio} · ${st.nAccidentes} accidente(s) con tiempo perdido · ${Math.round(st.horasHombre).toLocaleString('es-CL')} HH trabajadas (estimadas).`, { x: 40, y, size: 9, font, color: gris });
+
+    // ---- Páginas 5+: grilla día a día por supervisor (horizontal, para que
+    // entren los 28-31 días como columnas) ----
+    const ctx = { font, fontBold, negro, gris, grisLinea, colorResultado, rgb };
+    for (const g of grupos) {
+      await dibujarPaginaGrillaSupervisor(pdfDoc, ctx, encabezado, obra, mes, g);
+    }
+
+    const bytes = await pdfDoc.save();
+    const blob = new Blob([bytes], { type: 'application/pdf' });
+    const nombreArchivo = `programa_personalizado_${obra}_${mes}`.replace(/\s+/g, '_');
+    const up = await uploadFile(blob, 'Programa Personalizado', nombreArchivo, 'pdf');
+    window.open(up.link, '_blank');
+    toast('Informe generado ✓', 'ok');
   } catch (e) { toast(e.message, 'error'); }
 }
 

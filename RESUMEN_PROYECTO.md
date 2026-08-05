@@ -98,11 +98,18 @@ repositorio de GitHub **separado**.
   la biblioteca (pdf-lib solo sabe escribir) — ver "Plantillas de Charla"
   más abajo.
 
-## Estructura de datos (Google Sheet, 13 pestañas)
+## Estructura de datos (Google Sheet, 14 pestañas)
 
 `TRABAJADORES`, `INSPECCIONES`, `CHARLAS`, `INCIDENTES`, `INVESTIGACIONES`,
 `HCR`, `DIAT`, `PROCEDIMIENTOS`, `ENTREGA_EPP`, `USUARIOS`, `SUBCONTRATISTAS`,
-`SUBCONTRATISTAS_DOCS`.
+`SUBCONTRATISTAS_DOCS`, `PROGRAMA_PERSONALIZADO`.
+
+`PROGRAMA_PERSONALIZADO` (`N°`, `Obra`, `Mes`, `Supervisor`, `Cargo`,
+`Actividad`, `Frecuencia`, `Dias Marcados`, `Fecha Registro`, `Registrado
+Por`) — una fila = una actividad del programa de UN supervisor en UN mes
+("Charla 5 minutos"/Diaria, "Inspección de EPP"/Semanal, etc.); `Dias
+Marcados` guarda los días del mes en que se cumplió, separados por coma. Ver
+"Módulo Programa Personalizado" más abajo.
 
 `USUARIOS` (`Email`, `Rol`, `Nombre`, `Empresa`) estaba creada pero sin usar
 desde el lanzamiento inicial — recién con el módulo Subcontratistas se
@@ -756,6 +763,50 @@ ningún otro módulo de la app.
   avance tipo "3/6" (`progresoBadgeSubcontratista`, se pone verde
   "completo" cuando llega al total) para ver de un vistazo cuánto falta sin
   tener que leer cada fila.
+
+## Módulo Programa Personalizado
+
+Digitaliza el informe mensual en Excel que el cliente ya usaba para medir el
+cumplimiento del "programa personalizado" de cada supervisor (charlas de 5
+minutos, inspecciones de EPP, HCR, etc., cada una con su propia frecuencia).
+Es un módulo obra-filtrable más (se ve/oculta según la Obra activa, igual
+que Trabajadores/Inspecciones/...).
+
+- **Carga manual, no calculada:** a pedido explícito, el % de cumplimiento
+  NO se infiere de otros registros de la app — cada mes alguien carga a
+  mano las actividades de cada supervisor (`abrirFormActividadPrograma`) y
+  después va marcando los días en que se cumplieron (`abrirMarcarDias`, una
+  grilla de checkboxes 1..días-del-mes que escribe en la columna `Dias
+  Marcados`).
+- **% de cumplimiento:** `cumplimientoActividad` compara los días marcados
+  contra los que "tocaban" según la frecuencia (`ocurrenciasEsperadas`: Diaria
+  = todos los días del mes, Semanal = `⌈días/7⌉`, Quincenal = 2, Mensual =
+  1). El % de un supervisor es el promedio de sus actividades
+  (`agruparProgramaPorSupervisor`); el % total del programa es el promedio
+  entre supervisores (`pctTotalPrograma`) — mismo criterio que el Excel
+  original. `resultadoPrograma` clasifica el % en la misma escala del
+  informe: 81-100 Excelente, 61-80 Bueno, 41-60 Regular, 21-40 Malo, <20 Muy
+  Malo (Regular y Malo comparten el badge "amber" ya existente — no se
+  agregó un color de badge nuevo solo para esto).
+- **Métricas nuevas por supervisor:** `eppEntregadoSupervisorMes` (entregas
+  de EPP del mes a los trabajadores "a cargo" del supervisor, ver
+  `trabajadoresACargoDe`) y `personalNuevoSupervisorMes` (trabajadores a
+  cargo cuya `Fecha Ingreso` cae en ese mes) — se muestran como badges en
+  cada tarjeta de supervisor y como columnas extra en el informe PDF (el
+  Excel original no las traía; se agregaron a pedido explícito).
+- **Informe PDF (`generarInformeProgramaPersonalizado`):** hecho desde cero
+  con pdf-lib (no hay plantilla del cliente que rellenar, a diferencia de
+  Charla/DIAT/Investigación/HCR). Páginas: portada (con el logo correcto,
+  `logo.png` — nunca `logo-transparent.png`, que tiene el logo verde
+  desactualizado), Objetivo/Alcance, tabla resumen por supervisor (con EPP y
+  Personal nuevo agregados, más la leyenda de colores), índices de seguridad
+  de la obra (`calcularEstadisticasSeguridad`, las mismas tres tarjetas del
+  Dashboard) y, al final, una página horizontal por supervisor con la
+  grilla día a día completa (actividad × día del mes, igual que el Excel) —
+  se usa orientación horizontal (no la vertical del Excel original) porque
+  31 columnas de día no entran con un tamaño de letra legible en una hoja
+  carta vertical. `dibujarFilaTabla` es un helper genérico de filas con
+  bordes que se reutiliza tanto en la tabla resumen como en la grilla.
 
 ## Generación de PDFs rellenados (Investigación de Accidente)
 
