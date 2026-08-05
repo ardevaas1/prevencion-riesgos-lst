@@ -4159,12 +4159,34 @@ function nombreMes(mesISO) {
   const [a, m] = mesISO.split('-').map(Number);
   return `${NOMBRES_MES[m-1]} ${a}`;
 }
+// Día de la semana de un día del mes, 0=Lunes...6=Domingo (Date.getDay()
+// da 0=Domingo, se corrige para que la semana empiece el lunes como en
+// cualquier calendario chileno).
+function diaDeLaSemana(mesISO, dia) {
+  const [a, m] = mesISO.split('-').map(Number);
+  return (new Date(a, m - 1, dia).getDay() + 6) % 7;
+}
+function esFinDeSemana(mesISO, dia) {
+  const dow = diaDeLaSemana(mesISO, dia);
+  return dow === 5 || dow === 6;
+}
+const DIAS_SEMANA_CORTO = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+const DIAS_SEMANA_LETRA = ['L','M','X','J','V','S','D'];
+// Días hábiles (lunes a viernes) del mes — una actividad "Diaria" no puede
+// exigir fines de semana si en esos días no se trabaja, así que la meta
+// de cumplimiento se mide contra los días hábiles, no contra el mes entero.
+function diasHabilesDelMes(mesISO) {
+  const total = diasEnMes(mesISO);
+  let n = 0;
+  for (let d = 1; d <= total; d++) if (!esFinDeSemana(mesISO, d)) n++;
+  return n;
+}
 function ocurrenciasEsperadas(frecuencia, mesISO) {
   const dias = diasEnMes(mesISO);
   if (frecuencia === 'Semanal') return Math.ceil(dias / 7);
   if (frecuencia === 'Quincenal') return 2;
   if (frecuencia === 'Mensual') return 1;
-  return dias; // Diaria
+  return diasHabilesDelMes(mesISO); // Diaria: solo días hábiles
 }
 function cumplimientoActividad(act) {
   const esperadas = ocurrenciasEsperadas(act.frecuencia, act.mes);
@@ -4447,15 +4469,24 @@ function abrirMarcarDias(fila) {
   const marcadosGuardados = new Set(a.diasMarcados);
   const diasEvidencia = diasConEvidenciaActividad(a);
   document.getElementById('marcar-dias-aviso').classList.toggle('hidden', diasEvidencia.size === 0);
-  document.getElementById('marcar-dias-grid').innerHTML = Array.from({length: dias}, (_, i) => i+1).map(d => {
+  // Calendario real del mes: encabezado Lun-Dom y celdas vacías antes del
+  // día 1 para que cada día caiga en su columna real — así se ve de un
+  // vistazo qué días son fin de semana (no se trabaja) sin tener que
+  // contar manualmente desde el 1.
+  const offset = diaDeLaSemana(a.mes, 1);
+  const headerHtml = DIAS_SEMANA_CORTO.map(n => `<div class="marcar-dia-header">${n}</div>`).join('');
+  const vaciosHtml = Array.from({length: offset}, () => '<div class="marcar-dia marcar-dia--vacio"></div>').join('');
+  const diasHtml = Array.from({length: dias}, (_, i) => i+1).map(d => {
     const auto = diasEvidencia.has(d) && !marcadosGuardados.has(d);
     const checked = marcadosGuardados.has(d) || diasEvidencia.has(d);
+    const finde = esFinDeSemana(a.mes, d);
     return `
-    <label class="marcar-dia${checked ? ' checked' : ''}${auto ? ' auto' : ''}">
+    <label class="marcar-dia${checked ? ' checked' : ''}${auto ? ' auto' : ''}${finde ? ' finde' : ''}">
       <input type="checkbox" value="${d}" ${checked ? 'checked' : ''} onchange="this.closest('.marcar-dia').classList.toggle('checked', this.checked)">
       <span>${d}</span>
     </label>`;
   }).join('');
+  document.getElementById('marcar-dias-grid').innerHTML = headerHtml + vaciosHtml + diasHtml;
   openPanel('panel-marcar-dias');
 }
 async function guardarMarcarDias() {
@@ -4514,11 +4545,23 @@ async function dibujarPaginaGrillaSupervisor(pdfDoc, ctx, encabezadoFn, obra, me
   const colAct = 140, colFrec = 55, colPct = 42;
   const anchoDias = W - 80 - colAct - colFrec - colPct;
   const colDia = anchoDias / dias;
+  const xDiasInicio = 40 + colAct + colFrec;
+
+  // Sombreado de las columnas de sábado/domingo, dibujado ANTES de la tabla
+  // (detrás) para que se note de un vistazo qué días no son hábiles — la
+  // tabla se dibuja encima con celdas sin relleno propio, así que el gris
+  // se ve a través de las filas de actividades.
+  const alturaTabla = 16 + g.actividades.length * 13 + 16;
+  for (let i = 0; i < dias; i++) {
+    if (esFinDeSemana(mes, i + 1)) {
+      page.drawRectangle({ x: xDiasInicio + i * colDia, y: y - alturaTabla, width: colDia, height: alturaTabla, color: rgb(0.9,0.9,0.9) });
+    }
+  }
 
   const headerCols = [
     { w: colAct, text: 'Actividad', bold: true },
     { w: colFrec, text: 'Frecuencia', bold: true, align: 'center', size: 7 },
-    ...Array.from({length: dias}, (_, i) => ({ w: colDia, text: String(i+1), bold: true, align: 'center', size: 6.5 })),
+    ...Array.from({length: dias}, (_, i) => ({ w: colDia, text: `${i+1}${DIAS_SEMANA_LETRA[diaDeLaSemana(mes, i+1)]}`, bold: true, align: 'center', size: 6 })),
     { w: colPct, text: '%', bold: true, align: 'center' },
   ];
   y = dibujarFilaTabla(page, 40, y, headerCols, font, fontBold, 16, rgb(0.94,0.94,0.94), negro, grisLinea);
@@ -4541,7 +4584,8 @@ async function dibujarPaginaGrillaSupervisor(pdfDoc, ctx, encabezadoFn, obra, me
     ...Array.from({length: dias}, () => ({ w: colDia, text: '' })),
     { w: colPct, text: g.pct + '%', bold: true, align: 'center', color: colorResultado[r.color] },
   ];
-  dibujarFilaTabla(page, 40, y, totalCols, font, fontBold, 16, rgb(0.94,0.94,0.94), negro, grisLinea);
+  y = dibujarFilaTabla(page, 40, y, totalCols, font, fontBold, 16, rgb(0.94,0.94,0.94), negro, grisLinea);
+  page.drawText('Columnas sombreadas = sábado y domingo (no cuentan como día hábil esperado en actividades Diarias).', { x: 40, y: y - 14, size: 7.5, font, color: gris });
 }
 async function generarInformeProgramaPersonalizado(obra, mes, responsable) {
   toast('Generando informe...', 'ok');
