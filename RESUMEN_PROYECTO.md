@@ -916,16 +916,32 @@ documentar la equivalencia; el cruce automático `diasConEvidenciaActividad`
 (por palabra clave "charla"/"hcr" en el nombre de la actividad) ya
 precompletaba esos días desde antes.
 
-Quedan **9 formatos por construir**. Arquitectura pensada para no repetir
+Quedan **6 formatos por construir**. Arquitectura pensada para no repetir
 trabajo:
 
 - **`CHECKLIST_GENERICO_CONFIG` + `generarPdfChecklistGenerico`**: motor
   compartido para los formatos con tabla fija de ítems SI/NO/N/A +
-  Observación + Responsable/Fecha + firmas — la forma más común entre los
-  9 (004, 007, 008, 009 comparten esta estructura, solo cambian los ítems
-  y las coordenadas exactas). **`SGSST-PER-004` (Andamios) ya está
-  implementado** como primer caso completo — 007/008/009 quedan
-  pendientes con el mismo motor, solo falta medir y agregar su config.
+  Observación + firmas — la forma más común entre los 9. **Los 4 que
+  comparten esta estructura ya están implementados**: `SGSST-PER-004`
+  (Andamios), `007` (Izaje), `008` (Excavación) y `009` (Esmeril
+  Angular) — cada uno con su propia entrada en
+  `CHECKLIST_GENERICO_CONFIG`, mismo motor de dibujo. No todos tienen
+  exactamente las mismas columnas — el motor soporta variantes sin
+  duplicar código:
+  - `004`/`008` tienen columnas separadas Responsable/Fecha por ítem
+    (`xResp`+`xFecha`).
+  - `007` no tiene esas columnas para nada (solo Item/SI/NO/N-A/
+    Observación) — el formulario y el generador simplemente no las
+    dibujan si la config no trae `xResp`/`xFecha`.
+  - `009` las trae **fusionadas en una sola columna angosta**
+    ("Responsable y Fecha de Cumplimiento") — se define solo `xResp` y,
+    si hay fecha, se concatena al responsable (`"Nombre (dd-mm-aaaa)"`)
+    con letra más chica en vez de perderse.
+  - `007` también agrupa sus ítems en 3 sub-tablas con encabezado propio
+    (Estrobos/Eslingas/Cadenas) — soportado con un campo opcional
+    `seccion` en la fila, que inserta un título antes de ese ítem tanto
+    en el formulario como (implícitamente, ya impreso en la plantilla)
+    en el PDF.
   - Coordenadas medidas directo sobre el PDF real con `pypdfium2`
     (`TextPage.get_rect`/`PdfObject.get_bounds`, ambos devuelven
     `(left, bottom, right, top)` en puntos PDF con origen abajo-izquierda
@@ -949,8 +965,8 @@ trabajo:
   - Panel de llenado (`panel-llenar-formato-programa`) armado 100%
     dinámico vía `htmlFormularioChecklistGenerico(a, config)` a partir de
     la config — no hay un panel HTML propio por formato, así que agregar
-    007/008/009 a `CHECKLIST_GENERICO_CONFIG` alcanza para que también
-    tengan su formulario, sin tocar `index.html`.
+    uno nuevo a `CHECKLIST_GENERICO_CONFIG` alcanza para que también
+    tenga su formulario, sin tocar `index.html`.
   - Firmas reusan el sistema existente de canvas (`initFirmaPad`/
     `limpiarFirmaId`/`firmaEstaVacia`, un canvas por firma, mismo trazo
     azul tinta Bic que el resto de la app).
@@ -973,13 +989,13 @@ trabajo:
   mensual (`uploadFile(blob, 'Programa Personalizado', ...)`), no una
   carpeta por formato.
 
-**Pendiente** (ver lista de tareas): 007/008/009 sobre el mismo motor;
-001 (narrativo + tabla de acciones), 003 (observación de conducta), 005
-(matriz de EPP por trabajador) y 006 (autorización de altura, 2 páginas)
-necesitan motor y UI propios porque su estructura es distinta a la tabla
-SI/NO/N/A; 002 (Check List Orden y Aseo) es el más distinto de todos — es
-una grilla mensual acumulada (23 ítems × 31 días en un solo documento),
-no "un PDF por día marcado" como los demás, así que necesita pensar su
+**Pendiente** (ver lista de tareas): 001 (narrativo + tabla de acciones),
+003 (observación de conducta), 005 (matriz de EPP por trabajador) y 006
+(autorización de altura, 2 páginas) necesitan motor y UI propios porque su
+estructura es distinta a la tabla SI/NO/N/A; 002 (Check List Orden y Aseo)
+es el más distinto de todos — es una grilla mensual acumulada (23 ítems ×
+31 días en un solo documento), no "un PDF por día marcado" como los demás,
+así que necesita pensar su
 propio modelo de interacción antes de medir coordenadas.
 
 ## Generación de PDFs rellenados (Investigación de Accidente)

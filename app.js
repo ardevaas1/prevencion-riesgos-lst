@@ -68,9 +68,9 @@ const PROGRAMAS_PERSONALIZADOS = [
   { codigo: 'SGSST-PER-004', nombre: 'Inspección de Seguridad — Andamios', archivo: 'plantillas/programas/SGSST-PER-004_Inspeccion_Seguridad_Andamios.pdf', tipo: 'checklist_generico' },
   { codigo: 'SGSST-PER-005', nombre: 'Inspección de EPP', archivo: 'plantillas/programas/SGSST-PER-005_Inspeccion_de_EPP.pdf' },
   { codigo: 'SGSST-PER-006', nombre: 'Autorización de Trabajos en Altura', archivo: 'plantillas/programas/SGSST-PER-006_Autorizacion_Trabajos_en_Altura.pdf' },
-  { codigo: 'SGSST-PER-007', nombre: 'Inspección de Elementos de Izaje', archivo: 'plantillas/programas/SGSST-PER-007_Inspeccion_Elementos_de_Izaje.pdf' },
-  { codigo: 'SGSST-PER-008', nombre: 'Inspección de Seguridad — Excavación', archivo: 'plantillas/programas/SGSST-PER-008_Inspeccion_Seguridad_Excavacion.pdf' },
-  { codigo: 'SGSST-PER-009', nombre: 'Inspección de Seguridad — Esmeril Angular', archivo: 'plantillas/programas/SGSST-PER-009_Inspeccion_Seguridad_Esmeril_Angular.pdf' },
+  { codigo: 'SGSST-PER-007', nombre: 'Inspección de Elementos de Izaje', archivo: 'plantillas/programas/SGSST-PER-007_Inspeccion_Elementos_de_Izaje.pdf', tipo: 'checklist_generico' },
+  { codigo: 'SGSST-PER-008', nombre: 'Inspección de Seguridad — Excavación', archivo: 'plantillas/programas/SGSST-PER-008_Inspeccion_Seguridad_Excavacion.pdf', tipo: 'checklist_generico' },
+  { codigo: 'SGSST-PER-009', nombre: 'Inspección de Seguridad — Esmeril Angular', archivo: 'plantillas/programas/SGSST-PER-009_Inspeccion_Seguridad_Esmeril_Angular.pdf', tipo: 'checklist_generico' },
   { codigo: 'SGSST-PER-010', nombre: 'Charla de Seguridad', archivo: 'plantillas/programas/SGSST-PER-010_Charla_de_Seguridad.pdf', tipo: 'cubierto_charla' },
   { codigo: 'SGSST-PER-011', nombre: 'Hoja de Control de Riesgos (HCR)', archivo: 'plantillas/programas/SGSST-PER-011_Hoja_de_Control_de_Riesgos_HCR.pdf', tipo: 'cubierto_hcr' },
 ];
@@ -109,6 +109,108 @@ const CHECKLIST_GENERICO_CONFIG = {
     firmas: [
       { key: 'realiza', label: 'Profesional que realiza la evaluación', xNombre: 195, yNombre: 124, xCargo: 76, yCargo: 109, xProfesion: 127, yProfesion: 96, xFirma: 48, yFirma: 60, wFirma: 260, hFirma: 42 },
       { key: 'revisa', label: 'Profesional que revisa la evaluación', xNombre: 495, yNombre: 125, xCargo: 376, yCargo: 109, xFecha: 375, yFecha: 96, xFirma: 348, yFirma: 60, wFirma: 220, hFirma: 42 },
+    ],
+  },
+  'SGSST-PER-007': {
+    campos: [
+      { key: 'obra', label: 'Obra', x: 70, y: 683, w: 200 },
+      { key: 'ubicacion', label: 'Ubicación', x: 92, y: 669, w: 175 },
+      { key: 'sector', label: 'Sector', x: 316, y: 669, w: 200 },
+      { key: 'empresa', label: 'Empresa', x: 86, y: 653, w: 350 },
+    ],
+    // Sin columnas Responsable/Fecha por ítem (a diferencia de 004/008/009)
+    // — el motor las omite solo con no traer xResp/xFecha acá.
+    tabla: {
+      xItem: 80, xSI: 361.8, xNO: 383.5, xNA: 410, xObs: 428, xFin: 567,
+      filas: [
+        { y0: 623.5, y1: 596.2, seccion: '1. Estrobos', texto: 'El estrobo es adecuado para la carga a soportar (Según fabricante)' },
+        { y0: 596.2, y1: 582.3, texto: 'Los estrobos presentan picaduras en hebras.' },
+        { y0: 582.3, y1: 568.3, texto: 'Tienen dispositivos de acoplamiento sueltos.' },
+        { y0: 568.3, y1: 554.3, texto: 'Se han inspeccionado prensas. Están bien sujetas.' },
+        { y0: 554.3, y1: 540.5, texto: 'No tienen partes destorcidas' },
+        { y0: 540.5, y1: 526.5, texto: 'Los estrobos dados de baja son destruidos.' },
+        { y0: 499.1, y1: 471.9, seccion: '2. Eslingas (si la respuesta es negativa, retire la eslinga y reemplace)', texto: 'No contiene sustancias abrasivas que lo puedan dañar (solventes, pinturas, aceites, etc)' },
+        { y0: 471.9, y1: 457.9, texto: 'No tiene roturas en más de 3 hilos' },
+        { y0: 457.9, y1: 443.9, texto: 'No presentan ningún nudo' },
+        { y0: 443.9, y1: 430.1, texto: 'No cuentan con picaduras de soldadura' },
+        { y0: 430.1, y1: 416.0, texto: 'Costuras no se presentan rotas o desgastadas' },
+        { y0: 402.1, y1: 388.3, seccion: '3. Cadenas', texto: 'No cuenta con eslabones soldados o sometidos a calor' },
+        { y0: 388.3, y1: 374.3, texto: 'Eslabones totalmente cerrados y sin deformaciones.' },
+        { y0: 374.3, y1: 333.5, texto: 'Ganchos terminales cuentan con seguros en buen estado, sin aseguramientos hechizos por medio de clavos doblados o alambres' },
+        { y0: 333.5, y1: 306.1, texto: 'Cuenta con etiqueta que indica claramente la capacidad de levante, (legible)' },
+        { y0: 306.1, y1: 278.9, texto: 'Se usan separadores entre la carga y el piso para depositar la carga' },
+        { y0: 278.9, y1: 251.5, texto: 'El ángulo de carga está entre 30° y 60° (respecto a la horizontal)' },
+      ],
+    },
+    firmas: [
+      { key: 'realiza', label: 'Realizó', xNombre: 90, yNombre: 212, xCargo: 80, yCargo: 198, xFecha: 90, yFecha: 186, xFirma: 45, yFirma: 150, wFirma: 260, hFirma: 30 },
+      { key: 'revisa', label: 'Revisó', xNombre: 380, yNombre: 212, xCargo: 370, yCargo: 198, xFecha: 378, yFecha: 186, xFirma: 340, yFirma: 150, wFirma: 220, hFirma: 30 },
+    ],
+  },
+  'SGSST-PER-008': {
+    // "Empresa" viene pre-impresa en la plantilla (no es un campo en
+    // blanco) — el único dato de encabezado editable acá es Supervisor.
+    campos: [
+      { key: 'supervisor', label: 'Supervisor', x: 400, y: 630, w: 165 },
+      { key: 'obra', label: 'Obra', x: 76, y: 616, w: 260 },
+      { key: 'fecha', label: 'Fecha', x: 380, y: 616, w: 190, tipo: 'fecha' },
+      { key: 'etapaObra', label: 'Etapa de la obra', x: 130, y: 600, w: 210 },
+    ],
+    tabla: {
+      xItem: 46, xSI: 222.5, xNO: 249.5, xNA: 279.5, xObs: 298, xResp: 428, xFecha: 492, xFin: 576.6,
+      filas: [
+        { y0: 446.3, y1: 410.3, texto: 'El acopio de material y tránsito, se encuentra a una distancia del borde mínimo de 1 m.' },
+        { y0: 410.3, y1: 386.7, texto: 'Está señalizado o protegido el borde' },
+        { y0: 386.7, y1: 363.3, texto: 'Las redes de servicios están señalizadas' },
+        { y0: 363.3, y1: 348.5, texto: 'El talud es el natural del terreno' },
+        { y0: 348.5, y1: 325.1, texto: 'Las entibaciones están construidas de acuerdo a cálculo' },
+        { y0: 325.1, y1: 297.7, texto: 'Las paredes se observan sin presencia de humedad' },
+        { y0: 297.7, y1: 271.3, texto: 'Se observan socavamientos o fallas en las paredes' },
+        { y0: 271.3, y1: 244.5, texto: 'Existen escalas y pasarelas para el acceso y tránsito del personal' },
+        { y0: 244.5, y1: 209.4, texto: 'Los trabajadores utilizan sus Elementos de Protección Personal' },
+        { y0: 209.4, y1: 182.4, texto: 'Barandas en zonas de tránsito al borde de la excavación.' },
+      ],
+    },
+    firmas: [
+      // Los títulos "Profesional que realiza/revisa la evaluación:" ocupan
+      // casi todo el ancho de su franja azul (terminan en x≈225/523) — el
+      // nombre se escribe pegado al final, con letra chica para que quepa.
+      { key: 'realiza', label: 'Profesional que realiza la evaluación', xNombre: 229, yNombre: 141, sizeNombre: 7, xCargo: 76, yCargo: 127, xFirma: 48, yFirma: 40, wFirma: 260, hFirma: 45 },
+      { key: 'revisa', label: 'Profesional que revisa la evaluación', xNombre: 527, yNombre: 141, sizeNombre: 6, xCargo: 376, yCargo: 127, xFecha: 375, yFecha: 112, xFirma: 348, yFirma: 40, wFirma: 220, hFirma: 40 },
+    ],
+  },
+  'SGSST-PER-009': {
+    // "Empresa" viene pre-impresa ("LUIS SAEZ THIELEMANN") — igual que 008,
+    // no es un campo en blanco.
+    campos: [
+      { key: 'nombreTrabajador', label: 'Nombre del trabajador', x: 380, y: 644, w: 185 },
+      { key: 'obra', label: 'Obra', x: 74, y: 619, w: 195 },
+      { key: 'fecha', label: 'Fecha', x: 312, y: 619, w: 250, tipo: 'fecha' },
+    ],
+    // Responsable y Fecha de Cumplimiento vienen fusionados en una sola
+    // columna angosta acá (a diferencia de 004/008) — solo se define
+    // xResp, sin xFecha (ver generarPdfChecklistGenerico).
+    tabla: {
+      xItem: 38, xSI: 243.7, xNO: 275.6, xNA: 311.0, xObs: 332, xResp: 502, xFin: 577.0,
+      filas: [
+        { y0: 548.5, y1: 513.1, texto: '¿El esmeril cuenta con una cubierta o casquete de protección del disco y se encuentra bien instalada?' },
+        { y0: 513.1, y1: 477.5, texto: '¿Se mantiene una adecuada presión sobre la herramienta, evitando golpes y torsiones?' },
+        { y0: 477.5, y1: 453.7, texto: '¿La velocidad máxima indicada en el disco en r.p.m es igual al esmeril angular?' },
+        { y0: 453.7, y1: 429.9, texto: '¿Esmeril queda guardado en la bodega en un lugar limpio y seco?' },
+        { y0: 429.9, y1: 406.1, texto: '¿El tipo de disco es el adecuado?: Corte o desbaste' },
+        { y0: 406.1, y1: 382.1, texto: '¿El montaje del disco es el correcto para evitar trizaduras y destrucciones bruscas?' },
+        { y0: 382.1, y1: 346.7, texto: '¿El cable de alimentación se mantiene en buenas condiciones eléctricas que protejan la vida del trabajador?' },
+        { y0: 346.7, y1: 299.5, texto: '¿El operador usa ropa ajustada y adecuada, evitando empleo de mangas largas, ropa suelta, pelo largo, anillos, aros etc?' },
+        { y0: 299.5, y1: 275.7, texto: '¿El operador utiliza todos los EPP?' },
+        { y0: 275.7, y1: 251.9, texto: '¿El operador para la máquina antes de posarla?' },
+        { y0: 251.9, y1: 228.1, texto: '¿Al momento de cambiar el disco, se corta el suministro de energía?' },
+        { y0: 228.1, y1: 204.1, texto: '¿El operador está entrenado y capacitado para utilizar la herramienta?' },
+        { y0: 204.1, y1: 180.2, texto: '¿La herramienta es revisada en mantención mensualmente?' },
+      ],
+    },
+    firmas: [
+      { key: 'realiza', label: 'Profesional que realiza la evaluación', xNombre: 205, yNombre: 145, xCargo: 70, yCargo: 130, xProfesion: 132, yProfesion: 117, xFirma: 35, yFirma: 50, wFirma: 245, hFirma: 40 },
+      { key: 'revisa', label: 'Profesional que revisa la evaluación', xNombre: 475, yNombre: 145, xCargo: 340, yCargo: 130, xFecha: 338, yFecha: 117, xFirma: 306, yFirma: 50, wFirma: 255, hFirma: 40 },
     ],
   },
 };
@@ -4801,7 +4903,12 @@ function htmlFormularioChecklistGenerico(a, config) {
     <div class="form-group"><label>${esc(c.label)}</label>
       <input name="campo_${c.key}" type="${c.tipo === 'fecha' ? 'date' : 'text'}" value="${c.tipo === 'fecha' ? esc(a.__fechaDia) : ''}">
     </div>`).join('');
+  // Algunos formatos (ej. Izaje) no tienen columna Responsable/Fecha por
+  // ítem en el PDF real — esos campos del formulario solo se muestran si
+  // la config trae dónde dibujarlos (config.tabla.xResp/xFecha).
+  const conRespFecha = !!(config.tabla.xResp || config.tabla.xFecha);
   const itemsHtml = config.tabla.filas.map((f, i) => `
+    ${f.seccion ? `<div class="sec-label" style="margin-top:16px;">${esc(f.seccion)}</div>` : ''}
     <div class="checklist-generico-item">
       <div class="checklist-generico-item-texto">${i+1}. ${esc(f.texto)}</div>
       <div class="checklist-generico-sino">
@@ -4810,10 +4917,11 @@ function htmlFormularioChecklistGenerico(a, config) {
         <label><input type="radio" name="item_${i}_resultado" value="NA"> N/A</label>
       </div>
       <input name="item_${i}_observacion" placeholder="Observación (opcional)">
+      ${conRespFecha ? `
       <div class="checklist-generico-item-fila2">
         <input name="item_${i}_responsable" placeholder="Responsable a cargo">
         <input name="item_${i}_fecha" type="date" placeholder="Fecha de solución">
-      </div>
+      </div>` : ''}
     </div>`).join('');
   const firmasHtml = config.firmas.map((f, i) => `
     <div class="sec-label" style="margin-top:18px;">${esc(f.label)}</div>
@@ -4945,17 +5053,24 @@ async function generarPdfChecklistGenerico(codigo, datos) {
     else if (it.resultado === 'NA') checkX(t.xNA, yc, 8);
     if (it.observacion) {
       const lineH = 7.5;
+      const obsAncho = (t.xResp || t.xFin) - t.xObs - 6;
       const maxLines = Math.max(1, Math.floor((yTop - yBottom - 3) / lineH));
-      const lineas = wrapLines(it.observacion, (t.xResp - t.xObs) - 6, 6.5).slice(0, maxLines);
+      const lineas = wrapLines(it.observacion, obsAncho, 6.5).slice(0, maxLines);
       lineas.forEach((l, li) => text(l, t.xObs + 3, yTop - 8 - li * lineH, 6.5));
     }
-    if (it.responsable) text(it.responsable, t.xResp + 3, yc - 3, 6.5);
-    if (it.fecha) text(ddmmyyyy(it.fecha), t.xFecha + 3, yc - 3, 6.5);
+    if (it.responsable && t.xResp) {
+      // Algunos formatos (ej. Esmeril Angular) traen Responsable y Fecha
+      // fusionados en una sola columna angosta — ahí no hay xFecha propio,
+      // así que la fecha se agrega pegada al responsable en vez de perderse.
+      const linea = it.fecha && !t.xFecha ? `${it.responsable} (${ddmmyyyy(it.fecha)})` : it.responsable;
+      text(linea, t.xResp + 3, yc - 3, t.xFecha ? 6.5 : 5.5);
+    }
+    if (it.fecha && t.xFecha) text(ddmmyyyy(it.fecha), t.xFecha + 3, yc - 3, 6.5);
   });
 
   for (let i = 0; i < config.firmas.length; i++) {
     const cfg = config.firmas[i], fdat = datos.firmas[i] || {};
-    text(fdat.nombre, cfg.xNombre, cfg.yNombre, 8);
+    text(fdat.nombre, cfg.xNombre, cfg.yNombre, cfg.sizeNombre || 8);
     if (cfg.xCargo) text(fdat.cargo, cfg.xCargo, cfg.yCargo, 8);
     if (cfg.xProfesion) text(fdat.profesion, cfg.xProfesion, cfg.yProfesion, 8);
     if (cfg.xFecha) text(ddmmyyyy(fdat.fecha), cfg.xFecha, cfg.yFecha, 8);
