@@ -650,15 +650,8 @@
       <div class="form-group"><label>Mes</label><input type="month" name="mes" required></div>
       <div class="form-group"><label>Supervisor</label><select name="supervisor" onchange="onCambioSupervisorPrograma(this)" required></select></div>
       <div class="form-group"><label>Cargo</label><input name="cargo" readonly></div>
-      <div class="form-group"><label>Actividad</label><input name="actividad" required placeholder="Ej: Charla 5 minutos" list="lista-actividades-programa">
-        <datalist id="lista-actividades-programa">
-          <option value="Charla 5 minutos"></option>
-          <option value="Inspección de EPP"></option>
-          <option value="HCR"></option>
-          <option value="Inspección de orden y aseo"></option>
-          <option value="Observación de conductas"></option>
-          <option value="Reunión de coordinación"></option>
-        </datalist>
+      <div class="form-group"><label>Actividad</label><input name="actividad" required placeholder="Ej: Charla de Seguridad" list="lista-actividades-programa">
+        <datalist id="lista-actividades-programa"></datalist>
       </div>
       <div class="form-group"><label>Frecuencia</label>
         <select name="frecuencia" required>
@@ -687,8 +680,15 @@
     <div class="stats-aviso hidden" id="marcar-dias-aviso" style="margin-bottom:10px;">Los días con un punto ya tienen un registro real en la app (Charla, HCR o Inspección) y quedaron pre-marcados — revisa y ajusta si hace falta.</div>
     <div class="marcar-dias-grid" id="marcar-dias-grid"></div>
     <div class="card-sub" style="margin-top:8px;">Los días con borde punteado son sábado/domingo — no cuentan como día hábil esperado en actividades Diarias.</div>
-    <button class="btn-add" style="margin-top:16px;" onclick="guardarMarcarDias()">Guardar días</button>
+    <div class="card-sub hidden" id="marcar-dias-nota-digital" style="margin-top:4px;">Toca un día para llenar el documento real de este formato — al generarlo, el día queda marcado. El ícono junto a un día abre el documento ya generado.</div>
+    <button class="btn-add" id="marcar-dias-guardar" style="margin-top:16px;" onclick="guardarMarcarDias()">Guardar días</button>
   </div>
+</div>
+
+<!-- ===== PANEL: Llenar formato SGSST-PER (checklist genérico) del Programa Personalizado ===== -->
+<div class="panel hidden" id="panel-llenar-formato-programa">
+  <div class="panel-bar"><div class="pnl-back" onclick="closePanel('panel-llenar-formato-programa')">‹ Volver</div><div class="pnl-title" id="pnl-title-llenar-formato">Formato</div><div></div></div>
+  <div class="panel-body" id="llenar-formato-body"></div>
 </div>
 
 <!-- ===== PANEL: Realizar Charla (datos + firma relator + asistentes) ===== -->

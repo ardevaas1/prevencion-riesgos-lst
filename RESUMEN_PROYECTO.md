@@ -890,6 +890,98 @@ mismo equipo) y pasó a ser una asignación manual real:
     (Tasa Accidentabilidad, etc.) tampoco se acotan al equipo, siguen
     siendo de toda la obra.
 
+## Formatos SGSST-PER del Programa Personalizado (llenado digital)
+
+A pedido explícito ("quiero que eso los puedan hacer en el módulo de
+programa personalizado y el cumplimiento de esos es lo que se va a ver
+reflejado en el informe"), los 11 formatos en blanco de
+`PROGRAMAS_PERSONALIZADOS` (antes solo descargables desde la ficha de
+Subcontratistas, ver "Módulo Subcontratistas") dejaron de ser plantillas
+de solo lectura: ahora se pueden **llenar digitalmente desde el módulo
+Programa Personalizado**, y ese llenado real (no un tilde manual) es lo
+que hace que un día quede marcado como cumplido.
+
+De los 11, **2 ya estaban cubiertos** por módulos existentes — se
+verificó comparando el texto/página de cada PDF, no solo el nombre:
+- `SGSST-PER-010` (Charla de Seguridad) es el mismo documento que ya llena
+  Charlas → "Escribir desde cero" (`plantillas/charla_5min.pdf`, mismos
+  campos TEMA/RIESGOS/MEDIDAS/Relator/tabla asistentes).
+- `SGSST-PER-011` (HCR) son literalmente las páginas 3-4 (roster de firmas)
+  de `plantillas/hcr.pdf`, que el módulo HCR ya genera completo (4
+  páginas).
+
+Para estos dos no se construyó nada nuevo — `formatoDeActividad` los deja
+marcados con `tipo: 'cubierto_charla'`/`'cubierto_hcr'` solo para
+documentar la equivalencia; el cruce automático `diasConEvidenciaActividad`
+(por palabra clave "charla"/"hcr" en el nombre de la actividad) ya
+precompletaba esos días desde antes.
+
+Quedan **9 formatos por construir**. Arquitectura pensada para no repetir
+trabajo:
+
+- **`CHECKLIST_GENERICO_CONFIG` + `generarPdfChecklistGenerico`**: motor
+  compartido para los formatos con tabla fija de ítems SI/NO/N/A +
+  Observación + Responsable/Fecha + firmas — la forma más común entre los
+  9 (004, 007, 008, 009 comparten esta estructura, solo cambian los ítems
+  y las coordenadas exactas). **`SGSST-PER-004` (Andamios) ya está
+  implementado** como primer caso completo — 007/008/009 quedan
+  pendientes con el mismo motor, solo falta medir y agregar su config.
+  - Coordenadas medidas directo sobre el PDF real con `pypdfium2`
+    (`TextPage.get_rect`/`PdfObject.get_bounds`, ambos devuelven
+    `(left, bottom, right, top)` en puntos PDF con origen abajo-izquierda
+    — el mismo sistema que usa pdf-lib, así que se usan tal cual sin
+    conversión de "top de página" como sí hacía el generador de HCR). Las
+    líneas de la grilla de la tabla se sacan filtrando los `PathObject`
+    (`obj.type == FPDF_PAGEOBJ_PATH`) por ancho/alto para separar líneas
+    horizontales de verticales.
+  - **Cuidado con el orden y0/y1**: en `CHECKLIST_GENERICO_CONFIG` cada
+    fila guarda `{y0, y1}` tal cual salieron de la medición, sin garantizar
+    cuál es el borde de arriba — el generador SIEMPRE normaliza con
+    `Math.max`/`Math.min` antes de calcular alturas o dónde empieza el
+    texto. Se detectó en la validación visual porque, al no normalizar, el
+    texto de Observación aparecía en la fila de abajo y el límite de
+    líneas por alto de fila daba siempre negativo (quedaba en 1 línea fija
+    sin importar el alto real).
+  - El texto de Observación se envuelve (`wrapLines`, mismo patrón que
+    HCR) y se recorta al número de líneas que realmente caben en el alto
+    de esa fila — filas más altas (ítems con descripción de 2-3 líneas)
+    aceptan más líneas de observación que las de una sola línea.
+  - Panel de llenado (`panel-llenar-formato-programa`) armado 100%
+    dinámico vía `htmlFormularioChecklistGenerico(a, config)` a partir de
+    la config — no hay un panel HTML propio por formato, así que agregar
+    007/008/009 a `CHECKLIST_GENERICO_CONFIG` alcanza para que también
+    tengan su formulario, sin tocar `index.html`.
+  - Firmas reusan el sistema existente de canvas (`initFirmaPad`/
+    `limpiarFirmaId`/`firmaEstaVacia`, un canvas por firma, mismo trazo
+    azul tinta Bic que el resto de la app).
+- **`abrirMarcarDias`**: si la actividad calza con un formato que tiene
+  motor digital (`formatoDeActividad` + `CHECKLIST_GENERICO_CONFIG`), la
+  grilla de días cambia de checkbox simple a botones — tocar un día abre
+  `abrirLlenarFormatoPrograma`, y un ícono aparte (si el día ya tiene
+  documento) abre el PDF ya generado en una pestaña nueva. El botón
+  "Guardar días" se oculta en ese caso (no aplica, cada día se guarda solo
+  al generar su documento). Actividades sin formato digital (o formatos
+  todavía no implementados, como 001/002/003/005/006) siguen 100% con el
+  checkbox manual de siempre — no se perdió esa funcionalidad.
+- **`PROGRAMA_PERSONALIZADO` columna `Registros PDF` (K)**: `"día:link"`
+  separados por `|`, uno por cada día con documento generado — parseado
+  por `parseRegistrosPdfPrograma`. Es un dato aparte de `Dias Marcados`
+  (H): un día puede estar en H sin estar en K (marcado a mano, sin
+  documento) para actividades sin motor digital, pero un día llenado
+  digitalmente siempre queda en ambas columnas.
+- Los PDF generados se suben a la misma carpeta de Drive que el informe
+  mensual (`uploadFile(blob, 'Programa Personalizado', ...)`), no una
+  carpeta por formato.
+
+**Pendiente** (ver lista de tareas): 007/008/009 sobre el mismo motor;
+001 (narrativo + tabla de acciones), 003 (observación de conducta), 005
+(matriz de EPP por trabajador) y 006 (autorización de altura, 2 páginas)
+necesitan motor y UI propios porque su estructura es distinta a la tabla
+SI/NO/N/A; 002 (Check List Orden y Aseo) es el más distinto de todos — es
+una grilla mensual acumulada (23 ítems × 31 días en un solo documento),
+no "un PDF por día marcado" como los demás, así que necesita pensar su
+propio modelo de interacción antes de medir coordenadas.
+
 ## Generación de PDFs rellenados (Investigación de Accidente)
 
 Segunda de las tres plantillas pedidas (después de Charla). Se activa

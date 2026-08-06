@@ -51,19 +51,75 @@ const CHARLAS_BIBLIOTECA = [
 // repo (plantillas/programas/), sin pasar por Sheets/Drive. Para agregar uno
 // nuevo: copiar el PDF a esa carpeta, agregar su fila acá y a la lista de
 // cacheo de sw.js.
+// "tipo" liga cada formato a su motor de llenado digital (ver
+// formatoDeActividad/abrirLlenarFormatoPrograma):
+//  - 'checklist_generico': tabla fija de ítems SI/NO/N/A + firmas — un solo
+//    motor (generarPdfChecklistGenerico + CHECKLIST_GENERICO_CONFIG) sirve
+//    para los 4 formatos que comparten esa estructura.
+//  - 'cubierto_charla'/'cubierto_hcr': el documento real ya lo generan los
+//    módulos Charlas ("Escribir desde cero") y HCR — no se duplica un motor
+//    nuevo, "hacer" esta actividad manda directo a esos módulos.
+//  - sin tipo (o tipo aún no implementado): la actividad sigue con el
+//    marcado manual de días de siempre (checkbox simple, sin PDF).
 const PROGRAMAS_PERSONALIZADOS = [
   { codigo: 'SGSST-PER-001', nombre: 'Inspección - Observación', archivo: 'plantillas/programas/SGSST-PER-001_Inspeccion_Observacion.pdf' },
   { codigo: 'SGSST-PER-002', nombre: 'Check List Orden y Aseo', archivo: 'plantillas/programas/SGSST-PER-002_Check_List_Orden_y_Aseo.pdf' },
   { codigo: 'SGSST-PER-003', nombre: 'Observación de Conducta', archivo: 'plantillas/programas/SGSST-PER-003_Observacion_de_Conducta.pdf' },
-  { codigo: 'SGSST-PER-004', nombre: 'Inspección de Seguridad — Andamios', archivo: 'plantillas/programas/SGSST-PER-004_Inspeccion_Seguridad_Andamios.pdf' },
+  { codigo: 'SGSST-PER-004', nombre: 'Inspección de Seguridad — Andamios', archivo: 'plantillas/programas/SGSST-PER-004_Inspeccion_Seguridad_Andamios.pdf', tipo: 'checklist_generico' },
   { codigo: 'SGSST-PER-005', nombre: 'Inspección de EPP', archivo: 'plantillas/programas/SGSST-PER-005_Inspeccion_de_EPP.pdf' },
   { codigo: 'SGSST-PER-006', nombre: 'Autorización de Trabajos en Altura', archivo: 'plantillas/programas/SGSST-PER-006_Autorizacion_Trabajos_en_Altura.pdf' },
   { codigo: 'SGSST-PER-007', nombre: 'Inspección de Elementos de Izaje', archivo: 'plantillas/programas/SGSST-PER-007_Inspeccion_Elementos_de_Izaje.pdf' },
   { codigo: 'SGSST-PER-008', nombre: 'Inspección de Seguridad — Excavación', archivo: 'plantillas/programas/SGSST-PER-008_Inspeccion_Seguridad_Excavacion.pdf' },
   { codigo: 'SGSST-PER-009', nombre: 'Inspección de Seguridad — Esmeril Angular', archivo: 'plantillas/programas/SGSST-PER-009_Inspeccion_Seguridad_Esmeril_Angular.pdf' },
-  { codigo: 'SGSST-PER-010', nombre: 'Charla de Seguridad', archivo: 'plantillas/programas/SGSST-PER-010_Charla_de_Seguridad.pdf' },
-  { codigo: 'SGSST-PER-011', nombre: 'Hoja de Control de Riesgos (HCR)', archivo: 'plantillas/programas/SGSST-PER-011_Hoja_de_Control_de_Riesgos_HCR.pdf' },
+  { codigo: 'SGSST-PER-010', nombre: 'Charla de Seguridad', archivo: 'plantillas/programas/SGSST-PER-010_Charla_de_Seguridad.pdf', tipo: 'cubierto_charla' },
+  { codigo: 'SGSST-PER-011', nombre: 'Hoja de Control de Riesgos (HCR)', archivo: 'plantillas/programas/SGSST-PER-011_Hoja_de_Control_de_Riesgos_HCR.pdf', tipo: 'cubierto_hcr' },
 ];
+// Coordenadas medidas directamente sobre cada PDF real (pypdfium2, puntos
+// PDF con origen abajo-izquierda — mismo sistema que pdf-lib, se usan tal
+// cual sin conversión). Motor compartido: generarPdfChecklistGenerico.
+const CHECKLIST_GENERICO_CONFIG = {
+  'SGSST-PER-004': {
+    campos: [
+      { key: 'empresa', label: 'Empresa', x: 95, y: 619, w: 250 },
+      { key: 'obra', label: 'Obra', x: 385, y: 619, w: 185 },
+      { key: 'representante', label: 'Representante en la obra', x: 168, y: 602, w: 175 },
+      { key: 'cargoRepresentante', label: 'Cargo', x: 390, y: 602, w: 180 },
+      { key: 'etapaObra', label: 'Etapa de la obra', x: 133, y: 585, w: 210 },
+      { key: 'fechaInspeccion', label: 'Fecha de inspección', x: 457, y: 585, w: 110, tipo: 'fecha' },
+      { key: 'manzanaTorre', label: 'Manzana o torre', x: 136, y: 570, w: 208 },
+      { key: 'nVivienda', label: 'N° Vivienda', x: 413, y: 570, w: 155 },
+    ],
+    tabla: {
+      xItem: 46, xSI: 224, xNO: 251, xNA: 279, xObs: 298, xResp: 460, xFecha: 526, xFin: 576.6, xIni: 42.4,
+      filas: [
+        { y0: 415.1, y1: 395.1, texto: 'La base de apoyo se encuentra nivelada y sobre un apoyo firme (tablón, solera)' },
+        { y0: 395.1, y1: 375.9, texto: 'La estructura se encuentra aplomada y alineada.' },
+        { y0: 375.9, y1: 356.5, texto: 'Posee todas las piezas indicadas por el proveedor o fabricante.' },
+        { y0: 356.5, y1: 337.3, texto: 'Las plataformas de trabajo son de 70 cm. como mínimo y antideslizantes' },
+        { y0: 337.3, y1: 318.1, texto: 'Las plataformas poseen baranda superior e intermedia y rodapiés.' },
+        { y0: 318.1, y1: 289.9, texto: 'El andamio se encuentra amarrado a la estructura en la forma y condiciones dadas por el proveedor.' },
+        { y0: 289.9, y1: 270.7, texto: 'Las plataformas están ordenadas, sin sobrepeso y limpias.' },
+        { y0: 270.7, y1: 251.5, texto: 'Los trabajadores acceden al andamio por un sistema específico o por el edificio.' },
+        { y0: 251.5, y1: 232.2, texto: 'Se encuentra libre de extensiones eléctricas' },
+        { y0: 232.2, y1: 204.2, texto: 'Los trabajadores utilizan casco, zapatos de seguridad, guantes y arnés de seguridad.' },
+        { y0: 204.2, y1: 185.1, texto: 'Se conoce la resistencia del andamio.' },
+        { y0: 185.1, y1: 165.9, texto: 'Diagonales completas (crucetas)' },
+      ],
+    },
+    firmas: [
+      { key: 'realiza', label: 'Profesional que realiza la evaluación', xNombre: 195, yNombre: 124, xCargo: 76, yCargo: 109, xProfesion: 127, yProfesion: 96, xFirma: 48, yFirma: 60, wFirma: 260, hFirma: 42 },
+      { key: 'revisa', label: 'Profesional que revisa la evaluación', xNombre: 495, yNombre: 125, xCargo: 376, yCargo: 109, xFecha: 375, yFecha: 96, xFirma: 348, yFirma: 60, wFirma: 220, hFirma: 42 },
+    ],
+  },
+};
+// Devuelve el catálogo (PROGRAMAS_PERSONALIZADOS) que coincide con el
+// nombre de una actividad del Programa Personalizado (comparación
+// tolerante — sin tildes/mayúsculas — porque el campo sigue siendo texto
+// libre con un datalist de sugerencias, no un select estricto).
+function formatoDeActividad(actividad) {
+  const norm = sinTildes((actividad || '').trim().toLowerCase());
+  return PROGRAMAS_PERSONALIZADOS.find(p => sinTildes(p.nombre.toLowerCase()) === norm) || null;
+}
 // Checklist fijo de documentos del módulo Subcontratistas — mismo listado
 // para todas las empresas (definido por el cliente, ver carpetas reales de
 // Drive que usan hoy). "Carpeta de Empresa" se sube una sola vez; "Control
@@ -827,7 +883,7 @@ async function cargarTodo(silencioso) {
       `'${CONFIG.SHEET_DIAT}'!A2:BA2000`,
       `'${CONFIG.SHEET_SUBCONTRATISTAS}'!A2:B2000`,
       `'${CONFIG.SHEET_SUBCONTRATISTAS_DOCS}'!A2:H2000`,
-      `'${CONFIG.SHEET_PROGRAMA_PERSONALIZADO}'!A2:J4000`,
+      `'${CONFIG.SHEET_PROGRAMA_PERSONALIZADO}'!A2:K4000`,
     ]);
     if (!silencioso) splash(85, 'Preparando la app...');
     allTrabajadores = trab.map((r,i) => rowToTrabajador(r,i));
@@ -949,11 +1005,26 @@ function rowToSubDoc(r, i) {
 // Una fila = una actividad del "Programa Personalizado" de UN supervisor en
 // UN mes (ej. "Charla 5 minutos", frecuencia Diaria) — Dias Marcados guarda
 // los días del mes en que se cumplió, separados por coma ("1,2,5,9,...").
+// "Registros PDF" (columna K): un registro por día llenado digitalmente
+// sobre uno de los formatos de PROGRAMAS_PERSONALIZADOS (ver
+// abrirLlenarFormatoPrograma) — "dia:link" separados por "|". A diferencia
+// de diasMarcados (que un supervisor puede tildar a mano sin respaldo), un
+// día con registro acá SIEMPRE tiene un PDF real generado y subido a Drive.
+function parseRegistrosPdfPrograma(str) {
+  const map = {};
+  (str || '').split('|').filter(Boolean).forEach(par => {
+    const i = par.indexOf(':');
+    if (i === -1) return;
+    const dia = parseInt(par.slice(0, i), 10);
+    if (!isNaN(dia)) map[dia] = par.slice(i + 1);
+  });
+  return map;
+}
 function rowToProgramaPersonalizado(r, i) {
   return { fila: i+2, n: r[0]||'', obra: r[1]||'', mes: r[2]||'', supervisor: r[3]||'', cargo: r[4]||'',
     actividad: r[5]||'', frecuencia: r[6]||'',
     diasMarcados: (r[7]||'').split(',').map(x => parseInt(x.trim(), 10)).filter(n => !isNaN(n)),
-    fechaRegistro: r[8]||'', registradoPor: r[9]||'' };
+    fechaRegistro: r[8]||'', registradoPor: r[9]||'', registrosPdf: parseRegistrosPdfPrograma(r[10]) };
 }
 // Una entrega de EPP es UNA fila con todos los ítems juntos en la columna
 // "EPP Entregado" (ej. "Casco (1); Guantes (2)"), igual que "Asistentes"
@@ -4565,6 +4636,14 @@ function renderDetalleProgramaSupervisor() {
 function abrirFormActividadPrograma(obra, mes, supervisor) {
   const f = document.getElementById('form-actividad-programa');
   f.reset();
+  // La lista de sugerencias son los nombres exactos del catálogo
+  // PROGRAMAS_PERSONALIZADOS (para que formatoDeActividad los reconozca y
+  // active, si corresponde, el llenado digital al marcar días) más
+  // "Reunión de coordinación", que no tiene documento asociado y sigue
+  // siendo 100% manual.
+  document.getElementById('lista-actividades-programa').innerHTML =
+    PROGRAMAS_PERSONALIZADOS.map(p => `<option value="${esc(p.nombre)}"></option>`).join('') +
+    '<option value="Reunión de coordinación"></option>';
   const obraDefault = obra || (programaDetalleCtx && programaDetalleCtx.obra) || obraFiltroActivo() || (obraProgramaSel !== 'todas' ? obraProgramaSel : '');
   const mesDefault = mes || (programaDetalleCtx && programaDetalleCtx.mes) || mesProgramaSel;
   f.obra.innerHTML = opcionesObraSelectHTML(obraDefault);
@@ -4602,9 +4681,9 @@ async function guardarActividadPrograma(ev) {
     if (!f.supervisor.value) { toast('Selecciona el supervisor', 'error'); return; }
     const actividad = f.actividad.value.trim();
     if (!actividad) { toast('Escribe la actividad', 'error'); return; }
-    await appendSheet(`'${CONFIG.SHEET_PROGRAMA_PERSONALIZADO}'!A:J`, [[
+    await appendSheet(`'${CONFIG.SHEET_PROGRAMA_PERSONALIZADO}'!A:K`, [[
       allProgramaPersonalizado.length + 1, obra, f.mes.value, f.supervisor.value, f.cargo.value,
-      actividad, f.frecuencia.value, '', new Date().toLocaleString('es-CL'), userEmail || ''
+      actividad, f.frecuencia.value, '', new Date().toLocaleString('es-CL'), userEmail || '', ''
     ]]);
     toast('Actividad agregada ✓', 'ok');
     closePanel('panel-form-actividad-programa');
@@ -4641,6 +4720,7 @@ function diasConEvidenciaActividad(a) {
   }
   return dias;
 }
+function fechaDia(mesISO, dia) { return `${mesISO}-${String(dia).padStart(2, '0')}`; }
 let marcarDiasFila = null;
 function abrirMarcarDias(fila) {
   const a = allProgramaPersonalizado.find(x => x.fila === fila);
@@ -4652,6 +4732,14 @@ function abrirMarcarDias(fila) {
   const marcadosGuardados = new Set(a.diasMarcados);
   const diasEvidencia = diasConEvidenciaActividad(a);
   document.getElementById('marcar-dias-aviso').classList.toggle('hidden', diasEvidencia.size === 0);
+  // Si la actividad calza con uno de los formatos de PROGRAMAS_PERSONALIZADOS
+  // Y ese formato ya tiene motor de llenado digital (CHECKLIST_GENERICO_CONFIG,
+  // por ahora), el día deja de ser un simple checkbox: hay que llenar el
+  // documento real (abrirLlenarFormatoPrograma) para que quede marcado. El
+  // cumplimiento del informe pasa a reflejar documentos reales, no un tilde
+  // manual sin respaldo.
+  const formato = formatoDeActividad(a.actividad);
+  const config = formato && CHECKLIST_GENERICO_CONFIG[formato.codigo];
   // Calendario real del mes: encabezado Lun-Dom y celdas vacías antes del
   // día 1 para que cada día caiga en su columna real — así se ve de un
   // vistazo qué días son fin de semana (no se trabaja) sin tener que
@@ -4659,17 +4747,32 @@ function abrirMarcarDias(fila) {
   const offset = diaDeLaSemana(a.mes, 1);
   const headerHtml = DIAS_SEMANA_CORTO.map(n => `<div class="marcar-dia-header">${n}</div>`).join('');
   const vaciosHtml = Array.from({length: offset}, () => '<div class="marcar-dia marcar-dia--vacio"></div>').join('');
-  const diasHtml = Array.from({length: dias}, (_, i) => i+1).map(d => {
-    const auto = diasEvidencia.has(d) && !marcadosGuardados.has(d);
-    const checked = marcadosGuardados.has(d) || diasEvidencia.has(d);
-    const finde = esFinDeSemana(a.mes, d);
-    return `
-    <label class="marcar-dia${checked ? ' checked' : ''}${auto ? ' auto' : ''}${finde ? ' finde' : ''}">
-      <input type="checkbox" value="${d}" ${checked ? 'checked' : ''} onchange="this.closest('.marcar-dia').classList.toggle('checked', this.checked)">
-      <span>${d}</span>
-    </label>`;
-  }).join('');
+  let diasHtml;
+  if (config) {
+    diasHtml = Array.from({length: dias}, (_, i) => i+1).map(d => {
+      const finde = esFinDeSemana(a.mes, d);
+      const link = a.registrosPdf[d];
+      return `
+      <div class="marcar-dia marcar-dia--digital${link ? ' checked' : ''}${finde ? ' finde' : ''}">
+        <button type="button" class="marcar-dia-num" onclick="abrirLlenarFormatoPrograma(${d})">${d}</button>
+        ${link ? `<a href="${esc(link)}" target="_blank" class="marcar-dia-ver" title="Ver documento generado" onclick="event.stopPropagation()">${ic('documento',11)}</a>` : ''}
+      </div>`;
+    }).join('');
+  } else {
+    diasHtml = Array.from({length: dias}, (_, i) => i+1).map(d => {
+      const auto = diasEvidencia.has(d) && !marcadosGuardados.has(d);
+      const checked = marcadosGuardados.has(d) || diasEvidencia.has(d);
+      const finde = esFinDeSemana(a.mes, d);
+      return `
+      <label class="marcar-dia${checked ? ' checked' : ''}${auto ? ' auto' : ''}${finde ? ' finde' : ''}">
+        <input type="checkbox" value="${d}" ${checked ? 'checked' : ''} onchange="this.closest('.marcar-dia').classList.toggle('checked', this.checked)">
+        <span>${d}</span>
+      </label>`;
+    }).join('');
+  }
   document.getElementById('marcar-dias-grid').innerHTML = headerHtml + vaciosHtml + diasHtml;
+  document.getElementById('marcar-dias-guardar').classList.toggle('hidden', !!config);
+  document.getElementById('marcar-dias-nota-digital').classList.toggle('hidden', !config);
   openPanel('panel-marcar-dias');
 }
 async function guardarMarcarDias() {
@@ -4687,6 +4790,182 @@ async function guardarMarcarDias() {
     await cargarTodo(true);
     if (programaDetalleCtx) renderDetalleProgramaSupervisor();
   } catch (e) { toast(e.message, 'error'); }
+}
+
+// ── Llenado digital de un formato SGSST-PER sobre un día del Programa
+// Personalizado (motor genérico "checklist_generico": tabla fija de ítems
+// SI/NO/N/A + firmas — ver CHECKLIST_GENERICO_CONFIG) ─────────────────────
+let llenarFormatoCtx = null; // { filaActividad, dia, formato, config }
+function htmlFormularioChecklistGenerico(a, config) {
+  const camposHtml = config.campos.map(c => `
+    <div class="form-group"><label>${esc(c.label)}</label>
+      <input name="campo_${c.key}" type="${c.tipo === 'fecha' ? 'date' : 'text'}" value="${c.tipo === 'fecha' ? esc(a.__fechaDia) : ''}">
+    </div>`).join('');
+  const itemsHtml = config.tabla.filas.map((f, i) => `
+    <div class="checklist-generico-item">
+      <div class="checklist-generico-item-texto">${i+1}. ${esc(f.texto)}</div>
+      <div class="checklist-generico-sino">
+        <label><input type="radio" name="item_${i}_resultado" value="SI"> SI</label>
+        <label><input type="radio" name="item_${i}_resultado" value="NO"> NO</label>
+        <label><input type="radio" name="item_${i}_resultado" value="NA"> N/A</label>
+      </div>
+      <input name="item_${i}_observacion" placeholder="Observación (opcional)">
+      <div class="checklist-generico-item-fila2">
+        <input name="item_${i}_responsable" placeholder="Responsable a cargo">
+        <input name="item_${i}_fecha" type="date" placeholder="Fecha de solución">
+      </div>
+    </div>`).join('');
+  const firmasHtml = config.firmas.map((f, i) => `
+    <div class="sec-label" style="margin-top:18px;">${esc(f.label)}</div>
+    <div class="form-group"><label>Nombre</label><input name="firma_${i}_nombre"></div>
+    <div class="form-group"><label>Cargo</label><input name="firma_${i}_cargo"></div>
+    ${f.xProfesion ? `<div class="form-group"><label>Profesión / Actividad</label><input name="firma_${i}_profesion"></div>` : ''}
+    ${f.xFecha ? `<div class="form-group"><label>Fecha</label><input name="firma_${i}_fecha" type="date"></div>` : ''}
+    <div class="form-group">
+      <label>Firma</label>
+      <div class="firma-box"><canvas id="firma-formato-${i}"></canvas></div>
+      <div class="firma-actions"><button type="button" onclick="limpiarFirmaId('firma-formato-${i}')">Borrar firma</button></div>
+    </div>`).join('');
+  return `
+    <div class="sec-label">Datos generales</div>
+    ${camposHtml}
+    <div class="sec-label" style="margin-top:18px;">Ítems a inspeccionar</div>
+    ${itemsHtml}
+    ${firmasHtml}
+    <button class="btn-add" style="margin-top:16px;" onclick="guardarFormatoPrograma()">Generar documento y marcar día</button>`;
+}
+function abrirLlenarFormatoPrograma(dia) {
+  const a = allProgramaPersonalizado.find(x => x.fila === marcarDiasFila);
+  if (!a) return;
+  const formato = formatoDeActividad(a.actividad);
+  const config = formato && CHECKLIST_GENERICO_CONFIG[formato.codigo];
+  if (!config) { toast('Este formato todavía no tiene llenado digital', 'error'); return; }
+  llenarFormatoCtx = { filaActividad: a.fila, dia, formato, config };
+  document.getElementById('pnl-title-llenar-formato').textContent = `${formato.nombre} — ${fechaDia(a.mes, dia)}`;
+  document.getElementById('llenar-formato-body').innerHTML =
+    htmlFormularioChecklistGenerico({ ...a, __fechaDia: fechaDia(a.mes, dia) }, config);
+  config.firmas.forEach((f, i) => setTimeout(() => initFirmaPad(`firma-formato-${i}`), 80));
+  openPanel('panel-llenar-formato-programa');
+}
+async function guardarFormatoPrograma() {
+  if (!llenarFormatoCtx) return;
+  const { filaActividad, dia, formato, config } = llenarFormatoCtx;
+  const a = allProgramaPersonalizado.find(x => x.fila === filaActividad);
+  if (!a) return;
+  const body = document.getElementById('llenar-formato-body');
+  const val = (name) => (body.querySelector(`[name="${name}"]`) || {}).value || '';
+  try {
+    const datos = { obra: a.obra, __fechaDia: fechaDia(a.mes, dia) };
+    config.campos.forEach(c => { datos[c.key] = val(`campo_${c.key}`); });
+    if (!datos.obra) datos.obra = a.obra;
+    datos.items = config.tabla.filas.map((f, i) => ({
+      resultado: (body.querySelector(`[name="item_${i}_resultado"]:checked`) || {}).value || '',
+      observacion: val(`item_${i}_observacion`),
+      responsable: val(`item_${i}_responsable`),
+      fecha: val(`item_${i}_fecha`),
+    }));
+    datos.firmas = config.firmas.map((f, i) => ({
+      nombre: val(`firma_${i}_nombre`), cargo: val(`firma_${i}_cargo`),
+      profesion: val(`firma_${i}_profesion`), fecha: val(`firma_${i}_fecha`),
+      firma: firmaEstaVacia(`firma-formato-${i}`) ? '' : document.getElementById(`firma-formato-${i}`).toDataURL('image/png'),
+    }));
+    toast('Generando documento...', 'ok');
+    const link = await generarPdfChecklistGenerico(formato.codigo, datos);
+    await ensureToken();
+    const nuevosRegistros = { ...a.registrosPdf, [dia]: link };
+    const strRegistros = Object.entries(nuevosRegistros).map(([d, l]) => `${d}:${l}`).join('|');
+    const urlReg = `${SHEETS_BASE}/${CONFIG.SHEET_ID}/values/${encodeURIComponent(`'${CONFIG.SHEET_PROGRAMA_PERSONALIZADO}'!K${filaActividad}`)}?valueInputOption=USER_ENTERED`;
+    await fetch(urlReg, { method:'PUT', headers:{ 'Content-Type':'application/json', ...authHeader() },
+      body: JSON.stringify({ values: [[strRegistros]] }) });
+    const diasSet = new Set(a.diasMarcados); diasSet.add(dia);
+    const urlDias = `${SHEETS_BASE}/${CONFIG.SHEET_ID}/values/${encodeURIComponent(`'${CONFIG.SHEET_PROGRAMA_PERSONALIZADO}'!H${filaActividad}`)}?valueInputOption=USER_ENTERED`;
+    await fetch(urlDias, { method:'PUT', headers:{ 'Content-Type':'application/json', ...authHeader() },
+      body: JSON.stringify({ values: [[[...diasSet].join(',')]] }) });
+    toast('Documento generado y día marcado ✓', 'ok');
+    closePanel('panel-llenar-formato-programa');
+    await cargarTodo(true);
+    abrirMarcarDias(filaActividad);
+    if (programaDetalleCtx) renderDetalleProgramaSupervisor();
+  } catch (e) { toast(e.message, 'error'); }
+}
+// Motor compartido por los formatos "checklist_generico" (tabla fija de
+// ítems SI/NO/N/A + firmas) — dibuja sobre el PDF real del formato
+// (PROGRAMAS_PERSONALIZADOS) con las coordenadas medidas en
+// CHECKLIST_GENERICO_CONFIG. Un solo generador sirve para todos los
+// formatos de este tipo, solo cambia la config.
+async function generarPdfChecklistGenerico(codigo, datos) {
+  const formato = PROGRAMAS_PERSONALIZADOS.find(p => p.codigo === codigo);
+  const config = CHECKLIST_GENERICO_CONFIG[codigo];
+  const { PDFDocument, rgb, StandardFonts } = await cargarPdfLib();
+  const templateBytes = await fetch(formato.archivo).then(r => r.arrayBuffer());
+  const pdfDoc = await PDFDocument.load(templateBytes);
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const page = pdfDoc.getPages()[0];
+
+  function text(str, x, y, size, bold) {
+    if (!str) return;
+    page.drawText(String(str), { x, y, size: size || 8, font: bold ? fontBold : font, color: rgb(0,0,0) });
+  }
+  function wrapLines(str, maxWidth, size) {
+    const words = (str || '').split(/\s+/).filter(Boolean);
+    const lines = []; let current = '';
+    for (const w of words) {
+      const test = current ? current + ' ' + w : w;
+      if (font.widthOfTextAtSize(test, size) > maxWidth && current) { lines.push(current); current = w; }
+      else current = test;
+    }
+    if (current) lines.push(current);
+    return lines;
+  }
+  function checkX(xCenter, yCenter, size) {
+    const s = size || 9;
+    page.drawText('X', { x: xCenter - s * 0.32, y: yCenter - s * 0.35, size: s, font: fontBold, color: rgb(0,0,0) });
+  }
+  async function drawSig(dataUrl, x, y, w, h) {
+    if (!dataUrl) return;
+    const bytes = Uint8Array.from(atob(dataUrl.split(',')[1]), c => c.charCodeAt(0));
+    const img = await pdfDoc.embedPng(bytes);
+    const dims = escalarFirmaCasillero(img, w, h);
+    page.drawImage(img, { x, y, width: dims.width, height: dims.height });
+  }
+
+  config.campos.forEach(c => text(c.tipo === 'fecha' ? ddmmyyyy(datos[c.key]) : datos[c.key], c.x, c.y, 8));
+
+  const t = config.tabla;
+  config.tabla.filas.forEach((f, i) => {
+    const it = datos.items[i] || {};
+    // f.y0/f.y1 no vienen garantizados en un orden fijo (se copiaron tal
+    // cual de la medición de las líneas de la grilla) — se normalizan acá
+    // para no volver a mezclar cuál es el borde de arriba y cuál el de abajo.
+    const yTop = Math.max(f.y0, f.y1), yBottom = Math.min(f.y0, f.y1);
+    const yc = (yTop + yBottom) / 2;
+    if (it.resultado === 'SI') checkX(t.xSI, yc, 8);
+    else if (it.resultado === 'NO') checkX(t.xNO, yc, 8);
+    else if (it.resultado === 'NA') checkX(t.xNA, yc, 8);
+    if (it.observacion) {
+      const lineH = 7.5;
+      const maxLines = Math.max(1, Math.floor((yTop - yBottom - 3) / lineH));
+      const lineas = wrapLines(it.observacion, (t.xResp - t.xObs) - 6, 6.5).slice(0, maxLines);
+      lineas.forEach((l, li) => text(l, t.xObs + 3, yTop - 8 - li * lineH, 6.5));
+    }
+    if (it.responsable) text(it.responsable, t.xResp + 3, yc - 3, 6.5);
+    if (it.fecha) text(ddmmyyyy(it.fecha), t.xFecha + 3, yc - 3, 6.5);
+  });
+
+  for (let i = 0; i < config.firmas.length; i++) {
+    const cfg = config.firmas[i], fdat = datos.firmas[i] || {};
+    text(fdat.nombre, cfg.xNombre, cfg.yNombre, 8);
+    if (cfg.xCargo) text(fdat.cargo, cfg.xCargo, cfg.yCargo, 8);
+    if (cfg.xProfesion) text(fdat.profesion, cfg.xProfesion, cfg.yProfesion, 8);
+    if (cfg.xFecha) text(ddmmyyyy(fdat.fecha), cfg.xFecha, cfg.yFecha, 8);
+    await drawSig(fdat.firma, cfg.xFirma, cfg.yFirma, cfg.wFirma, cfg.hFirma);
+  }
+
+  const bytes = await pdfDoc.save();
+  const blob = new Blob([bytes], { type: 'application/pdf' });
+  const up = await uploadFile(blob, 'Programa Personalizado', formato.codigo + '_' + (datos.obra || 'obra').replace(/\s+/g,'_') + '_' + datos.__fechaDia, 'pdf');
+  return up.link;
 }
 
 // ── Generador del informe PDF (portada + objetivos + resumen + índices +

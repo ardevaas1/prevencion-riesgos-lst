@@ -112,7 +112,7 @@ function inicializarPlanilla() {
 
   crearHoja(ss, 'PROGRAMA_PERSONALIZADO', [
     'N°', 'Obra', 'Mes', 'Supervisor', 'Cargo', 'Actividad', 'Frecuencia',
-    'Dias Marcados', 'Fecha Registro', 'Registrado Por'
+    'Dias Marcados', 'Fecha Registro', 'Registrado Por', 'Registros PDF'
   ]);
 
   // Elimina la hoja "Hoja 1" / "Sheet1" default si quedó vacía
