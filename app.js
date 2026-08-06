@@ -67,7 +67,7 @@ const PROGRAMAS_PERSONALIZADOS = [
   { codigo: 'SGSST-PER-003', nombre: 'Observación de Conducta', archivo: 'plantillas/programas/SGSST-PER-003_Observacion_de_Conducta.pdf', tipo: 'observacion_conducta' },
   { codigo: 'SGSST-PER-004', nombre: 'Inspección de Seguridad — Andamios', archivo: 'plantillas/programas/SGSST-PER-004_Inspeccion_Seguridad_Andamios.pdf', tipo: 'checklist_generico' },
   { codigo: 'SGSST-PER-005', nombre: 'Inspección de EPP', archivo: 'plantillas/programas/SGSST-PER-005_Inspeccion_de_EPP.pdf', tipo: 'inspeccion_epp' },
-  { codigo: 'SGSST-PER-006', nombre: 'Autorización de Trabajos en Altura', archivo: 'plantillas/programas/SGSST-PER-006_Autorizacion_Trabajos_en_Altura.pdf' },
+  { codigo: 'SGSST-PER-006', nombre: 'Autorización de Trabajos en Altura', archivo: 'plantillas/programas/SGSST-PER-006_Autorizacion_Trabajos_en_Altura.pdf', tipo: 'autorizacion_altura' },
   { codigo: 'SGSST-PER-007', nombre: 'Inspección de Elementos de Izaje', archivo: 'plantillas/programas/SGSST-PER-007_Inspeccion_Elementos_de_Izaje.pdf', tipo: 'checklist_generico' },
   { codigo: 'SGSST-PER-008', nombre: 'Inspección de Seguridad — Excavación', archivo: 'plantillas/programas/SGSST-PER-008_Inspeccion_Seguridad_Excavacion.pdf', tipo: 'checklist_generico' },
   { codigo: 'SGSST-PER-009', nombre: 'Inspección de Seguridad — Esmeril Angular', archivo: 'plantillas/programas/SGSST-PER-009_Inspeccion_Seguridad_Esmeril_Angular.pdf', tipo: 'checklist_generico' },
@@ -4995,6 +4995,15 @@ const MOTORES_FORMATO_PROGRAMA = {
     recolectar: (body, a) => recolectarInspeccionEpp(body, a),
     generarPdf: (formato, datos) => generarPdfInspeccionEpp(datos),
   },
+  autorizacion_altura: {
+    html: (a) => htmlFormularioAutorizacionAltura(a),
+    initFirmas: () => {
+      [0, 1].forEach(i => setTimeout(() => initFirmaPad(`firma-formato-${i}`), 80));
+      for (let i = 0; i < AUTORIZACION_ALTURA_CONFIG.trabajadores.filas; i++) setTimeout(() => initFirmaPad(`firma-trab-${i}`), 80);
+    },
+    recolectar: (body, a) => recolectarAutorizacionAltura(body, a),
+    generarPdf: (formato, datos) => generarPdfAutorizacionAltura(datos),
+  },
 };
 function motorDigitalDe(formato) {
   return formato && MOTORES_FORMATO_PROGRAMA[formato.tipo];
@@ -5610,6 +5619,386 @@ async function generarPdfInspeccionEpp(datos) {
   const bytes = await pdfDoc.save();
   const blob = new Blob([bytes], { type: 'application/pdf' });
   const up = await uploadFile(blob, 'Programa Personalizado', 'SGSST-PER-005_' + (datos.obra || 'obra').replace(/\s+/g,'_') + '_' + datos.__fechaDia, 'pdf');
+  return up.link;
+}
+
+// ── SGSST-PER-006 (Autorización de Trabajos en Altura) — motor propio, 2
+// páginas. Página 1: información general + autorización/responsable (con
+// firma) + altura a la que trabajará (selección única) + EPP y Lista de
+// Verificación (S/N por ítem, comparten columna) + Peligros Potenciales y
+// Sistema de Acceso (checkboxes múltiples, comparten filas de la grilla) +
+// Condiciones Meteorológicas y Evaluación de Riesgos (selección única en
+// una sola fila cada una) + Medidas Correctivas (9 líneas de texto libre)
+// + Finalización del Trabajo (selección única) + Fecha/Periodo de validez.
+// Página 2: roster de hasta 19 trabajadores autorizados (nombre, RUT,
+// examen de altura S/N, cargo, firma). Plantilla apaisada (841.8×595.2) en
+// ambas páginas — coordenadas medidas con pypdfium2 sobre el PDF real.
+const AUTORIZACION_ALTURA_CONFIG = {
+  campos: [
+    { key: 'ubicacion', x: 15, y: 506, w: 224 },
+    { key: 'area', x: 270, y: 507, w: 161 },
+  ],
+  descripcion: { x: 15, y: 472, w: 416 },
+  procedimiento: { x: 136, y: 464, w: 295 },
+  checkList: { x: 480, y: 464, w: 287 },
+  autorizadaPor: { xNombre: 483, yNombre: 521, xFirma: 612, yFirma: 510, wFirma: 145, hFirma: 5 },
+  responsableEjecutar: { xNombre: 513, yNombre: 502, xFirma: 612, yFirma: 500, wFirma: 145, hFirma: 4 },
+  altura: [
+    { key: 'op18', label: '1.8 mts', x: 587.25, y: 484.7 },
+    { key: 'op6', label: '< a 6 mts', x: 737.5, y: 484.7 },
+    { key: 'op5', label: '> a 5 mts', x: 587.25, y: 474.9 },
+    { key: 'otros', label: 'Otros', x: 737.5, y: 474.9 },
+  ],
+  eppCols: { xS: 337.3, xN: 356.0 },
+  epp: [
+    { key: 'casco', label: 'Casco- barbiquejo', y0: 405.1, y1: 393.1 },
+    { key: 'lentes', label: 'Lentes de seguridad', y0: 393.1, y1: 381.1 },
+    { key: 'protectorAuditivo', label: 'Protector auditivo', y0: 381.1, y1: 369.1 },
+    { key: 'arnes', label: 'Arnés de seguridad con su cabo de vida doble', y0: 369.1, y1: 357.1 },
+    { key: 'lineaVida', label: 'Linea de vida', y0: 357.1, y1: 347.3 },
+    { key: 'guantes', label: 'Guantes de seguridad', y0: 347.3, y1: 333.7 },
+  ],
+  peligrosFilas: [
+    { y0: 417.0, y1: 405.1 }, { y0: 405.1, y1: 393.1 }, { y0: 393.1, y1: 381.1 }, { y0: 381.1, y1: 369.1 },
+    { y0: 369.1, y1: 357.1 }, { y0: 357.1, y1: 347.3 }, { y0: 347.3, y1: 333.7 },
+  ],
+  peligrosIzq: { x: 527.3, items: [
+    { key: 'choque', label: 'Choque o golpes contra objetos' },
+    { key: 'caidaDistinto', label: 'Caida distinto nivel' },
+    { key: 'caidaMismo', label: 'Caida mismo nivel' },
+    { key: 'caidaObjetos', label: 'Caida de objetos' },
+    { key: 'pisadaObjetos', label: 'Pisada sobre objetos' },
+    { key: 'contactoLinea', label: 'Contacto con linea energizada' },
+    { key: 'exposicionUV', label: 'Exposicion a radiación UV' },
+  ] },
+  peligrosDer: { x: 737.5, items: [
+    { key: 'cortesPor', label: 'Cortes por' },
+    { key: 'caidaEstructura', label: 'Caida de estructura' },
+    { key: 'proyeccionParticulas', label: 'Proyección de particulas' },
+    { key: 'atrapamiento', label: 'Atrapamiento por o entre objetos' },
+    { key: 'sobreesfuerzo', label: 'Sobreesfuerzo' },
+    { key: 'contactoCon', label: 'Contacto con' },
+    { key: 'otros', label: 'Otros' },
+  ] },
+  listaSistemaFilas: [
+    { y0: 308.1, y1: 295.5 }, { y0: 295.5, y1: 281.1 }, { y0: 281.1, y1: 271.3 }, { y0: 271.3, y1: 261.5 },
+    { y0: 261.5, y1: 251.7 }, { y0: 251.7, y1: 241.9 }, { y0: 241.9, y1: 232.1 }, { y0: 232.1, y1: 222.3 },
+    { y0: 222.3, y1: 212.5 },
+  ],
+  listaCols: { xS: 337.3, xN: 356.0 },
+  // El ítem 8 de la grilla (banda 232.1-222.3) queda vacío para esta lista
+  // (no tiene ítem propio ahí, "otros" cae en la banda 9 junto con Sistema
+  // de Acceso) — por eso hay un `null` en la posición 8.
+  lista: [
+    { key: 'herramienta', label: 'Herramienta y equipo adecuados para el trabajo' },
+    { key: 'andamiosTablones', label: 'Andamios-tablones-escaleras' },
+    { key: 'conocimientoEquipo', label: 'Conocimiento del equipo de trabajo y procedimiento' },
+    { key: 'aplicacionBloqueo', label: 'Aplicación del procedimiento de bloqueo y etiquetado' },
+    { key: 'lugarLineaVida', label: 'Lugar de trabajo puede asegurarse con una linea de vida' },
+    { key: 'estadoHerramientas', label: 'Estado de herramientas estan en buen estado' },
+    { key: 'arnesCaboVida', label: 'Arnes de seguridad- cabo de vida' },
+    null,
+    { key: 'otros', label: 'otros' },
+  ],
+  sistemaCol: { x: 587.25 },
+  sistemaAcceso: [
+    { key: 'escalerasFijasGato', label: 'Escaleras fijas tipo gato' },
+    { key: 'escalerasPortatilesExt', label: 'Escaleras portatiles de extensión' },
+    { key: 'escaleraTijera', label: 'Escalera portatil de tijera' },
+    { key: 'elevador', label: 'Elevador electrico/ hidraulico' },
+    { key: 'andamioTubular', label: 'Andamio tubular' },
+    { key: 'andamioColgante', label: 'Andamio colgante' },
+    { key: 'andamioEuro', label: 'Andamio euro' },
+    { key: 'escalerasFijasEstruct', label: 'Escaleras fijas estructurales' },
+    { key: 'otros', label: 'Otros' },
+  ],
+  meteorologicasY: 197.8,
+  meteorologicas: [
+    { key: 'lluvia', label: 'LLUVIA INTENSA', x: 337.3 },
+    { key: 'vientos', label: 'VIENTOS FUERTES', x: 445.4 },
+    { key: 'granizos', label: 'GRANISOS', x: 527.3 },
+    { key: 'otras', label: 'OTRAS', x: 737.5 },
+  ],
+  evaluacionRiesgoY: 178.15,
+  evaluacionRiesgo: [
+    { key: 'aceptable', label: 'ACEPTABLE', x: 337.3 },
+    { key: 'moderado', label: 'MODERADO', x: 445.4 },
+    { key: 'alto', label: 'ALTO', x: 527.3 },
+    { key: 'muyAlto', label: 'MUY ALTO', x: 737.5 },
+  ],
+  medidas: { filas: [
+    { x: 147, y: 156 }, { x: 15, y: 146.2 }, { x: 15, y: 136.5 }, { x: 15, y: 126.7 },
+    { x: 15, y: 116.8 }, { x: 15, y: 107.0 }, { x: 15, y: 97.2 }, { x: 15, y: 87.4 }, { x: 15, y: 77.6 },
+  ] },
+  finalizacionY: 40.9,
+  finalizacion: [
+    { key: 'completado', label: 'COMPLETADO', x: 32.6 },
+    { key: 'cancelado', label: 'CANCELADO', x: 192.85 },
+    { key: 'suspendido', label: 'SUSPENDIDO', x: 356.0 },
+  ],
+  fechaValidez: { x: 460, y: 30 },
+  periodoValidez: { x: 618, y: 30 },
+  trabajadores: {
+    filas: 19,
+    xNombre: 94, xRut: 283, xExamenSI: 393.2, xExamenNO: 452.1, xCargo: 487,
+    xFirma: 618, wFirma: 114, hFirma: 7,
+    filasY: [
+      { y0: 498.8, y1: 477.0 }, { y0: 477.0, y1: 455.1 }, { y0: 455.1, y1: 433.4 }, { y0: 433.4, y1: 411.5 },
+      { y0: 411.5, y1: 389.7 }, { y0: 389.7, y1: 367.9 }, { y0: 367.9, y1: 346.1 }, { y0: 346.1, y1: 324.3 },
+      { y0: 324.3, y1: 302.5 }, { y0: 302.5, y1: 280.7 }, { y0: 280.7, y1: 258.9 }, { y0: 258.9, y1: 237.1 },
+      { y0: 237.1, y1: 215.3 }, { y0: 215.3, y1: 193.5 }, { y0: 193.5, y1: 171.6 }, { y0: 171.6, y1: 149.9 },
+      { y0: 149.9, y1: 128.1 }, { y0: 128.1, y1: 105.6 }, { y0: 105.6, y1: 83.2 },
+    ],
+  },
+};
+function htmlFormularioAutorizacionAltura(a) {
+  const c = AUTORIZACION_ALTURA_CONFIG;
+  const checkboxRow = (name, label) => `
+    <label style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
+      <input type="checkbox" name="${name}"> <span>${esc(label)}</span>
+    </label>`;
+  const radioRow = (name, value, label) => `
+    <label style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
+      <input type="radio" name="${name}" value="${value}"> <span>${esc(label)}</span>
+    </label>`;
+  const siNoSelect = (name) => `
+    <select name="${name}">
+      <option value="">—</option>
+      <option value="si">Sí</option>
+      <option value="no">No</option>
+    </select>`;
+  const eppHtml = c.epp.map(e => `
+    <div class="form-group" style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+      <label style="margin:0;">${esc(e.label)}</label>${siNoSelect('epp_' + e.key)}
+    </div>`).join('');
+  const listaHtml = c.lista.filter(Boolean).map(it => `
+    <div class="form-group" style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+      <label style="margin:0;">${esc(it.label)}</label>${siNoSelect('lista_' + it.key)}
+    </div>`).join('');
+  const sistemaHtml = c.sistemaAcceso.map(it => checkboxRow('sistema_' + it.key, it.label)).join('');
+  const peligrosHtml = [...c.peligrosIzq.items, ...c.peligrosDer.items].map(it => checkboxRow('peligro_' + it.key, it.label)).join('');
+  const meteoHtml = c.meteorologicas.map(it => checkboxRow('meteo_' + it.key, it.label)).join('');
+  const riesgoHtml = c.evaluacionRiesgo.map(it => radioRow('evaluacionRiesgo', it.key, it.label)).join('');
+  const alturaHtml = c.altura.map(it => radioRow('altura', it.key, it.label)).join('');
+  const finalHtml = c.finalizacion.map(it => radioRow('finalizacion', it.key, it.label)).join('');
+  const trabHtml = Array.from({length: c.trabajadores.filas}, (_, i) => `
+    <div class="checklist-generico-item">
+      <div class="checklist-generico-item-texto">Trabajador ${i+1}</div>
+      <div class="checklist-generico-item-fila2">
+        <input name="trab_${i}_nombre" placeholder="Nombre">
+        <input name="trab_${i}_rut" placeholder="RUT">
+      </div>
+      <div class="checklist-generico-item-fila2">
+        <input name="trab_${i}_cargo" placeholder="Cargo">
+        <select name="trab_${i}_examen">
+          <option value="">Examen de altura — sin registrar</option>
+          <option value="si">Examen de altura — Sí</option>
+          <option value="no">Examen de altura — No</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Firma</label>
+        <div class="firma-box"><canvas id="firma-trab-${i}"></canvas></div>
+        <div class="firma-actions"><button type="button" onclick="limpiarFirmaId('firma-trab-${i}')">Borrar firma</button></div>
+      </div>
+    </div>`).join('');
+  return `
+    <div class="sec-label">Información general</div>
+    <div class="form-group"><label>Ubicación del trabajo</label><input name="ubicacion"></div>
+    <div class="form-group"><label>Área</label><input name="area"></div>
+    <div class="form-group"><label>Descripción de actividades a realizar</label><input name="descripcion"></div>
+    <div class="sec-label" style="margin-top:12px;">Altura a la que trabajará</div>
+    ${alturaHtml}
+    <div class="form-group" style="margin-top:8px;"><label>Procedimiento de trabajo seguro</label><input name="procedimiento"></div>
+    <div class="form-group"><label>Check list</label><input name="checkList"></div>
+    <div class="sec-label" style="margin-top:18px;">Autorizada por</div>
+    <div class="form-group"><label>Nombre</label><input name="autorizadaPorNombre"></div>
+    <div class="form-group">
+      <label>Firma</label>
+      <div class="firma-box"><canvas id="firma-formato-0"></canvas></div>
+      <div class="firma-actions"><button type="button" onclick="limpiarFirmaId('firma-formato-0')">Borrar firma</button></div>
+    </div>
+    <div class="sec-label" style="margin-top:18px;">Responsable a ejecutar</div>
+    <div class="form-group"><label>Nombre</label><input name="responsableEjecutarNombre"></div>
+    <div class="form-group">
+      <label>Firma</label>
+      <div class="firma-box"><canvas id="firma-formato-1"></canvas></div>
+      <div class="firma-actions"><button type="button" onclick="limpiarFirmaId('firma-formato-1')">Borrar firma</button></div>
+    </div>
+    <div class="sec-label" style="margin-top:18px;">Elementos de protección personal (S/N)</div>
+    ${eppHtml}
+    <div class="sec-label" style="margin-top:18px;">Peligros potenciales (marca todos los que apliquen)</div>
+    ${peligrosHtml}
+    <div class="sec-label" style="margin-top:18px;">Lista de verificación (S/N)</div>
+    ${listaHtml}
+    <div class="sec-label" style="margin-top:18px;">Sistema de acceso (marca todos los que apliquen)</div>
+    ${sistemaHtml}
+    <div class="sec-label" style="margin-top:18px;">Condiciones meteorológicas (marca todas las que apliquen)</div>
+    ${meteoHtml}
+    <div class="sec-label" style="margin-top:18px;">Evaluación de los riesgos</div>
+    ${riesgoHtml}
+    <div class="sec-label" style="margin-top:18px;">Medidas correctivas</div>
+    <div class="form-group"><textarea name="medidasCorrectivas" rows="5" placeholder="Se reparte automáticamente en las 9 líneas del documento"></textarea></div>
+    <div class="sec-label" style="margin-top:18px;">Finalización del trabajo</div>
+    ${finalHtml}
+    <div class="form-group"><label>Fecha de validez</label><input name="fechaValidez" type="date" value="${esc(a.__fechaDia)}"></div>
+    <div class="form-group"><label>Periodo de validez</label><input name="periodoValidez" placeholder="Ej: turno día, 8 horas"></div>
+    <div class="sec-label" style="margin-top:18px;">Registro del personal autorizado (hasta ${c.trabajadores.filas} trabajadores)</div>
+    <div class="card-sub" style="padding:6px 2px;">Deja el nombre en blanco en los trabajadores que no correspondan — se omiten al generar el documento.</div>
+    ${trabHtml}
+    <button class="btn-add" style="margin-top:16px;" onclick="guardarFormatoPrograma()">Generar documento y marcar día</button>`;
+}
+function recolectarAutorizacionAltura(body, a) {
+  const c = AUTORIZACION_ALTURA_CONFIG;
+  const val = (name) => (body.querySelector(`[name="${name}"]`) || {}).value || '';
+  const checked = (name) => !!(body.querySelector(`[name="${name}"]`) || {}).checked;
+  const datos = { obra: a.obra, __fechaDia: a.__fechaDia };
+  datos.ubicacion = val('ubicacion');
+  datos.area = val('area');
+  datos.descripcion = val('descripcion');
+  datos.altura = (body.querySelector('[name="altura"]:checked') || {}).value || '';
+  datos.procedimiento = val('procedimiento');
+  datos.checkList = val('checkList');
+  datos.autorizadaPorNombre = val('autorizadaPorNombre');
+  datos.firmaAutorizada = recolectarFirmaCanvas('firma-formato-0');
+  datos.responsableEjecutarNombre = val('responsableEjecutarNombre');
+  datos.firmaResponsable = recolectarFirmaCanvas('firma-formato-1');
+  datos.epp = Object.fromEntries(c.epp.map(e => [e.key, val('epp_' + e.key)]));
+  datos.peligros = Object.fromEntries([...c.peligrosIzq.items, ...c.peligrosDer.items].map(it => [it.key, checked('peligro_' + it.key)]));
+  datos.lista = Object.fromEntries(c.lista.filter(Boolean).map(it => [it.key, val('lista_' + it.key)]));
+  datos.sistemaAcceso = Object.fromEntries(c.sistemaAcceso.map(it => [it.key, checked('sistema_' + it.key)]));
+  datos.meteorologicas = Object.fromEntries(c.meteorologicas.map(it => [it.key, checked('meteo_' + it.key)]));
+  datos.evaluacionRiesgo = (body.querySelector('[name="evaluacionRiesgo"]:checked') || {}).value || '';
+  datos.medidasCorrectivas = val('medidasCorrectivas');
+  datos.finalizacion = (body.querySelector('[name="finalizacion"]:checked') || {}).value || '';
+  datos.fechaValidez = val('fechaValidez');
+  datos.periodoValidez = val('periodoValidez');
+  datos.trabajadores = Array.from({length: c.trabajadores.filas}, (_, i) => ({
+    nombre: val(`trab_${i}_nombre`), rut: val(`trab_${i}_rut`),
+    cargo: val(`trab_${i}_cargo`), examen: val(`trab_${i}_examen`),
+    firma: recolectarFirmaCanvas(`firma-trab-${i}`),
+  }));
+  return datos;
+}
+async function generarPdfAutorizacionAltura(datos) {
+  const c = AUTORIZACION_ALTURA_CONFIG;
+  const { PDFDocument, rgb, StandardFonts } = await cargarPdfLib();
+  const templateBytes = await fetch('plantillas/programas/SGSST-PER-006_Autorizacion_Trabajos_en_Altura.pdf').then(r => r.arrayBuffer());
+  const pdfDoc = await PDFDocument.load(templateBytes);
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const p1 = pdfDoc.getPages()[0];
+  const p2 = pdfDoc.getPages()[1];
+
+  function text(page, str, x, y, size, bold) {
+    if (!str) return;
+    page.drawText(String(str), { x, y, size: size || 7.5, font: bold ? fontBold : font, color: rgb(0,0,0) });
+  }
+  function checkX(page, xCenter, yCenter, size) {
+    const s = size || 8;
+    page.drawText('X', { x: xCenter - s * 0.32, y: yCenter - s * 0.35, size: s, font: fontBold, color: rgb(0,0,0) });
+  }
+  function wrapLines(str, maxWidth, size) {
+    const words = (str || '').split(/\s+/).filter(Boolean);
+    const lines = []; let current = '';
+    for (const w of words) {
+      const test = current ? current + ' ' + w : w;
+      if (font.widthOfTextAtSize(test, size) > maxWidth && current) { lines.push(current); current = w; }
+      else current = test;
+    }
+    if (current) lines.push(current);
+    return lines;
+  }
+  async function drawSig(page, dataUrl, x, y, w, h) {
+    if (!dataUrl) return;
+    const bytes = Uint8Array.from(atob(dataUrl.split(',')[1]), ch => ch.charCodeAt(0));
+    const img = await pdfDoc.embedPng(bytes);
+    const dims = escalarFirmaCasillero(img, w, h);
+    page.drawImage(img, { x, y, width: dims.width, height: dims.height });
+  }
+
+  // 1.- Información general
+  wrapLines(datos.ubicacion, c.campos[0].w, 7).slice(0, 1).forEach(l => text(p1, l, c.campos[0].x, c.campos[0].y, 7));
+  wrapLines(datos.area, c.campos[1].w, 7).slice(0, 1).forEach(l => text(p1, l, c.campos[1].x, c.campos[1].y, 7));
+  wrapLines(datos.descripcion, c.descripcion.w, 7).slice(0, 1).forEach(l => text(p1, l, c.descripcion.x, c.descripcion.y, 7));
+  wrapLines(datos.procedimiento, c.procedimiento.w, 7).slice(0, 1).forEach(l => text(p1, l, c.procedimiento.x, c.procedimiento.y, 7));
+  wrapLines(datos.checkList, c.checkList.w, 7).slice(0, 1).forEach(l => text(p1, l, c.checkList.x, c.checkList.y, 7));
+
+  text(p1, datos.autorizadaPorNombre, c.autorizadaPor.xNombre, c.autorizadaPor.yNombre, 7);
+  await drawSig(p1, datos.firmaAutorizada, c.autorizadaPor.xFirma, c.autorizadaPor.yFirma, c.autorizadaPor.wFirma, c.autorizadaPor.hFirma);
+  text(p1, datos.responsableEjecutarNombre, c.responsableEjecutar.xNombre, c.responsableEjecutar.yNombre, 7);
+  await drawSig(p1, datos.firmaResponsable, c.responsableEjecutar.xFirma, c.responsableEjecutar.yFirma, c.responsableEjecutar.wFirma, c.responsableEjecutar.hFirma);
+
+  const alturaSel = c.altura.find(o => o.key === datos.altura);
+  if (alturaSel) checkX(p1, alturaSel.x, alturaSel.y, 8);
+
+  // 2.- EPP (S/N por ítem)
+  c.epp.forEach(e => {
+    const v = (datos.epp || {})[e.key];
+    if (!v) return;
+    const yc = (Math.max(e.y0, e.y1) + Math.min(e.y0, e.y1)) / 2;
+    checkX(p1, v === 'si' ? c.eppCols.xS : c.eppCols.xN, yc, 7.5);
+  });
+
+  // 3.- Peligros potenciales (multi-select, 2 columnas comparten filas)
+  c.peligrosFilas.forEach((f, i) => {
+    const yc = (Math.max(f.y0, f.y1) + Math.min(f.y0, f.y1)) / 2;
+    const itIzq = c.peligrosIzq.items[i];
+    if (itIzq && (datos.peligros || {})[itIzq.key]) checkX(p1, c.peligrosIzq.x, yc, 7.5);
+    const itDer = c.peligrosDer.items[i];
+    if (itDer && (datos.peligros || {})[itDer.key]) checkX(p1, c.peligrosDer.x, yc, 7.5);
+  });
+
+  // 4.- Lista de verificación (S/N) + 5.- Sistema de acceso (multi-select) —
+  // comparten la misma grilla de filas.
+  c.listaSistemaFilas.forEach((f, i) => {
+    const yc = (Math.max(f.y0, f.y1) + Math.min(f.y0, f.y1)) / 2;
+    const itLista = c.lista[i];
+    if (itLista) {
+      const v = (datos.lista || {})[itLista.key];
+      if (v) checkX(p1, v === 'si' ? c.listaCols.xS : c.listaCols.xN, yc, 7.5);
+    }
+    const itSistema = c.sistemaAcceso[i];
+    if (itSistema && (datos.sistemaAcceso || {})[itSistema.key]) checkX(p1, c.sistemaCol.x, yc, 7.5);
+  });
+
+  // 6.- Condiciones meteorológicas (multi-select, una sola fila)
+  c.meteorologicas.forEach(m => {
+    if ((datos.meteorologicas || {})[m.key]) checkX(p1, m.x, c.meteorologicasY, 7.5);
+  });
+
+  // 7.- Evaluación de los riesgos (selección única, una sola fila)
+  const riesgoSel = c.evaluacionRiesgo.find(o => o.key === datos.evaluacionRiesgo);
+  if (riesgoSel) checkX(p1, riesgoSel.x, c.evaluacionRiesgoY, 8);
+
+  // 8.- Medidas correctivas (hasta 9 líneas de texto libre)
+  wrapLines(datos.medidasCorrectivas, 605, 7).slice(0, c.medidas.filas.length)
+    .forEach((l, i) => text(p1, l, c.medidas.filas[i].x, c.medidas.filas[i].y, 7));
+
+  // 9.- Finalización del trabajo (selección única) + validez
+  const finalSel = c.finalizacion.find(o => o.key === datos.finalizacion);
+  if (finalSel) checkX(p1, finalSel.x, c.finalizacionY, 8);
+  if (datos.fechaValidez) text(p1, ddmmyyyy(datos.fechaValidez), c.fechaValidez.x, c.fechaValidez.y, 7.5);
+  text(p1, datos.periodoValidez, c.periodoValidez.x, c.periodoValidez.y, 7.5);
+
+  // 10.- Registro del personal autorizado (página 2) — filas vacías (sin
+  // nombre) se omiten.
+  for (let i = 0; i < c.trabajadores.filasY.length; i++) {
+    const t = datos.trabajadores[i];
+    if (!t || !t.nombre) continue;
+    const f = c.trabajadores.filasY[i];
+    const yTop = Math.max(f.y0, f.y1), yBottom = Math.min(f.y0, f.y1), yc = (yTop + yBottom) / 2;
+    text(p2, t.nombre, c.trabajadores.xNombre, yc - 3, 7.5);
+    text(p2, t.rut, c.trabajadores.xRut, yc - 3, 7.5);
+    if (t.examen === 'si') checkX(p2, c.trabajadores.xExamenSI, yc, 7.5);
+    else if (t.examen === 'no') checkX(p2, c.trabajadores.xExamenNO, yc, 7.5);
+    text(p2, t.cargo, c.trabajadores.xCargo, yc - 3, 7.5);
+    await drawSig(p2, t.firma, c.trabajadores.xFirma, yBottom + 2, c.trabajadores.wFirma, c.trabajadores.hFirma);
+  }
+
+  const bytes = await pdfDoc.save();
+  const blob = new Blob([bytes], { type: 'application/pdf' });
+  const up = await uploadFile(blob, 'Programa Personalizado', 'SGSST-PER-006_' + (datos.obra || 'obra').replace(/\s+/g,'_') + '_' + datos.__fechaDia, 'pdf');
   return up.link;
 }
 

@@ -971,14 +971,14 @@ trabajo:
     `limpiarFirmaId`/`firmaEstaVacia`, un canvas por firma, mismo trazo
     azul tinta Bic que el resto de la app).
 - **`abrirMarcarDias`**: si la actividad calza con un formato que tiene
-  motor digital (`formatoDeActividad` + `CHECKLIST_GENERICO_CONFIG`), la
-  grilla de días cambia de checkbox simple a botones — tocar un día abre
+  motor digital (`formatoDeActividad` + `motorDigitalDe`), la grilla de
+  días cambia de checkbox simple a botones — tocar un día abre
   `abrirLlenarFormatoPrograma`, y un ícono aparte (si el día ya tiene
   documento) abre el PDF ya generado en una pestaña nueva. El botón
   "Guardar días" se oculta en ese caso (no aplica, cada día se guarda solo
-  al generar su documento). Actividades sin formato digital (o formatos
-  todavía no implementados, como 001/002/003/005/006) siguen 100% con el
-  checkbox manual de siempre — no se perdió esa funcionalidad.
+  al generar su documento). Actividades sin formato digital (por ahora solo
+  002, ver abajo) siguen 100% con el checkbox manual de siempre — no se
+  perdió esa funcionalidad.
 - **`PROGRAMA_PERSONALIZADO` columna `Registros PDF` (K)**: `"día:link"`
   separados por `|`, uno por cada día con documento generado — parseado
   por `parseRegistrosPdfPrograma`. Es un dato aparte de `Dias Marcados`
@@ -989,14 +989,68 @@ trabajo:
   mensual (`uploadFile(blob, 'Programa Personalizado', ...)`), no una
   carpeta por formato.
 
-**Pendiente** (ver lista de tareas): 001 (narrativo + tabla de acciones),
-003 (observación de conducta), 005 (matriz de EPP por trabajador) y 006
-(autorización de altura, 2 páginas) necesitan motor y UI propios porque su
-estructura es distinta a la tabla SI/NO/N/A; 002 (Check List Orden y Aseo)
-es el más distinto de todos — es una grilla mensual acumulada (23 ítems ×
-31 días en un solo documento), no "un PDF por día marcado" como los demás,
-así que necesita pensar su
-propio modelo de interacción antes de medir coordenadas.
+Los formatos con estructura distinta a la tabla SI/NO/N/A tienen motor y UI
+propios (no el genérico), cada uno registrado en `MOTORES_FORMATO_PROGRAMA`
+bajo su propio `tipo`:
+- **`SGSST-PER-001`** (Inspección - Observación, `inspeccion_observacion`):
+  narrativo con checklist de tipo de inspección (selección única),
+  descripción envuelta sobre 5 líneas reales del PDF, tabla de hasta 3
+  acciones correctivas/preventivas y 3 firmas sin cargo/fecha
+  (`INSPECCION_OBSERVACION_CONFIG`).
+- **`SGSST-PER-003`** (Observación de Conducta, `observacion_conducta`):
+  encabezado con firma chica de quien observa, identificación del
+  trabajador, dos bloques de texto libre (Observaciones/Recomendaciones)
+  envueltos sobre líneas reales, firma grande de "toma de conocimiento" del
+  trabajador y tabla de seguimiento de hasta 4 filas
+  (`OBSERVACION_CONDUCTA_CONFIG`). Es la única plantilla A4 (595.2×841.8) de
+  este grupo — el resto es tamaño carta apaisado.
+- **`SGSST-PER-005`** (Inspección de EPP, `inspeccion_epp`): matriz de hasta
+  11 trabajadores × 9 tipos de EPP, cada combinación es un solo select
+  (`usaBueno`/`usaRegular`/`usaMalo`/`no`) que dibuja S/N + letra B/R/M en
+  vez de dos checkbox sueltos (`INSPECCION_EPP_CONFIG`).
+- **`SGSST-PER-006`** (Autorización de Trabajos en Altura,
+  `autorizacion_altura`): el más grande y el único de 2 páginas
+  (`pdfDoc.getPages()[0]`/`[1]`, un solo `PDFDocument.load` para ambas —
+  no hay que fusionar nada). Página 1 combina varios patrones de selección
+  en una sola plantilla (`AUTORIZACION_ALTURA_CONFIG`):
+  - EPP (6 ítems) y Lista de Verificación (8 ítems) son S/N por ítem,
+    comparten columna de checkbox (`xS`/`xN`) igual que 004/008.
+  - Peligros Potenciales (14 ítems en 2 columnas de 7) y Sistema de Acceso
+    (9 ítems) son multi-selección (cualquier combinación de checkbox) —
+    Peligros y, por separado, Lista+Sistema **comparten la misma grilla de
+    filas** de la plantilla (`peligrosFilas`/`listaSistemaFilas`), así que
+    el generador itera una sola vez por fila y dibuja hasta 2-3 marcas por
+    fila según qué ítem cae en cada columna ese ciclo.
+  - Altura a la que trabajará, Condiciones Meteorológicas (con
+    "OTRAS"), Evaluación de Riesgos y Finalización del Trabajo son
+    selección única (radio) — cada uno en una sola fila de la plantilla
+    (`meteorologicasY`/`evaluacionRiesgoY`/`finalizacionY`).
+  - Medidas Correctivas son 9 líneas de texto libre reales (la primera más
+    angosta porque comparte fila con el rótulo "8.- MEDIDAS CORRECTIVAS:").
+  - Página 2 es el roster de hasta 19 trabajadores autorizados
+    (Nombre/RUT/Examen de altura S-N/Cargo/Firma), mismo patrón de
+    `filasY` + `Math.max/min` que EPP.
+  - Los ítems "Cortes por___"/"Contacto con___"/"otros" no capturan el
+    texto libre de la línea en blanco (solo el checkbox) — decisión de
+    alcance, no bug: medir el x exacto donde termina cada etiqueta variable
+    no valía el tiempo frente al resto del formato.
+
+Con esto, de los 6 formatos que faltaban solo queda **`SGSST-PER-002`**
+(Check List Orden y Aseo) — es el más distinto de todos: una grilla mensual
+acumulada (23 ítems × 31 días en un solo documento), no "un PDF por día
+marcado" como los demás, así que necesita pensar su propio modelo de
+interacción antes de medir coordenadas.
+
+**Firmas en celdas muy angostas** (lección de 006): `escalarFirmaCasillero`
+prioriza que el ancho (`w`) se respete y solo limita el alto a `h * 1.8`
+como máximo — si la fila real de la plantilla es más baja que eso (pasa en
+006 con "Autorizada por"/"Responsable a ejecutar", filas de ~9-19pt de
+alto total con la etiqueta ya ocupando la mayor parte) la firma renderizada
+puede terminar más alta que `h` y pisar el borde de la fila o la de arriba.
+Se valida SIEMPRE con una firma de prueba (no solo con `firma: ''`) — con
+el campo vacío el `drawSig` ni se llama y el problema queda invisible hasta
+que un usuario real firma. La corrección es bajar `h` (y ajustar `y` para
+que `y + h*1.8` no cruce el borde superior de la celda), no `w`.
 
 ## Generación de PDFs rellenados (Investigación de Accidente)
 
