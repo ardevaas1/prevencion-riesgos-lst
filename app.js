@@ -62,9 +62,9 @@ const CHARLAS_BIBLIOTECA = [
 //  - sin tipo (o tipo aún no implementado): la actividad sigue con el
 //    marcado manual de días de siempre (checkbox simple, sin PDF).
 const PROGRAMAS_PERSONALIZADOS = [
-  { codigo: 'SGSST-PER-001', nombre: 'Inspección - Observación', archivo: 'plantillas/programas/SGSST-PER-001_Inspeccion_Observacion.pdf' },
+  { codigo: 'SGSST-PER-001', nombre: 'Inspección - Observación', archivo: 'plantillas/programas/SGSST-PER-001_Inspeccion_Observacion.pdf', tipo: 'inspeccion_observacion' },
   { codigo: 'SGSST-PER-002', nombre: 'Check List Orden y Aseo', archivo: 'plantillas/programas/SGSST-PER-002_Check_List_Orden_y_Aseo.pdf' },
-  { codigo: 'SGSST-PER-003', nombre: 'Observación de Conducta', archivo: 'plantillas/programas/SGSST-PER-003_Observacion_de_Conducta.pdf' },
+  { codigo: 'SGSST-PER-003', nombre: 'Observación de Conducta', archivo: 'plantillas/programas/SGSST-PER-003_Observacion_de_Conducta.pdf', tipo: 'observacion_conducta' },
   { codigo: 'SGSST-PER-004', nombre: 'Inspección de Seguridad — Andamios', archivo: 'plantillas/programas/SGSST-PER-004_Inspeccion_Seguridad_Andamios.pdf', tipo: 'checklist_generico' },
   { codigo: 'SGSST-PER-005', nombre: 'Inspección de EPP', archivo: 'plantillas/programas/SGSST-PER-005_Inspeccion_de_EPP.pdf' },
   { codigo: 'SGSST-PER-006', nombre: 'Autorización de Trabajos en Altura', archivo: 'plantillas/programas/SGSST-PER-006_Autorizacion_Trabajos_en_Altura.pdf' },
@@ -4841,7 +4841,7 @@ function abrirMarcarDias(fila) {
   // cumplimiento del informe pasa a reflejar documentos reales, no un tilde
   // manual sin respaldo.
   const formato = formatoDeActividad(a.actividad);
-  const config = formato && CHECKLIST_GENERICO_CONFIG[formato.codigo];
+  const motor = motorDigitalDe(formato);
   // Calendario real del mes: encabezado Lun-Dom y celdas vacías antes del
   // día 1 para que cada día caiga en su columna real — así se ve de un
   // vistazo qué días son fin de semana (no se trabaja) sin tener que
@@ -4850,7 +4850,7 @@ function abrirMarcarDias(fila) {
   const headerHtml = DIAS_SEMANA_CORTO.map(n => `<div class="marcar-dia-header">${n}</div>`).join('');
   const vaciosHtml = Array.from({length: offset}, () => '<div class="marcar-dia marcar-dia--vacio"></div>').join('');
   let diasHtml;
-  if (config) {
+  if (motor) {
     diasHtml = Array.from({length: dias}, (_, i) => i+1).map(d => {
       const finde = esFinDeSemana(a.mes, d);
       const link = a.registrosPdf[d];
@@ -4873,8 +4873,8 @@ function abrirMarcarDias(fila) {
     }).join('');
   }
   document.getElementById('marcar-dias-grid').innerHTML = headerHtml + vaciosHtml + diasHtml;
-  document.getElementById('marcar-dias-guardar').classList.toggle('hidden', !!config);
-  document.getElementById('marcar-dias-nota-digital').classList.toggle('hidden', !config);
+  document.getElementById('marcar-dias-guardar').classList.toggle('hidden', !!motor);
+  document.getElementById('marcar-dias-nota-digital').classList.toggle('hidden', !motor);
   openPanel('panel-marcar-dias');
 }
 async function guardarMarcarDias() {
@@ -4942,43 +4942,80 @@ function htmlFormularioChecklistGenerico(a, config) {
     ${firmasHtml}
     <button class="btn-add" style="margin-top:16px;" onclick="guardarFormatoPrograma()">Generar documento y marcar día</button>`;
 }
+// Recolecta un canvas de firma como dataURL, o '' si el usuario no dibujó
+// nada — mismo helper para cualquier motor.
+function recolectarFirmaCanvas(canvasId) {
+  return firmaEstaVacia(canvasId) ? '' : document.getElementById(canvasId).toDataURL('image/png');
+}
+function recolectarChecklistGenerico(body, a, formato) {
+  const config = CHECKLIST_GENERICO_CONFIG[formato.codigo];
+  const val = (name) => (body.querySelector(`[name="${name}"]`) || {}).value || '';
+  const datos = { obra: a.obra, __fechaDia: a.__fechaDia };
+  config.campos.forEach(c => { datos[c.key] = val(`campo_${c.key}`); });
+  if (!datos.obra) datos.obra = a.obra;
+  datos.items = config.tabla.filas.map((f, i) => ({
+    resultado: (body.querySelector(`[name="item_${i}_resultado"]:checked`) || {}).value || '',
+    observacion: val(`item_${i}_observacion`),
+    responsable: val(`item_${i}_responsable`),
+    fecha: val(`item_${i}_fecha`),
+  }));
+  datos.firmas = config.firmas.map((f, i) => ({
+    nombre: val(`firma_${i}_nombre`), cargo: val(`firma_${i}_cargo`),
+    profesion: val(`firma_${i}_profesion`), fecha: val(`firma_${i}_fecha`),
+    firma: recolectarFirmaCanvas(`firma-formato-${i}`),
+  }));
+  return datos;
+}
+// Registro de motores de llenado digital, uno por "tipo" de
+// PROGRAMAS_PERSONALIZADOS — agregar un formato nuevo (que no calce con
+// ninguno existente) es agregar una entrada acá con sus 4 funciones,
+// sin tocar abrirMarcarDias/abrirLlenarFormatoPrograma/guardarFormatoPrograma.
+const MOTORES_FORMATO_PROGRAMA = {
+  checklist_generico: {
+    html: (a, formato) => htmlFormularioChecklistGenerico(a, CHECKLIST_GENERICO_CONFIG[formato.codigo]),
+    initFirmas: (formato) => CHECKLIST_GENERICO_CONFIG[formato.codigo].firmas.forEach((f, i) => setTimeout(() => initFirmaPad(`firma-formato-${i}`), 80)),
+    recolectar: (body, a, formato) => recolectarChecklistGenerico(body, a, formato),
+    generarPdf: (formato, datos) => generarPdfChecklistGenerico(formato.codigo, datos),
+  },
+  inspeccion_observacion: {
+    html: (a) => htmlFormularioInspeccionObservacion(a),
+    initFirmas: () => INSPECCION_OBSERVACION_CONFIG.firmas.forEach((f, i) => setTimeout(() => initFirmaPad(`firma-formato-${i}`), 80)),
+    recolectar: (body, a) => recolectarInspeccionObservacion(body, a),
+    generarPdf: (formato, datos) => generarPdfInspeccionObservacion(datos),
+  },
+  observacion_conducta: {
+    html: (a) => htmlFormularioObservacionConducta(a),
+    initFirmas: () => [0, 1].forEach(i => setTimeout(() => initFirmaPad(`firma-formato-${i}`), 80)),
+    recolectar: (body, a) => recolectarObservacionConducta(body, a),
+    generarPdf: (formato, datos) => generarPdfObservacionConducta(datos),
+  },
+};
+function motorDigitalDe(formato) {
+  return formato && MOTORES_FORMATO_PROGRAMA[formato.tipo];
+}
 function abrirLlenarFormatoPrograma(dia) {
   const a = allProgramaPersonalizado.find(x => x.fila === marcarDiasFila);
   if (!a) return;
   const formato = formatoDeActividad(a.actividad);
-  const config = formato && CHECKLIST_GENERICO_CONFIG[formato.codigo];
-  if (!config) { toast('Este formato todavía no tiene llenado digital', 'error'); return; }
-  llenarFormatoCtx = { filaActividad: a.fila, dia, formato, config };
+  const motor = motorDigitalDe(formato);
+  if (!motor) { toast('Este formato todavía no tiene llenado digital', 'error'); return; }
+  llenarFormatoCtx = { filaActividad: a.fila, dia, formato, motor };
   document.getElementById('pnl-title-llenar-formato').textContent = `${formato.nombre} — ${fechaDia(a.mes, dia)}`;
   document.getElementById('llenar-formato-body').innerHTML =
-    htmlFormularioChecklistGenerico({ ...a, __fechaDia: fechaDia(a.mes, dia) }, config);
-  config.firmas.forEach((f, i) => setTimeout(() => initFirmaPad(`firma-formato-${i}`), 80));
+    motor.html({ ...a, __fechaDia: fechaDia(a.mes, dia) }, formato);
+  motor.initFirmas(formato);
   openPanel('panel-llenar-formato-programa');
 }
 async function guardarFormatoPrograma() {
   if (!llenarFormatoCtx) return;
-  const { filaActividad, dia, formato, config } = llenarFormatoCtx;
+  const { filaActividad, dia, formato, motor } = llenarFormatoCtx;
   const a = allProgramaPersonalizado.find(x => x.fila === filaActividad);
   if (!a) return;
   const body = document.getElementById('llenar-formato-body');
-  const val = (name) => (body.querySelector(`[name="${name}"]`) || {}).value || '';
   try {
-    const datos = { obra: a.obra, __fechaDia: fechaDia(a.mes, dia) };
-    config.campos.forEach(c => { datos[c.key] = val(`campo_${c.key}`); });
-    if (!datos.obra) datos.obra = a.obra;
-    datos.items = config.tabla.filas.map((f, i) => ({
-      resultado: (body.querySelector(`[name="item_${i}_resultado"]:checked`) || {}).value || '',
-      observacion: val(`item_${i}_observacion`),
-      responsable: val(`item_${i}_responsable`),
-      fecha: val(`item_${i}_fecha`),
-    }));
-    datos.firmas = config.firmas.map((f, i) => ({
-      nombre: val(`firma_${i}_nombre`), cargo: val(`firma_${i}_cargo`),
-      profesion: val(`firma_${i}_profesion`), fecha: val(`firma_${i}_fecha`),
-      firma: firmaEstaVacia(`firma-formato-${i}`) ? '' : document.getElementById(`firma-formato-${i}`).toDataURL('image/png'),
-    }));
+    const datos = motor.recolectar(body, { ...a, __fechaDia: fechaDia(a.mes, dia) }, formato);
     toast('Generando documento...', 'ok');
-    const link = await generarPdfChecklistGenerico(formato.codigo, datos);
+    const link = await motor.generarPdf(formato, datos);
     await ensureToken();
     const nuevosRegistros = { ...a.registrosPdf, [dia]: link };
     const strRegistros = Object.entries(nuevosRegistros).map(([d, l]) => `${d}:${l}`).join('|');
@@ -5080,6 +5117,318 @@ async function generarPdfChecklistGenerico(codigo, datos) {
   const bytes = await pdfDoc.save();
   const blob = new Blob([bytes], { type: 'application/pdf' });
   const up = await uploadFile(blob, 'Programa Personalizado', formato.codigo + '_' + (datos.obra || 'obra').replace(/\s+/g,'_') + '_' + datos.__fechaDia, 'pdf');
+  return up.link;
+}
+
+// ── SGSST-PER-001 (Inspección/Observación de Seguridad) — motor propio:
+// identificación + 9 checkboxes de tipo (single-select) + descripción
+// libre sobre 5 líneas en blanco + tabla de 3 acciones correctivas +
+// 3 firmas (Realizado por / Informado a / Cerrado por). Coordenadas
+// medidas igual que CHECKLIST_GENERICO_CONFIG (pypdfium2, puntos PDF).
+const INSPECCION_OBSERVACION_CONFIG = {
+  campos: [
+    { key: 'nombreCargo', label: 'Nombre y cargo (quien inspecciona)', x: 220, y: 660 },
+    { key: 'fecha', label: 'Fecha', x: 90, y: 639, tipo: 'fecha' },
+    { key: 'areaObra', label: 'Área / Obra', x: 384, y: 639 },
+    { key: 'responsableArea', label: 'Responsable del área', x: 172, y: 617 },
+  ],
+  tipos: [
+    { key: 'terreno', label: 'Inspección terreno', x: 216.1, y: 552.0 },
+    { key: 'oficina', label: 'Inspección oficina', x: 396.8, y: 552.0 },
+    { key: 'mAmbiente', label: 'Inspección M. Ambiente', x: 563.5, y: 552.0 },
+    { key: 'maquinaria', label: 'Inspección maquinaria', x: 216.1, y: 531.4 },
+    { key: 'trabajadores', label: 'Observación trabajadores', x: 396.8, y: 531.4 },
+    { key: 'general', label: 'Inspección general', x: 563.5, y: 531.4 },
+    { key: 'comedores', label: 'Inspección comedores', x: 216.1, y: 514.0 },
+    { key: 'instalacionFaena', label: 'Inspección instalación de faena', x: 396.8, y: 514.0 },
+    { key: 'otra', label: 'Otra', x: 563.5, y: 514.0 },
+  ],
+  descripcion: { x: 53, xFin: 575, filas: [
+    { y0: 434.5, y1: 413.9 }, { y0: 413.9, y1: 393.3 }, { y0: 393.3, y1: 372.7 },
+    { y0: 372.7, y1: 351.9 }, { y0: 351.9, y1: 331.5 },
+  ] },
+  acciones: {
+    xDesc: 49.4, xPlazo: 323.3, xResp: 407.9, xEstado: 484.0, xFin: 581.2,
+    filas: [ { y0: 249.7, y1: 229.1 }, { y0: 229.1, y1: 208.4 }, { y0: 208.4, y1: 187.9 } ],
+  },
+  firmas: [
+    { key: 'realizado', label: 'Realizado por (firma)', xNombre: 60, yNombre: 152, xFirma: 55, yFirma: 92, wFirma: 165, hFirma: 35 },
+    { key: 'informado', label: 'Informado a (nombre y firma)', xNombre: 236, yNombre: 152, xFirma: 231, yFirma: 128, wFirma: 145, hFirma: 30 },
+    { key: 'cerrado', label: 'Cerrado por (nombre y firma)', xNombre: 389, yNombre: 152, xFirma: 384, yFirma: 92, wFirma: 190, hFirma: 35 },
+  ],
+};
+function htmlFormularioInspeccionObservacion(a) {
+  const c = INSPECCION_OBSERVACION_CONFIG;
+  const camposHtml = c.campos.map(cf => `
+    <div class="form-group"><label>${esc(cf.label)}</label>
+      <input name="campo_${cf.key}" type="${cf.tipo === 'fecha' ? 'date' : 'text'}" value="${cf.tipo === 'fecha' ? esc(a.__fechaDia) : ''}">
+    </div>`).join('');
+  const tiposHtml = c.tipos.map(t => `
+    <label style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+      <input type="radio" name="tipoInspeccion" value="${t.key}"> <span>${esc(t.label)}</span>
+    </label>`).join('');
+  const accionesHtml = c.acciones.filas.map((f, i) => `
+    <div class="checklist-generico-item">
+      <div class="checklist-generico-item-texto">Acción correctiva/preventiva ${i+1}</div>
+      <input name="accion_${i}_descripcion" placeholder="Descripción">
+      <div class="checklist-generico-item-fila2">
+        <input name="accion_${i}_plazo" type="date" placeholder="Plazo de cumplimiento">
+        <input name="accion_${i}_responsable" placeholder="Responsable">
+      </div>
+      <input name="accion_${i}_estado" placeholder="Estado (ej. Pendiente, En curso, Cerrado)">
+    </div>`).join('');
+  const firmasHtml = c.firmas.map((f, i) => `
+    <div class="sec-label" style="margin-top:18px;">${esc(f.label)}</div>
+    <div class="form-group"><label>Nombre</label><input name="firma_${i}_nombre"></div>
+    <div class="form-group">
+      <label>Firma</label>
+      <div class="firma-box"><canvas id="firma-formato-${i}"></canvas></div>
+      <div class="firma-actions"><button type="button" onclick="limpiarFirmaId('firma-formato-${i}')">Borrar firma</button></div>
+    </div>`).join('');
+  return `
+    <div class="sec-label">Identificación</div>
+    ${camposHtml}
+    <div class="sec-label" style="margin-top:18px;">Tipo de inspección/observación</div>
+    ${tiposHtml}
+    <div class="sec-label" style="margin-top:18px;">Descripción</div>
+    <div class="form-group"><textarea name="descripcion" rows="5" placeholder="Describe lo observado"></textarea></div>
+    <div class="sec-label" style="margin-top:18px;">Recomendaciones y/o acciones correctivas/preventivas</div>
+    ${accionesHtml}
+    ${firmasHtml}
+    <button class="btn-add" style="margin-top:16px;" onclick="guardarFormatoPrograma()">Generar documento y marcar día</button>`;
+}
+function recolectarInspeccionObservacion(body, a) {
+  const c = INSPECCION_OBSERVACION_CONFIG;
+  const val = (name) => (body.querySelector(`[name="${name}"]`) || {}).value || '';
+  const datos = { obra: a.obra, __fechaDia: a.__fechaDia };
+  c.campos.forEach(cf => { datos[cf.key] = val(`campo_${cf.key}`); });
+  if (!datos.areaObra) datos.areaObra = a.obra;
+  datos.tipoInspeccion = (body.querySelector('[name="tipoInspeccion"]:checked') || {}).value || '';
+  datos.descripcion = (body.querySelector('[name="descripcion"]') || {}).value || '';
+  datos.acciones = c.acciones.filas.map((f, i) => ({
+    descripcion: val(`accion_${i}_descripcion`), plazo: val(`accion_${i}_plazo`),
+    responsable: val(`accion_${i}_responsable`), estado: val(`accion_${i}_estado`),
+  }));
+  datos.firmas = c.firmas.map((f, i) => ({
+    nombre: val(`firma_${i}_nombre`), firma: recolectarFirmaCanvas(`firma-formato-${i}`),
+  }));
+  return datos;
+}
+async function generarPdfInspeccionObservacion(datos) {
+  const c = INSPECCION_OBSERVACION_CONFIG;
+  const { PDFDocument, rgb, StandardFonts } = await cargarPdfLib();
+  const templateBytes = await fetch('plantillas/programas/SGSST-PER-001_Inspeccion_Observacion.pdf').then(r => r.arrayBuffer());
+  const pdfDoc = await PDFDocument.load(templateBytes);
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const page = pdfDoc.getPages()[0];
+
+  function text(str, x, y, size, bold) {
+    if (!str) return;
+    page.drawText(String(str), { x, y, size: size || 8, font: bold ? fontBold : font, color: rgb(0,0,0) });
+  }
+  function wrapLines(str, maxWidth, size) {
+    const words = (str || '').split(/\s+/).filter(Boolean);
+    const lines = []; let current = '';
+    for (const w of words) {
+      const test = current ? current + ' ' + w : w;
+      if (font.widthOfTextAtSize(test, size) > maxWidth && current) { lines.push(current); current = w; }
+      else current = test;
+    }
+    if (current) lines.push(current);
+    return lines;
+  }
+  function checkX(xCenter, yCenter, size) {
+    const s = size || 9;
+    page.drawText('X', { x: xCenter - s * 0.32, y: yCenter - s * 0.35, size: s, font: fontBold, color: rgb(0,0,0) });
+  }
+  async function drawSig(dataUrl, x, y, w, h) {
+    if (!dataUrl) return;
+    const bytes = Uint8Array.from(atob(dataUrl.split(',')[1]), ch => ch.charCodeAt(0));
+    const img = await pdfDoc.embedPng(bytes);
+    const dims = escalarFirmaCasillero(img, w, h);
+    page.drawImage(img, { x, y, width: dims.width, height: dims.height });
+  }
+
+  c.campos.forEach(cf => text(cf.tipo === 'fecha' ? ddmmyyyy(datos[cf.key]) : datos[cf.key], cf.x, cf.y, 8));
+
+  const tipoSel = c.tipos.find(t => t.key === datos.tipoInspeccion);
+  if (tipoSel) checkX(tipoSel.x, tipoSel.y, 8);
+
+  // Descripción: se envuelve sobre las 5 líneas en blanco del PDF real.
+  const lineasDesc = wrapLines(datos.descripcion, c.descripcion.xFin - c.descripcion.x - 4, 8.5).slice(0, c.descripcion.filas.length);
+  lineasDesc.forEach((l, i) => {
+    const f = c.descripcion.filas[i];
+    text(l, c.descripcion.x, Math.max(f.y0, f.y1) - 8, 8.5);
+  });
+
+  // Tabla de acciones correctivas/preventivas (filas vacías se omiten).
+  c.acciones.filas.forEach((f, i) => {
+    const acc = datos.acciones[i] || {};
+    if (!acc.descripcion && !acc.plazo && !acc.responsable && !acc.estado) return;
+    const yTop = Math.max(f.y0, f.y1), yBottom = Math.min(f.y0, f.y1);
+    const yc = (yTop + yBottom) / 2;
+    if (acc.descripcion) {
+      const lineH = 7.5;
+      const maxLines = Math.max(1, Math.floor((yTop - yBottom - 3) / lineH));
+      wrapLines(acc.descripcion, c.acciones.xPlazo - c.acciones.xDesc - 6, 6.5).slice(0, maxLines)
+        .forEach((l, li) => text(l, c.acciones.xDesc + 3, yTop - 8 - li * lineH, 6.5));
+    }
+    if (acc.plazo) text(ddmmyyyy(acc.plazo), c.acciones.xPlazo + 3, yc - 3, 6.5);
+    if (acc.responsable) text(acc.responsable, c.acciones.xResp + 3, yc - 3, 6.5);
+    if (acc.estado) text(acc.estado, c.acciones.xEstado + 3, yc - 3, 6.5);
+  });
+
+  // Firmas (solo nombre + dibujo — este formato no trae Cargo/Fecha por firmante).
+  c.firmas.forEach((f, i) => text((datos.firmas[i] || {}).nombre, f.xNombre, f.yNombre, 7));
+  for (let i = 0; i < c.firmas.length; i++) {
+    await drawSig((datos.firmas[i] || {}).firma, c.firmas[i].xFirma, c.firmas[i].yFirma, c.firmas[i].wFirma, c.firmas[i].hFirma);
+  }
+
+  const bytes = await pdfDoc.save();
+  const blob = new Blob([bytes], { type: 'application/pdf' });
+  const up = await uploadFile(blob, 'Programa Personalizado', 'SGSST-PER-001_' + (datos.obra || 'obra').replace(/\s+/g,'_') + '_' + datos.__fechaDia, 'pdf');
+  return up.link;
+}
+
+// ── SGSST-PER-003 (Observación de Conducta) — motor propio: encabezado con
+// firma chica del observador + identificación del trabajador observado +
+// dos bloques de texto libre (Observaciones/Recomendaciones, envueltos
+// sobre las líneas en blanco reales) + firma grande del trabajador (toma
+// de conocimiento) + tabla de seguimiento (hasta 4 filas nota+fecha). Esta
+// plantilla es tamaño A4 (595.2×841.8), a diferencia de las demás (Carta) —
+// no cambia nada del código, las coordenadas ya vienen medidas para esa hoja.
+const OBSERVACION_CONDUCTA_CONFIG = {
+  campos: [
+    { key: 'proyecto', label: 'Proyecto', x: 138, y: 692 },
+    { key: 'realizadoPor', label: 'Realizado por', x: 138, y: 677 },
+    { key: 'cargoRealiza', label: 'Cargo (de quien realiza)', x: 347, y: 677 },
+    { key: 'area', label: 'Área', x: 138, y: 663 },
+    { key: 'fecha', label: 'Fecha', x: 347, y: 663, tipo: 'fecha' },
+    { key: 'lugar', label: 'Lugar', x: 138, y: 647 },
+  ],
+  trabajador: {
+    nombre: { key: 'nombreTrabajador', label: 'Nombre del trabajador observado', x: 138, y: 594 },
+    cargo: { key: 'cargoTrabajador', label: 'Cargo', x: 138, y: 578 },
+    especialidad: { key: 'especialidadTrabajador', label: 'Especialidad', x: 90, y: 563.5 },
+  },
+  observaciones: { x: 22, xFin: 573, filas: Array.from({length: 11}, (_, i) => ({ y0: 542.3 - i*12.6, y1: 542.3 - (i+1)*12.6 })) },
+  recomendaciones: { x: 22, xFin: 573, filas: Array.from({length: 8}, (_, i) => ({ y0: 387.3 - i*15.9, y1: 387.3 - (i+1)*15.9 })) },
+  firmaRealiza: { x: 347, y: 645, w: 90, h: 13 },
+  firmaTrabajador: { x: 370, y: 232, w: 185, h: 26 },
+  seguimiento: {
+    xNota: 22, xFecha: 460,
+    filas: [ { y0: 195.9, y1: 178.1 }, { y0: 178.1, y1: 162.2 }, { y0: 162.2, y1: 146.4 }, { y0: 146.4, y1: 126.8 } ],
+  },
+};
+function htmlFormularioObservacionConducta(a) {
+  const c = OBSERVACION_CONDUCTA_CONFIG;
+  const camposHtml = c.campos.map(cf => `
+    <div class="form-group"><label>${esc(cf.label)}</label>
+      <input name="campo_${cf.key}" type="${cf.tipo === 'fecha' ? 'date' : 'text'}" value="${cf.tipo === 'fecha' ? esc(a.__fechaDia) : ''}">
+    </div>`).join('');
+  const seguimientoHtml = c.seguimiento.filas.map((f, i) => `
+    <div class="checklist-generico-item-fila2" style="margin-bottom:8px;">
+      <input name="seguimiento_${i}_nota" placeholder="Seguimiento ${i+1}">
+      <input name="seguimiento_${i}_fecha" type="date">
+    </div>`).join('');
+  return `
+    <div class="sec-label">Identificación</div>
+    ${camposHtml}
+    <div class="form-group">
+      <label>Firma de quien realiza (chica en el encabezado)</label>
+      <div class="firma-box"><canvas id="firma-formato-0"></canvas></div>
+      <div class="firma-actions"><button type="button" onclick="limpiarFirmaId('firma-formato-0')">Borrar firma</button></div>
+    </div>
+    <div class="sec-label" style="margin-top:18px;">Trabajador observado</div>
+    <div class="form-group"><label>${esc(c.trabajador.nombre.label)}</label><input name="campo_nombreTrabajador"></div>
+    <div class="form-group"><label>${esc(c.trabajador.cargo.label)}</label><input name="campo_cargoTrabajador"></div>
+    <div class="form-group"><label>${esc(c.trabajador.especialidad.label)}</label><input name="campo_especialidadTrabajador"></div>
+    <div class="sec-label" style="margin-top:18px;">Observaciones</div>
+    <div class="form-group"><textarea name="observaciones" rows="5" placeholder="Qué se observó (conducta positiva o negativa)"></textarea></div>
+    <div class="sec-label" style="margin-top:18px;">Recomendaciones</div>
+    <div class="form-group"><textarea name="recomendaciones" rows="4" placeholder="Recomendaciones para el trabajador"></textarea></div>
+    <div class="sec-label" style="margin-top:18px;">Toma de conocimiento — firma del trabajador</div>
+    <div class="form-group">
+      <div class="firma-box"><canvas id="firma-formato-1"></canvas></div>
+      <div class="firma-actions"><button type="button" onclick="limpiarFirmaId('firma-formato-1')">Borrar firma</button></div>
+    </div>
+    <div class="sec-label" style="margin-top:18px;">Seguimiento (opcional)</div>
+    ${seguimientoHtml}
+    <button class="btn-add" style="margin-top:16px;" onclick="guardarFormatoPrograma()">Generar documento y marcar día</button>`;
+}
+function recolectarObservacionConducta(body, a) {
+  const c = OBSERVACION_CONDUCTA_CONFIG;
+  const val = (name) => (body.querySelector(`[name="${name}"]`) || {}).value || '';
+  const datos = { obra: a.obra, __fechaDia: a.__fechaDia };
+  c.campos.forEach(cf => { datos[cf.key] = val(`campo_${cf.key}`); });
+  if (!datos.proyecto) datos.proyecto = a.obra;
+  datos.nombreTrabajador = val('campo_nombreTrabajador');
+  datos.cargoTrabajador = val('campo_cargoTrabajador');
+  datos.especialidadTrabajador = val('campo_especialidadTrabajador');
+  datos.observaciones = val('observaciones');
+  datos.recomendaciones = val('recomendaciones');
+  datos.firmaRealiza = recolectarFirmaCanvas('firma-formato-0');
+  datos.firmaTrabajador = recolectarFirmaCanvas('firma-formato-1');
+  datos.seguimiento = c.seguimiento.filas.map((f, i) => ({ nota: val(`seguimiento_${i}_nota`), fecha: val(`seguimiento_${i}_fecha`) }));
+  return datos;
+}
+async function generarPdfObservacionConducta(datos) {
+  const c = OBSERVACION_CONDUCTA_CONFIG;
+  const { PDFDocument, rgb, StandardFonts } = await cargarPdfLib();
+  const templateBytes = await fetch('plantillas/programas/SGSST-PER-003_Observacion_de_Conducta.pdf').then(r => r.arrayBuffer());
+  const pdfDoc = await PDFDocument.load(templateBytes);
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const page = pdfDoc.getPages()[0];
+
+  function text(str, x, y, size) {
+    if (!str) return;
+    page.drawText(String(str), { x, y, size: size || 8, font, color: rgb(0,0,0) });
+  }
+  function wrapLines(str, maxWidth, size) {
+    const words = (str || '').split(/\s+/).filter(Boolean);
+    const lines = []; let current = '';
+    for (const w of words) {
+      const test = current ? current + ' ' + w : w;
+      if (font.widthOfTextAtSize(test, size) > maxWidth && current) { lines.push(current); current = w; }
+      else current = test;
+    }
+    if (current) lines.push(current);
+    return lines;
+  }
+  function textoEnLineas(str, cfg, size) {
+    wrapLines(str, cfg.xFin - cfg.x - 4, size).slice(0, cfg.filas.length)
+      .forEach((l, i) => text(l, cfg.x, Math.max(cfg.filas[i].y0, cfg.filas[i].y1) - (size + 2), size));
+  }
+  async function drawSig(dataUrl, x, y, w, h) {
+    if (!dataUrl) return;
+    const bytes = Uint8Array.from(atob(dataUrl.split(',')[1]), ch => ch.charCodeAt(0));
+    const img = await pdfDoc.embedPng(bytes);
+    const dims = escalarFirmaCasillero(img, w, h);
+    page.drawImage(img, { x, y, width: dims.width, height: dims.height });
+  }
+
+  c.campos.forEach(cf => text(cf.tipo === 'fecha' ? ddmmyyyy(datos[cf.key]) : datos[cf.key], cf.x, cf.y, 8));
+  text(datos.nombreTrabajador, c.trabajador.nombre.x, c.trabajador.nombre.y, 8);
+  text(datos.cargoTrabajador, c.trabajador.cargo.x, c.trabajador.cargo.y, 8);
+  text(datos.especialidadTrabajador, c.trabajador.especialidad.x, c.trabajador.especialidad.y, 8);
+
+  textoEnLineas(datos.observaciones, c.observaciones, 8);
+  textoEnLineas(datos.recomendaciones, c.recomendaciones, 8);
+
+  await drawSig(datos.firmaRealiza, c.firmaRealiza.x, c.firmaRealiza.y, c.firmaRealiza.w, c.firmaRealiza.h);
+  await drawSig(datos.firmaTrabajador, c.firmaTrabajador.x, c.firmaTrabajador.y, c.firmaTrabajador.w, c.firmaTrabajador.h);
+
+  c.seguimiento.filas.forEach((f, i) => {
+    const s = datos.seguimiento[i] || {};
+    const yc = (Math.max(f.y0,f.y1) + Math.min(f.y0,f.y1)) / 2;
+    if (s.nota) text(s.nota, c.seguimiento.xNota + 2, yc - 3, 7.5);
+    if (s.fecha) text(ddmmyyyy(s.fecha), c.seguimiento.xFecha + 2, yc - 3, 7.5);
+  });
+
+  const bytes = await pdfDoc.save();
+  const blob = new Blob([bytes], { type: 'application/pdf' });
+  const up = await uploadFile(blob, 'Programa Personalizado', 'SGSST-PER-003_' + (datos.obra || 'obra').replace(/\s+/g,'_') + '_' + datos.__fechaDia, 'pdf');
   return up.link;
 }
 
