@@ -134,7 +134,9 @@ para el mapeo exacto de índices):
   (prellenado de DIAT/Investigación)" más abajo. `Correo` (AA, opcional).
   `Especialidades Supervisor` (AB, lista separada por `; `, solo aplica si
   `Es Supervisor` = "Sí" — vacío = supervisor general) ver "Supervisor de
-  obra" en Módulos de la app.
+  obra" en Módulos de la app. `Supervisor Asignado` (AC, nombre del
+  supervisor de este trabajador) ver "Asignación de supervisor y modo
+  restringido de supervisor" más abajo.
 - `INSPECCIONES`: `Obra` (M).
 - `INCIDENTES`: `Respaldo Cierre` (N), `Obra` (O), `Días Perdidos` (P),
   `Investigación Estado` (Q), `Investigación Responsable` (R), `Investigación
@@ -817,6 +819,76 @@ que Trabajadores/Inspecciones/...).
   31 columnas de día no entran con un tamaño de letra legible en una hoja
   carta vertical. `dibujarFilaTabla` es un helper genérico de filas con
   bordes que se reutiliza tanto en la tabla resumen como en la grilla.
+
+## Asignación de supervisor y modo restringido de supervisor
+
+A pedido explícito ("prefiero que sea manual y que luego la persona
+supervisora al entrar en la app vea solo lo que le compete a el"), quién
+está a cargo de quién dejó de inferirse solo de la Obra (antes
+`trabajadoresACargoDe` devolvía "todos los demás activos de la misma
+obra", así que dos supervisores de una obra compartían exactamente el
+mismo equipo) y pasó a ser una asignación manual real:
+
+- **`TRABAJADORES` columna `Supervisor Asignado` (AC)**: guarda el nombre
+  del supervisor de ese trabajador (mismo patrón de cruce por nombre que
+  el resto de la app, no por ID). Dos formas de cargarlo, mismo dato de
+  fondo:
+  - Campo "Supervisor asignado" en el formulario de Nuevo Trabajador y en
+    un panel dedicado (`abrirAsignarSupervisor`/`panel-asignar-supervisor`)
+    accesible desde la ficha de cualquier trabajador que no sea supervisor.
+  - Checklist en bloque desde la ficha del supervisor
+    (`abrirEditarEquipoSupervisor`/`panel-editar-equipo-supervisor`): lista
+    a todos los trabajadores (no supervisores) de la obra con checkbox, para
+    armar/editar el equipo completo de una sola vez. Solo hace `PUT` de las
+    filas que realmente cambiaron.
+  - `trabajadoresACargoDe(supervisor)` ahora filtra por
+    `t.supervisorAsignado === supervisor.nombre` — esto también corrigió
+    de paso la duplicación de EPP/personal nuevo entre supervisores de una
+    misma obra que tenía el informe de Programa Personalizado.
+  - La ficha de un trabajador sin asignar todavía cae de vuelta al viejo
+    criterio automático (`supervisorDeObra`) solo para no dejar el campo
+    "Supervisado por" vacío de golpe en datos antiguos.
+
+- **Modo restringido de supervisor (`miSupervisorPerfil`,
+  `detectarModoSupervisor()` en `cargarTodo()`)**: si el correo de la
+  cuenta logueada coincide con el `Correo` de un trabajador `Es Supervisor`
+  Activo, esa cuenta queda fija a su propia Obra (no elige obra, el botón
+  "Cambiar obra" se oculta con `.obra-bar--fijo` — `abrirSelectorObraActiva`
+  también lo bloquea por si acaso) y, dentro de los módulos con datos de
+  trabajadores, solo ve lo relacionado a su equipo asignado
+  (`miEquipoActual()`):
+  - **Trabajadores**: solo su equipo (más él mismo, para poder llegar a su
+    propia ficha y al botón "Editar equipo a cargo" — si no, no tendría
+    cómo entrar ahí).
+  - **Incidentes**: solo los que involucran a alguien de su equipo.
+  - **Inspecciones** y **Charlas**: no tienen un trabajador asociado (son
+    por área/tema y por relator/asistentes respectivamente), así que se
+    filtran por quién las hizo (`inspector`/`relator` === él).
+  - **HCR**: filtra directo por su columna `Supervisor`.
+  - **Programa Personalizado**: entra directo a su propio detalle
+    (`contenidoDetalleProgramaSupervisor`, la misma vista que ve un admin
+    al abrir la ficha de un supervisor) — sin lista del resto de
+    supervisores de la obra ni botón "Generar informe PDF" (ese informe es
+    de gestión de toda la obra, no "lo que le compete a él"). El formulario
+    de nueva actividad también le queda fijo a sí mismo (Obra y Supervisor
+    deshabilitados).
+  - **Procedimientos (PTS)**: sin cambios, se ve igual que para cualquier
+    cuenta — no tiene Obra ni supervisor en su modelo de datos, así que no
+    hay nada que filtrar.
+  - **Entrega de EPP**: a pedido explícito, queda **fuera de su vista por
+    completo** — ni la tarjeta del módulo en Inicio, ni la sección
+    "Historial de EPP entregado" dentro de una ficha de trabajador
+    (`irPagina` también redirige a Inicio si algo intenta abrir esa página
+    igual).
+  - Los números de Inicio (Dashboard) también quedan acotados al mismo
+    criterio, para que no digan "15 trabajadores" cuando el módulo
+    Trabajadores solo lista a 5.
+  - **Fuera de alcance a propósito**: los formularios de creación (Nuevo
+    trabajador, Nueva inspección, Nuevo incidente, etc.) siguen sin
+    restringir a quién se puede registrar — la restricción es solo de
+    lectura/listado, no de qué puede operar. Los índices de seguridad
+    (Tasa Accidentabilidad, etc.) tampoco se acotan al equipo, siguen
+    siendo de toda la obra.
 
 ## Generación de PDFs rellenados (Investigación de Accidente)
 

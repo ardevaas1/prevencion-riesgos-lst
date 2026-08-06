@@ -175,6 +175,15 @@ let miEmpresaSubcontratista = null;
 // (ver llamarWebAppSubcontratista) — se detecta solo, no hay que
 // configurar nada aparte de SUBCONTRATISTAS_WEBAPP_URL en config.js.
 let subcontratistaUsaProxy = false;
+// Si el correo logueado coincide con el Correo de un trabajador marcado
+// "Es Supervisor" (Activo), queda acá su ficha completa — activa el modo
+// restringido de supervisor: solo ve lo de su propia obra y, dentro de los
+// módulos con datos de trabajadores, solo lo relacionado a su equipo
+// asignado (Trabajador.Supervisor Asignado) — ver
+// detectarModoSupervisor()/miEquipoActual() y los render* de cada módulo.
+// A diferencia de Subcontratistas, SÍ ve el resto de la UI (sidebar,
+// Inicio, etc.), solo cambia qué datos le llegan filtrados.
+let miSupervisorPerfil = null;
 
 // ── OAuth / Google Identity Services ───────────────────────────
 let tokenClient = null;
@@ -599,7 +608,11 @@ function renderModulosHome() {
     { key: 'hcr', nombre: 'Hoja de Control de Riesgos (HCR)', desc: 'Registro diario por cuadrilla, antes de ejecutar el trabajo' },
     { key: 'subcontratistas', nombre: 'Subcontratistas', desc: 'Documentación y control por empresa' },
     { key: 'programapersonalizado', nombre: 'Programa Personalizado', desc: 'Cumplimiento mensual por supervisor' },
-  ].map(m => ({ ...m, color: MODULOS_COLOR[m.key] }));
+  ]
+    // Un supervisor logueado (ver miSupervisorPerfil) no ve Entrega de EPP
+    // en absoluto — a pedido explícito, ese módulo queda fuera de su vista.
+    .filter(m => !(miSupervisorPerfil && m.key === 'epp'))
+    .map(m => ({ ...m, color: MODULOS_COLOR[m.key] }));
   setListHTML('modulos-home', modulos.map(m => `
     <div class="modulo-card modulo-card--${m.color}" onclick="irPagina('${m.key}')">
       <div class="modulo-icon modulo-icon--${m.color}">${ICONS[m.key]}</div>
@@ -737,6 +750,7 @@ let allProgramaPersonalizado = [];
 // Obra; Procedimientos es una biblioteca general de documentos que hoy no
 // tiene ese campo en el modelo de datos.
 function renderModulosPrincipales() {
+  renderModulosHome();
   renderDashboard();
   renderTrabajadores(); renderInspecciones(); renderIncidentes(); renderProcedimientos(); renderEpp(); renderCharlas(); renderHcr();
   renderSubcontratistas();
@@ -802,7 +816,7 @@ async function cargarTodo(silencioso) {
     }
 
     const [trab, insp, inc, proc, epp, charlas, invest, hcr, diat, subs, docs, prog] = await fetchSheetsBatch([
-      `'${CONFIG.SHEET_TRABAJADORES}'!A2:AB2000`,
+      `'${CONFIG.SHEET_TRABAJADORES}'!A2:AC2000`,
       `'${CONFIG.SHEET_INSPECCIONES}'!A2:M2000`,
       `'${CONFIG.SHEET_INCIDENTES}'!A2:V2000`,
       `'${CONFIG.SHEET_PROCEDIMIENTOS}'!A2:I2000`,
@@ -817,6 +831,7 @@ async function cargarTodo(silencioso) {
     ]);
     if (!silencioso) splash(85, 'Preparando la app...');
     allTrabajadores = trab.map((r,i) => rowToTrabajador(r,i));
+    detectarModoSupervisor();
     allInspecciones = insp.map((r,i) => rowToInspeccion(r,i));
     allIncidentes = inc.map((r,i) => rowToIncidente(r,i));
     allProcedimientos = proc.map((r,i) => rowToProcedimiento(r,i));
@@ -849,7 +864,8 @@ function rowToTrabajador(r, i) {
     fechaNacimiento: r[16]||'', sexo: r[17]||'', nacionalidad: r[18]||'', direccion: r[19]||'',
     comuna: r[20]||'', telefono: r[21]||'', puebloOriginario: r[22]||'', tipoContrato: r[23]||'',
     tipoIngreso: r[24]||'', categoriaOcupacional: r[25]||'', correo: r[26]||'',
-    especialidadesSupervisor: (r[27]||'').split(';').map(x=>x.trim()).filter(Boolean) };
+    especialidadesSupervisor: (r[27]||'').split(';').map(x=>x.trim()).filter(Boolean),
+    supervisorAsignado: r[28]||'' };
 }
 // Especialidades que puede cubrir un supervisor (mismo catálogo que Temas de
 // Charla/Inspección, para poder cruzarlas directamente). "Otro" no aplica
@@ -872,8 +888,26 @@ function supervisorDeObra(obra, tema) {
   }
   return sups.find(t => t.especialidadesSupervisor.length === 0) || sups[0];
 }
+// "A cargo" ahora es una asignación manual real (Trabajador.Supervisor
+// Asignado, ver abrirAsignarSupervisor/abrirEditarEquipoSupervisor) — antes
+// era simplemente "todos los demás activos de la misma Obra", lo que hacía
+// que dos supervisores de una misma obra compartieran exactamente el mismo
+// equipo y las mismas métricas de EPP/personal nuevo duplicadas.
 function trabajadoresACargoDe(supervisor) {
-  return allTrabajadores.filter(t => t.obra === supervisor.obra && t.estado === 'Activo' && t.nombre !== supervisor.nombre);
+  return allTrabajadores.filter(t => t.estado === 'Activo' && t.supervisorAsignado === supervisor.nombre);
+}
+// Detecta si la cuenta logueada es un supervisor (correo coincide con el
+// de un trabajador "Es Supervisor" Activo) — ver miSupervisorPerfil.
+function detectarModoSupervisor() {
+  const correo = (userEmail || '').trim().toLowerCase();
+  miSupervisorPerfil = correo
+    ? allTrabajadores.find(t => t.esSupervisor && t.estado === 'Activo' && (t.correo||'').trim().toLowerCase() === correo) || null
+    : null;
+}
+// Set con los nombres del equipo del supervisor logueado, o null si esta
+// cuenta no está en modo supervisor — usarlo así: `equipo && equipo.has(nombre)`.
+function miEquipoActual() {
+  return miSupervisorPerfil ? new Set(trabajadoresACargoDe(miSupervisorPerfil).map(t => t.nombre)) : null;
 }
 function rowToInspeccion(r, i) {
   return { fila: i+2, n: r[0]||'', fecha: r[1]||'', tipo: r[2]||'', area: r[3]||'', inspector: r[4]||'',
@@ -945,10 +979,20 @@ function rowToCharla(r, i) {
 // ============================================================
 function renderDashboard() {
   const obraSel = obraFiltroActivo();
-  const trab = obraSel ? allTrabajadores.filter(t => t.obra === obraSel) : allTrabajadores;
-  const insp = obraSel ? allInspecciones.filter(i => i.obra === obraSel) : allInspecciones;
-  const inc = obraSel ? allIncidentes.filter(i => i.obra === obraSel) : allIncidentes;
-  const cha = obraSel ? allCharlas.filter(c => c.obra === obraSel) : allCharlas;
+  let trab = obraSel ? allTrabajadores.filter(t => t.obra === obraSel) : allTrabajadores;
+  let insp = obraSel ? allInspecciones.filter(i => i.obra === obraSel) : allInspecciones;
+  let inc = obraSel ? allIncidentes.filter(i => i.obra === obraSel) : allIncidentes;
+  let cha = obraSel ? allCharlas.filter(c => c.obra === obraSel) : allCharlas;
+  // Los números de Inicio también quedan acotados a lo que le compete a un
+  // supervisor logueado, para que no digan "15 trabajadores" cuando su
+  // propio módulo Trabajadores solo lista a los 5 de su equipo.
+  const equipo = miEquipoActual();
+  if (equipo) {
+    trab = trab.filter(t => equipo.has(t.nombre));
+    insp = insp.filter(i => i.inspector === miSupervisorPerfil.nombre);
+    inc = inc.filter(i => equipo.has(i.trabajador));
+    cha = cha.filter(c => c.relator === miSupervisorPerfil.nombre);
+  }
   setStat('trabajadores', trab.filter(t=>t.estado==='Activo').length);
   setStat('inspecciones', insp.filter(i => i.estado !== 'Cerrada').length);
   setStat('incidentes', inc.filter(i => i.estado !== 'Cerrado').length);
@@ -999,6 +1043,9 @@ function actualizarChipObraActiva() {
   // cualquier módulo, para que se note y quede claro qué se puede hacer
   // (antes era un botón de solo ícono, difícil de notar).
   document.querySelectorAll('.obra-bar-nombre-actual').forEach(el => { el.textContent = texto; });
+  // Un supervisor logueado está fijo a su propia obra — se oculta la acción
+  // "Cambiar ›" (abrirSelectorObraActiva también la bloquea, por si acaso).
+  document.querySelectorAll('.btn-obra-activa').forEach(el => { el.classList.toggle('obra-bar--fijo', !!miSupervisorPerfil); });
 }
 // permiteCancelar=true cuando se reabre después (botón "Cambiar obra" con
 // la app ya visible) — muestra un botón para cerrar sin cambiar nada. En la
@@ -1029,7 +1076,10 @@ function renderSelectorObraActiva(permiteCancelar) {
   pantalla.classList.add('app-enter');
   setTimeout(() => pantalla.classList.remove('app-enter'), 500);
 }
-function abrirSelectorObraActiva() { renderSelectorObraActiva(true); }
+function abrirSelectorObraActiva() {
+  if (miSupervisorPerfil) { toast('Tu cuenta está fija a la obra ' + miSupervisorPerfil.obra, 'ok'); return; }
+  renderSelectorObraActiva(true);
+}
 function cerrarSelectorObraActiva() { document.getElementById('pantalla-elegir-obra').classList.add('hidden'); }
 function seleccionarObraActiva(obra) {
   obraActiva = obra;
@@ -1187,6 +1237,11 @@ const LETRAS_INDICE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 function renderTrabajadores() {
   const obraSel = obraFiltroActivo();
   let activos = obraSel ? allTrabajadores.filter(t => t.obra === obraSel) : [...allTrabajadores];
+  const equipo = miEquipoActual();
+  // Se incluye al propio supervisor en la lista (aunque no sea "de su
+  // equipo") para que pueda entrar a su ficha y gestionar su equipo desde
+  // ahí — si no, quedaría sin forma de llegar a ese botón.
+  if (equipo) activos = activos.filter(t => equipo.has(t.nombre) || t.nombre === miSupervisorPerfil.nombre);
   if (filtroTrabajadores) {
     activos = activos.filter(t => [t.nombre, t.rut, t.cargo, t.empresa, t.obra]
       .some(v => sinTildes((v || '').toLowerCase()).includes(filtroTrabajadores)));
@@ -1266,16 +1321,19 @@ function abrirFichaTrabajador(nombre) {
           <span class="badge ${i.estado==='Cerrado'?'green':'red'}">${esc(i.estado)}</span>
         </div>`).join('');
 
-  // Supervisor de obra: a cargo de los demás trabajadores activos de su
-  // misma Obra, y responde por los incidentes que tengan.
-  const supervisorDeEste = !t.esSupervisor ? supervisorDeObra(t.obra) : null;
+  // Supervisor de este trabajador: prioriza la asignación manual real
+  // (Supervisor Asignado); si todavía no se asignó a nadie, cae al viejo
+  // criterio automático (supervisorDeObra) para no dejar el campo vacío de
+  // golpe en trabajadores que aún no se han reasignado a mano.
+  const supervisorDeEsteAsignado = t.supervisorAsignado && allTrabajadores.find(s => s.nombre === t.supervisorAsignado && s.esSupervisor);
+  const supervisorDeEste = !t.esSupervisor ? (supervisorDeEsteAsignado || supervisorDeObra(t.obra)) : null;
   let equipoHtml = '';
   if (t.esSupervisor) {
     const equipo = trabajadoresACargoDe(t);
     const incidentesEquipo = allIncidentes.filter(i => equipo.some(w => w.nombre === i.trabajador));
     equipoHtml = `
     <div class="sec-label" style="margin-top:20px;">Trabajadores a cargo (${equipo.length})</div>
-    ${equipo.length === 0 ? '<div class="card-sub" style="padding:6px 2px;">No hay otros trabajadores activos en esta obra todavía.</div>' : equipo.map(w => {
+    ${equipo.length === 0 ? '<div class="card-sub" style="padding:6px 2px;">Todavía no le has asignado trabajadores. Usa el botón de abajo para armar su equipo.</div>' : equipo.map(w => {
       const incW = allIncidentes.filter(i => i.trabajador === w.nombre && i.estado !== 'Cerrado');
       return `<div class="field-row" style="cursor:pointer;" onclick="closePanel('panel-ficha-trabajador'); abrirFichaTrabajador('${esc(w.nombre).replace(/'/g,"\\'")}')">
         <span>${esc(w.nombre)}<br><span style="color:#888;font-size:12px;">${esc(w.cargo)}</span></span>
@@ -1283,6 +1341,7 @@ function abrirFichaTrabajador(nombre) {
       </div>`;
     }).join('')}
     ${incidentesEquipo.length > 0 ? `<div class="card-sub" style="padding:6px 2px;">Total histórico del equipo: ${incidentesEquipo.length} incidente${incidentesEquipo.length>1?'s':''} registrado${incidentesEquipo.length>1?'s':''}.</div>` : ''}
+    <button class="action-btn" style="margin-top:8px;" onclick="abrirEditarEquipoSupervisor(${t.fila})">Editar equipo a cargo</button>
     `;
   }
 
@@ -1324,6 +1383,8 @@ function abrirFichaTrabajador(nombre) {
       <div class="field-row"><span class="fl">Rol</span>${t.esSupervisor ? '<span class="badge amber">Supervisor de obra</span>' : supervisorDeEste ? `<span>Supervisado por <span class="fv">${esc(supervisorDeEste.nombre)}</span></span>` : '<span class="badge gray">Trabajador</span>'}</div>
       ${t.esSupervisor ? `<div class="field-row"><span class="fl">Especialidades</span><span class="fv">${t.especialidadesSupervisor.length ? esc(t.especialidadesSupervisor.join(', ')) : 'Supervisor general (todos los temas)'}</span></div>` : ''}
       <button class="action-btn" onclick="abrirEditarSupervisor(${t.fila})">${t.esSupervisor ? 'Editar rol de supervisor' : 'Marcar como supervisor de esta obra'}</button>
+      ${!t.esSupervisor ? `<div class="field-row"><span class="fl">Supervisor asignado</span><span class="fv">${supervisorDeEsteAsignado ? esc(supervisorDeEsteAsignado.nombre) : 'Sin asignar'}</span></div>
+      <button class="action-btn" onclick="abrirAsignarSupervisor(${t.fila})">Cambiar supervisor asignado</button>` : ''}
       ${equipoHtml}
     </div>
 
@@ -1360,10 +1421,11 @@ function abrirFichaTrabajador(nombre) {
       <button class="action-btn" onclick="abrirEditarAltura(${t.fila})">${t.alturaVigencia ? 'Actualizar examen' : 'Subir examen'}</button>
     </div>
 
+    ${miSupervisorPerfil ? '' : `
     <div class="ficha-section">
       <div class="ficha-sec-title">Historial de EPP entregado</div>
       ${entregasHtml}
-    </div>
+    </div>`}
 
     <div class="ficha-section">
       <div class="ficha-sec-title">Incidentes relacionados</div>
@@ -1480,12 +1542,19 @@ function selectTrabajadoresOptions() {
   return allTrabajadores.filter(t => t.estado==='Activo' && (!obraSel || t.obra === obraSel))
     .map(t => `<option value="${esc(t.nombre)}|${esc(t.rut)}">${esc(t.nombre)} — ${esc(t.rut)}</option>`).join('');
 }
+function onCambioObraFormTrabajador(selEl) {
+  onCambioObraSelect(selEl, 'input-trabajador-obra-otra');
+  const obra = valorObra(selEl, 'input-trabajador-obra-otra');
+  const sups = allTrabajadores.filter(s => s.esSupervisor && s.obra === obra && s.estado === 'Activo');
+  document.getElementById('sel-supervisor-trabajador').innerHTML = '<option value="">— Sin asignar —</option>' +
+    sups.map(s => `<option value="${esc(s.nombre)}">${esc(s.nombre)}</option>`).join('');
+}
 function abrirFormTrabajador() {
   const f = document.getElementById('form-trabajador');
   f.reset();
   const selObra = document.getElementById('sel-obra-trabajador');
   selObra.innerHTML = opcionesObraSelectHTML(obraPreseleccionada());
-  onCambioObraSelect(selObra, 'input-trabajador-obra-otra');
+  onCambioObraFormTrabajador(selObra);
   renderChecklistEspecialidades('checklist-especialidades-trabajador');
   document.getElementById('grupo-especialidades-trabajador').classList.add('hidden');
   openPanel('panel-form-trabajador');
@@ -1503,13 +1572,14 @@ async function guardarTrabajador(ev) {
     const n = allTrabajadores.length + 1;
     const obra = valorObra(f.obra, 'input-trabajador-obra-otra');
     const especialidades = f.esSupervisor.checked ? recolectarEspecialidades('checklist-especialidades-trabajador').join('; ') : '';
-    await appendSheet(`'${CONFIG.SHEET_TRABAJADORES}'!A:AB`, [[
+    await appendSheet(`'${CONFIG.SHEET_TRABAJADORES}'!A:AC`, [[
       n, f.nombre.value, f.rut.value, f.cargo.value, f.empresa.value,
       f.fechaIngreso.value, f.estado.value, fotoLink, new Date().toLocaleString('es-CL'),
       obra, '', '', '', '', '', f.esSupervisor.checked ? 'Sí' : '',
       f.fechaNacimiento.value, f.sexo.value, f.nacionalidad.value, f.direccion.value,
       f.comuna.value, f.telefono.value, f.puebloOriginario.value, f.tipoContrato.value,
-      f.tipoIngreso.value, f.categoriaOcupacional.value, f.correo.value, especialidades
+      f.tipoIngreso.value, f.categoriaOcupacional.value, f.correo.value, especialidades,
+      f.supervisorAsignado.value
     ]]);
     toast('Trabajador agregado ✓', 'ok');
     closePanel('panel-form-trabajador');
@@ -1570,12 +1640,94 @@ async function guardarSupervisor(ev) {
   } catch (e) { toast(e.message, 'error'); }
 }
 
+// ── Asignación manual de supervisor por trabajador (columna AC) ─────────
+// Dos formas de cargar el mismo dato (Trabajador.Supervisor Asignado): acá,
+// campo por trabajador; o en bloque desde abrirEditarEquipoSupervisor.
+function abrirAsignarSupervisor(fila) {
+  const t = allTrabajadores.find(x => x.fila === fila);
+  if (!t) return;
+  const f = document.getElementById('form-asignar-supervisor');
+  f.reset();
+  f.fila.value = fila;
+  const sups = allTrabajadores.filter(s => s.esSupervisor && s.obra === t.obra && s.estado === 'Activo');
+  f.supervisor.innerHTML = '<option value="">— Sin asignar —</option>' +
+    sups.map(s => `<option value="${esc(s.nombre)}" ${s.nombre===t.supervisorAsignado?'selected':''}>${esc(s.nombre)}</option>`).join('');
+  openPanel('panel-asignar-supervisor');
+}
+async function guardarAsignarSupervisor(ev) {
+  ev.preventDefault();
+  const f = ev.target;
+  const fila = f.fila.value;
+  const t = allTrabajadores.find(x => String(x.fila) === String(fila));
+  try {
+    await ensureToken();
+    const url = `${SHEETS_BASE}/${CONFIG.SHEET_ID}/values/${encodeURIComponent(`'${CONFIG.SHEET_TRABAJADORES}'!AC${fila}`)}?valueInputOption=USER_ENTERED`;
+    await fetch(url, { method:'PUT', headers:{ 'Content-Type':'application/json', ...authHeader() },
+      body: JSON.stringify({ values: [[f.supervisor.value]] }) });
+    toast(f.supervisor.value ? 'Supervisor asignado ✓' : 'Se quitó la asignación', 'ok');
+    closePanel('panel-asignar-supervisor');
+    await cargarTodo(true);
+    if (t) abrirFichaTrabajador(t.nombre);
+  } catch (e) { toast(e.message, 'error'); }
+}
+// Checklist de equipo desde la ficha del supervisor — asigna/desasigna
+// varios trabajadores de una vez (mismo campo de fondo que arriba).
+function abrirEditarEquipoSupervisor(fila) {
+  const t = allTrabajadores.find(x => x.fila === fila);
+  if (!t) return;
+  document.getElementById('form-equipo-supervisor').fila.value = fila;
+  document.getElementById('pnl-title-equipo-supervisor').textContent = `Equipo de ${t.nombre}`;
+  const candidatos = allTrabajadores.filter(w => w.obra === t.obra && w.estado === 'Activo' && !w.esSupervisor);
+  document.getElementById('checklist-equipo-supervisor').innerHTML = candidatos.length === 0
+    ? '<div class="card-sub" style="padding:6px 2px;">No hay trabajadores (no supervisores) activos en esta obra.</div>'
+    : candidatos.map(w => `
+    <div class="chk-row" data-fila="${w.fila}">
+      <label class="chk-row-label">
+        <span class="chk-row-checkbox-wrap">
+          <input type="checkbox" class="chk-row-input" ${w.supervisorAsignado===t.nombre?'checked':''}>
+          <span class="chk-row-checkbox"></span>
+        </span>
+        <span>${esc(w.nombre)}<br><span style="color:#888;font-size:12px;">${esc(w.cargo)}${w.supervisorAsignado && w.supervisorAsignado!==t.nombre ? ' · actualmente con ' + esc(w.supervisorAsignado) : ''}</span></span>
+      </label>
+    </div>`).join('');
+  openPanel('panel-editar-equipo-supervisor');
+}
+async function guardarEquipoSupervisor() {
+  const fila = document.getElementById('form-equipo-supervisor').fila.value;
+  const t = allTrabajadores.find(x => String(x.fila) === String(fila));
+  if (!t) return;
+  try {
+    await ensureToken();
+    const filas = [...document.querySelectorAll('#checklist-equipo-supervisor .chk-row')];
+    const cambios = filas.filter(row => {
+      const w = allTrabajadores.find(x => String(x.fila) === row.dataset.fila);
+      const marcado = row.querySelector('.chk-row-input').checked;
+      const yaAsignado = w && w.supervisorAsignado === t.nombre;
+      return marcado !== yaAsignado;
+    });
+    await Promise.all(cambios.map(row => {
+      const marcado = row.querySelector('.chk-row-input').checked;
+      const url = `${SHEETS_BASE}/${CONFIG.SHEET_ID}/values/${encodeURIComponent(`'${CONFIG.SHEET_TRABAJADORES}'!AC${row.dataset.fila}`)}?valueInputOption=USER_ENTERED`;
+      return fetch(url, { method:'PUT', headers:{ 'Content-Type':'application/json', ...authHeader() },
+        body: JSON.stringify({ values: [[marcado ? t.nombre : '']] }) });
+    }));
+    toast(cambios.length ? 'Equipo actualizado ✓' : 'Sin cambios', 'ok');
+    closePanel('panel-editar-equipo-supervisor');
+    await cargarTodo(true);
+    abrirFichaTrabajador(t.nombre);
+  } catch (e) { toast(e.message, 'error'); }
+}
+
 // ============================================================
 // MÓDULO: INSPECCIONES (con foto + alerta de charla)
 // ============================================================
 function renderInspecciones() {
   const obraSel = obraFiltroActivo();
-  const items = (obraSel ? allInspecciones.filter(i => i.obra === obraSel) : [...allInspecciones]).reverse();
+  let items = obraSel ? allInspecciones.filter(i => i.obra === obraSel) : [...allInspecciones];
+  // Inspecciones no tiene un trabajador asociado (es por área/tema), así que
+  // "lo que le compete" a un supervisor son las que él mismo hizo.
+  if (miSupervisorPerfil) items = items.filter(i => i.inspector === miSupervisorPerfil.nombre);
+  items = items.reverse();
   if (items.length === 0) { setListHTML('inspecciones', emptyState('Sin inspecciones', 'Registra la primera inspección')); return; }
   setListHTML('inspecciones', items.map(i => {
     const meta = NIVELES_RIESGO.find(n=>n.value===i.riesgo) || NIVELES_RIESGO[0];
@@ -1653,7 +1805,12 @@ function mostrarAlertaCharla(tema, area) {
 // ============================================================
 function renderCharlas() {
   const obraSel = obraFiltroActivo();
-  const items = (obraSel ? allCharlas.filter(c => c.obra === obraSel) : [...allCharlas]).reverse();
+  let items = obraSel ? allCharlas.filter(c => c.obra === obraSel) : [...allCharlas];
+  // Charlas no tiene un trabajador asociado (es del relator hacia varios
+  // asistentes), así que "lo que le compete" a un supervisor son las que
+  // él mismo dicta (Relator).
+  if (miSupervisorPerfil) items = items.filter(c => c.relator === miSupervisorPerfil.nombre);
+  items = items.reverse();
   if (items.length === 0) { setListHTML('charlas', emptyState('Sin charlas registradas', 'Toca "+" para registrar una charla')); return; }
   setListHTML('charlas', items.map(c => `
     <div class="card card--default">
@@ -2152,7 +2309,10 @@ async function generarPdfCharlaSobrePlantilla(datos, plantilla) {
 // ============================================================
 function renderIncidentes() {
   const obraSel = obraFiltroActivo();
-  const items = (obraSel ? allIncidentes.filter(i => i.obra === obraSel) : [...allIncidentes]).reverse();
+  let items = obraSel ? allIncidentes.filter(i => i.obra === obraSel) : [...allIncidentes];
+  const equipo = miEquipoActual();
+  if (equipo) items = items.filter(i => equipo.has(i.trabajador));
+  items = items.reverse();
   if (items.length === 0) { setListHTML('incidentes', emptyState('Sin incidentes registrados', '')); return; }
   setListHTML('incidentes', items.map(i => `
     <div class="card card--default" onclick="abrirDetalleIncidente(${i.fila})">
@@ -3295,7 +3455,9 @@ function renderChecklistsHcr() {
 
 function renderHcr() {
   const obraSel = obraFiltroActivo();
-  const items = (obraSel ? allHcr.filter(h => h.obra === obraSel) : [...allHcr]).reverse();
+  let items = obraSel ? allHcr.filter(h => h.obra === obraSel) : [...allHcr];
+  if (miSupervisorPerfil) items = items.filter(h => h.supervisor === miSupervisorPerfil.nombre);
+  items = items.reverse();
   if (items.length === 0) { setListHTML('hcr', emptyState('Sin HCR registradas', 'Toca "+" para registrar una')); return; }
   setListHTML('hcr', items.map(h => `
     <div class="card card--default">
@@ -4277,6 +4439,19 @@ function onCambioResponsableInforme(v) { localStorage.setItem(RESPONSABLE_INFORM
 function onCambioMesPrograma(v) { mesProgramaSel = v; renderProgramaPersonalizado(); }
 function onCambioObraPrograma(v) { obraProgramaSel = v; renderProgramaPersonalizado(); }
 function renderProgramaPersonalizado() {
+  // Un supervisor logueado no ve el listado del resto de supervisores de la
+  // obra ni el botón de informe (es un reporte de gestión de toda la obra,
+  // no "lo que le compete a él") — va directo a su propio detalle, con el
+  // mismo contenido que ve un admin al entrar a la ficha de un supervisor.
+  if (miSupervisorPerfil) {
+    setListHTML('programapersonalizado', `
+      <div class="stats-obra-bar">${ic('programapersonalizado',16)}
+        <input type="month" class="obra-selector" value="${mesProgramaSel}" onchange="onCambioMesPrograma(this.value)">
+      </div>
+      ${contenidoDetalleProgramaSupervisor(miSupervisorPerfil.obra, mesProgramaSel, miSupervisorPerfil.nombre)}
+    `);
+    return;
+  }
   const obraGlobal = obraFiltroActivo();
   const obras = opcionesObrasDisponibles();
   const obraEfectiva = obraGlobal || (obraProgramaSel !== 'todas' && obras.includes(obraProgramaSel) ? obraProgramaSel : null);
@@ -4353,13 +4528,12 @@ function abrirDetalleProgramaSupervisor(obra, mes, supervisor) {
   renderDetalleProgramaSupervisor();
   openPanel('panel-detalle-programa');
 }
-function renderDetalleProgramaSupervisor() {
-  const { obra, mes, supervisor } = programaDetalleCtx;
+function contenidoDetalleProgramaSupervisor(obra, mes, supervisor) {
   const acts = actividadesPrograma(obra, mes).filter(a => a.supervisor === supervisor);
   const trabSup = allTrabajadores.find(t => t.nombre === supervisor && t.obra === obra);
   const epp = trabSup ? eppEntregadoSupervisorMes(trabSup, mes) : 0;
   const nuevos = trabSup ? personalNuevoSupervisorMes(trabSup, mes) : 0;
-  document.getElementById('detalle-programa-body').innerHTML = `
+  return `
     <div class="badge-row" style="margin-bottom:12px;">
       <span class="badge blue">${ic('epp',11)} ${epp} EPP entregado(s) en ${esc(nombreMes(mes))}</span>
       <span class="badge gray">${ic('trabajadores',11)} ${nuevos} ingreso(s) nuevo(s)</span>
@@ -4382,6 +4556,10 @@ function renderDetalleProgramaSupervisor() {
     }).join('')}
   `;
 }
+function renderDetalleProgramaSupervisor() {
+  const { obra, mes, supervisor } = programaDetalleCtx;
+  document.getElementById('detalle-programa-body').innerHTML = contenidoDetalleProgramaSupervisor(obra, mes, supervisor);
+}
 
 // ── Agregar actividad ────────────────────────────────────────────────
 function abrirFormActividadPrograma(obra, mes, supervisor) {
@@ -4390,9 +4568,14 @@ function abrirFormActividadPrograma(obra, mes, supervisor) {
   const obraDefault = obra || (programaDetalleCtx && programaDetalleCtx.obra) || obraFiltroActivo() || (obraProgramaSel !== 'todas' ? obraProgramaSel : '');
   const mesDefault = mes || (programaDetalleCtx && programaDetalleCtx.mes) || mesProgramaSel;
   f.obra.innerHTML = opcionesObraSelectHTML(obraDefault);
+  f.obra.disabled = !!miSupervisorPerfil;
   f.mes.value = mesDefault;
   onCambioObraProgramaForm(f.obra);
-  if (supervisor) setTimeout(() => { f.supervisor.value = supervisor; onCambioSupervisorPrograma(f.supervisor); }, 0);
+  // Un supervisor logueado solo carga actividades para sí mismo — el
+  // selector de supervisor queda fijo y bloqueado, no puede elegir a otro.
+  const supervisorFijo = miSupervisorPerfil ? miSupervisorPerfil.nombre : supervisor;
+  if (supervisorFijo) setTimeout(() => { f.supervisor.value = supervisorFijo; onCambioSupervisorPrograma(f.supervisor); }, 0);
+  f.supervisor.disabled = !!miSupervisorPerfil;
   openPanel('panel-form-actividad-programa');
 }
 function onCambioObraProgramaForm(selEl) {
@@ -4945,6 +5128,14 @@ async function arrancarApp() {
   // el nombre de su empresa en miEmpresaSubcontratista. Se le muestra
   // directamente su pantalla fija (#subcontratista-root) en vez de #main/
   // #desktop-home, que quedan ocultos igual que si nunca hubieran existido.
+  // Un supervisor logueado (ver miSupervisorPerfil) está fijo a la Obra de
+  // su propia ficha — no elige obra ni la puede cambiar (el botón "Cambiar
+  // obra" queda oculto, ver actualizarChipObraActiva).
+  if (miSupervisorPerfil) {
+    obraActiva = miSupervisorPerfil.obra;
+    localStorage.setItem(OBRA_ACTIVA_KEY, obraActiva);
+  }
+
   if (miEmpresaSubcontratista) {
     mostrarModoSubcontratista(miEmpresaSubcontratista);
     const root = document.getElementById('subcontratista-root');

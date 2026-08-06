@@ -250,6 +250,9 @@ body.is-offline #app { padding-top: 30px; }
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .obra-bar-accion { flex-shrink: 0; font-size: 12px; font-weight: 700; color: var(--accent-dark); }
+.obra-bar--fijo { cursor: default; }
+.obra-bar--fijo:active { background: #fff; }
+.obra-bar--fijo .obra-bar-accion { display: none; }
 
 /* ── Pages ── */
 .pages { flex: 1; overflow-y: auto; overflow-x: hidden; scrollbar-width: none; -ms-overflow-style: none; }
