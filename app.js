@@ -66,7 +66,7 @@ const PROGRAMAS_PERSONALIZADOS = [
   { codigo: 'SGSST-PER-002', nombre: 'Check List Orden y Aseo', archivo: 'plantillas/programas/SGSST-PER-002_Check_List_Orden_y_Aseo.pdf' },
   { codigo: 'SGSST-PER-003', nombre: 'Observación de Conducta', archivo: 'plantillas/programas/SGSST-PER-003_Observacion_de_Conducta.pdf', tipo: 'observacion_conducta' },
   { codigo: 'SGSST-PER-004', nombre: 'Inspección de Seguridad — Andamios', archivo: 'plantillas/programas/SGSST-PER-004_Inspeccion_Seguridad_Andamios.pdf', tipo: 'checklist_generico' },
-  { codigo: 'SGSST-PER-005', nombre: 'Inspección de EPP', archivo: 'plantillas/programas/SGSST-PER-005_Inspeccion_de_EPP.pdf' },
+  { codigo: 'SGSST-PER-005', nombre: 'Inspección de EPP', archivo: 'plantillas/programas/SGSST-PER-005_Inspeccion_de_EPP.pdf', tipo: 'inspeccion_epp' },
   { codigo: 'SGSST-PER-006', nombre: 'Autorización de Trabajos en Altura', archivo: 'plantillas/programas/SGSST-PER-006_Autorizacion_Trabajos_en_Altura.pdf' },
   { codigo: 'SGSST-PER-007', nombre: 'Inspección de Elementos de Izaje', archivo: 'plantillas/programas/SGSST-PER-007_Inspeccion_Elementos_de_Izaje.pdf', tipo: 'checklist_generico' },
   { codigo: 'SGSST-PER-008', nombre: 'Inspección de Seguridad — Excavación', archivo: 'plantillas/programas/SGSST-PER-008_Inspeccion_Seguridad_Excavacion.pdf', tipo: 'checklist_generico' },
@@ -4989,6 +4989,12 @@ const MOTORES_FORMATO_PROGRAMA = {
     recolectar: (body, a) => recolectarObservacionConducta(body, a),
     generarPdf: (formato, datos) => generarPdfObservacionConducta(datos),
   },
+  inspeccion_epp: {
+    html: (a) => htmlFormularioInspeccionEpp(a),
+    initFirmas: () => [0, 1].forEach(i => setTimeout(() => initFirmaPad(`firma-formato-${i}`), 80)),
+    recolectar: (body, a) => recolectarInspeccionEpp(body, a),
+    generarPdf: (formato, datos) => generarPdfInspeccionEpp(datos),
+  },
 };
 function motorDigitalDe(formato) {
   return formato && MOTORES_FORMATO_PROGRAMA[formato.tipo];
@@ -5429,6 +5435,176 @@ async function generarPdfObservacionConducta(datos) {
   const bytes = await pdfDoc.save();
   const blob = new Blob([bytes], { type: 'application/pdf' });
   const up = await uploadFile(blob, 'Programa Personalizado', 'SGSST-PER-003_' + (datos.obra || 'obra').replace(/\s+/g,'_') + '_' + datos.__fechaDia, 'pdf');
+  return up.link;
+}
+
+// ── SGSST-PER-005 (Inspección de EPP) — motor propio: matriz de hasta 10
+// trabajadores × 9 tipos de EPP (columnas USA/ESTADO cada uno) + Realizada
+// por / Revisado por (con firma) + Observaciones. Plantilla apaisada
+// (792×612) — no cambia nada del código, las coordenadas ya vienen medidas
+// para esa orientación.
+const INSPECCION_EPP_CONFIG = {
+  filasTrabajador: 11,
+  xNombre: 58, xCargo: 148,
+  epp: [
+    { key: 'casco', label: 'Casco', xUsa: 211.85, xEstado: 241.95 },
+    { key: 'zapatos', label: 'Zapatos', xUsa: 276.3, xEstado: 312.35 },
+    { key: 'guantes', label: 'Guantes', xUsa: 347.9, xEstado: 381.35 },
+    { key: 'antiparra', label: 'Antiparra', xUsa: 409.9, xEstado: 439.95 },
+    { key: 'protAudit', label: 'Protector auditivo', xUsa: 469.5, xEstado: 497.2 },
+    { key: 'arnes', label: 'Arnés de seguridad', xUsa: 526.7, xEstado: 557.8 },
+    { key: 'caboVida', label: 'Cabo de vida', xUsa: 588.75, xEstado: 617.65 },
+    { key: 'respirador', label: 'Respirador', xUsa: 646.55, xEstado: 676.65 },
+    { key: 'filtros', label: 'Filtros', xUsa: 713.2, xEstado: 750.65 },
+  ],
+  filas: [
+    { y0: 479.0, y1: 455.5 }, { y0: 455.5, y1: 432.0 }, { y0: 432.0, y1: 408.5 }, { y0: 408.5, y1: 384.9 },
+    { y0: 384.9, y1: 361.5 }, { y0: 361.5, y1: 337.9 }, { y0: 337.9, y1: 314.5 }, { y0: 314.5, y1: 290.9 },
+    { y0: 290.9, y1: 267.5 }, { y0: 267.5, y1: 243.9 }, { y0: 243.9, y1: 220.5 },
+  ],
+  realizadaPor: { xNombre: 110, yNombre: 166, xCargo: 68, yCargo: 154, xFirma: 28, yFirma: 105, wFirma: 100, hFirma: 40, xFecha: 170, yFecha: 97 },
+  revisadoPor: { xNombre: 340, yNombre: 166, xCargo: 300, yCargo: 154, xFirma: 262, yFirma: 105, wFirma: 95, hFirma: 40, xFecha: 398, yFecha: 97 },
+  // El label "OBSERVACIONES:" está impreso a y≈163.7-170.5 — el texto
+  // arranca debajo, no desde el tope de la columna (que se solapa con
+  // "REALIZADA POR:"/"REVISADO POR:" de las otras dos columnas).
+  observaciones: { x: 456, xFin: 765, filas: Array.from({length: 9}, (_, i) => ({ y0: 158 - i*14, y1: 158 - (i+1)*14 })) },
+};
+// Cada EPP por trabajador es un solo select: si no se registra queda vacío
+// (no se dibuja nada), "Usa - Bueno/Regular/Malo" marca USA=S y ESTADO con
+// la letra correspondiente, "No usa" marca solo USA=N.
+const OPCIONES_ESTADO_EPP = [
+  { value: '', label: '—' },
+  { value: 'usaB', label: 'Usa — Bueno' },
+  { value: 'usaR', label: 'Usa — Regular' },
+  { value: 'usaM', label: 'Usa — Malo' },
+  { value: 'no', label: 'No usa' },
+];
+function htmlFormularioInspeccionEpp(a) {
+  const c = INSPECCION_EPP_CONFIG;
+  const filaTrabajadorHtml = (i) => `
+    <div class="checklist-generico-item">
+      <div class="checklist-generico-item-texto">Trabajador ${i+1}</div>
+      <div class="checklist-generico-item-fila2">
+        <input name="trab_${i}_nombre" placeholder="Nombre">
+        <input name="trab_${i}_cargo" placeholder="Cargo">
+      </div>
+      ${c.epp.map(e => `
+      <div class="form-group" style="margin-top:6px;">
+        <label>${esc(e.label)}</label>
+        <select name="trab_${i}_epp_${e.key}">
+          ${OPCIONES_ESTADO_EPP.map(o => `<option value="${o.value}">${esc(o.label)}</option>`).join('')}
+        </select>
+      </div>`).join('')}
+    </div>`;
+  const filasHtml = Array.from({length: c.filasTrabajador}, (_, i) => filaTrabajadorHtml(i)).join('');
+  return `
+    <div class="sec-label">Trabajadores inspeccionados</div>
+    <div class="card-sub" style="padding:6px 2px;">Deja el nombre en blanco en los trabajadores que no correspondan — se omiten al generar el documento.</div>
+    ${filasHtml}
+    <div class="sec-label" style="margin-top:18px;">Realizada por</div>
+    <div class="form-group"><label>Nombre</label><input name="realizadaPor_nombre"></div>
+    <div class="form-group"><label>Cargo</label><input name="realizadaPor_cargo"></div>
+    <div class="form-group">
+      <label>Firma</label>
+      <div class="firma-box"><canvas id="firma-formato-0"></canvas></div>
+      <div class="firma-actions"><button type="button" onclick="limpiarFirmaId('firma-formato-0')">Borrar firma</button></div>
+    </div>
+    <div class="sec-label" style="margin-top:18px;">Revisado por</div>
+    <div class="form-group"><label>Nombre</label><input name="revisadoPor_nombre"></div>
+    <div class="form-group"><label>Cargo</label><input name="revisadoPor_cargo"></div>
+    <div class="form-group">
+      <label>Firma</label>
+      <div class="firma-box"><canvas id="firma-formato-1"></canvas></div>
+      <div class="firma-actions"><button type="button" onclick="limpiarFirmaId('firma-formato-1')">Borrar firma</button></div>
+    </div>
+    <div class="sec-label" style="margin-top:18px;">Observaciones</div>
+    <div class="form-group"><textarea name="observaciones" rows="4"></textarea></div>
+    <button class="btn-add" style="margin-top:16px;" onclick="guardarFormatoPrograma()">Generar documento y marcar día</button>`;
+}
+function recolectarInspeccionEpp(body, a) {
+  const c = INSPECCION_EPP_CONFIG;
+  const val = (name) => (body.querySelector(`[name="${name}"]`) || {}).value || '';
+  const datos = { obra: a.obra, __fechaDia: a.__fechaDia };
+  datos.trabajadores = Array.from({length: c.filasTrabajador}, (_, i) => ({
+    nombre: val(`trab_${i}_nombre`), cargo: val(`trab_${i}_cargo`),
+    epp: Object.fromEntries(c.epp.map(e => [e.key, val(`trab_${i}_epp_${e.key}`)])),
+  }));
+  datos.realizadaPorNombre = val('realizadaPor_nombre');
+  datos.realizadaPorCargo = val('realizadaPor_cargo');
+  datos.revisadoPorNombre = val('revisadoPor_nombre');
+  datos.revisadoPorCargo = val('revisadoPor_cargo');
+  datos.firmaRealizada = recolectarFirmaCanvas('firma-formato-0');
+  datos.firmaRevisado = recolectarFirmaCanvas('firma-formato-1');
+  datos.observaciones = val('observaciones');
+  return datos;
+}
+async function generarPdfInspeccionEpp(datos) {
+  const c = INSPECCION_EPP_CONFIG;
+  const { PDFDocument, rgb, StandardFonts } = await cargarPdfLib();
+  const templateBytes = await fetch('plantillas/programas/SGSST-PER-005_Inspeccion_de_EPP.pdf').then(r => r.arrayBuffer());
+  const pdfDoc = await PDFDocument.load(templateBytes);
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const page = pdfDoc.getPages()[0];
+
+  function text(str, x, y, size) {
+    if (!str) return;
+    page.drawText(String(str), { x, y, size: size || 7.5, font, color: rgb(0,0,0) });
+  }
+  function letra(x, yCenter, ch, size) {
+    const s = size || 7.5;
+    page.drawText(ch, { x: x - s * 0.3, y: yCenter - s * 0.35, size: s, font: fontBold, color: rgb(0,0,0) });
+  }
+  function wrapLines(str, maxWidth, size) {
+    const words = (str || '').split(/\s+/).filter(Boolean);
+    const lines = []; let current = '';
+    for (const w of words) {
+      const test = current ? current + ' ' + w : w;
+      if (font.widthOfTextAtSize(test, size) > maxWidth && current) { lines.push(current); current = w; }
+      else current = test;
+    }
+    if (current) lines.push(current);
+    return lines;
+  }
+  async function drawSig(dataUrl, x, y, w, h) {
+    if (!dataUrl) return;
+    const bytes = Uint8Array.from(atob(dataUrl.split(',')[1]), ch => ch.charCodeAt(0));
+    const img = await pdfDoc.embedPng(bytes);
+    const dims = escalarFirmaCasillero(img, w, h);
+    page.drawImage(img, { x, y, width: dims.width, height: dims.height });
+  }
+
+  c.filas.forEach((f, i) => {
+    const t = datos.trabajadores[i];
+    if (!t || !t.nombre) return;
+    const yTop = Math.max(f.y0, f.y1), yBottom = Math.min(f.y0, f.y1), yc = (yTop + yBottom) / 2;
+    text(t.nombre, c.xNombre, yc - 3, 7.5);
+    text(t.cargo, c.xCargo, yc - 3, 7.5);
+    c.epp.forEach(e => {
+      const v = t.epp[e.key];
+      if (!v) return;
+      if (v === 'no') { letra(e.xUsa, yc, 'N'); return; }
+      letra(e.xUsa, yc, 'S');
+      letra(e.xEstado, yc, v === 'usaB' ? 'B' : v === 'usaR' ? 'R' : 'M');
+    });
+  });
+
+  text(datos.realizadaPorNombre, c.realizadaPor.xNombre, c.realizadaPor.yNombre, 7.5);
+  text(datos.realizadaPorCargo, c.realizadaPor.xCargo, c.realizadaPor.yCargo, 7.5);
+  await drawSig(datos.firmaRealizada, c.realizadaPor.xFirma, c.realizadaPor.yFirma, c.realizadaPor.wFirma, c.realizadaPor.hFirma);
+  text(ddmmyyyy(datos.__fechaDia), c.realizadaPor.xFecha, c.realizadaPor.yFecha, 7.5);
+
+  text(datos.revisadoPorNombre, c.revisadoPor.xNombre, c.revisadoPor.yNombre, 7.5);
+  text(datos.revisadoPorCargo, c.revisadoPor.xCargo, c.revisadoPor.yCargo, 7.5);
+  await drawSig(datos.firmaRevisado, c.revisadoPor.xFirma, c.revisadoPor.yFirma, c.revisadoPor.wFirma, c.revisadoPor.hFirma);
+  text(ddmmyyyy(datos.__fechaDia), c.revisadoPor.xFecha, c.revisadoPor.yFecha, 7.5);
+
+  wrapLines(datos.observaciones, c.observaciones.xFin - c.observaciones.x - 4, 7.5).slice(0, c.observaciones.filas.length)
+    .forEach((l, i) => text(l, c.observaciones.x, Math.max(c.observaciones.filas[i].y0, c.observaciones.filas[i].y1) - 9, 7.5));
+
+  const bytes = await pdfDoc.save();
+  const blob = new Blob([bytes], { type: 'application/pdf' });
+  const up = await uploadFile(blob, 'Programa Personalizado', 'SGSST-PER-005_' + (datos.obra || 'obra').replace(/\s+/g,'_') + '_' + datos.__fechaDia, 'pdf');
   return up.link;
 }
 
