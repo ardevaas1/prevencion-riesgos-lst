@@ -143,8 +143,8 @@ const CHECKLIST_GENERICO_CONFIG = {
       ],
     },
     firmas: [
-      { key: 'realiza', label: 'Realizó', xNombre: 90, yNombre: 212, xCargo: 80, yCargo: 198, xFecha: 90, yFecha: 186, xFirma: 45, yFirma: 150, wFirma: 260, hFirma: 30 },
-      { key: 'revisa', label: 'Revisó', xNombre: 380, yNombre: 212, xCargo: 370, yCargo: 198, xFecha: 378, yFecha: 186, xFirma: 340, yFirma: 150, wFirma: 220, hFirma: 30 },
+      { key: 'realiza', label: 'Realizó', xNombre: 97, yNombre: 212, xCargo: 100, yCargo: 198, xFecha: 94, yFecha: 186, xFirma: 45, yFirma: 150, wFirma: 260, hFirma: 30 },
+      { key: 'revisa', label: 'Revisó', xNombre: 387, yNombre: 212, xCargo: 378, yCargo: 198, xFecha: 382, yFecha: 186, xFirma: 340, yFirma: 150, wFirma: 220, hFirma: 30 },
     ],
   },
   'SGSST-PER-008': {
@@ -157,7 +157,7 @@ const CHECKLIST_GENERICO_CONFIG = {
       { key: 'etapaObra', label: 'Etapa de la obra', x: 130, y: 600, w: 210 },
     ],
     tabla: {
-      xItem: 46, xSI: 222.5, xNO: 249.5, xNA: 279.5, xObs: 298, xResp: 428, xFecha: 492, xFin: 576.6,
+      xItem: 46, xSI: 222.5, xNO: 249.5, xNA: 279.5, xObs: 298, xResp: 460, xFecha: 529, xFin: 576.6,
       filas: [
         { y0: 446.3, y1: 410.3, texto: 'El acopio de material y tránsito, se encuentra a una distancia del borde mínimo de 1 m.' },
         { y0: 410.3, y1: 386.7, texto: 'Está señalizado o protegido el borde' },
@@ -5133,9 +5133,9 @@ async function generarPdfChecklistGenerico(codigo, datos) {
 // medidas igual que CHECKLIST_GENERICO_CONFIG (pypdfium2, puntos PDF).
 const INSPECCION_OBSERVACION_CONFIG = {
   campos: [
-    { key: 'nombreCargo', label: 'Nombre y cargo (quien inspecciona)', x: 220, y: 660 },
+    { key: 'nombreCargo', label: 'Nombre y cargo (quien inspecciona)', x: 236, y: 660 },
     { key: 'fecha', label: 'Fecha', x: 90, y: 639, tipo: 'fecha' },
-    { key: 'areaObra', label: 'Área / Obra', x: 384, y: 639 },
+    { key: 'areaObra', label: 'Área / Obra', x: 410, y: 639 },
     { key: 'responsableArea', label: 'Responsable del área', x: 172, y: 617 },
   ],
   tipos: [
@@ -5464,10 +5464,15 @@ const INSPECCION_EPP_CONFIG = {
   ],
   realizadaPor: { xNombre: 110, yNombre: 166, xCargo: 68, yCargo: 154, xFirma: 28, yFirma: 105, wFirma: 100, hFirma: 40, xFecha: 170, yFecha: 97 },
   revisadoPor: { xNombre: 340, yNombre: 166, xCargo: 300, yCargo: 154, xFirma: 262, yFirma: 105, wFirma: 95, hFirma: 40, xFecha: 398, yFecha: 97 },
-  // El label "OBSERVACIONES:" está impreso a y≈163.7-170.5 — el texto
-  // arranca debajo, no desde el tope de la columna (que se solapa con
-  // "REALIZADA POR:"/"REVISADO POR:" de las otras dos columnas).
-  observaciones: { x: 456, xFin: 765, filas: Array.from({length: 9}, (_, i) => ({ y0: 158 - i*14, y1: 158 - (i+1)*14 })) },
+  // El label "OBSERVACIONES:" está impreso a y≈163.7-170.5. Debajo hay dos
+  // líneas horizontales de la tabla que cruzan TODO el ancho (son el borde
+  // de las filas "CARGO:"/"FIRMA" de las otras dos columnas, a y=149.4 y
+  // y=92.2) — si el texto las cruza queda con una línea encima (se ve
+  // tachado). Las filas de acá saltan esas dos alturas a propósito.
+  observaciones: { x: 456, xFin: 765, filas: [
+    { y0: 149.4, y1: 135.4 }, { y0: 135.4, y1: 121.4 }, { y0: 121.4, y1: 107.4 }, { y0: 107.4, y1: 93.4 },
+    { y0: 92.2, y1: 78.2 }, { y0: 78.2, y1: 64.2 }, { y0: 64.2, y1: 50.2 }, { y0: 50.2, y1: 36.2 },
+  ] },
 };
 // Cada EPP por trabajador es un solo select: si no se registra queda vacío
 // (no se dibuja nada), "Usa - Bueno/Regular/Malo" marca USA=S y ESTADO con
