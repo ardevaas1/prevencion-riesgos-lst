@@ -609,6 +609,20 @@ body.is-offline #app { padding-top: 30px; }
 }
 .checklist-generico-item-fila2 { display: flex; gap: 8px; }
 .checklist-generico-item-fila2 input { flex: 1; min-width: 0; }
+
+/* ── Check List Orden y Aseo (SGSST-PER-002): grilla mensual 23 ítems × N
+   días, un solo documento acumulado — cada celda cicla vacío→V→X→N/A. ── */
+.cm-table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; margin: 10px 0; }
+.cm-table { border-collapse: collapse; font-size: 11px; white-space: nowrap; }
+.cm-table th, .cm-table td { border: 1px solid var(--line); padding: 0; }
+.cm-table th { background: var(--neutral-soft); font-weight: 700; padding: 6px 4px; position: sticky; top: 0; }
+.cm-table .cm-item-label { text-align: left; padding: 5px 8px; white-space: normal; min-width: 220px; max-width: 320px; font-size: 12px; }
+.cm-table .cm-item-num { text-align: center; font-weight: 700; color: var(--ink-soft); }
+.cm-cell { width: 26px; height: 26px; border: none; background: none; font: inherit; font-weight: 700; cursor: pointer; color: var(--ink-soft); }
+.cm-cell--v { background: #e6f4ea; color: #1e7a34; }
+.cm-cell--x { background: #fbe6e6; color: #c62828; }
+.cm-cell--a { background: #eee; color: #777; }
+.cm-seccion-row td { background: #2f7d8c; color: #fff; font-weight: 700; padding: 5px 8px; text-align: left; }
 .subcont-mes-picker {
   display: flex; align-items: center; gap: 10px;
   background: var(--neutral-soft); border-radius: 10px; padding: 9px 12px;

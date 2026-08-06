@@ -63,7 +63,7 @@ const CHARLAS_BIBLIOTECA = [
 //    marcado manual de días de siempre (checkbox simple, sin PDF).
 const PROGRAMAS_PERSONALIZADOS = [
   { codigo: 'SGSST-PER-001', nombre: 'Inspección - Observación', archivo: 'plantillas/programas/SGSST-PER-001_Inspeccion_Observacion.pdf', tipo: 'inspeccion_observacion' },
-  { codigo: 'SGSST-PER-002', nombre: 'Check List Orden y Aseo', archivo: 'plantillas/programas/SGSST-PER-002_Check_List_Orden_y_Aseo.pdf' },
+  { codigo: 'SGSST-PER-002', nombre: 'Check List Orden y Aseo', archivo: 'plantillas/programas/SGSST-PER-002_Check_List_Orden_y_Aseo.pdf', tipo: 'checklist_mensual' },
   { codigo: 'SGSST-PER-003', nombre: 'Observación de Conducta', archivo: 'plantillas/programas/SGSST-PER-003_Observacion_de_Conducta.pdf', tipo: 'observacion_conducta' },
   { codigo: 'SGSST-PER-004', nombre: 'Inspección de Seguridad — Andamios', archivo: 'plantillas/programas/SGSST-PER-004_Inspeccion_Seguridad_Andamios.pdf', tipo: 'checklist_generico' },
   { codigo: 'SGSST-PER-005', nombre: 'Inspección de EPP', archivo: 'plantillas/programas/SGSST-PER-005_Inspeccion_de_EPP.pdf', tipo: 'inspeccion_epp' },
@@ -985,7 +985,7 @@ async function cargarTodo(silencioso) {
       `'${CONFIG.SHEET_DIAT}'!A2:BA2000`,
       `'${CONFIG.SHEET_SUBCONTRATISTAS}'!A2:B2000`,
       `'${CONFIG.SHEET_SUBCONTRATISTAS_DOCS}'!A2:H2000`,
-      `'${CONFIG.SHEET_PROGRAMA_PERSONALIZADO}'!A2:K4000`,
+      `'${CONFIG.SHEET_PROGRAMA_PERSONALIZADO}'!A2:L4000`,
     ]);
     if (!silencioso) splash(85, 'Preparando la app...');
     allTrabajadores = trab.map((r,i) => rowToTrabajador(r,i));
@@ -1122,11 +1122,21 @@ function parseRegistrosPdfPrograma(str) {
   });
   return map;
 }
+// Columna L ("Datos Checklist Mensual"): solo usada por SGSST-PER-002 (tipo
+// checklist_mensual) — JSON con el estado completo del documento mensual
+// (sector, firmas, EPP, observaciones y la grilla de 23 ítems × 31 días),
+// ver generarPdfChecklistOrdenAseo. El resto de las actividades deja esta
+// columna vacía.
+function parseDatosChecklistMensual(str) {
+  if (!str) return null;
+  try { return JSON.parse(str); } catch (e) { return null; }
+}
 function rowToProgramaPersonalizado(r, i) {
   return { fila: i+2, n: r[0]||'', obra: r[1]||'', mes: r[2]||'', supervisor: r[3]||'', cargo: r[4]||'',
     actividad: r[5]||'', frecuencia: r[6]||'',
     diasMarcados: (r[7]||'').split(',').map(x => parseInt(x.trim(), 10)).filter(n => !isNaN(n)),
-    fechaRegistro: r[8]||'', registradoPor: r[9]||'', registrosPdf: parseRegistrosPdfPrograma(r[10]) };
+    fechaRegistro: r[8]||'', registradoPor: r[9]||'', registrosPdf: parseRegistrosPdfPrograma(r[10]),
+    datosChecklistMensual: parseDatosChecklistMensual(r[11]) };
 }
 // Una entrega de EPP es UNA fila con todos los ítems juntos en la columna
 // "EPP Entregado" (ej. "Casco (1); Guantes (2)"), igual que "Asistentes"
@@ -4783,9 +4793,9 @@ async function guardarActividadPrograma(ev) {
     if (!f.supervisor.value) { toast('Selecciona el supervisor', 'error'); return; }
     const actividad = f.actividad.value.trim();
     if (!actividad) { toast('Escribe la actividad', 'error'); return; }
-    await appendSheet(`'${CONFIG.SHEET_PROGRAMA_PERSONALIZADO}'!A:K`, [[
+    await appendSheet(`'${CONFIG.SHEET_PROGRAMA_PERSONALIZADO}'!A:L`, [[
       allProgramaPersonalizado.length + 1, obra, f.mes.value, f.supervisor.value, f.cargo.value,
-      actividad, f.frecuencia.value, '', new Date().toLocaleString('es-CL'), userEmail || '', ''
+      actividad, f.frecuencia.value, '', new Date().toLocaleString('es-CL'), userEmail || '', '', ''
     ]]);
     toast('Actividad agregada ✓', 'ok');
     closePanel('panel-form-actividad-programa');
@@ -4827,13 +4837,6 @@ let marcarDiasFila = null;
 function abrirMarcarDias(fila) {
   const a = allProgramaPersonalizado.find(x => x.fila === fila);
   if (!a) return;
-  marcarDiasFila = fila;
-  document.getElementById('pnl-title-marcar-dias').textContent = a.actividad;
-  document.getElementById('marcar-dias-info').textContent = `${a.supervisor} · ${a.frecuencia} · ${nombreMes(a.mes)}`;
-  const dias = diasEnMes(a.mes);
-  const marcadosGuardados = new Set(a.diasMarcados);
-  const diasEvidencia = diasConEvidenciaActividad(a);
-  document.getElementById('marcar-dias-aviso').classList.toggle('hidden', diasEvidencia.size === 0);
   // Si la actividad calza con uno de los formatos de PROGRAMAS_PERSONALIZADOS
   // Y ese formato ya tiene motor de llenado digital (CHECKLIST_GENERICO_CONFIG,
   // por ahora), el día deja de ser un simple checkbox: hay que llenar el
@@ -4841,6 +4844,17 @@ function abrirMarcarDias(fila) {
   // cumplimiento del informe pasa a reflejar documentos reales, no un tilde
   // manual sin respaldo.
   const formato = formatoDeActividad(a.actividad);
+  // SGSST-PER-002 no encaja en "un PDF por día" — es una grilla mensual
+  // acumulada (23 ítems × N días en un solo documento), así que tiene su
+  // propio panel en vez de la cuadrícula de días.
+  if (formato && formato.tipo === 'checklist_mensual') { abrirChecklistMensual(fila); return; }
+  marcarDiasFila = fila;
+  document.getElementById('pnl-title-marcar-dias').textContent = a.actividad;
+  document.getElementById('marcar-dias-info').textContent = `${a.supervisor} · ${a.frecuencia} · ${nombreMes(a.mes)}`;
+  const dias = diasEnMes(a.mes);
+  const marcadosGuardados = new Set(a.diasMarcados);
+  const diasEvidencia = diasConEvidenciaActividad(a);
+  document.getElementById('marcar-dias-aviso').classList.toggle('hidden', diasEvidencia.size === 0);
   const motor = motorDigitalDe(formato);
   // Calendario real del mes: encabezado Lun-Dom y celdas vacías antes del
   // día 1 para que cada día caiga en su columna real — así se ve de un
@@ -6000,6 +6014,284 @@ async function generarPdfAutorizacionAltura(datos) {
   const blob = new Blob([bytes], { type: 'application/pdf' });
   const up = await uploadFile(blob, 'Programa Personalizado', 'SGSST-PER-006_' + (datos.obra || 'obra').replace(/\s+/g,'_') + '_' + datos.__fechaDia, 'pdf');
   return up.link;
+}
+
+// ── SGSST-PER-002 (Check List Orden y Aseo) — el único formato que NO sigue
+// el modelo "un PDF por día" del resto: es una grilla mensual acumulada, 23
+// ítems de chequeo × hasta 31 días (V=Operativo/X=No operativo/N/A=No
+// aplica) en UN solo documento por obra+mes, que se regenera y sobrescribe
+// cada vez que se edita cualquier día. Por eso NO tiene entrada en
+// MOTORES_FORMATO_PROGRAMA (motorDigitalDe no lo reconoce a propósito) —
+// abrirMarcarDias lo detecta por tipo === 'checklist_mensual' y abre
+// panel-checklist-mensual en vez de la cuadrícula de días. El estado
+// completo (sector, EPP requerido, firmas, observaciones y la grilla) se
+// persiste como JSON en la columna L ("Datos Checklist Mensual") — es la
+// única forma de reconstruir el documento completo en cada edición, ya que
+// cada click en una celda solo cambia UN día pero el PDF hay que dibujarlo
+// entero de nuevo. Un día cuenta como "cumplido" (para diasMarcados / el
+// informe) solo cuando sus 23 ítems tienen los 23 marcados — no basta con
+// uno solo.
+const CHECKLIST_ORDEN_ASEO_CONFIG = {
+  mes: { x: 580, y: 488.0 },
+  anio: { x: 580, y: 481.0 },
+  sector: { x: 618, y: 474.0 },
+  eppX: 371.9,
+  epp: [
+    { key: 'casco', label: 'Casco de seguridad', y: 490.6 },
+    { key: 'zapatos', label: 'Zapatos de seguridad', y: 483.6 },
+    { key: 'lentes', label: 'Lentes de seguridad', y: 476.6 },
+    { key: 'guantes', label: 'Guantes de seguridad', y: 469.55 },
+    { key: 'otros', label: 'Otros', y: 462.5 },
+  ],
+  firmaSupervisor: { x: 632, y: 452, w: 78, h: 3.5 },
+  firmaAsesor: { x: 602, y: 438, w: 108, h: 3.5 },
+  observaciones: { x: 170, y: 136, w: 655 },
+  // Ítem 17 ("Los accesos...") es donde empieza la banda separadora teal
+  // "ACCESOS Y PASILLOS" impresa en la plantilla — solo informativo para el
+  // formulario, la banda ya está impresa en el PDF.
+  seccionDesdeItem: 17,
+  itemsLabels: [
+    'El almacenamiento de elementos y materiales está bien ubicados',
+    'Existen almacenamieno o apilamiento de materiales que obstruyen el área',
+    'El almacenamiento de elementos y materiales corresponde al lugar donde está',
+    'Existe espacio necesario para realizar trabajos',
+    'Las herramientas estan bien almacenadas y ordenadas',
+    'Los equipos se encuentran bien almacenados y ordenados',
+    'Los equipos y maquinarias estan limpios',
+    'Los pisos se encuentran limpios',
+    'Los materiales de despunte y desperdicios tienen su lugar de almacenamiento',
+    'Se realiza aseo periodico al area de trabajo',
+    'Se retiran periodicamente los escombros y desperdicios de area de trabajo',
+    'Los cables electricos tienen tendido aereo',
+    'El area de trabajo cuenta con escobillones y palas',
+    'Los bidones o tambores de liquidos (agua, combustible, desmoldante etc,) se encuentran almacenados',
+    'Los bidones o tambores de liquidos (agua, combustible, desmoldante etc,) se encuentran señalizados',
+    'La iluminacion es suficiente en el lugar de trabajo',
+    'Los accesos se encuentran libres de elementos, materiales o escombros',
+    'Los accesos se encuentran delimitados',
+    'Los pisos se encuentra limpios',
+    'Se realiza aseo periodico a los accesos y pasillos',
+    'Los pasillos se encuentran señalizados',
+    'Los pasillos se encuentran con iluminacion sufuciente',
+    'OTROS:',
+  ],
+  // Banda y0/y1 de cada uno de los 23 ítems, medida sobre el PDF real —
+  // como siempre, sin garantía de cuál es el borde de arriba (se normaliza
+  // con Math.max/min al dibujar).
+  filas: [
+    { y0: 423.1, y1: 402.4 }, { y0: 402.4, y1: 387.1 }, { y0: 387.1, y1: 372.3 }, { y0: 372.3, y1: 362.9 },
+    { y0: 362.9, y1: 347.7 }, { y0: 347.7, y1: 333.9 }, { y0: 333.9, y1: 323.7 }, { y0: 323.7, y1: 316.9 },
+    { y0: 316.9, y1: 302.5 }, { y0: 302.5, y1: 295.7 }, { y0: 295.7, y1: 282.5 }, { y0: 282.5, y1: 275.7 },
+    { y0: 275.7, y1: 268.7 }, { y0: 268.7, y1: 248.3 }, { y0: 248.3, y1: 233.1 }, { y0: 233.1, y1: 223.7 },
+    { y0: 216.9, y1: 203.1 }, { y0: 203.1, y1: 196.3 }, { y0: 196.3, y1: 189.4 }, { y0: 189.4, y1: 175.2 },
+    { y0: 175.2, y1: 168.4 }, { y0: 168.4, y1: 154.2 }, { y0: 154.2, y1: 147.2 },
+  ],
+  // Límites de las 31 columnas de días (32 valores → 31 columnas) — NO son
+  // parejo: el día 25 en la plantilla real es casi el doble de ancho que el
+  // resto (defecto del documento original de Excel), así que se usan las
+  // posiciones medidas tal cual en vez de repartir el ancho en partes
+  // iguales.
+  columnas: [
+    296.6, 310.2, 323.8, 337.4, 351.0, 364.6, 378.2, 391.8, 405.4, 419.0, 432.6, 446.2, 459.8, 473.4, 487.0,
+    500.6, 514.2, 527.8, 541.4, 555.0, 568.6, 582.3, 595.9, 609.4, 623.1, 647.1, 660.6, 674.3, 687.9, 701.5,
+    715.1, 728.6,
+  ],
+};
+function gridVacioChecklistMensual() { return Array.from({length: 23}, () => '.'.repeat(31)); }
+let checklistMensualCtx = null; // { fila }
+let checklistMensualDatos = null; // copia de trabajo — las celdas la mutan directo al click, sin re-render
+function htmlChecklistMensual(a, datos) {
+  const c = CHECKLIST_ORDEN_ASEO_CONFIG;
+  const dias = diasEnMes(a.mes);
+  const eppHtml = c.epp.map(e => `
+    <label style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
+      <input type="checkbox" name="cm_epp_${e.key}" ${datos.epp && datos.epp[e.key] ? 'checked' : ''}> <span>${esc(e.label)}</span>
+    </label>`).join('');
+  const headerDias = Array.from({length: dias}, (_, i) => `<th>${i+1}</th>`).join('');
+  const filasHtml = c.itemsLabels.map((label, i) => {
+    const seccion = (i + 1 === c.seccionDesdeItem)
+      ? `<tr class="cm-seccion-row"><td colspan="${dias + 2}">ACCESOS Y PASILLOS</td></tr>` : '';
+    const filaGrid = datos.grid[i] || '.'.repeat(31);
+    const celdas = Array.from({length: dias}, (_, d) => {
+      const val = filaGrid[d] || '.';
+      const cls = val !== '.' ? ` cm-cell--${val.toLowerCase()}` : '';
+      return `<td><button type="button" class="cm-cell${cls}" data-item="${i}" data-day="${d+1}" onclick="cmCellClick(this)">${val === '.' ? '' : val}</button></td>`;
+    }).join('');
+    return `${seccion}<tr><td class="cm-item-num">${i+1}</td><td class="cm-item-label">${esc(label)}</td>${celdas}</tr>`;
+  }).join('');
+  return `
+    <div class="sec-label">Datos del mes</div>
+    <div class="card-sub" style="margin-bottom:8px;">${esc(nombreMes(a.mes))} · ${esc(a.obra)}</div>
+    ${datos.link ? `<a href="${esc(datos.link)}" target="_blank" class="card-sub">Ver último documento generado ↗</a>` : ''}
+    <div class="form-group"><label>Sector de trabajo</label><input name="cm_sector" value="${esc(datos.sector || '')}"></div>
+    <div class="sec-label" style="margin-top:14px;">EPP requerido (marca lo que aplique)</div>
+    ${eppHtml}
+    <div class="sec-label" style="margin-top:18px;">Ítems de chequeo — toca una celda para ciclar entre V (operativo) / X (no operativo) / N/A</div>
+    <div class="cm-table-wrap">
+      <table class="cm-table">
+        <thead><tr><th></th><th>Ítem</th>${headerDias}</tr></thead>
+        <tbody>${filasHtml}</tbody>
+      </table>
+    </div>
+    <div class="card-sub" style="margin:8px 0;">Referencias: V = Operativo · X = No operativo · N/A = No aplica</div>
+    <div class="sec-label" style="margin-top:14px;">Observaciones</div>
+    <div class="form-group"><textarea name="cm_observaciones" rows="3">${esc(datos.observaciones || '')}</textarea></div>
+    <div class="sec-label" style="margin-top:18px;">Firma del supervisor</div>
+    ${datos.firmaSupervisor ? '<div class="card-sub">Ya hay una firma guardada — dibuja una nueva solo si quieres reemplazarla.</div>' : ''}
+    <div class="form-group">
+      <div class="firma-box"><canvas id="firma-mensual-supervisor"></canvas></div>
+      <div class="firma-actions"><button type="button" onclick="limpiarFirmaId('firma-mensual-supervisor')">Borrar firma</button></div>
+    </div>
+    <div class="sec-label" style="margin-top:18px;">Firma de asesor prevención</div>
+    ${datos.firmaAsesor ? '<div class="card-sub">Ya hay una firma guardada — dibuja una nueva solo si quieres reemplazarla.</div>' : ''}
+    <div class="form-group">
+      <div class="firma-box"><canvas id="firma-mensual-asesor"></canvas></div>
+      <div class="firma-actions"><button type="button" onclick="limpiarFirmaId('firma-mensual-asesor')">Borrar firma</button></div>
+    </div>
+    <button class="btn-add" style="margin-top:16px;" onclick="guardarChecklistMensual()">Generar / actualizar documento</button>`;
+}
+function cmCellClick(btn) {
+  const i = parseInt(btn.dataset.item, 10), d = parseInt(btn.dataset.day, 10);
+  const orden = ['.', 'V', 'X', 'A'];
+  const fila = checklistMensualDatos.grid[i] || '.'.repeat(31);
+  const cur = fila[d-1] || '.';
+  const next = orden[(orden.indexOf(cur) + 1) % orden.length];
+  checklistMensualDatos.grid[i] = fila.slice(0, d-1) + next + fila.slice(d);
+  btn.textContent = next === '.' ? '' : next;
+  btn.className = 'cm-cell' + (next !== '.' ? ' cm-cell--' + next.toLowerCase() : '');
+}
+function abrirChecklistMensual(fila) {
+  const a = allProgramaPersonalizado.find(x => x.fila === fila);
+  if (!a) return;
+  checklistMensualCtx = { fila };
+  const guardados = a.datosChecklistMensual || {};
+  checklistMensualDatos = {
+    sector: guardados.sector || '', observaciones: guardados.observaciones || '',
+    epp: guardados.epp || {}, firmaSupervisor: guardados.firmaSupervisor || '', firmaAsesor: guardados.firmaAsesor || '',
+    link: guardados.link || '',
+    grid: (guardados.grid && guardados.grid.length === 23) ? guardados.grid.slice() : gridVacioChecklistMensual(),
+  };
+  document.getElementById('pnl-title-checklist-mensual').textContent = `${a.actividad} — ${nombreMes(a.mes)}`;
+  document.getElementById('checklist-mensual-body').innerHTML = htmlChecklistMensual(a, checklistMensualDatos);
+  setTimeout(() => { initFirmaPad('firma-mensual-supervisor'); initFirmaPad('firma-mensual-asesor'); }, 80);
+  openPanel('panel-checklist-mensual');
+}
+function recolectarChecklistMensual(body) {
+  const c = CHECKLIST_ORDEN_ASEO_CONFIG;
+  const val = (name) => (body.querySelector(`[name="${name}"]`) || {}).value || '';
+  const checked = (name) => !!(body.querySelector(`[name="${name}"]`) || {}).checked;
+  const nuevaFirmaSup = recolectarFirmaCanvas('firma-mensual-supervisor');
+  const nuevaFirmaAse = recolectarFirmaCanvas('firma-mensual-asesor');
+  return {
+    sector: val('cm_sector'),
+    observaciones: val('cm_observaciones'),
+    epp: Object.fromEntries(c.epp.map(e => [e.key, checked('cm_epp_' + e.key)])),
+    firmaSupervisor: nuevaFirmaSup || checklistMensualDatos.firmaSupervisor || '',
+    firmaAsesor: nuevaFirmaAse || checklistMensualDatos.firmaAsesor || '',
+    grid: checklistMensualDatos.grid,
+  };
+}
+async function generarPdfChecklistOrdenAseo(a, datos) {
+  const c = CHECKLIST_ORDEN_ASEO_CONFIG;
+  const { PDFDocument, rgb, StandardFonts } = await cargarPdfLib();
+  const templateBytes = await fetch('plantillas/programas/SGSST-PER-002_Check_List_Orden_y_Aseo.pdf').then(r => r.arrayBuffer());
+  const pdfDoc = await PDFDocument.load(templateBytes);
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const page = pdfDoc.getPages()[0];
+
+  function text(str, x, y, size) {
+    if (!str) return;
+    page.drawText(String(str), { x, y, size: size || 7.5, font, color: rgb(0,0,0) });
+  }
+  function checkX(x, yCenter, size) {
+    const s = size || 7.5;
+    page.drawText('X', { x: x - s * 0.32, y: yCenter - s * 0.35, size: s, font: fontBold, color: rgb(0,0,0) });
+  }
+  function marcaCelda(xc, yc, val) {
+    const txt = val === 'A' ? 'N/A' : val;
+    const s = val === 'A' ? 5.3 : 7.5;
+    const w = fontBold.widthOfTextAtSize(txt, s);
+    page.drawText(txt, { x: xc - w / 2, y: yc - s * 0.35, size: s, font: fontBold, color: rgb(0,0,0) });
+  }
+  function wrapLines(str, maxWidth, size) {
+    const words = (str || '').split(/\s+/).filter(Boolean);
+    const lines = []; let current = '';
+    for (const w of words) {
+      const test = current ? current + ' ' + w : w;
+      if (font.widthOfTextAtSize(test, size) > maxWidth && current) { lines.push(current); current = w; }
+      else current = test;
+    }
+    if (current) lines.push(current);
+    return lines;
+  }
+  async function drawSig(dataUrl, x, y, w, h) {
+    if (!dataUrl) return;
+    const bytes = Uint8Array.from(atob(dataUrl.split(',')[1]), ch => ch.charCodeAt(0));
+    const img = await pdfDoc.embedPng(bytes);
+    const dims = escalarFirmaCasillero(img, w, h);
+    page.drawImage(img, { x, y, width: dims.width, height: dims.height });
+  }
+
+  const [anio, mesNum] = a.mes.split('-');
+  text(NOMBRES_MES[parseInt(mesNum, 10) - 1], c.mes.x, c.mes.y, 5.5);
+  text(anio, c.anio.x, c.anio.y, 5.5);
+  text(datos.sector, c.sector.x, c.sector.y, 5.5);
+
+  c.epp.forEach(e => { if ((datos.epp || {})[e.key]) checkX(c.eppX, e.y, 7); });
+
+  await drawSig(datos.firmaSupervisor, c.firmaSupervisor.x, c.firmaSupervisor.y, c.firmaSupervisor.w, c.firmaSupervisor.h);
+  await drawSig(datos.firmaAsesor, c.firmaAsesor.x, c.firmaAsesor.y, c.firmaAsesor.w, c.firmaAsesor.h);
+
+  const dias = diasEnMes(a.mes);
+  c.filas.forEach((f, i) => {
+    const fila = datos.grid[i] || '.'.repeat(31);
+    const yc = (Math.max(f.y0, f.y1) + Math.min(f.y0, f.y1)) / 2;
+    for (let d = 0; d < dias; d++) {
+      const val = fila[d];
+      if (!val || val === '.') continue;
+      const xc = (c.columnas[d] + c.columnas[d + 1]) / 2;
+      marcaCelda(xc, yc, val);
+    }
+  });
+
+  wrapLines(datos.observaciones, c.observaciones.w, 7.5).slice(0, 1)
+    .forEach(l => text(l, c.observaciones.x, c.observaciones.y, 7.5));
+
+  const bytes = await pdfDoc.save();
+  const blob = new Blob([bytes], { type: 'application/pdf' });
+  const up = await uploadFile(blob, 'Programa Personalizado', 'SGSST-PER-002_' + (a.obra || 'obra').replace(/\s+/g,'_') + '_' + a.mes, 'pdf');
+  return up.link;
+}
+async function guardarChecklistMensual() {
+  if (!checklistMensualCtx) return;
+  const { fila } = checklistMensualCtx;
+  const a = allProgramaPersonalizado.find(x => x.fila === fila);
+  if (!a) return;
+  const body = document.getElementById('checklist-mensual-body');
+  try {
+    const datos = recolectarChecklistMensual(body);
+    toast('Generando documento...', 'ok');
+    datos.link = await generarPdfChecklistOrdenAseo(a, datos);
+    await ensureToken();
+    const urlDatos = `${SHEETS_BASE}/${CONFIG.SHEET_ID}/values/${encodeURIComponent(`'${CONFIG.SHEET_PROGRAMA_PERSONALIZADO}'!L${fila}`)}?valueInputOption=USER_ENTERED`;
+    await fetch(urlDatos, { method:'PUT', headers:{ 'Content-Type':'application/json', ...authHeader() },
+      body: JSON.stringify({ values: [[JSON.stringify(datos)]] }) });
+    // Un día cuenta como cumplido cuando sus 23 ítems tienen algún valor
+    // (V/X/N-A) — marcar uno solo de los ítems no basta.
+    const dias = diasEnMes(a.mes);
+    const diasCompletos = [];
+    for (let d = 1; d <= dias; d++) {
+      if (datos.grid.every(f => (f[d-1] || '.') !== '.')) diasCompletos.push(d);
+    }
+    const urlDias = `${SHEETS_BASE}/${CONFIG.SHEET_ID}/values/${encodeURIComponent(`'${CONFIG.SHEET_PROGRAMA_PERSONALIZADO}'!H${fila}`)}?valueInputOption=USER_ENTERED`;
+    await fetch(urlDias, { method:'PUT', headers:{ 'Content-Type':'application/json', ...authHeader() },
+      body: JSON.stringify({ values: [[diasCompletos.join(',')]] }) });
+    toast('Documento generado ✓', 'ok');
+    closePanel('panel-checklist-mensual');
+    await cargarTodo(true);
+    if (programaDetalleCtx) renderDetalleProgramaSupervisor();
+  } catch (e) { toast(e.message, 'error'); }
 }
 
 // ── Generador del informe PDF (portada + objetivos + resumen + índices +

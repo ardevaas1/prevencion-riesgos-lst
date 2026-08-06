@@ -1035,11 +1035,67 @@ bajo su propio `tipo`:
     alcance, no bug: medir el x exacto donde termina cada etiqueta variable
     no valía el tiempo frente al resto del formato.
 
-Con esto, de los 6 formatos que faltaban solo queda **`SGSST-PER-002`**
-(Check List Orden y Aseo) — es el más distinto de todos: una grilla mensual
-acumulada (23 ítems × 31 días en un solo documento), no "un PDF por día
-marcado" como los demás, así que necesita pensar su propio modelo de
-interacción antes de medir coordenadas.
+Con esto, de los 6 formatos que faltaban solo quedaba **`SGSST-PER-002`**
+(Check List Orden y Aseo) — el más distinto de todos, y ahora también
+implementado:
+
+- **`SGSST-PER-002`** (Check List Orden y Aseo, `checklist_mensual`): es el
+  ÚNICO formato que no sigue el modelo "un PDF por día" — es una grilla
+  mensual acumulada, 23 ítems de chequeo × hasta 31 días (V=Operativo /
+  X=No operativo / N/A=No aplica) en UN solo documento por obra+mes, que se
+  regenera y sobrescribe completo cada vez que se edita cualquier día (no
+  se puede simplemente "agregar" un día a un PDF ya generado con pdf-lib).
+  Por eso tiene su propio modelo, fuera del patrón de motor
+  `MOTORES_FORMATO_PROGRAMA`:
+  - **NO** está registrado en `MOTORES_FORMATO_PROGRAMA` a propósito —
+    `motorDigitalDe` nunca lo reconoce. `abrirMarcarDias` lo detecta por
+    `formato.tipo === 'checklist_mensual'` ANTES de construir la cuadrícula
+    de días y abre `panel-checklist-mensual` en su lugar
+    (`abrirChecklistMensual`), que reemplaza por completo la cuadrícula de
+    días para esta actividad.
+  - **Persistencia**: como cada click en una celda solo cambia un día pero
+    hay que redibujar el documento COMPLETO, el estado entero (sector, EPP
+    requerido, ambas firmas, observaciones, el link del último PDF y la
+    grilla) se guarda como JSON en la nueva columna L
+    ("Datos Checklist Mensual") de `PROGRAMA_PERSONALIZADO`
+    (`parseDatosChecklistMensual`/`guardarChecklistMensual`) — es la única
+    forma de reconstruir el PDF completo en cada edición. La grilla se
+    codifica compacta: un array de 23 strings de 31 caracteres
+    (`'.'`=vacío, `'V'`/`'X'`/`'A'`), no un objeto anidado.
+  - **UI de la grilla**: tabla HTML con un `<button>` por celda
+    (`cmCellClick`) que cicla vacío→V→X→N/A directo sobre
+    `checklistMensualDatos.grid` (variable de módulo, mutada in-place) sin
+    re-renderizar toda la tabla en cada click — con 23×31 ≈ 713 celdas,
+    reconstruir el HTML completo por click sería visiblemente lento.
+  - **Firmas persistentes entre ediciones**: a diferencia de los demás
+    formatos (donde cada generación pide firma nueva), acá el supervisor
+    normalmente no querría volver a firmar cada vez que marca un día más.
+    `recolectarChecklistMensual` reusa la firma ya guardada si el canvas
+    queda vacío (`nuevaFirma || checklistMensualDatos.firmaX || ''`), y
+    solo la reemplaza si el usuario dibuja una firma nueva.
+  - **"Día cumplido"**: a diferencia de `diasMarcados` en el resto de
+    formatos (basta un documento generado ese día), acá un día solo cuenta
+    como cumplido si sus 23 ítems tienen ALGÚN valor (no está permitido
+    "cumplir" el día marcando un solo ítem) — `datos.grid.every(f =>
+    (f[d-1]||'.') !== '.')`.
+  - **Columnas de días desiguales en la plantilla real**: el PDF (viene de
+    un Excel exportado) tiene la columna del día 25 casi el doble de ancha
+    que las demás — un defecto real del documento del cliente, no un error
+    de medición. `CHECKLIST_ORDEN_ASEO_CONFIG.columnas` guarda las 32
+    posiciones de borde medidas tal cual (no repartidas en partes iguales)
+    para que la marca del día 25 caiga centrada en su columna real.
+  - **Lección de alineación** (encontrada en la primera pasada, corregida
+    antes de dar por completo el formato): el tamaño de fuente de los
+    valores en la caja MES/AÑO/SECTOR DE TRABAJO se probó primero en 7.5pt
+    — visualmente MUCHO más grande que la etiqueta impresa (que es un
+    label chico, ~9pt de alto de línea en una fila de solo ~7pt) y
+    desbordaba el borde de la fila. Se bajó a 5.5pt tras comparar contra la
+    caja AÑO/VERSION/PAGINA/CODIGO del encabezado (donde etiqueta y valor
+    sí quedan a escala similar) — la lección genérica: no asumir que 7-8pt
+    es un tamaño seguro "por defecto" sin medir la altura real de la fila
+    destino, sobre todo en plantillas de Excel donde el label puede ser
+    notablemente más chico que en las plantillas Word/PDF nativas del
+    resto de los formatos.
 
 **Firmas en celdas muy angostas** (lección de 006): `escalarFirmaCasillero`
 prioriza que el ancho (`w`) se respete y solo limita el alto a `h * 1.8`
