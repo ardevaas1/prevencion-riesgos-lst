@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lst-prevencion-shell-v19';
+const CACHE_NAME = 'lst-prevencion-shell-v20';
 // Archivos de código/shell: cambian seguido mientras se sigue desarrollando
 // la app — necesitan "network-first" (siempre intentar la versión más
 // nueva) para que un cambio recién publicado se vea de inmediato con un
@@ -12,7 +12,7 @@ const APP_SHELL = [
   './manifest.json', './logo.png', './logo-white.png', './icon-192.png', './icon-512.png',
   './plantillas/charla_5min.pdf', './plantillas/investigacion_accidente.pdf', './plantillas/hcr.pdf',
   './plantillas/diat.pdf', './vendor/pdf-lib.min.js', './vendor/pdf.min.mjs', './vendor/pdf.worker.min.mjs',
-  './vendor/xlsx.core.min.js', './vendor/miper-banco.js',
+  './vendor/exceljs.min.js', './vendor/miper-banco.js', './plantillas/miper_plantilla.xlsx',
   './plantillas/charlas/SGSST-RG-001_Maquinaria_Pesada.pdf',
   './plantillas/charlas/SGSST-RG-002_Pausas_Activas.pdf',
   './plantillas/charlas/SGSST-RG-003_Trabajo_en_Equipo.pdf',

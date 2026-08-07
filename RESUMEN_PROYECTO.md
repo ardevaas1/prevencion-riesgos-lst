@@ -97,9 +97,17 @@ repositorio de GitHub **separado**.
   empaquetado localmente, usado solo para **leer** texto de las charlas de
   la biblioteca (pdf-lib solo sabe escribir) — ver "Plantillas de Charla"
   más abajo.
-- `vendor/xlsx.core.min.js` — SheetJS (build "core", sin codepages extra),
-  empaquetado localmente, usado solo por el módulo Matriz de Riesgos para
-  generar el Excel — carga bajo demanda igual que `pdf-lib` (`cargarXlsxLib`).
+- `vendor/exceljs.min.js` — ExcelJS, empaquetado localmente, usado solo por
+  el módulo Matriz de Riesgos para generar el Excel — carga bajo demanda
+  igual que `pdf-lib` (`cargarExcelJsLib`). Se eligió ExcelJS (no SheetJS)
+  porque es la única librería vendorizable que sabe escribir celdas con
+  color/relleno, necesario para que el Excel generado se vea igual al
+  original del cliente.
+- `plantillas/miper_plantilla.xlsx` — el Excel original del cliente (Miper
+  DS44) sin la pestaña MATRIZ DE RIESGOS (se arma de nuevo con los datos de
+  cada obra) y sin las hojas vacías — las demás pestañas quedan intactas
+  (mismos colores/bordes/combinaciones), cargada bajo demanda
+  (`cargarMiperPlantillaExcel`).
 - `vendor/miper-banco.js` — banco histórico (513 filas) del módulo Matriz de
   Riesgos, carga bajo demanda (`cargarMiperBanco`) — ver "Módulo Matriz de
   Riesgos (IPER, DS44)" más abajo.
@@ -878,15 +886,26 @@ pestaña por pestaña antes de programar nada.
   fecha real. `Revision` es autonumérica (sube sola en cada documento nuevo
   de la obra); `renderMiper` muestra un aviso (verde/amber/rojo) según qué
   tan cerca esté la Próxima Revisión.
-- **Salida dual PDF/Excel (`generarPdfMiper` / `generarExcelMiper`):** el
-  supervisor elige generar PDF, Excel o ambos. El PDF es desde cero con
-  pdf-lib (portada con encabezado/firmas/protocolos + páginas apaisadas con
-  la tabla completa de la matriz, coloreada por Nivel de Riesgo). El Excel
-  usa `vendor/xlsx.core.min.js` (SheetJS, build "core" sin codepages extra,
-  ~427KB, vendorizado desde el paquete npm `xlsx@0.18.5`) cargado bajo
-  demanda (`cargarXlsxLib`) — 2 hojas: la matriz y el catálogo de riesgos
-  completo (fijo + custom). Ambos archivos se suben a
-  Drive/Matriz de Riesgos/ con nombre `Matriz_IPER_{obra}_Rev{N}`.
+- **Salida: Excel réplica del original (`generarExcelMiper`):** a pedido
+  explícito del cliente ("tiene que ser igual", con las mismas pestañas y
+  colores del Excel que mandó) — no genera PDF. Parte de
+  `plantillas/miper_plantilla.xlsx` (el Excel original del cliente sin la
+  pestaña MATRIZ DE RIESGOS ni las hojas vacías) y lo abre con ExcelJS
+  (`cargarExcelJsLib`, `cargarMiperPlantillaExcel`): las pestañas OBRAS
+  PREVIAS/ANEXO 1-6/VEP/PROBABILIDAD/CONSECUENCIA quedan **exactamente
+  iguales** al archivo original (mismos colores, bordes y celdas combinadas,
+  porque son la plantilla tal cual, no una reconstrucción). Encima arma la
+  pestaña MATRIZ DE RIESGOS con los datos reales de la obra, replicando el
+  estilo del original — medido directamente sobre el Excel que mandó el
+  cliente: Proceso/Puesto/Tarea/Equipos combinados y en verde (`92D050`)
+  cuando una tarea tiene varios peligros, y el Nivel de Riesgo coloreado
+  como semáforo (Tolerable `66FF33` / Moderado `FFFF00` / Importante
+  `FFC000` / Intolerable `FF0000`). El archivo se sube a
+  Drive/Matriz de Riesgos/ con nombre `Matriz_IPER_{obra}_Rev{N}.xlsx`.
+  ExcelJS se eligió en vez de SheetJS porque el build vendorizable de
+  SheetJS (`xlsx.core.min.js`, usado en una primera versión) no soporta
+  escribir color de celda — se probó y el color quedaba silenciosamente
+  descartado al guardar.
 
 ## Asignación de supervisor y modo restringido de supervisor
 

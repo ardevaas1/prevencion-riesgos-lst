@@ -553,21 +553,41 @@ function cargarPdfLib() {
   }
   return pdfLibPromise;
 }
-// xlsx.core.min.js (≈425KB) solo hace falta al generar el Excel de la
-// Matriz IPER — mismo patrón de carga bajo demanda que cargarPdfLib.
-let xlsxLibPromise = null;
-function cargarXlsxLib() {
-  if (window.XLSX) return Promise.resolve(window.XLSX);
-  if (!xlsxLibPromise) {
-    xlsxLibPromise = new Promise((resolve, reject) => {
+// vendor/exceljs.min.js (≈925KB) solo hace falta al generar el Excel de la
+// Matriz IPER — mismo patrón de carga bajo demanda que cargarPdfLib. Se
+// usa ExcelJS (no xlsx/SheetJS) porque es la única librería vendorizable
+// que sabe ESCRIBIR celdas con color/relleno — necesario para que el Excel
+// generado se vea igual al Excel original del cliente (ver
+// plantillas/miper_plantilla.xlsx más abajo).
+let exceljsLibPromise = null;
+function cargarExcelJsLib() {
+  if (window.ExcelJS) return Promise.resolve(window.ExcelJS);
+  if (!exceljsLibPromise) {
+    exceljsLibPromise = new Promise((resolve, reject) => {
       const s = document.createElement('script');
-      s.src = 'vendor/xlsx.core.min.js';
-      s.onload = () => resolve(window.XLSX);
-      s.onerror = () => { xlsxLibPromise = null; reject(new Error('No se pudo cargar xlsx')); };
+      s.src = 'vendor/exceljs.min.js';
+      s.onload = () => resolve(window.ExcelJS);
+      s.onerror = () => { exceljsLibPromise = null; reject(new Error('No se pudo cargar ExcelJS')); };
       document.head.appendChild(s);
     });
   }
-  return xlsxLibPromise;
+  return exceljsLibPromise;
+}
+// plantillas/miper_plantilla.xlsx (≈200KB) — el Excel original del cliente
+// (Miper DS44) sin la pestaña MATRIZ DE RIESGOS (esa se arma de nuevo cada
+// vez con los datos reales de la obra) y sin Hoja1/Hoja2 (vacías). Las
+// pestañas OBRAS PREVIAS/ANEXO 1-6/VEP/PROBABILIDAD/CONSECUENCIA quedan
+// IGUALES al archivo original (mismos colores, bordes, combinaciones de
+// celda) porque no se reconstruyen: se copian tal cual. Se carga bajo
+// demanda, una sola vez, y se reutiliza en cada generación.
+let miperPlantillaExcelPromise = null;
+function cargarMiperPlantillaExcel() {
+  if (!miperPlantillaExcelPromise) {
+    miperPlantillaExcelPromise = fetch('plantillas/miper_plantilla.xlsx')
+      .then(r => { if (!r.ok) throw new Error('No se pudo cargar la plantilla del Excel'); return r.arrayBuffer(); })
+      .catch(e => { miperPlantillaExcelPromise = null; throw e; });
+  }
+  return miperPlantillaExcelPromise;
 }
 // vendor/miper-banco.js (≈240KB) trae el banco histórico de la Matriz IPER
 // (filas Proceso/Tarea/Peligro/Riesgo ya usadas en obras anteriores, para
@@ -7572,14 +7592,7 @@ function abrirDocumentoMiper() {
         <div class="firma-actions"><button type="button" onclick="limpiarFirmaId('firma-canvas-miper-aprobo')">Borrar firma</button></div>
       </div>
 
-      <div class="form-group"><label>Formato de salida</label>
-        <select name="formato">
-          <option value="pdf">PDF</option>
-          <option value="excel">Excel (.xlsx)</option>
-          <option value="ambos">PDF y Excel</option>
-        </select>
-      </div>
-      <button class="btn-add" type="submit">Generar documento</button>
+      <button class="btn-add" type="submit">Generar Excel</button>
     </form>
     ${docs.length ? `<div class="sec-label" style="margin-top:18px;">Documentos anteriores</div>${docs.map(d => `
       <div class="card card--default">
@@ -7587,7 +7600,6 @@ function abrirDocumentoMiper() {
           <div class="card-title">Revisión ${d.revision}</div>
           <div class="card-sub">${esc(d.fecha)}</div>
           <div class="badge-row">
-            ${d.pdf ? `<a class="badge blue" href="${esc(d.pdf)}" target="_blank" rel="noopener">Ver PDF</a>` : ''}
             ${d.excel ? `<a class="badge green" href="${esc(d.excel)}" target="_blank" rel="noopener">Ver Excel</a>` : ''}
           </div>
         </div>
@@ -7627,311 +7639,159 @@ async function generarDocumentoMiper(ev) {
       filas,
     };
 
-    const formato = f.formato.value;
-    let pdfLink = '', excelLink = '';
     const folderId = await getModuloFolder('Matriz de Riesgos');
     const nombreBase = `Matriz_IPER_${obra}_Rev${revision}`.replace(/\s+/g, '_');
-
-    if (formato === 'pdf' || formato === 'ambos') {
-      const pdfBlob = await generarPdfMiper(datos);
-      const up = await subirBytesADrive(pdfBlob, folderId, `${nombreBase}.pdf`);
-      pdfLink = up.link;
-    }
-    if (formato === 'excel' || formato === 'ambos') {
-      const excelBlob = await generarExcelMiper(datos);
-      const up = await subirBytesADrive(excelBlob, folderId, `${nombreBase}.xlsx`);
-      excelLink = up.link;
-    }
+    const excelBlob = await generarExcelMiper(datos);
+    const up = await subirBytesADrive(excelBlob, folderId, `${nombreBase}.xlsx`);
+    const excelLink = up.link;
 
     await appendSheet(`'${CONFIG.SHEET_MIPER_DOCUMENTOS}'!A:P`, [[
       allMiperDocumentos.length + 1, obra, datos.entidadEmpleadora, datos.sucursal, datos.responsableLevantamiento,
       datos.fecha, revision, datos.proximaRevision, JSON.stringify(protocolosSel),
       datos.nombreElaboro, datos.nombreReviso, datos.nombreAprobo,
-      pdfLink, excelLink, new Date().toLocaleString('es-CL'), userEmail || ''
+      '', excelLink, new Date().toLocaleString('es-CL'), userEmail || ''
     ]]);
-    toast('Documento generado ✓', 'ok');
+    toast('Excel generado ✓', 'ok');
     closePanel('panel-miper-documento');
     await cargarTodo(true);
   } catch (e) { console.error(e); toast(e.message, 'error'); }
 }
 
-// ── Generador PDF ────────────────────────────────────────────────────────
-async function generarPdfMiper(datos) {
-  const { PDFDocument, rgb, StandardFonts } = await cargarPdfLib();
-  const pdfDoc = await PDFDocument.create();
-  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-  const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-  const negro = rgb(0.1, 0.1, 0.12), gris = rgb(0.45, 0.45, 0.48), grisClaro = rgb(0.88, 0.88, 0.9), verdeLst = rgb(0.12, 0.42, 0.22);
-  const nivelColorRgb = {
-    Tolerable: rgb(0.16, 0.5, 0.28), Moderado: rgb(0.85, 0.6, 0.05),
-    Importante: rgb(0.85, 0.42, 0.08), Intolerable: rgb(0.78, 0.15, 0.15),
-  };
+// ── Generador Excel ──────────────────────────────────────────────────────
+// Réplica del Excel original del cliente: se parte de
+// plantillas/miper_plantilla.xlsx (el archivo original SIN la pestaña
+// MATRIZ DE RIESGOS ni las hojas vacías) — así OBRAS PREVIAS/ANEXO 1-6/VEP/
+// PROBABILIDAD/CONSECUENCIA quedan IGUALES al original (mismos colores,
+// bordes, celdas combinadas), porque son la plantilla tal cual, no una
+// reconstrucción. Encima se arma la pestaña MATRIZ DE RIESGOS con los datos
+// reales de la obra, replicando el estilo del original: Proceso/Puesto/
+// Tarea/Equipos combinados y en verde (92D050) cuando una tarea tiene varios
+// peligros, y el Nivel de Riesgo coloreado según el semáforo del original
+// (Tolerable verde / Moderado amarillo / Importante naranjo / Intolerable
+// rojo — colores medidos directamente sobre el Excel que mandó el cliente).
+const MIPER_COLOR_NIVEL_EXCEL = {
+  Tolerable: 'FF66FF33', Moderado: 'FFFFFF00', Importante: 'FFFFC000', Intolerable: 'FFFF0000',
+};
+const MIPER_COLOR_BLOQUE_TAREA_EXCEL = 'FF92D050';
 
-  function wrapLines(str, maxWidth, size, f2) {
-    const words = (str || '').toString().split(/\s+/).filter(Boolean);
-    const lines = []; let current = '';
-    const fnt = f2 || font;
-    for (let w of words) {
-      // Palabra sola más ancha que la columna (ej. "PROBABILIDAD" en una
-      // columna angosta de encabezado) — se corta por caracteres para que
-      // no se salga y quede tapada por la celda vecina.
-      while (fnt.widthOfTextAtSize(w, size) > maxWidth && w.length > 1) {
-        let cut = w.length - 1;
-        while (cut > 1 && fnt.widthOfTextAtSize(w.slice(0, cut), size) > maxWidth) cut--;
-        if (current) { lines.push(current); current = ''; }
-        lines.push(w.slice(0, cut));
-        w = w.slice(cut);
-      }
-      const test = current ? current + ' ' + w : w;
-      if (fnt.widthOfTextAtSize(test, size) > maxWidth && current) { lines.push(current); current = w; }
-      else current = test;
-    }
-    if (current) lines.push(current);
-    return lines;
+async function generarExcelMiper(datos) {
+  const ExcelJS = await cargarExcelJsLib();
+  const templateBuffer = await cargarMiperPlantillaExcel();
+  const wb = new ExcelJS.Workbook();
+  await wb.xlsx.load(templateBuffer);
+
+  const bordeFino = { style: 'thin', color: { argb: 'FF999999' } };
+  const borde = { top: bordeFino, left: bordeFino, bottom: bordeFino, right: bordeFino };
+  const NCOLS = 12;
+
+  const idxNueva = wb.worksheets.length;
+  const ws = wb.addWorksheet('MATRIZ DE RIESGOS');
+  wb.views = [{ activeTab: idxNueva }];
+
+  let r = 1;
+  ws.mergeCells(r, 1, r, NCOLS);
+  const titulo = ws.getCell(r, 1);
+  titulo.value = 'MATRIZ DE IDENTIFICACION DE PELIGROS / FACTORES DE RIESGOS y EVALUACION DE RIESGOS';
+  titulo.font = { bold: true, size: 14 };
+  ws.getRow(r).height = 22;
+  r += 2;
+
+  function campoIzq(fila, label, value) {
+    ws.getCell(fila, 1).value = label; ws.getCell(fila, 1).font = { bold: true };
+    ws.mergeCells(fila, 2, fila, 5); ws.getCell(fila, 2).value = value;
   }
-  async function drawSig(page, dataUrl, x, y, w, h) {
-    if (!dataUrl) return;
-    const bytes = Uint8Array.from(atob(dataUrl.split(',')[1]), c => c.charCodeAt(0));
-    const img = await pdfDoc.embedPng(bytes);
-    const dims = escalarFirmaCasillero(img, w, h);
-    page.drawImage(img, { x, y, width: dims.width, height: dims.height });
+  function campoDer(fila, label, value) {
+    ws.getCell(fila, 7).value = label; ws.getCell(fila, 7).font = { bold: true };
+    ws.mergeCells(fila, 8, fila, NCOLS); ws.getCell(fila, 8).value = value;
   }
+  campoIzq(r, 'ENTIDAD EMPLEADORA', datos.entidadEmpleadora);
+  campoDer(r, 'NOMBRE Y FIRMA ELABORO', datos.nombreElaboro); r++;
+  campoIzq(r, 'SUCURSAL', datos.sucursal);
+  campoDer(r, 'NOMBRE Y FIRMA REVISION', datos.nombreReviso); r++;
+  campoIzq(r, 'RESPONSABLE LEVANTAMIENTO', datos.responsableLevantamiento);
+  campoDer(r, 'NOMBRE Y FIRMA APROBACION', datos.nombreAprobo); r++;
+  ws.getCell(r, 1).value = 'FECHA'; ws.getCell(r, 1).font = { bold: true };
+  ws.getCell(r, 2).value = ddmmyyyy(datos.fecha);
+  ws.getCell(r, 4).value = 'REVISION'; ws.getCell(r, 4).font = { bold: true };
+  ws.getCell(r, 5).value = datos.revision;
+  campoDer(r, 'PROXIMA REVISION', datos.proximaRevision ? ddmmyyyy(datos.proximaRevision) : '');
+  r += 2;
 
-  // ---- Página 1: Portada / encabezado / firmas / protocolos ----
-  const p1 = pdfDoc.addPage([595.28, 841.89]);
-  const W = 595.28, H = 841.89;
-  let y = H - 50;
-  p1.drawText('MATRIZ DE IDENTIFICACIÓN DE PELIGROS', { x: 50, y, size: 17, font: fontBold, color: verdeLst });
-  y -= 21;
-  p1.drawText('Y EVALUACIÓN DE RIESGOS (IPER) — DS44', { x: 50, y, size: 17, font: fontBold, color: verdeLst });
-  y -= 30;
-  p1.drawLine({ start: { x: 50, y }, end: { x: W - 50, y }, thickness: 1.2, color: grisClaro });
-  y -= 26;
-
-  const campos = [
-    ['ENTIDAD EMPLEADORA', datos.entidadEmpleadora], ['SUCURSAL', datos.sucursal],
-    ['RESPONSABLE LEVANTAMIENTO', datos.responsableLevantamiento],
-    ['FECHA', ddmmyyyy(datos.fecha)], ['REVISION', String(datos.revision)],
-    ['PROXIMA REVISION', datos.proximaRevision ? ddmmyyyy(datos.proximaRevision) : '—'],
-  ];
-  campos.forEach(([label, val]) => {
-    p1.drawText(label + ':', { x: 50, y, size: 10, font: fontBold, color: negro });
-    p1.drawText(String(val || '—'), { x: 230, y, size: 10, font, color: negro });
-    y -= 18;
-  });
-
-  y -= 10;
-  p1.drawText('PROTOCOLOS DE VIGILANCIA MINSAL APLICABLES', { x: 50, y, size: 11, font: fontBold, color: negro });
-  y -= 18;
+  ws.mergeCells(r, 1, r, NCOLS);
+  ws.getCell(r, 1).value = 'PROTOCOLOS DE VIGILANCIA MINSAL APLICABLES';
+  ws.getCell(r, 1).font = { bold: true };
+  r++;
   if (datos.protocolosSel.length === 0) {
-    p1.drawText('Ninguno marcado como aplicable.', { x: 50, y, size: 9, font, color: gris });
-    y -= 14;
+    ws.mergeCells(r, 1, r, NCOLS); ws.getCell(r, 1).value = 'Ninguno marcado como aplicable'; r++;
   } else {
     datos.protocolosSel.forEach(i => {
-      const lineas = wrapLines('- ' + MIPER_PROTOCOLOS[i], W - 100, 9);
-      lineas.forEach(l => { p1.drawText(l, { x: 50, y, size: 9, font, color: negro }); y -= 13; });
+      ws.mergeCells(r, 1, r, NCOLS); ws.getCell(r, 1).value = '- ' + MIPER_PROTOCOLOS[i]; r++;
     });
   }
+  r++;
 
-  y -= 12;
-  p1.drawText('RESUMEN DE LA MATRIZ', { x: 50, y, size: 11, font: fontBold, color: negro });
-  y -= 18;
-  const conteo = { Tolerable: 0, Moderado: 0, Importante: 0, Intolerable: 0 };
-  datos.filas.forEach(f => { if (conteo[f.nivelRiesgo] !== undefined) conteo[f.nivelRiesgo]++; });
-  p1.drawText(`${datos.filas.length} riesgo(s) evaluado(s) en total — ` +
-    Object.entries(conteo).map(([k,v]) => `${k}: ${v}`).join(' · '),
-    { x: 50, y, size: 9, font, color: negro });
-  y -= 30;
-
-  p1.drawText('FIRMAS', { x: 50, y, size: 11, font: fontBold, color: negro });
-  y -= 24;
-  const firmas = [
-    ['NOMBRE Y FIRMA ELABORO', datos.nombreElaboro, datos.firmaElaboroUrl],
-    ['NOMBRE Y FIRMA REVISION', datos.nombreReviso, datos.firmaRevisoUrl],
-    ['NOMBRE Y FIRMA APROBACION', datos.nombreAprobo, datos.firmaAproboUrl],
-  ];
-  const colW = (W - 100) / 3;
-  for (let i = 0; i < firmas.length; i++) {
-    const [label, nombre, firmaUrl] = firmas[i];
-    const x = 50 + i * colW;
-    p1.drawRectangle({ x, y: y - 70, width: colW - 10, height: 60, borderColor: grisClaro, borderWidth: 1 });
-    await drawSig(p1, firmaUrl, x + 5, y - 65, colW - 20, 50);
-    p1.drawLine({ start: { x, y: y - 74 }, end: { x: x + colW - 10, y: y - 74 }, thickness: 0.7, color: gris });
-    const labelLineas = wrapLines(label, colW - 12, 7.5, fontBold);
-    labelLineas.forEach((l, li) => p1.drawText(l, { x, y: y - 85 - li * 9, size: 7.5, font: fontBold, color: negro }));
-    wrapLines(nombre || '—', colW - 12, 8).slice(0, 2).forEach((l, li) => {
-      p1.drawText(l, { x, y: y - 85 - labelLineas.length * 9 - li * 10, size: 8, font, color: gris });
-    });
-  }
-
-  p1.drawText(`Generado por la app de Prevención de Riesgos — ${ddmmyyyy(hoyISO())}`, { x: 50, y: 30, size: 7.5, font, color: gris });
-
-  // ---- Páginas siguientes: tabla de la matriz (apaisada) ----
-  // Mismas columnas y mismo orden que la pestaña MATRIZ DE RIESGOS del Excel
-  // original (Proceso/Puesto/Tarea/Equipos/Peligro/Riesgo/Evaluación de
-  // Riesgos/Medidas/Anexo). Cuando varias filas comparten Proceso/Puesto/
-  // Tarea/Equipos (mismo peligro múltiple de una tarea) esos 4 campos solo
-  // se escriben en la primera fila del grupo — igual que el Excel original,
-  // que los deja en blanco en las filas siguientes.
-  const PW = 841.89, PH = 595.28;
-  const cols = [
-    { key: 'proceso', label: 'PROCESO', w: 68 },
-    { key: 'puesto', label: 'PUESTO DE TRABAJO', w: 62 },
-    { key: 'tarea', label: 'TAREA', w: 78 },
-    { key: 'equipos', label: 'EQUIPOS, MAQUINARIAS Y HERRAMIENTAS', w: 72 },
-    { key: 'peligro', label: 'IDENTIFICACION DE PELIGROS / FACTORES DE RIESGO', w: 84 },
-    { key: 'riesgo', label: 'RIESGO', w: 68 },
-    { key: 'probabilidad', label: 'PROBABILIDAD', w: 54 },
-    { key: 'consecuencia', label: 'CONSECUENCIA', w: 54 },
-    { key: 'vep', label: 'VEP', w: 22 },
-    { key: 'nivelRiesgo', label: 'NIVEL DE RIESGO', w: 58 },
-    { key: 'medidasCodigo', label: 'MEDIDAS PREVENTIVAS - CODIGO', w: 46 },
-    { key: 'anexo', label: 'ANEXO', w: 54 },
-  ];
-  const tableX = 40, tableTop = PH - 46, rowH = 30, headerH = 28;
-  let page = null, cy = 0;
-  function nuevaPaginaTabla() {
-    page = pdfDoc.addPage([PW, PH]);
-    page.drawText(`MATRIZ DE IDENTIFICACION DE PELIGROS / FACTORES DE RIESGOS y EVALUACION DE RIESGOS — ${datos.obra} — Rev. ${datos.revision}`,
-      { x: tableX, y: PH - 24, size: 9.5, font: fontBold, color: verdeLst });
-    cy = tableTop;
-    // Fila de subtítulo "EVALUACION DE RIESGOS" combinada sobre las 4 columnas de evaluación (igual que el Excel original).
-    const xEval = tableX + cols.slice(0, 6).reduce((s,c) => s + c.w, 0);
-    const wEval = cols.slice(6, 10).reduce((s,c) => s + c.w, 0);
-    page.drawRectangle({ x: xEval, y: cy - 10, width: wEval, height: 10, color: rgb(0.09,0.32,0.17) });
-    page.drawText('EVALUACION DE RIESGOS', { x: xEval + 3, y: cy - 8, size: 6.5, font: fontBold, color: rgb(1,1,1) });
-    cy -= 10;
-    let cx = tableX;
-    cols.forEach(c => {
-      page.drawRectangle({ x: cx, y: cy - headerH, width: c.w, height: headerH, color: rgb(0.12,0.42,0.22) });
-      wrapLines(c.label, c.w - 5, 6.3, fontBold).slice(0,4).forEach((l, li) => {
-        page.drawText(l, { x: cx + 2.5, y: cy - 9 - li * 7.2, size: 6.3, font: fontBold, color: rgb(1,1,1) });
-      });
-      cx += c.w;
-    });
-    cy -= headerH;
-  }
-  nuevaPaginaTabla();
-
-  let i = 0;
-  while (i < datos.filas.length) {
-    let j = i;
-    while (j + 1 < datos.filas.length &&
-      datos.filas[j+1].proceso === datos.filas[i].proceso && datos.filas[j+1].puesto === datos.filas[i].puesto &&
-      datos.filas[j+1].tarea === datos.filas[i].tarea && datos.filas[j+1].equipos === datos.filas[i].equipos) j++;
-    for (let k = i; k <= j; k++) {
-      const f = datos.filas[k];
-      if (cy - rowH < 30) nuevaPaginaTabla();
-      let cx = tableX;
-      const nivelColor = nivelColorRgb[f.nivelRiesgo] || negro;
-      cols.forEach(c => {
-        page.drawRectangle({ x: cx, y: cy - rowH, width: c.w, height: rowH, borderColor: grisClaro, borderWidth: 0.6 });
-        const repetido = k > i && (c.key === 'proceso' || c.key === 'puesto' || c.key === 'tarea' || c.key === 'equipos');
-        const val = repetido ? '' : f[c.key];
-        const color = c.key === 'nivelRiesgo' ? nivelColor : negro;
-        const bold = c.key === 'nivelRiesgo';
-        wrapLines(String(val ?? ''), c.w - 5, 6.3).slice(0, 4).forEach((l, li) => {
-          page.drawText(l, { x: cx + 2.5, y: cy - 9 - li * 7.2, size: 6.3, font: bold ? fontBold : font, color });
-        });
-        cx += c.w;
-      });
-      cy -= rowH;
-    }
-    i = j + 1;
-  }
-
-  const bytes = await pdfDoc.save();
-  return new Blob([bytes], { type: 'application/pdf' });
-}
-
-// ── Generador Excel ──────────────────────────────────────────────────────
-// Réplica estructural (encabezado, orden y nombre de columnas, celdas
-// combinadas) de la pestaña MATRIZ DE RIESGOS del Excel original — el build
-// "core" de SheetJS que se usa acá no soporta colores/fuentes de celda, así
-// que el contenido/estructura queda igual pero sin el relleno verde de los
-// encabezados del Excel original.
-async function generarExcelMiper(datos) {
-  const XLSX = await cargarXlsxLib();
-  const wb = XLSX.utils.book_new();
-  const NCOLS = 12; // Proceso, Puesto, Tarea, Equipos, Peligro, Riesgo, Probabilidad, Consecuencia, VEP, Nivel, Medidas-código, Anexo
-
-  const rows = [];
-  const merges = [];
-  function push(row) { rows.push(row); return rows.length - 1; }
-  function mergeRow(r, c1, c2) { if (c2 > c1) merges.push({ s: { r, c: c1 }, e: { r, c: c2 } }); }
-
-  let r = push(['MATRIZ DE IDENTIFICACION DE PELIGROS / FACTORES DE RIESGOS y EVALUACION DE RIESGOS']);
-  mergeRow(r, 0, NCOLS - 1);
-  push([]);
-
-  // Encabezado: mismo orden fila a fila del Excel original (izquierda datos
-  // de la obra, derecha nombre de quien elabora/revisa/aprueba).
-  r = push(['ENTIDAD EMPLEADORA', datos.entidadEmpleadora, '', '', '', '', 'NOMBRE Y FIRMA ELABORO', datos.nombreElaboro]);
-  mergeRow(r, 1, 4); mergeRow(r, 7, NCOLS - 1);
-  r = push(['SUCURSAL', datos.sucursal, '', '', '', '', 'NOMBRE Y FIRMA REVISION', datos.nombreReviso]);
-  mergeRow(r, 1, 4); mergeRow(r, 7, NCOLS - 1);
-  r = push(['RESPONSABLE LEVANTAMIENTO', datos.responsableLevantamiento, '', '', '', '', 'NOMBRE Y FIRMA APROBACION', datos.nombreAprobo]);
-  mergeRow(r, 1, 4); mergeRow(r, 7, NCOLS - 1);
-  r = push(['FECHA', ddmmyyyy(datos.fecha), '', 'REVISION', datos.revision, '', 'PROXIMA REVISION', datos.proximaRevision ? ddmmyyyy(datos.proximaRevision) : '']);
-  mergeRow(r, 7, NCOLS - 1);
-  push([]);
-
-  r = push(['PROTOCOLOS DE VIGILANCIA MINSAL APLICABLES']); mergeRow(r, 0, NCOLS - 1);
-  if (datos.protocolosSel.length === 0) {
-    r = push(['Ninguno marcado como aplicable']); mergeRow(r, 0, NCOLS - 1);
-  } else {
-    datos.protocolosSel.forEach(i => { r = push([MIPER_PROTOCOLOS[i]]); mergeRow(r, 0, NCOLS - 1); });
-  }
-  push([]);
-
-  // Encabezado de la tabla en 2 filas — igual que el Excel original:
-  // "EVALUACION DE RIESGOS" combinado horizontalmente sobre 4 columnas, y
-  // el resto de las columnas combinadas verticalmente entre ambas filas.
-  const filaHead1 = push(['PROCESO', 'PUESTO DE TRABAJO', 'TAREA', 'EQUIPOS MAQUINARIAS Y HERRAMIENTAS',
+  const filaHead1 = r, filaHead2 = r + 1;
+  const headers1 = ['PROCESO', 'PUESTO DE TRABAJO', 'TAREA', 'EQUIPOS MAQUINARIAS Y HERRAMIENTAS',
     'IDENTIFICACION DE PELIGROS / FACTORES DE RIESGO', 'RIESGO', 'EVALUACION DE RIESGOS', '', '', '',
-    'MEDIDAS PREVENTIVAS - CODIGO', 'ANEXO']);
-  const filaHead2 = push(['', '', '', '', '', '', 'PROBABILIDAD', 'CONSECUENCIA', 'VEP', 'NIVEL DE RIESGO', '', '']);
-  [0,1,2,3,4,5,10,11].forEach(c => merges.push({ s: { r: filaHead1, c }, e: { r: filaHead2, c } }));
-  merges.push({ s: { r: filaHead1, c: 6 }, e: { r: filaHead1, c: 9 } });
+    'MEDIDAS PREVENTIVAS - CODIGO', 'ANEXO'];
+  headers1.forEach((h, i) => {
+    const cell = ws.getCell(filaHead1, i + 1);
+    cell.value = h; cell.font = { bold: true }; cell.alignment = { wrapText: true, vertical: 'middle' };
+  });
+  ['PROBABILIDAD', 'CONSECUENCIA', 'VEP', 'NIVEL DE RIESGO'].forEach((h, i) => {
+    const cell = ws.getCell(filaHead2, 7 + i);
+    cell.value = h; cell.font = { bold: true }; cell.alignment = { wrapText: true, vertical: 'middle' };
+  });
+  [1, 2, 3, 4, 5, 6, 11, 12].forEach(c => ws.mergeCells(filaHead1, c, filaHead2, c));
+  ws.mergeCells(filaHead1, 7, filaHead1, 10);
+  for (let c = 1; c <= NCOLS; c++) { ws.getCell(filaHead1, c).border = borde; ws.getCell(filaHead2, c).border = borde; }
+  ws.getRow(filaHead1).height = 18; ws.getRow(filaHead2).height = 18;
+  r = filaHead2 + 1;
 
-  // Filas de datos — Proceso/Puesto/Tarea/Equipos se combinan verticalmente
-  // cuando se repiten en filas consecutivas (una tarea con varios peligros),
-  // igual que el Excel original: esos 4 campos solo se escriben una vez.
   let i = 0;
   while (i < datos.filas.length) {
     let j = i;
     while (j + 1 < datos.filas.length &&
       datos.filas[j+1].proceso === datos.filas[i].proceso && datos.filas[j+1].puesto === datos.filas[i].puesto &&
       datos.filas[j+1].tarea === datos.filas[i].tarea && datos.filas[j+1].equipos === datos.filas[i].equipos) j++;
-    const rowIdxs = [];
+    const filaInicio = r;
     for (let k = i; k <= j; k++) {
       const f = datos.filas[k];
-      rowIdxs.push(push([
-        k === i ? f.proceso : '', k === i ? f.puesto : '', k === i ? f.tarea : '', k === i ? f.equipos : '',
-        f.peligro, f.riesgo, f.probabilidad, f.consecuencia, f.vep, f.nivelRiesgo, f.medidasCodigo, f.anexo,
-      ]));
+      ws.getCell(r, 5).value = f.peligro;
+      ws.getCell(r, 6).value = f.riesgo;
+      ws.getCell(r, 7).value = f.probabilidad;
+      ws.getCell(r, 8).value = f.consecuencia;
+      ws.getCell(r, 9).value = f.vep;
+      const nivelCell = ws.getCell(r, 10);
+      nivelCell.value = f.nivelRiesgo;
+      nivelCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: MIPER_COLOR_NIVEL_EXCEL[f.nivelRiesgo] || 'FFFFFFFF' } };
+      ws.getCell(r, 11).value = f.medidasCodigo;
+      ws.getCell(r, 12).value = f.anexo;
+      for (let c = 1; c <= NCOLS; c++) ws.getCell(r, c).border = borde;
+      ws.getCell(r, 5).alignment = { wrapText: true, vertical: 'top' };
+      ws.getCell(r, 6).alignment = { wrapText: true, vertical: 'top' };
+      r++;
     }
-    if (rowIdxs.length > 1) {
-      [0,1,2,3].forEach(c => merges.push({ s: { r: rowIdxs[0], c }, e: { r: rowIdxs[rowIdxs.length - 1], c } }));
-    }
+    const filaFin = r - 1;
+    const f0 = datos.filas[i];
+    ws.getCell(filaInicio, 1).value = f0.proceso;
+    ws.getCell(filaInicio, 2).value = f0.puesto;
+    ws.getCell(filaInicio, 3).value = f0.tarea;
+    ws.getCell(filaInicio, 4).value = f0.equipos;
+    if (filaFin > filaInicio) [1, 2, 3, 4].forEach(c => ws.mergeCells(filaInicio, c, filaFin, c));
+    [1, 2, 3, 4].forEach(c => {
+      const cell = ws.getCell(filaInicio, c);
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: MIPER_COLOR_BLOQUE_TAREA_EXCEL } };
+      cell.alignment = { wrapText: true, vertical: 'top' };
+    });
     i = j + 1;
   }
 
-  const ws = XLSX.utils.aoa_to_sheet(rows);
-  ws['!merges'] = merges;
-  ws['!cols'] = [
-    {wch:18},{wch:20},{wch:22},{wch:24},{wch:36},{wch:24},
-    {wch:10},{wch:10},{wch:6},{wch:13},{wch:16},{wch:12},
+  ws.columns = [
+    { width: 20 }, { width: 22 }, { width: 24 }, { width: 26 }, { width: 38 }, { width: 26 },
+    { width: 11 }, { width: 11 }, { width: 7 }, { width: 14 }, { width: 16 }, { width: 13 },
   ];
-  XLSX.utils.book_append_sheet(wb, ws, 'Matriz de Riesgos');
 
-  const catCatalogo = miperCatalogoCompleto();
-  const catRows = [['Familia', 'Riesgo', 'Código', 'Definición', 'Medidas preventivas']];
-  catCatalogo.forEach(cr => catRows.push([MIPER_FAMILIA_LABEL[cr.familia] || cr.familia, cr.riesgo, cr.codigo, cr.definicion, (cr.medidas||[]).join(' | ')]));
-  const wsCat = XLSX.utils.aoa_to_sheet(catRows);
-  wsCat['!cols'] = [{wch:16},{wch:34},{wch:9},{wch:60},{wch:80}];
-  XLSX.utils.book_append_sheet(wb, wsCat, 'Catálogo de riesgos');
-
-  const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-  return new Blob([wbout], { type: 'application/octet-stream' });
+  const buf = await wb.xlsx.writeBuffer();
+  return new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
 }
