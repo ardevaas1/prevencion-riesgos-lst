@@ -4523,15 +4523,55 @@ function esFinDeSemana(mesISO, dia) {
   const dow = diaDeLaSemana(mesISO, dia);
   return dow === 5 || dow === 6;
 }
+// Feriados legales de Chile — igual que el fin de semana, un supervisor no
+// puede "perder" cumplimiento de una actividad Diaria por un día en que la
+// obra no opera por feriado. Lista de 2026 verificada cruzando varias
+// fuentes chilenas de feriados (calendarr.com, feriadolegal.cl,
+// assistcard.com, entre otras) — el acceso directo a la fuente oficial
+// (interior.gob.cl) no está disponible desde este entorno. Son los 16
+// feriados nacionales fijos del año; quedan afuera los feriados SOLO
+// regionales (ej. 20 de agosto en Chillán) y cualquier feriado especial
+// que se decrete después (ej. plebiscitos), que no se pueden anticipar acá.
+// Hay que sumar los años siguientes a mano cuando se conozcan — algunos
+// (29 de junio, 12 de octubre) se trasladan al lunes más cercano por ley y
+// no son 100% predecibles de un año a otro sin la fuente oficial.
+const FERIADOS_CHILE = new Set([
+  // 2026
+  '2026-01-01', // Año Nuevo
+  '2026-04-03', // Viernes Santo
+  '2026-04-04', // Sábado Santo
+  '2026-05-01', // Día del Trabajo
+  '2026-05-21', // Día de las Glorias Navales
+  '2026-06-21', // Día Nacional de los Pueblos Indígenas
+  '2026-06-29', // San Pedro y San Pablo
+  '2026-07-16', // Virgen del Carmen
+  '2026-08-15', // Asunción de la Virgen
+  '2026-09-18', // Independencia Nacional
+  '2026-09-19', // Día de las Glorias del Ejército
+  '2026-10-12', // Encuentro de Dos Mundos
+  '2026-10-31', // Día de las Iglesias Evangélicas y Protestantes
+  '2026-11-01', // Día de Todos los Santos
+  '2026-12-08', // Inmaculada Concepción
+  '2026-12-25', // Navidad
+]);
+function esFeriado(mesISO, dia) {
+  return FERIADOS_CHILE.has(`${mesISO}-${String(dia).padStart(2, '0')}`);
+}
+// Fin de semana O feriado — el criterio combinado que se usa en todos
+// lados donde antes solo se miraba el fin de semana (sombreado de
+// calendario, cálculo de días hábiles esperados).
+function esDiaNoHabil(mesISO, dia) {
+  return esFinDeSemana(mesISO, dia) || esFeriado(mesISO, dia);
+}
 const DIAS_SEMANA_CORTO = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
 const DIAS_SEMANA_LETRA = ['L','M','X','J','V','S','D'];
-// Días hábiles (lunes a viernes) del mes — una actividad "Diaria" no puede
-// exigir fines de semana si en esos días no se trabaja, así que la meta
+// Días hábiles del mes (lunes a viernes, sin feriados) — una actividad
+// "Diaria" no puede exigir días en que la obra no opera, así que la meta
 // de cumplimiento se mide contra los días hábiles, no contra el mes entero.
 function diasHabilesDelMes(mesISO) {
   const total = diasEnMes(mesISO);
   let n = 0;
-  for (let d = 1; d <= total; d++) if (!esFinDeSemana(mesISO, d)) n++;
+  for (let d = 1; d <= total; d++) if (!esDiaNoHabil(mesISO, d)) n++;
   return n;
 }
 function ocurrenciasEsperadas(frecuencia, mesISO) {
@@ -4874,7 +4914,7 @@ function abrirMarcarDias(fila) {
   let diasHtml;
   if (motor) {
     diasHtml = Array.from({length: dias}, (_, i) => i+1).map(d => {
-      const finde = esFinDeSemana(a.mes, d);
+      const finde = esDiaNoHabil(a.mes, d);
       const link = a.registrosPdf[d];
       return `
       <div class="marcar-dia marcar-dia--digital${link ? ' checked' : ''}${finde ? ' finde' : ''}">
@@ -4886,7 +4926,7 @@ function abrirMarcarDias(fila) {
     diasHtml = Array.from({length: dias}, (_, i) => i+1).map(d => {
       const auto = diasEvidencia.has(d) && !marcadosGuardados.has(d);
       const checked = marcadosGuardados.has(d) || diasEvidencia.has(d);
-      const finde = esFinDeSemana(a.mes, d);
+      const finde = esDiaNoHabil(a.mes, d);
       return `
       <label class="marcar-dia${checked ? ' checked' : ''}${auto ? ' auto' : ''}${finde ? ' finde' : ''}">
         <input type="checkbox" value="${d}" ${checked ? 'checked' : ''} onchange="this.closest('.marcar-dia').classList.toggle('checked', this.checked)">
@@ -6343,13 +6383,13 @@ async function dibujarPaginaGrillaSupervisor(pdfDoc, ctx, encabezadoFn, obra, me
   const colDia = anchoDias / dias;
   const xDiasInicio = 40 + colAct + colFrec;
 
-  // Sombreado de las columnas de sábado/domingo, dibujado ANTES de la tabla
-  // (detrás) para que se note de un vistazo qué días no son hábiles — la
-  // tabla se dibuja encima con celdas sin relleno propio, así que el gris
-  // se ve a través de las filas de actividades.
+  // Sombreado de las columnas de sábado/domingo/feriado, dibujado ANTES de
+  // la tabla (detrás) para que se note de un vistazo qué días no son
+  // hábiles — la tabla se dibuja encima con celdas sin relleno propio, así
+  // que el gris se ve a través de las filas de actividades.
   const alturaTabla = 16 + g.actividades.length * 13 + 16;
   for (let i = 0; i < dias; i++) {
-    if (esFinDeSemana(mes, i + 1)) {
+    if (esDiaNoHabil(mes, i + 1)) {
       page.drawRectangle({ x: xDiasInicio + i * colDia, y: y - alturaTabla, width: colDia, height: alturaTabla, color: rgb(0.9,0.9,0.9) });
     }
   }
@@ -6381,7 +6421,7 @@ async function dibujarPaginaGrillaSupervisor(pdfDoc, ctx, encabezadoFn, obra, me
     { w: colPct, text: g.pct + '%', bold: true, align: 'center', color: colorResultado[r.color] },
   ];
   y = dibujarFilaTabla(page, 40, y, totalCols, font, fontBold, 16, rgb(0.94,0.94,0.94), negro, grisLinea);
-  page.drawText('Columnas sombreadas = sábado y domingo (no cuentan como día hábil esperado en actividades Diarias).', { x: 40, y: y - 14, size: 7.5, font, color: gris });
+  page.drawText('Columnas sombreadas = sábado, domingo o feriado (no cuentan como día hábil esperado en actividades Diarias).', { x: 40, y: y - 14, size: 7.5, font, color: gris });
 }
 async function generarInformeProgramaPersonalizado(obra, mes, responsable) {
   toast('Generando informe...', 'ok');
@@ -6409,57 +6449,86 @@ async function generarInformeProgramaPersonalizado(obra, mes, responsable) {
     const negro = rgb(0,0,0), gris = rgb(0.4,0.4,0.4), grisLinea = rgb(0.75,0.75,0.75), grisClaro = rgb(0.85,0.85,0.85);
     const colorResultado = { green: rgb(0.18,0.49,0.2), blue: rgb(0.08,0.4,0.75), amber: rgb(0.9,0.35,0), red: rgb(0.78,0.16,0.16) };
 
-    // Gráfico de barras del % de cumplimiento por supervisor — pdf-lib no
-    // trae gráficos, se dibuja a mano con rectángulos escalados al máximo
-    // de 100%. yBase = línea de base (eje) de las barras.
+    // Aro de progreso circular — pdf-lib no trae gráficos nativos, se arma
+    // encadenando segmentos de línea alrededor de una circunferencia (con
+    // 72 segmentos ya se ve como un círculo liso a esta escala) en vez de
+    // usar arcos SVG, para no depender de cómo pdf-lib interpreta el
+    // sistema de coordenadas de un <path> — así todo el trazado queda en
+    // el mismo sistema (origen abajo-izquierda) que el resto del PDF, sin
+    // sorpresas. Arranca arriba (12 en punto) y avanza en sentido horario.
+    function dibujarAnilloProgreso(page, cx, cy, radio, grosor, pct, colorFondo, colorProgreso) {
+      const pasos = 72;
+      for (let i = 0; i < pasos; i++) {
+        const a0 = (i / pasos) * 2 * Math.PI, a1 = ((i + 1) / pasos) * 2 * Math.PI;
+        page.drawLine({
+          start: { x: cx + radio * Math.cos(a0), y: cy + radio * Math.sin(a0) },
+          end: { x: cx + radio * Math.cos(a1), y: cy + radio * Math.sin(a1) },
+          thickness: grosor, color: colorFondo,
+        });
+      }
+      const pasosProgreso = Math.round(pasos * (Math.max(0, Math.min(100, pct)) / 100));
+      const anguloInicio = -Math.PI / 2;
+      for (let i = 0; i < pasosProgreso; i++) {
+        const a0 = anguloInicio + (i / pasos) * 2 * Math.PI, a1 = anguloInicio + ((i + 1) / pasos) * 2 * Math.PI;
+        page.drawLine({
+          start: { x: cx + radio * Math.cos(a0), y: cy + radio * Math.sin(a0) },
+          end: { x: cx + radio * Math.cos(a1), y: cy + radio * Math.sin(a1) },
+          thickness: grosor, color: colorProgreso,
+        });
+      }
+    }
+    // Cumplimiento por supervisor: un aro de progreso por supervisor (en
+    // vez de barras) con el % al centro y el nombre debajo.
     function dibujarBarrasCumplimiento(page, x, yBase, gruposChart) {
-      const anchoBarra = 46, gapBarras = 22, alturaMax = 110;
-      let cx = x;
-      const tituloTxt = 'CUMPLIMIENTO POR SUPERVISOR';
-      page.drawText(tituloTxt, { x, y: yBase + alturaMax + 34, size: 11, font: fontBold, color: negro });
+      const radio = 30, grosor = 8, gap = 24;
+      let cx = x + radio;
+      const cy = yBase + radio + 16;
+      page.drawText('CUMPLIMIENTO POR SUPERVISOR', { x, y: cy + radio + 30, size: 11, font: fontBold, color: negro });
       gruposChart.forEach(g => {
-        const h = Math.max(3, (g.pct / 100) * alturaMax);
-        page.drawRectangle({ x: cx, y: yBase, width: anchoBarra, height: h, color: colorResultado[g.resultado.color] });
+        dibujarAnilloProgreso(page, cx, cy, radio, grosor, g.pct, grisClaro, colorResultado[g.resultado.color]);
         const valTxt = g.pct + '%';
-        const valW = fontBold.widthOfTextAtSize(valTxt, 9);
-        page.drawText(valTxt, { x: cx + (anchoBarra - valW) / 2, y: yBase + h + 5, size: 9, font: fontBold, color: negro });
+        const valW = fontBold.widthOfTextAtSize(valTxt, 13);
+        page.drawText(valTxt, { x: cx - valW / 2, y: cy - 5, size: 13, font: fontBold, color: negro });
         const partes = g.supervisor.split(' ');
         [partes[0] || '', partes.slice(1).join(' ')].forEach((linea, i) => {
           const lw = font.widthOfTextAtSize(linea, 7.5);
-          page.drawText(linea, { x: cx + (anchoBarra - lw) / 2, y: yBase - 12 - i * 10, size: 7.5, font, color: gris });
+          page.drawText(linea, { x: cx - lw / 2, y: cy - radio - 14 - i * 10, size: 7.5, font, color: gris });
         });
-        cx += anchoBarra + gapBarras;
+        cx += radio * 2 + gap;
       });
-      page.drawLine({ start: { x: x - 10, y: yBase }, end: { x: cx - gapBarras + 10, y: yBase }, thickness: 0.8, color: grisLinea });
     }
-    // Gráfico comparativo año actual vs. año anterior para un índice de
-    // seguridad — mismo criterio visual que la tarjeta de índices del
-    // Dashboard de la app (barra pálida = año anterior, barra sólida = actual).
+    // Comparativo año actual vs. año anterior para un índice de seguridad:
+    // una medalla circular sólida con el valor actual al centro y, debajo,
+    // el valor del año anterior con la tendencia en palabras (nunca con
+    // flechas ▲▼ — esos glyphs no existen en la fuente estándar que usa
+    // pdf-lib y salen como recuadros vacíos en algunos lectores de PDF,
+    // el mismo problema que ya se corrigió con el separador "·"). En estos
+    // 3 índices menos es mejor, así que una baja se pinta en verde.
     function dibujarComparativoIndice(page, x, yBase, opts) {
       const { nombre, actual, prev, anioActual, color, fmt } = opts;
-      const anchoBarra = 26, gapBarras = 10, alturaMax = 70;
-      const max = Math.max(actual, prev, 0.0001);
-      const hPrev = Math.max(3, (prev / max) * alturaMax);
-      const hAct = Math.max(3, (actual / max) * alturaMax);
-      const anchoGrupo = anchoBarra * 2 + gapBarras;
+      const radio = 32;
+      const anchoGrupo = radio * 2 + 16;
+      const cx = x + anchoGrupo / 2;
+      const cy = yBase + radio + 20;
       const nombreW = fontBold.widthOfTextAtSize(nombre, 9);
-      page.drawText(nombre, { x: x + anchoGrupo / 2 - nombreW / 2, y: yBase + alturaMax + 34, size: 9, font: fontBold, color: negro });
-      page.drawRectangle({ x, y: yBase, width: anchoBarra, height: hPrev, color: grisClaro });
-      const prevTxt = fmt(prev);
-      page.drawText(prevTxt, { x: x + (anchoBarra - font.widthOfTextAtSize(prevTxt, 7.5)) / 2, y: yBase + hPrev + 4, size: 7.5, font, color: gris });
-      const anioPrevTxt = String(anioActual - 1);
-      page.drawText(anioPrevTxt, { x: x + (anchoBarra - font.widthOfTextAtSize(anioPrevTxt, 7)) / 2, y: yBase - 11, size: 7, font, color: gris });
-      const x2 = x + anchoBarra + gapBarras;
-      page.drawRectangle({ x: x2, y: yBase, width: anchoBarra, height: hAct, color });
+      page.drawText(nombre, { x: cx - nombreW / 2, y: cy + radio + 30, size: 9, font: fontBold, color: negro });
+      page.drawCircle({ x: cx, y: cy, size: radio, color });
       const actTxt = fmt(actual);
-      page.drawText(actTxt, { x: x2 + (anchoBarra - fontBold.widthOfTextAtSize(actTxt, 8.5)) / 2, y: yBase + hAct + 4, size: 8.5, font: fontBold, color: negro });
-      const anioActTxt = String(anioActual);
-      page.drawText(anioActTxt, { x: x2 + (anchoBarra - font.widthOfTextAtSize(anioActTxt, 7)) / 2, y: yBase - 11, size: 7, font, color: gris });
-      page.drawLine({ start: { x: x - 6, y: yBase }, end: { x: x2 + anchoBarra + 6, y: yBase }, thickness: 0.6, color: grisLinea });
+      const actW = fontBold.widthOfTextAtSize(actTxt, 14);
+      page.drawText(actTxt, { x: cx - actW / 2, y: cy - 5, size: 14, font: fontBold, color: rgb(1,1,1) });
+      const cambio = actual - prev;
+      const igual = Math.abs(cambio) < 0.0001;
+      const mejoro = cambio < 0;
+      const colorTendencia = igual ? gris : (mejoro ? rgb(0.18,0.49,0.2) : rgb(0.78,0.16,0.16));
+      const tendenciaTxt = igual ? 'igual' : (mejoro ? 'bajó' : 'subió');
+      const prevTxt = `${anioActual - 1}: ${fmt(prev)} (${tendenciaTxt})`;
+      const prevW = font.widthOfTextAtSize(prevTxt, 8);
+      page.drawText(prevTxt, { x: cx - prevW / 2, y: cy - radio - 16, size: 8, font, color: colorTendencia });
     }
     // Lista de barras horizontales genérica (label + barra + cantidad),
     // reutilizada para cada desglose de "Estado general de la obra" y para
-    // el detalle de EPP — pares ya viene ordenado de mayor a menor.
+    // el detalle de EPP — pares ya viene ordenado de mayor a menor. Las
+    // barras son "píldora" (puntas redondas) en vez de rectángulos rectos.
     function dibujarListaBarras(page, x, y, anchoCol, pares, colorBarra) {
       if (pares.length === 0) {
         page.drawText('Sin datos en el período.', { x, y, size: 8.5, font, color: gris });
@@ -6468,13 +6537,17 @@ async function generarInformeProgramaPersonalizado(obra, mes, responsable) {
       const xBarraOffset = Math.min(120, anchoCol * 0.45);
       const anchoMaxBarra = anchoCol - xBarraOffset - 26;
       const max = Math.max(...pares.map(([, c]) => c));
+      const altoBarra = 9, radioBarra = altoBarra / 2;
       pares.forEach(([label, cantidad]) => {
         const labelCorto = font.widthOfTextAtSize(label, 8.5) > xBarraOffset - 6
           ? label.slice(0, Math.floor((xBarraOffset - 6) / 4.6)) + '…' : label;
         page.drawText(labelCorto, { x, y: y + 1, size: 8.5, font, color: negro });
-        const w = Math.max(3, (cantidad / max) * anchoMaxBarra);
-        page.drawRectangle({ x: x + xBarraOffset, y, width: w, height: 9, color: colorBarra });
-        page.drawText(String(cantidad), { x: x + xBarraOffset + w + 5, y: y + 1, size: 8.5, font: fontBold, color: negro });
+        const w = Math.max(altoBarra, (cantidad / max) * anchoMaxBarra);
+        const xBarra = x + xBarraOffset, yc = y + radioBarra;
+        page.drawCircle({ x: xBarra + radioBarra, y: yc, size: radioBarra, color: colorBarra });
+        page.drawCircle({ x: xBarra + w - radioBarra, y: yc, size: radioBarra, color: colorBarra });
+        page.drawRectangle({ x: xBarra + radioBarra, y, width: Math.max(0, w - altoBarra), height: altoBarra, color: colorBarra });
+        page.drawText(String(cantidad), { x: xBarra + w + 5, y: y + 1, size: 8.5, font: fontBold, color: negro });
         y -= 15;
       });
       return y;
@@ -6499,8 +6572,18 @@ async function generarInformeProgramaPersonalizado(obra, mes, responsable) {
     const sub = `${obra} — ${nombreMes(mes)}`;
     page.drawText(sub, { x: 306 - font.widthOfTextAtSize(sub, 13)/2, y, size: 13, font, color: gris });
     y -= 60;
-    const resTxt = `Resultado del período: ${total}% — ${resultadoTotal.label}`;
-    page.drawText(resTxt, { x: 306 - fontBold.widthOfTextAtSize(resTxt, 13)/2, y, size: 13, font: fontBold, color: colorResultado[resultadoTotal.color] || negro });
+    // Aro grande con el % total del período como imagen principal de la
+    // portada, en vez de solo texto — el color ya comunica el resultado
+    // (verde/azul/ámbar/rojo) antes de leer la palabra.
+    const radioPortada = 52;
+    const colorPortada = colorResultado[resultadoTotal.color] || negro;
+    dibujarAnilloProgreso(page, 306, y - radioPortada, radioPortada, 13, total, grisClaro, colorPortada);
+    const totalTxt = total + '%';
+    const totalW = fontBold.widthOfTextAtSize(totalTxt, 22);
+    page.drawText(totalTxt, { x: 306 - totalW / 2, y: y - radioPortada - 8, size: 22, font: fontBold, color: negro });
+    y -= radioPortada * 2 + 26;
+    const resTxt = `Resultado del período: ${resultadoTotal.label}`;
+    page.drawText(resTxt, { x: 306 - fontBold.widthOfTextAtSize(resTxt, 13)/2, y, size: 13, font: fontBold, color: colorPortada });
     y -= 100;
     page.drawText('REALIZADO POR', { x: 80, y, size: 9, font: fontBold, color: gris });
     page.drawLine({ start: { x: 80, y: y - 24 }, end: { x: 280, y: y - 24 }, thickness: 0.8, color: negro });
