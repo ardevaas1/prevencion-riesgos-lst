@@ -7972,11 +7972,14 @@ async function generarExcelMiper(datos) {
   // que se sigue extendiendo, igual que en el Excel del cliente). ----
   const wsPrevias = wb.addWorksheet('OBRAS PREVIAS');
   let r = 1;
-  wsPrevias.mergeCells(r, 1, r, NCOLS);
-  const titulo = wsPrevias.getCell(r, 1);
+  // Columnas 1-3 quedan libres para el logo (arriba a la izquierda); el
+  // título parte en la columna 4.
+  wsPrevias.mergeCells(r, 4, r, NCOLS);
+  const titulo = wsPrevias.getCell(r, 4);
   titulo.value = 'MATRIZ DE IDENTIFICACION DE PELIGROS / FACTORES DE RIESGOS y EVALUACION DE RIESGOS';
   titulo.font = { bold: true, size: 14 };
-  wsPrevias.getRow(r).height = 22;
+  titulo.alignment = { vertical: 'middle', wrapText: true };
+  wsPrevias.getRow(r).height = 60;
   r += 2;
   function campoIzq(fila, label, value) {
     wsPrevias.getCell(fila, 1).value = label; wsPrevias.getCell(fila, 1).font = { bold: true };
@@ -8163,16 +8166,17 @@ async function generarExcelMiper(datos) {
   });
   wsCons.columns = [{width:20},{width:22},{width:22},{width:22},{width:22},{width:10}];
 
-  // Logo LST — solo en la hoja principal (OBRAS PREVIAS), anclado a la
-  // derecha de la tabla impresa (columna 14 en adelante) para no superponer
-  // ni tocar ninguna celda/combinación del contenido real. logo.png es el
-  // logo azul vigente (aunque el archivo está codificado como JPEG pese a
-  // la extensión .png — igual que en generarPdfInvestigacion — por eso se
-  // declara extension:'jpeg'). Si no carga, el documento se genera igual.
+  // Logo LST — solo en la hoja principal (OBRAS PREVIAS), arriba a la
+  // izquierda (columnas 1-3, que el título deja libres a propósito) para
+  // no superponer ni tocar ninguna celda/combinación del contenido real.
+  // logo.png es el logo azul vigente (aunque el archivo está codificado
+  // como JPEG pese a la extensión .png — igual que en
+  // generarPdfInvestigacion — por eso se declara extension:'jpeg'). Si no
+  // carga, el documento se genera igual.
   try {
     const logoBuf = await fetch('logo.png').then(r => { if (!r.ok) throw new Error('logo.png no disponible'); return r.arrayBuffer(); });
     const logoId = wb.addImage({ buffer: logoBuf, extension: 'jpeg' });
-    wsPrevias.addImage(logoId, { tl: { col: 13, row: 0.1 }, ext: { width: 130, height: 104 } });
+    wsPrevias.addImage(logoId, { tl: { col: 0.1, row: 0.1 }, ext: { width: 130, height: 104 } });
   } catch (e) { /* sin logo, el Excel se genera igual */ }
 
   wb.views = [{ activeTab: 0 }];
