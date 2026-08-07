@@ -7688,24 +7688,21 @@ async function generarExcelMiper(datos) {
   const ws = wb.addWorksheet('MATRIZ DE RIESGOS');
   wb.views = [{ activeTab: idxNueva }];
 
-  // Logo LST — mismo logo.png que usan los PDF de la app (nunca
-  // logo-transparent.png), en la esquina superior izquierda de CADA pestaña,
-  // igual que el Excel original traía su propia imagen en cada hoja.
-  try {
-    const logoResp = await fetch('logo.png');
-    const logoBuf = await logoResp.arrayBuffer();
-    const logoId = wb.addImage({ buffer: logoBuf, extension: 'png' });
-    wb.worksheets.forEach(hoja => {
-      hoja.addImage(logoId, { tl: { col: 0.15, row: 0.1 }, ext: { width: 58, height: 46 } });
-    });
-  } catch (e) { /* si falla la carga del logo, el Excel se genera igual sin él */ }
-
+  // Nota: se probó agregar el logo LST como imagen incrustada (ExcelJS
+  // addImage), pero el archivo resultante disparaba la alerta de "contenido
+  // dañado" de Excel. No se logró aislar la causa exacta con las
+  // herramientas disponibles (Excel real no está disponible acá para
+  // depurarlo directamente), así que se prefirió sacarlo: un Excel sin
+  // logo pero que abre limpio es mejor que uno con logo que asusta al
+  // abrirlo. Si se retoma, probar primero SIN plantilla base (workbook
+  // nuevo) para descartar que el problema venga de algo heredado del
+  // archivo original.
   let r = 1;
-  ws.mergeCells(r, 2, r, NCOLS);
-  const titulo = ws.getCell(r, 2);
+  ws.mergeCells(r, 1, r, NCOLS);
+  const titulo = ws.getCell(r, 1);
   titulo.value = 'MATRIZ DE IDENTIFICACION DE PELIGROS / FACTORES DE RIESGOS y EVALUACION DE RIESGOS';
   titulo.font = { bold: true, size: 14 };
-  ws.getRow(r).height = 26;
+  ws.getRow(r).height = 22;
   r += 2;
 
   function campoIzq(fila, label, value) {
