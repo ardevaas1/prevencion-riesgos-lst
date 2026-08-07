@@ -7667,34 +7667,68 @@ async function generarExcelMiper(datos) {
   const bordeFino = { style: 'thin', color: { argb: 'FF999999' } };
   const borde = { top: bordeFino, left: bordeFino, bottom: bordeFino, right: bordeFino };
   const NCOLS = 12;
-  const ENCABEZADOS_TABLA_1 = ['PROCESO', 'PUESTO DE TRABAJO', 'TAREA', 'EQUIPOS MAQUINARIAS Y HERRAMIENTAS',
-    'IDENTIFICACION DE PELIGROS / FACTORES DE RIESGO', 'RIESGO', 'EVALUACION DE RIESGOS', '', '', '',
-    'MEDIDAS PREVENTIVAS - CODIGO', 'ANEXO'];
-  const ANCHOS_TABLA = [20, 22, 24, 26, 38, 26, 11, 11, 7, 14, 16, 13];
+  // Anchos y textos de encabezado medidos directamente sobre el Excel del
+  // cliente (incluido el error de tipeo "MAQUINRIAS" — se replica tal cual
+  // porque así está en el documento original). Los anchos son
+  // proporcionales al ancho combinado real de cada columna en el Excel
+  // original (que usa muchas columnas angostas combinadas, ej. Equipos son
+  // 18 columnas combinadas, Proceso son solo 4) traducido a una grilla más
+  // simple de 12 columnas — misma proporción visual, sin las miles de
+  // combinaciones de celda del archivo original.
+  const ANCHOS_TABLA = [9, 11, 24, 42, 44, 16, 8, 8, 6, 8, 10, 15];
+  const TXT_EQUIPOS = 'EQUIPOS MAQUINRIAS Y HERRAMIENTAS';
 
-  // Encabezado de tabla (2 filas: EVALUACION DE RIESGOS combinado sobre 4
-  // subcolumnas) — igual estructura en MATRIZ DE RIESGOS y OBRAS PREVIAS.
+  // Encabezado de tabla (4 filas: PROCESO/PUESTO/TAREA/EQUIPOS/PELIGRO/
+  // RIESGO/MEDIDAS/ANEXO combinados sobre las 4, EVALUACION DE RIESGOS con
+  // su subtítulo "DE SEGURIDAD / EMERGENCIA" y las 4 subcolumnas
+  // Probabilidad/Consecuencia/VEP/Nivel de Riesgo) — igual estructura y
+  // texto que MATRIZ DE RIESGOS/OBRAS PREVIAS en el Excel original.
   function escribirEncabezadoTabla(ws, filaHead1) {
-    const filaHead2 = filaHead1 + 1;
-    ENCABEZADOS_TABLA_1.forEach((h, i) => {
-      const cell = ws.getCell(filaHead1, i + 1);
-      cell.value = h; cell.font = { bold: true }; cell.alignment = { wrapText: true, vertical: 'middle' };
+    const f2 = filaHead1 + 1, f3 = filaHead1 + 2, f4 = filaHead1 + 3;
+    const centrado = { wrapText: true, vertical: 'middle', horizontal: 'center' };
+    const principales = ['PROCESO', 'PUESTO DE TRABAJO', 'TAREA', TXT_EQUIPOS,
+      'IDENTIFICACION DE PELIGROS / FACTORES DE RIESGO', 'RIESGO'];
+    principales.forEach((h, i) => {
+      const c = i + 1;
+      const cell = ws.getCell(filaHead1, c);
+      cell.value = h; cell.font = { name: 'Calibri', bold: true, size: 10 }; cell.alignment = centrado;
+      ws.mergeCells(filaHead1, c, f4, c);
     });
-    ['PROBABILIDAD', 'CONSECUENCIA', 'VEP', 'NIVEL DE RIESGO'].forEach((h, i) => {
-      const cell = ws.getCell(filaHead2, 7 + i);
-      cell.value = h; cell.font = { bold: true }; cell.alignment = { wrapText: true, vertical: 'middle' };
-    });
-    [1, 2, 3, 4, 5, 6, 11, 12].forEach(c => ws.mergeCells(filaHead1, c, filaHead2, c));
+    const evalCell = ws.getCell(filaHead1, 7);
+    evalCell.value = 'EVALUACION DE RIESGOS'; evalCell.font = { name: 'Calibri', bold: true, size: 10 }; evalCell.alignment = centrado;
     ws.mergeCells(filaHead1, 7, filaHead1, 10);
-    for (let c = 1; c <= NCOLS; c++) { ws.getCell(filaHead1, c).border = borde; ws.getCell(filaHead2, c).border = borde; }
-    ws.getRow(filaHead1).height = 18; ws.getRow(filaHead2).height = 18;
-    return filaHead2 + 1;
+    const subEvalCell = ws.getCell(f2, 7);
+    subEvalCell.value = 'DE SEGURIDAD / EMERGENCIA'; subEvalCell.font = { name: 'Calibri', bold: true, size: 9 }; subEvalCell.alignment = centrado;
+    ws.mergeCells(f2, 7, f2, 10);
+    ['PROBABILIDAD', 'CONSECUENCIA', 'VEP', 'NIVEL DE\nRIESGO'].forEach((h, i) => {
+      const c = 7 + i;
+      const cell = ws.getCell(f3, c);
+      cell.value = h; cell.font = { name: 'Calibri', bold: true, size: 9 }; cell.alignment = centrado;
+      ws.mergeCells(f3, c, f4, c);
+    });
+    const medCell = ws.getCell(filaHead1, 11);
+    medCell.value = 'MEDIDAS\nPREVENTIVAS - CODIGO'; medCell.font = { name: 'Calibri', bold: true, size: 10 }; medCell.alignment = centrado;
+    ws.mergeCells(filaHead1, 11, f4, 11);
+    const anexoCell = ws.getCell(filaHead1, 12);
+    anexoCell.value = 'ANEXO'; anexoCell.font = { name: 'Calibri', bold: true, size: 10 }; anexoCell.alignment = centrado;
+    ws.mergeCells(filaHead1, 12, f4, 12);
+    [filaHead1, f2, f3, f4].forEach(rr => {
+      for (let c = 1; c <= NCOLS; c++) ws.getCell(rr, c).border = borde;
+      ws.getRow(rr).height = 15;
+    });
+    return f4 + 1;
   }
   // Filas de datos — Proceso/Puesto/Tarea/Equipos combinados y en verde
   // cuando se repiten en filas consecutivas (una tarea con varios
   // peligros), Nivel de Riesgo coloreado como semáforo — igual que el
-  // Excel original.
+  // Excel original. Fuente/alineación de cada columna calcada del Excel
+  // original: Proceso/Puesto en 12pt negrita centrado, el resto en 10pt
+  // normal (Peligro/Riesgo alineados a la izquierda, el resto centrado).
   function escribirFilasTabla(ws, filaInicio, filas) {
+    const fuenteGrupo = { name: 'Calibri', bold: true, size: 12 };
+    const fuenteDato = { name: 'Calibri', size: 10 };
+    const alinCentro = { wrapText: true, vertical: 'middle', horizontal: 'center' };
+    const alinIzq = { wrapText: true, vertical: 'middle', horizontal: 'left' };
     let r = filaInicio, i = 0;
     while (i < filas.length) {
       let j = i;
@@ -7704,20 +7738,18 @@ async function generarExcelMiper(datos) {
       const filaGrupoInicio = r;
       for (let k = i; k <= j; k++) {
         const f = filas[k];
-        ws.getCell(r, 5).value = f.peligro;
-        ws.getCell(r, 6).value = f.riesgo;
-        ws.getCell(r, 7).value = f.probabilidad;
-        ws.getCell(r, 8).value = f.consecuencia;
-        ws.getCell(r, 9).value = f.vep;
+        ws.getCell(r, 5).value = f.peligro; ws.getCell(r, 5).font = fuenteDato; ws.getCell(r, 5).alignment = alinIzq;
+        ws.getCell(r, 6).value = f.riesgo; ws.getCell(r, 6).font = fuenteDato; ws.getCell(r, 6).alignment = alinIzq;
+        ws.getCell(r, 7).value = f.probabilidad; ws.getCell(r, 7).font = fuenteDato; ws.getCell(r, 7).alignment = alinCentro;
+        ws.getCell(r, 8).value = f.consecuencia; ws.getCell(r, 8).font = fuenteDato; ws.getCell(r, 8).alignment = alinCentro;
+        ws.getCell(r, 9).value = f.vep; ws.getCell(r, 9).font = fuenteDato; ws.getCell(r, 9).alignment = alinCentro;
         const nivel = f.nivelRiesgo || f.nivel;
         const nivelCell = ws.getCell(r, 10);
-        nivelCell.value = nivel;
+        nivelCell.value = nivel; nivelCell.font = fuenteDato; nivelCell.alignment = alinCentro;
         nivelCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: MIPER_COLOR_NIVEL_EXCEL[nivel] || 'FFFFFFFF' } };
-        ws.getCell(r, 11).value = f.medidasCodigo;
-        ws.getCell(r, 12).value = f.anexo;
+        ws.getCell(r, 11).value = f.medidasCodigo; ws.getCell(r, 11).font = fuenteDato; ws.getCell(r, 11).alignment = alinCentro;
+        ws.getCell(r, 12).value = f.anexo; ws.getCell(r, 12).font = fuenteDato; ws.getCell(r, 12).alignment = alinCentro;
         for (let c = 1; c <= NCOLS; c++) ws.getCell(r, c).border = borde;
-        ws.getCell(r, 5).alignment = { wrapText: true, vertical: 'top' };
-        ws.getCell(r, 6).alignment = { wrapText: true, vertical: 'top' };
         r++;
       }
       const filaGrupoFin = r - 1;
@@ -7727,10 +7759,15 @@ async function generarExcelMiper(datos) {
       ws.getCell(filaGrupoInicio, 3).value = f0.tarea;
       ws.getCell(filaGrupoInicio, 4).value = f0.equipos;
       if (filaGrupoFin > filaGrupoInicio) [1, 2, 3, 4].forEach(c => ws.mergeCells(filaGrupoInicio, c, filaGrupoFin, c));
-      [1, 2, 3, 4].forEach(c => {
+      [1, 2].forEach(c => {
         const cell = ws.getCell(filaGrupoInicio, c);
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: MIPER_COLOR_BLOQUE_TAREA_EXCEL } };
-        cell.alignment = { wrapText: true, vertical: 'top' };
+        cell.font = fuenteGrupo; cell.alignment = alinCentro;
+      });
+      [3, 4].forEach(c => {
+        const cell = ws.getCell(filaGrupoInicio, c);
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: MIPER_COLOR_BLOQUE_TAREA_EXCEL } };
+        cell.font = fuenteDato; cell.alignment = alinCentro;
       });
       i = j + 1;
     }
@@ -7799,18 +7836,38 @@ async function generarExcelMiper(datos) {
   anchoColumnas(wsPrevias, ANCHOS_TABLA);
 
   // ---- Hoja 3: ANEXO 1 - LEVANTAMIENTO PROCESO (tareas levantadas de la obra) ----
+  // Encabezado con "Tarea" como grupo sobre 2 subcolumnas (Nombre /
+  // Rutinaria-No Rutinaria) y las etiquetas textuales exactas del Excel
+  // original (incluida "Identidad Sexogenérica").
   const wsAnexo1 = wb.addWorksheet('ANEXO 1 - LEVANTAMIENTO PROCESO');
+  const centrado1 = { wrapText: true, vertical: 'middle', horizontal: 'center' };
   wsAnexo1.mergeCells(1, 1, 1, 8);
   wsAnexo1.getCell(1, 1).value = 'LEVANTAMIENTO DE PROCESOS';
-  wsAnexo1.getCell(1, 1).font = { bold: true, size: 14 };
-  const encAnexo1 = ['Proceso', 'Puesto de trabajo(s)', 'Tarea', 'Rutinaria / No Rutinaria', 'Lugar', 'N° Personas', 'Sexo', 'Observaciones'];
-  encAnexo1.forEach((h, i) => { const c = wsAnexo1.getCell(3, i + 1); c.value = h; c.font = { bold: true }; c.border = borde; });
-  (datos.tareas || []).forEach((t, i) => {
-    const fr = 4 + i;
-    const vals = [t.proceso, t.puesto, t.tarea, t.rutinaria, t.lugar, t.nPersonas, t.sexo, t.observaciones];
-    vals.forEach((v, ci) => { const c = wsAnexo1.getCell(fr, ci + 1); c.value = v; c.border = borde; c.alignment = { wrapText: true, vertical: 'top' }; });
+  wsAnexo1.getCell(1, 1).font = { name: 'Calibri', bold: true, size: 14 };
+  const encAnexo1_1 = ['Proceso', 'Puesto de trabajo(s) involucrado(s)', 'Tarea', '', 'Lugar especifico de trabajo',
+    'N° de personas trabajadoras', 'Identidad Sexogenérica', 'Observaciones'];
+  encAnexo1_1.forEach((h, i) => {
+    const c = i + 1;
+    if (c === 4) return;
+    const cell = wsAnexo1.getCell(3, c);
+    cell.value = h; cell.font = { name: 'Calibri', bold: true, size: 10 }; cell.alignment = centrado1; cell.border = borde;
+    if (c !== 3) wsAnexo1.mergeCells(3, c, 4, c);
   });
-  wsAnexo1.columns = [{width:20},{width:22},{width:26},{width:16},{width:20},{width:11},{width:10},{width:26}];
+  wsAnexo1.mergeCells(3, 3, 3, 4);
+  ['Nombre', 'Rutinaria /\nNo Rutinaria'].forEach((h, i) => {
+    const cell = wsAnexo1.getCell(4, 3 + i);
+    cell.value = h; cell.font = { name: 'Calibri', bold: true, size: 9 }; cell.alignment = centrado1; cell.border = borde;
+  });
+  [3, 4].forEach(rr => { for (let c = 1; c <= 8; c++) wsAnexo1.getCell(rr, c).border = borde; wsAnexo1.getRow(rr).height = 15; });
+  (datos.tareas || []).forEach((t, i) => {
+    const fr = 5 + i;
+    const vals = [t.proceso, t.puesto, t.tarea, t.rutinaria, t.lugar, t.nPersonas, t.sexo, t.observaciones];
+    vals.forEach((v, ci) => {
+      const c = wsAnexo1.getCell(fr, ci + 1);
+      c.value = v; c.font = { name: 'Calibri', size: 10 }; c.border = borde; c.alignment = centrado1;
+    });
+  });
+  wsAnexo1.columns = [{width:14},{width:22},{width:20},{width:14},{width:20},{width:11},{width:10},{width:26}];
 
   // ---- Hojas ANEXO 2-5: catálogo de riesgos por familia ----
   const FAMILIAS_ANEXO = [
@@ -7820,6 +7877,8 @@ async function generarExcelMiper(datos) {
     ['ANEXO 5 - RIESGO PSICOSOCIALES', 'RIESGOS PSICOSOCIALES', 'PSICOSOCIAL'],
   ];
   const catalogoCompleto = miperCatalogoCompleto();
+  const centradoAnexo = { wrapText: true, vertical: 'middle', horizontal: 'center' };
+  const izqAnexo = { wrapText: true, vertical: 'middle', horizontal: 'left' };
   FAMILIAS_ANEXO.forEach(([nombreHoja, subtitulo, familia]) => {
     const ws = wb.addWorksheet(nombreHoja);
     ws.mergeCells(1, 1, 1, 5);
@@ -7829,26 +7888,34 @@ async function generarExcelMiper(datos) {
     ws.getCell(2, 1).value = subtitulo;
     ws.getCell(2, 1).font = { bold: true, size: 12 };
     const enc = ['FAMILIA DE RIESGO', 'RIESGO ESPECIFICO', 'DEFINICION', 'CODIGO', 'MEDIDAS PREVENTIVAS O DE CONTROL'];
-    enc.forEach((h, i) => { const c = ws.getCell(4, i + 1); c.value = h; c.font = { bold: true }; c.border = borde; });
+    enc.forEach((h, i) => {
+      const c = ws.getCell(4, i + 1); c.value = h; c.font = { bold: true }; c.alignment = centradoAnexo; c.border = borde;
+    });
+    ws.getRow(4).height = 15;
     let rr = 5;
     catalogoCompleto.filter(x => x.familia === familia).forEach(riesgo => {
       const medidas = riesgo.medidas && riesgo.medidas.length ? riesgo.medidas : [''];
       const filaInicioRiesgo = rr;
       medidas.forEach((medida, mi) => {
         ws.getCell(rr, 5).value = medida;
-        ws.getCell(rr, 5).alignment = { wrapText: true, vertical: 'top' };
+        ws.getCell(rr, 5).font = { size: 10 };
+        ws.getCell(rr, 5).alignment = izqAnexo;
         for (let c = 1; c <= 5; c++) ws.getCell(rr, c).border = borde;
         rr++;
       });
       const filaFinRiesgo = rr - 1;
-      ws.getCell(filaInicioRiesgo, 1).value = MIPER_FAMILIA_LABEL[riesgo.familia] || riesgo.familia;
-      ws.getCell(filaInicioRiesgo, 2).value = riesgo.riesgo;
-      ws.getCell(filaInicioRiesgo, 3).value = riesgo.definicion;
-      ws.getCell(filaInicioRiesgo, 4).value = riesgo.codigo;
+      const cFamilia = ws.getCell(filaInicioRiesgo, 1);
+      cFamilia.value = MIPER_FAMILIA_LABEL[riesgo.familia] || riesgo.familia;
+      cFamilia.font = { bold: true, size: 12 }; cFamilia.alignment = centradoAnexo;
+      const cRiesgo = ws.getCell(filaInicioRiesgo, 2);
+      cRiesgo.value = riesgo.riesgo; cRiesgo.font = { size: 10 }; cRiesgo.alignment = centradoAnexo;
+      const cDef = ws.getCell(filaInicioRiesgo, 3);
+      cDef.value = riesgo.definicion; cDef.font = { size: 10 }; cDef.alignment = izqAnexo;
+      const cCod = ws.getCell(filaInicioRiesgo, 4);
+      cCod.value = riesgo.codigo; cCod.font = { size: 10 }; cCod.alignment = centradoAnexo;
       if (filaFinRiesgo > filaInicioRiesgo) [1, 2, 3, 4].forEach(c => ws.mergeCells(filaInicioRiesgo, c, filaFinRiesgo, c));
-      [3].forEach(c => ws.getCell(filaInicioRiesgo, c).alignment = { wrapText: true, vertical: 'top' });
     });
-    ws.columns = [{width:18},{width:32},{width:55},{width:10},{width:60}];
+    ws.columns = [{width:12},{width:16},{width:30},{width:11},{width:75}];
   });
 
   // ---- Hoja ANEXO 6: Protocolos MINSAL ----
@@ -7870,7 +7937,7 @@ async function generarExcelMiper(datos) {
   // ---- Hoja VEP ----
   const wsVep = wb.addWorksheet('VEP');
   ['VEP', 'NIVELES DE RIESGO', 'ACCION y TEMPORIZACION'].forEach((h, i) => {
-    const c = wsVep.getCell(1, i + 1); c.value = h; c.font = { bold: true };
+    const c = wsVep.getCell(1, i + 1); c.value = h; c.font = { bold: true }; c.alignment = { horizontal: 'center', vertical: 'middle' };
   });
   MIPER_VEP.forEach((v, i) => {
     const fr = 2 + i;
@@ -7882,7 +7949,7 @@ async function generarExcelMiper(datos) {
       const cell = wsVep.getCell(fr, c);
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: color } };
       cell.border = borde;
-      if (c === 3) cell.alignment = { wrapText: true, vertical: 'top' };
+      cell.alignment = c === 3 ? { wrapText: true, vertical: 'middle' } : { horizontal: 'center', vertical: 'middle', wrapText: true };
     });
   });
   wsVep.columns = [{width:12},{width:16},{width:80}];
