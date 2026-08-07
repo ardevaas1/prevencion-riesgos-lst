@@ -7688,12 +7688,24 @@ async function generarExcelMiper(datos) {
   const ws = wb.addWorksheet('MATRIZ DE RIESGOS');
   wb.views = [{ activeTab: idxNueva }];
 
+  // Logo LST — mismo logo.png que usan los PDF de la app (nunca
+  // logo-transparent.png), en la esquina superior izquierda de CADA pestaña,
+  // igual que el Excel original traía su propia imagen en cada hoja.
+  try {
+    const logoResp = await fetch('logo.png');
+    const logoBuf = await logoResp.arrayBuffer();
+    const logoId = wb.addImage({ buffer: logoBuf, extension: 'png' });
+    wb.worksheets.forEach(hoja => {
+      hoja.addImage(logoId, { tl: { col: 0.15, row: 0.1 }, ext: { width: 58, height: 46 } });
+    });
+  } catch (e) { /* si falla la carga del logo, el Excel se genera igual sin él */ }
+
   let r = 1;
-  ws.mergeCells(r, 1, r, NCOLS);
-  const titulo = ws.getCell(r, 1);
+  ws.mergeCells(r, 2, r, NCOLS);
+  const titulo = ws.getCell(r, 2);
   titulo.value = 'MATRIZ DE IDENTIFICACION DE PELIGROS / FACTORES DE RIESGOS y EVALUACION DE RIESGOS';
   titulo.font = { bold: true, size: 14 };
-  ws.getRow(r).height = 22;
+  ws.getRow(r).height = 26;
   r += 2;
 
   function campoIzq(fila, label, value) {
