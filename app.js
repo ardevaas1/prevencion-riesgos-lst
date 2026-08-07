@@ -1016,6 +1016,7 @@ let allProgramaPersonalizado = [];
 let allMiperLevantamiento = [];
 let allMiperMatriz = [];
 let allMiperDocumentos = [];
+let allMiperPrograma = [];
 
 // Renderiza todos los módulos "principales" de una sola vez — se llama tanto
 // al terminar de cargar datos como al elegir/cambiar la Obra activa (ver
@@ -1091,7 +1092,7 @@ async function cargarTodo(silencioso) {
       return;
     }
 
-    const [trab, insp, inc, proc, epp, charlas, invest, hcr, diat, subs, docs, prog, miperLev, miperMat, miperRiesgos, miperDocs] = await fetchSheetsBatch([
+    const [trab, insp, inc, proc, epp, charlas, invest, hcr, diat, subs, docs, prog, miperLev, miperMat, miperRiesgos, miperDocs, miperProg] = await fetchSheetsBatch([
       `'${CONFIG.SHEET_TRABAJADORES}'!A2:AC2000`,
       `'${CONFIG.SHEET_INSPECCIONES}'!A2:M2000`,
       `'${CONFIG.SHEET_INCIDENTES}'!A2:V2000`,
@@ -1108,6 +1109,7 @@ async function cargarTodo(silencioso) {
       `'${CONFIG.SHEET_MIPER_MATRIZ}'!A2:R4000`,
       `'${CONFIG.SHEET_MIPER_RIESGOS_CUSTOM}'!A2:H500`,
       `'${CONFIG.SHEET_MIPER_DOCUMENTOS}'!A2:P500`,
+      `'${CONFIG.SHEET_MIPER_PROGRAMA}'!A2:H4000`,
     ]);
     if (!silencioso) splash(85, 'Preparando la app...');
     allTrabajadores = trab.map((r,i) => rowToTrabajador(r,i));
@@ -1127,6 +1129,7 @@ async function cargarTodo(silencioso) {
     allMiperMatriz = miperMat.map((r,i) => rowToMiperMatriz(r,i));
     allMiperRiesgosCustom = miperRiesgos.map((r,i) => rowToMiperRiesgoCustom(r,i));
     allMiperDocumentos = miperDocs.map((r,i) => rowToMiperDocumento(r,i));
+    allMiperPrograma = miperProg.map((r,i) => rowToMiperPrograma(r,i));
     renderModulosPrincipales();
     if (!silencioso) splash(100, '¡Listo!');
     else toast('Datos actualizados ✓', 'ok');
@@ -1279,6 +1282,10 @@ function rowToMiperDocumento(r, i) {
     protocolos: (() => { try { return JSON.parse(r[8]||'[]'); } catch(e) { return []; } })(),
     nombreElaboro: r[9]||'', nombreReviso: r[10]||'', nombreAprobo: r[11]||'',
     pdf: r[12]||'', excel: r[13]||'', fechaRegistro: r[14]||'', registradoPor: r[15]||'' };
+}
+function rowToMiperPrograma(r, i) {
+  return { fila: i+2, n: r[0]||'', obra: r[1]||'', item: r[2]||'', proceso: r[3]||'', tarea: r[4]||'',
+    unidad: r[5]||'', fechaRegistro: r[6]||'', registradoPor: r[7]||'' };
 }
 function rowToProgramaPersonalizado(r, i) {
   return { fila: i+2, n: r[0]||'', obra: r[1]||'', mes: r[2]||'', supervisor: r[3]||'', cargo: r[4]||'',
@@ -1444,6 +1451,18 @@ function onCambioObraCharla(selEl) {
 }
 function valorObra(selEl, otroId) {
   if (selEl.value === '__otra__') return document.getElementById(otroId).value.trim();
+  return selEl.value;
+}
+
+// Versión genérica del patrón select+"otro" (usado en Obra) para cualquier
+// otro campo con lista sugerida + opción de escribir libre (ver Proceso/
+// Tarea del Levantamiento MIPER cuando la obra tiene Programa Edificio
+// importado).
+function onCambioSelectConOtro(selEl, otroId) {
+  document.getElementById(otroId).classList.toggle('hidden', selEl.value !== '__otro__');
+}
+function valorConOtro(selEl, otroId) {
+  if (selEl.value === '__otro__') return document.getElementById(otroId).value.trim();
   return selEl.value;
 }
 
@@ -7128,6 +7147,13 @@ function renderMiper() {
     </div>
 
     <div class="sec-label" style="margin-top:14px;">Levantamiento de procesos y tareas</div>
+    ${(() => {
+      const nPartidas = allMiperPrograma.filter(p => p.obra === obraEfectiva).length;
+      return `<div class="card-sub" style="margin-bottom:8px;">${nPartidas
+        ? `${nPartidas} partida(s) del Programa Edificio importadas — el Proceso/Tarea se eligen de esa lista.`
+        : 'Sin Programa Edificio importado — el Proceso/Tarea se escriben libres.'}</div>
+      <button class="action-btn" onclick="abrirImportarProgramaMiper()">${ic('hoja',14)} ${nPartidas ? 'Reimportar' : 'Importar'} Programa Edificio (Excel)</button>`;
+    })()}
     <button class="action-btn" onclick="abrirFormMiperTarea()">${ic('hoja',14)} Agregar tarea</button>
     ${tareas.length === 0 ? emptyState('Sin tareas levantadas', 'Agrega la primera tarea con el botón de arriba') :
       tareas.slice().reverse().map(t => `
@@ -7175,6 +7201,115 @@ function abrirMenuAgregarMiper() {
   abrirFormMiperTarea();
 }
 
+// ── Programa Edificio: cada obra puede importar su propio programa real
+// (el Excel de programación con las partidas de la obra) para que el
+// Levantamiento (Anexo 1) elija Proceso/Tarea de esa lista real en vez de
+// texto libre — a pedido explícito del cliente, mostrando como ejemplo su
+// archivo "PROGRAMA EDIFICIO – RENDIMIENTOS REALES DE TERRENO": cada fila
+// de partida trae un código ITEM + nombre + unidad; las filas que solo
+// tienen ITEM (sin nombre de partida) son encabezados de sección
+// ("A.1 INSTALACION DE FAENAS...") y se usan como Proceso para las
+// partidas que vienen debajo, hasta el próximo encabezado.
+function limpiarNombreProcesoPrograma(texto) {
+  return texto.replace(/^[A-Z]{1,4}\.[A-Z0-9.]*-?\s+/, '').trim() || texto.trim();
+}
+function abrirImportarProgramaMiper() {
+  const obraEfectiva = obraMiperEfectiva() || obraPreseleccionada();
+  document.getElementById('miper-programa-body').innerHTML = `
+    <div class="card-sub" style="margin-bottom:12px;">
+      Sube el Excel del Programa de la obra (mismo formato que "PROGRAMA EDIFICIO – RENDIMIENTOS REALES DE TERRENO": una fila por partida con código ITEM + nombre). La app detecta los encabezados de sección (ej: "A.1 INSTALACION DE FAENAS...") como Proceso, y cada partida con código y nombre como Tarea.
+    </div>
+    <div class="form-group"><label>Obra</label>
+      <select id="select-miper-programa-obra" onchange="onCambioObraSelect(this,'input-miper-programa-obra-otra')">${opcionesObraSelectHTML(obraEfectiva)}</select>
+      <input type="text" id="input-miper-programa-obra-otra" class="hidden" placeholder="Nombre de la obra" style="margin-top:8px;">
+    </div>
+    <div class="form-group"><label>Archivo Excel del programa</label>
+      <input type="file" id="input-miper-programa-archivo" accept=".xlsx" onchange="procesarArchivoProgramaMiper(this)">
+    </div>
+    <div id="miper-programa-preview"></div>
+  `;
+  const selObra = document.getElementById('select-miper-programa-obra');
+  onCambioObraSelect(selObra, 'input-miper-programa-obra-otra');
+  miperProgramaParseado = null;
+  openPanel('panel-miper-programa');
+}
+let miperProgramaParseado = null;
+async function procesarArchivoProgramaMiper(inputEl) {
+  const file = inputEl.files[0];
+  if (!file) return;
+  const preview = document.getElementById('miper-programa-preview');
+  preview.innerHTML = '<div class="card-sub">Leyendo archivo...</div>';
+  try {
+    const ExcelJS = await cargarExcelJsLib();
+    const buf = await file.arrayBuffer();
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(buf);
+    const ws = wb.worksheets.find(w => /programa/i.test(w.name)) ||
+      wb.worksheets.reduce((mejor, w) => (!mejor || w.rowCount > mejor.rowCount ? w : mejor), null);
+    if (!ws) throw new Error('El archivo no tiene hojas.');
+    let colItem = null, colPartida = null, colUnidad = null, filaHeader = null;
+    ws.eachRow((row) => {
+      if (filaHeader) return;
+      row.eachCell((cell, colNumber) => {
+        const v = String(cell.value || '').trim().toUpperCase();
+        if (v === 'ITEM') colItem = colNumber;
+        if (v === 'PARTIDA') colPartida = colNumber;
+        if (v === 'UN') colUnidad = colNumber;
+      });
+      if (colItem && colPartida) filaHeader = row.number;
+    });
+    if (!colItem || !colPartida) throw new Error('No se encontraron las columnas "ITEM" y "PARTIDA" — revisa que sea el formato correcto.');
+    const partidas = [];
+    let procesoActual = '';
+    for (let r = filaHeader + 1; r <= ws.rowCount; r++) {
+      const row = ws.getRow(r);
+      const itemVal = String(row.getCell(colItem).value || '').trim();
+      const partidaVal = String(row.getCell(colPartida).value || '').trim();
+      if (!itemVal && !partidaVal) continue;
+      // Fila de encabezado de sección: solo tiene texto en la columna ITEM
+      // (sin PARTIDA) — pero si esa fila usa una celda combinada que abarca
+      // también la columna PARTIDA (común en este formato, para el título
+      // de la sección), ExcelJS devuelve el mismo texto en ambas columnas;
+      // por eso también cuenta como encabezado cuando itemVal===partidaVal.
+      if (itemVal && (!partidaVal || partidaVal === itemVal)) { procesoActual = limpiarNombreProcesoPrograma(itemVal); continue; }
+      partidas.push({
+        item: itemVal, proceso: procesoActual || '(Sin proceso)', tarea: partidaVal,
+        unidad: colUnidad ? String(row.getCell(colUnidad).value || '').trim() : '',
+      });
+    }
+    if (partidas.length === 0) throw new Error('No se detectaron partidas en el archivo.');
+    miperProgramaParseado = partidas;
+    const procesos = [...new Set(partidas.map(p => p.proceso))];
+    preview.innerHTML = `
+      <div class="card card--default">
+        <div class="card-body">
+          <div class="card-title">${partidas.length} partida(s) detectadas en ${procesos.length} proceso(s)</div>
+          <div class="card-sub">${procesos.slice(0, 6).map(esc).join(' · ')}${procesos.length > 6 ? '…' : ''}</div>
+        </div>
+      </div>
+      <button class="btn-add" type="button" onclick="confirmarImportarProgramaMiper()">Importar ${partidas.length} partida(s)</button>
+    `;
+  } catch (e) {
+    preview.innerHTML = `<div class="card-sub" style="color:#c0392b">${esc(e.message)}</div>`;
+  }
+}
+async function confirmarImportarProgramaMiper() {
+  if (!miperProgramaParseado || !miperProgramaParseado.length) return;
+  try {
+    const obra = valorObra(document.getElementById('select-miper-programa-obra'), 'input-miper-programa-obra-otra');
+    if (!obra) { toast('Selecciona la obra', 'error'); return; }
+    const ahora = new Date().toLocaleString('es-CL');
+    const filas = miperProgramaParseado.map((p, i) => [
+      allMiperPrograma.length + i + 1, obra, p.item, p.proceso, p.tarea, p.unidad, ahora, userEmail || ''
+    ]);
+    await appendSheet(`'${CONFIG.SHEET_MIPER_PROGRAMA}'!A:H`, filas);
+    toast(`${filas.length} partida(s) importadas ✓`, 'ok');
+    miperProgramaParseado = null;
+    closePanel('panel-miper-programa');
+    await cargarTodo(true);
+  } catch (e) { toast(e.message, 'error'); }
+}
+
 // ── Anexo 1: Levantamiento de procesos y tareas ─────────────────────────
 function procesosSugeridosMiper() {
   return [...new Set(allMiperLevantamiento.map(t => t.proceso).filter(Boolean))].sort((a,b) => a.localeCompare(b,'es'));
@@ -7193,19 +7328,61 @@ function trabajadoresPorPuestoMiper(obra, puesto) {
   return allTrabajadores.filter(t => t.estado === 'Activo' && t.obra === obra && t.cargo &&
     (p.includes(t.cargo.toLowerCase()) || t.cargo.toLowerCase().includes(p)));
 }
+// Si la obra tiene un Programa Edificio importado, Proceso y Tarea se
+// eligen de esas partidas reales (con opción "Otro" para escribir libre);
+// si no, quedan como texto libre con sugerencias (comportamiento anterior).
+let miperProgramaObraActual = [];
+function camposProcesoTareaMiperTarea(programaObra) {
+  if (!programaObra.length) {
+    return `
+      <div class="form-group"><label>Proceso</label><input name="proceso" required list="dl-miper-procesos" placeholder="Ej: Excavaciones"></div>
+      <datalist id="dl-miper-procesos">${procesosSugeridosMiper().map(p => `<option value="${esc(p)}">`).join('')}</datalist>
+      <div class="form-group"><label>Puesto de trabajo</label><input name="puesto" required list="dl-miper-puestos" placeholder="Ej: Jornal, Enfierrador"></div>
+      <datalist id="dl-miper-puestos">${puestosSugeridosMiper().map(p => `<option value="${esc(p)}">`).join('')}</datalist>
+      <div class="form-group"><label>Tarea</label><input name="tarea" required placeholder="Ej: Armado de moldaje"></div>`;
+  }
+  const procesos = [...new Set(programaObra.map(p => p.proceso))];
+  return `
+    <div class="form-group"><label>Proceso</label>
+      <select name="proceso" onchange="onCambioSelectConOtro(this,'input-miper-tarea-proceso-otro'); onCambioProcesoMiperTarea(this)">
+        <option value="">Elige un proceso del Programa Edificio...</option>
+        ${procesos.map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join('')}
+        <option value="__otro__">Otro (escribir)</option>
+      </select>
+      <input type="text" id="input-miper-tarea-proceso-otro" class="hidden" placeholder="Proceso" style="margin-top:8px;">
+    </div>
+    <div class="form-group"><label>Puesto de trabajo</label><input name="puesto" required list="dl-miper-puestos" placeholder="Ej: Jornal, Enfierrador"></div>
+    <datalist id="dl-miper-puestos">${puestosSugeridosMiper().map(p => `<option value="${esc(p)}">`).join('')}</datalist>
+    <div class="form-group"><label>Tarea</label>
+      <select name="tarea" id="select-miper-tarea-tarea" onchange="onCambioSelectConOtro(this,'input-miper-tarea-tarea-otro')">
+        <option value="">Elige un proceso primero (o "Otro")</option>
+        <option value="__otro__">Otro (escribir)</option>
+      </select>
+      <input type="text" id="input-miper-tarea-tarea-otro" class="hidden" placeholder="Tarea" style="margin-top:8px;">
+    </div>`;
+}
+function onCambioProcesoMiperTarea(selEl) {
+  const tareaSel = document.getElementById('select-miper-tarea-tarea');
+  if (!tareaSel) return;
+  const proceso = selEl.value;
+  const tareas = (proceso && proceso !== '__otro__')
+    ? [...new Set(miperProgramaObraActual.filter(p => p.proceso === proceso).map(p => p.tarea))] : [];
+  tareaSel.innerHTML = `
+    <option value="">${tareas.length ? 'Elige una tarea...' : 'Elige un proceso primero (o "Otro")'}</option>
+    ${tareas.map(t => `<option value="${esc(t)}">${esc(t)}</option>`).join('')}
+    <option value="__otro__">Otro (escribir)</option>`;
+  document.getElementById('input-miper-tarea-tarea-otro').classList.add('hidden');
+}
 function abrirFormMiperTarea() {
   const obraEfectiva = obraMiperEfectiva() || obraPreseleccionada();
+  miperProgramaObraActual = allMiperPrograma.filter(p => p.obra === obraEfectiva);
   document.getElementById('miper-tarea-body').innerHTML = `
     <form id="form-miper-tarea" onsubmit="guardarMiperTarea(event)">
       <div class="form-group"><label>Obra</label>
         <select name="obra" onchange="onCambioObraSelect(this,'input-miper-tarea-obra-otra')" required>${opcionesObraSelectHTML(obraEfectiva)}</select>
         <input type="text" id="input-miper-tarea-obra-otra" class="hidden" placeholder="Nombre de la obra" style="margin-top:8px;">
       </div>
-      <div class="form-group"><label>Proceso</label><input name="proceso" required list="dl-miper-procesos" placeholder="Ej: Excavaciones"></div>
-      <datalist id="dl-miper-procesos">${procesosSugeridosMiper().map(p => `<option value="${esc(p)}">`).join('')}</datalist>
-      <div class="form-group"><label>Puesto de trabajo</label><input name="puesto" required list="dl-miper-puestos" placeholder="Ej: Jornal, Enfierrador"></div>
-      <datalist id="dl-miper-puestos">${puestosSugeridosMiper().map(p => `<option value="${esc(p)}">`).join('')}</datalist>
-      <div class="form-group"><label>Tarea</label><input name="tarea" required placeholder="Ej: Armado de moldaje"></div>
+      ${camposProcesoTareaMiperTarea(miperProgramaObraActual)}
       <div class="form-group"><label>Tipo</label><select name="rutinaria"><option>Rutinaria</option><option>No Rutinaria</option></select></div>
       <div class="form-group"><label>Lugar donde se realiza la tarea</label><input name="lugar" placeholder="Ej: Interior y exterior de obra"></div>
       <div class="form-group"><label>Observaciones</label><textarea name="observaciones" rows="2"></textarea></div>
@@ -7216,13 +7393,19 @@ function abrirFormMiperTarea() {
   onCambioObraSelect(selObra, 'input-miper-tarea-obra-otra');
   openPanel('panel-miper-tarea');
 }
+function valorProcesoOTareaMiperTarea(el, otroId) {
+  if (el.tagName === 'SELECT') return valorConOtro(el, otroId);
+  return el.value.trim();
+}
 async function guardarMiperTarea(ev) {
   ev.preventDefault();
   const f = ev.target;
   try {
     const obra = valorObra(f.obra, 'input-miper-tarea-obra-otra');
     if (!obra) { toast('Selecciona la obra', 'error'); return; }
-    const proceso = f.proceso.value.trim(), puesto = f.puesto.value.trim(), tarea = f.tarea.value.trim();
+    const proceso = valorProcesoOTareaMiperTarea(f.proceso, 'input-miper-tarea-proceso-otro');
+    const puesto = f.puesto.value.trim();
+    const tarea = valorProcesoOTareaMiperTarea(f.tarea, 'input-miper-tarea-tarea-otro');
     if (!proceso || !puesto || !tarea) { toast('Completa proceso, puesto y tarea', 'error'); return; }
     const match = trabajadoresPorPuestoMiper(obra, puesto);
     const nPersonas = match.length;

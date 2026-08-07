@@ -120,14 +120,14 @@ repositorio de GitHub **separado**.
   Riesgos, carga bajo demanda (`cargarMiperBanco`) — ver "Módulo Matriz de
   Riesgos (IPER, DS44)" más abajo.
 
-## Estructura de datos (Google Sheet, 18 pestañas)
+## Estructura de datos (Google Sheet, 19 pestañas)
 
 `TRABAJADORES`, `INSPECCIONES`, `CHARLAS`, `INCIDENTES`, `INVESTIGACIONES`,
 `HCR`, `DIAT`, `PROCEDIMIENTOS`, `ENTREGA_EPP`, `USUARIOS`, `SUBCONTRATISTAS`,
 `SUBCONTRATISTAS_DOCS`, `PROGRAMA_PERSONALIZADO`, `MIPER_LEVANTAMIENTO`,
-`MIPER_MATRIZ`, `MIPER_RIESGOS_CUSTOM`, `MIPER_DOCUMENTOS`.
+`MIPER_MATRIZ`, `MIPER_RIESGOS_CUSTOM`, `MIPER_DOCUMENTOS`, `MIPER_PROGRAMA`.
 
-Las 4 pestañas `MIPER_*` son del módulo Matriz de Riesgos (IPER, DS44) — ver
+Las 5 pestañas `MIPER_*` son del módulo Matriz de Riesgos (IPER, DS44) — ver
 "Módulo Matriz de Riesgos (IPER, DS44)" más abajo.
 
 `PROGRAMA_PERSONALIZADO` (`N°`, `Obra`, `Mes`, `Supervisor`, `Cargo`,
@@ -860,6 +860,27 @@ pestaña por pestaña antes de programar nada.
   `Cargo` calza (substring en cualquier dirección, best-effort — el Excel no
   trae una relación estructurada Puesto↔Cargo) con el Puesto escrito
   (`trabajadoresPorPuestoMiper`).
+- **Programa Edificio por obra (`MIPER_PROGRAMA`):** a pedido del cliente,
+  mostrando como ejemplo su Excel real de programación de obra ("PROGRAMA
+  EDIFICIO – RENDIMIENTOS REALES DE TERRENO"), Proceso y Tarea del
+  Levantamiento dejan de ser solo texto libre: cada obra puede **importar
+  su propio programa** (botón "Importar Programa Edificio" en el
+  Levantamiento) y desde ahí Proceso/Tarea se eligen de esa lista real de
+  partidas (con opción "Otro" para seguir escribiendo libre cuando haga
+  falta — obras sin programa importado siguen funcionando como antes,
+  100% texto libre). El parser (`procesarArchivoProgramaMiper`, con
+  ExcelJS leyendo el archivo en el navegador) reconoce el formato del
+  Excel de programación del cliente: busca la fila de encabezado con las
+  columnas "ITEM"/"PARTIDA"/"UN", y de ahí en adelante clasifica cada fila
+  por si tiene solo código (fila de encabezado de sección, ej. "A.1
+  INSTALACION DE FAENAS Y OBRAS PRELIMINARES" → pasa a ser el Proceso de
+  las partidas siguientes) o código + nombre de partida (fila hoja, ej.
+  "A.1.1 Construcciones provisorias" → Tarea). Las filas de encabezado en
+  el Excel real están combinadas (merge) a lo ancho de toda la fila, así
+  que ExcelJS devuelve el mismo texto en la columna ITEM y en la columna
+  PARTIDA — el parser detecta esto (`itemVal === partidaVal`) para no
+  confundirlas con una partida real. Probado con el archivo real del
+  cliente: 156 partidas detectadas en 32 procesos.
 - **Anexos 2-5 → catálogo de riesgos (`MIPER_CATALOGO_RIESGOS` en `app.js`):**
   los 23 riesgos originales (Seguridad/Higiene/Músculo-Esquelético/
   Psicosocial, cada uno con definición/código/medidas preventivas) quedan

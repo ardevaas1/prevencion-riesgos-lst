@@ -147,6 +147,15 @@ function inicializarPlanilla() {
     'PDF', 'Excel', 'Fecha Registro', 'Registrado Por'
   ]);
 
+  // Matriz IPER — partidas del Programa Edificio real de cada obra
+  // (importado desde el Excel de programación de la obra), usadas para que
+  // el Levantamiento (Anexo 1) elija Proceso/Tarea de una lista real en vez
+  // de texto libre.
+  crearHoja(ss, 'MIPER_PROGRAMA', [
+    'N°', 'Obra', 'Item', 'Proceso', 'Tarea', 'Unidad',
+    'Fecha Registro', 'Registrado Por'
+  ]);
+
   // Elimina la hoja "Hoja 1" / "Sheet1" default si quedó vacía
   const porDefecto = ss.getSheetByName('Hoja 1') || ss.getSheetByName('Sheet1');
   if (porDefecto && porDefecto.getLastRow() === 0 && ss.getSheets().length > 1) {
