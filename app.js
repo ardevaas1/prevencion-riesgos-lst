@@ -7777,22 +7777,27 @@ async function generarExcelMiper(datos) {
     ws.columns = anchos.map(w => ({ width: w }));
   }
 
-  // ---- Hoja 1: MATRIZ DE RIESGOS (datos reales de la obra) ----
-  const wsMatriz = wb.addWorksheet('MATRIZ DE RIESGOS');
+  // ---- Hoja 1: OBRAS PREVIAS (única hoja de matriz — no hay una hoja
+  // "MATRIZ DE RIESGOS" aparte: la tabla que se edita/crece es esta. Trae
+  // el encabezado (entidad/firmas/protocolos) del documento que se está
+  // generando y, en la tabla, el banco histórico completo seguido de las
+  // filas nuevas de esta obra al final — así queda como un registro único
+  // que se sigue extendiendo, igual que en el Excel del cliente). ----
+  const wsPrevias = wb.addWorksheet('OBRAS PREVIAS');
   let r = 1;
-  wsMatriz.mergeCells(r, 1, r, NCOLS);
-  const titulo = wsMatriz.getCell(r, 1);
+  wsPrevias.mergeCells(r, 1, r, NCOLS);
+  const titulo = wsPrevias.getCell(r, 1);
   titulo.value = 'MATRIZ DE IDENTIFICACION DE PELIGROS / FACTORES DE RIESGOS y EVALUACION DE RIESGOS';
   titulo.font = { bold: true, size: 14 };
-  wsMatriz.getRow(r).height = 22;
+  wsPrevias.getRow(r).height = 22;
   r += 2;
   function campoIzq(fila, label, value) {
-    wsMatriz.getCell(fila, 1).value = label; wsMatriz.getCell(fila, 1).font = { bold: true };
-    wsMatriz.mergeCells(fila, 2, fila, 5); wsMatriz.getCell(fila, 2).value = value;
+    wsPrevias.getCell(fila, 1).value = label; wsPrevias.getCell(fila, 1).font = { bold: true };
+    wsPrevias.mergeCells(fila, 2, fila, 5); wsPrevias.getCell(fila, 2).value = value;
   }
   function campoDer(fila, label, value) {
-    wsMatriz.getCell(fila, 7).value = label; wsMatriz.getCell(fila, 7).font = { bold: true };
-    wsMatriz.mergeCells(fila, 8, fila, NCOLS); wsMatriz.getCell(fila, 8).value = value;
+    wsPrevias.getCell(fila, 7).value = label; wsPrevias.getCell(fila, 7).font = { bold: true };
+    wsPrevias.mergeCells(fila, 8, fila, NCOLS); wsPrevias.getCell(fila, 8).value = value;
   }
   campoIzq(r, 'ENTIDAD EMPLEADORA', datos.entidadEmpleadora);
   campoDer(r, 'NOMBRE Y FIRMA ELABORO', datos.nombreElaboro); r++;
@@ -7800,39 +7805,28 @@ async function generarExcelMiper(datos) {
   campoDer(r, 'NOMBRE Y FIRMA REVISION', datos.nombreReviso); r++;
   campoIzq(r, 'RESPONSABLE LEVANTAMIENTO', datos.responsableLevantamiento);
   campoDer(r, 'NOMBRE Y FIRMA APROBACION', datos.nombreAprobo); r++;
-  wsMatriz.getCell(r, 1).value = 'FECHA'; wsMatriz.getCell(r, 1).font = { bold: true };
-  wsMatriz.getCell(r, 2).value = ddmmyyyy(datos.fecha);
-  wsMatriz.getCell(r, 4).value = 'REVISION'; wsMatriz.getCell(r, 4).font = { bold: true };
-  wsMatriz.getCell(r, 5).value = datos.revision;
+  wsPrevias.getCell(r, 1).value = 'FECHA'; wsPrevias.getCell(r, 1).font = { bold: true };
+  wsPrevias.getCell(r, 2).value = ddmmyyyy(datos.fecha);
+  wsPrevias.getCell(r, 4).value = 'REVISION'; wsPrevias.getCell(r, 4).font = { bold: true };
+  wsPrevias.getCell(r, 5).value = datos.revision;
   campoDer(r, 'PROXIMA REVISION', datos.proximaRevision ? ddmmyyyy(datos.proximaRevision) : '');
   r += 2;
-  wsMatriz.mergeCells(r, 1, r, NCOLS);
-  wsMatriz.getCell(r, 1).value = 'PROTOCOLOS DE VIGILANCIA MINSAL APLICABLES';
-  wsMatriz.getCell(r, 1).font = { bold: true };
+  wsPrevias.mergeCells(r, 1, r, NCOLS);
+  wsPrevias.getCell(r, 1).value = 'PROTOCOLOS DE VIGILANCIA MINSAL APLICABLES';
+  wsPrevias.getCell(r, 1).font = { bold: true };
   r++;
   if (datos.protocolosSel.length === 0) {
-    wsMatriz.mergeCells(r, 1, r, NCOLS); wsMatriz.getCell(r, 1).value = 'Ninguno marcado como aplicable'; r++;
+    wsPrevias.mergeCells(r, 1, r, NCOLS); wsPrevias.getCell(r, 1).value = 'Ninguno marcado como aplicable'; r++;
   } else {
     datos.protocolosSel.forEach(i => {
-      wsMatriz.mergeCells(r, 1, r, NCOLS); wsMatriz.getCell(r, 1).value = '- ' + MIPER_PROTOCOLOS[i]; r++;
+      wsPrevias.mergeCells(r, 1, r, NCOLS); wsPrevias.getCell(r, 1).value = '- ' + MIPER_PROTOCOLOS[i]; r++;
     });
   }
   r++;
-  r = escribirEncabezadoTabla(wsMatriz, r);
-  escribirFilasTabla(wsMatriz, r, datos.filas);
-  anchoColumnas(wsMatriz, ANCHOS_TABLA);
-
-  // ---- Hoja 2: OBRAS PREVIAS (banco histórico completo) ----
-  const wsPrevias = wb.addWorksheet('OBRAS PREVIAS');
-  wsPrevias.mergeCells(1, 1, 1, NCOLS);
-  wsPrevias.getCell(1, 1).value = 'MATRIZ DE IDENTIFICACION DE PELIGROS / FACTORES DE RIESGOS y EVALUACION DE RIESGOS — OBRAS PREVIAS';
-  wsPrevias.getCell(1, 1).font = { bold: true, size: 14 };
-  wsPrevias.getRow(1).height = 22;
-  let rPrev = escribirEncabezadoTabla(wsPrevias, 3);
-  try {
-    const banco = await cargarMiperBanco();
-    escribirFilasTabla(wsPrevias, rPrev, banco);
-  } catch (e) { /* si no carga el banco histórico, la hoja queda solo con el encabezado */ }
+  r = escribirEncabezadoTabla(wsPrevias, r);
+  let banco = [];
+  try { banco = await cargarMiperBanco(); } catch (e) { /* si no carga el banco histórico, solo quedan las filas nuevas */ }
+  escribirFilasTabla(wsPrevias, r, [...banco, ...datos.filas]);
   anchoColumnas(wsPrevias, ANCHOS_TABLA);
 
   // ---- Hoja 3: ANEXO 1 - LEVANTAMIENTO PROCESO (tareas levantadas de la obra) ----

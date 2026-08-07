@@ -102,7 +102,7 @@ repositorio de GitHub **separado**.
   igual que `pdf-lib` (`cargarExcelJsLib`). Se eligió ExcelJS (no SheetJS)
   porque es la única librería vendorizable que sabe escribir celdas con
   color/relleno, necesario para que el Excel generado se vea igual al
-  original del cliente. El workbook completo (las 11 pestañas) se arma
+  original del cliente. El workbook completo (las 10 pestañas) se arma
   desde cero con ExcelJS en cada generación — no se parte de ningún
   archivo `.xlsx` existente. Se probó primero partir de una plantilla
   derivada del Excel original del cliente, pero el archivo resultante
@@ -897,10 +897,10 @@ pestaña por pestaña antes de programar nada.
 - **Salida: Excel réplica del original (`generarExcelMiper`):** a pedido
   explícito del cliente ("tiene que ser igual", con las mismas pestañas y
   colores del Excel que mandó) — no genera PDF. El workbook se arma
-  **desde cero** con ExcelJS (`cargarExcelJsLib`), con las 11 pestañas del
-  Excel original (MATRIZ DE RIESGOS, OBRAS PREVIAS, ANEXO 1-6, VEP,
-  PROBABILIDAD, CONSECUENCIA), usando los mismos datos que ya vive en la
-  app (`MIPER_CATALOGO_RIESGOS`, `MIPER_PROTOCOLOS`, `MIPER_VEP`/
+  **desde cero** con ExcelJS (`cargarExcelJsLib`), con las 10 pestañas del
+  Excel original (OBRAS PREVIAS, ANEXO 1-6, VEP, PROBABILIDAD,
+  CONSECUENCIA), usando los mismos datos que ya vive en la app
+  (`MIPER_CATALOGO_RIESGOS`, `MIPER_PROTOCOLOS`, `MIPER_VEP`/
   `MIPER_PROBABILIDAD`/`MIPER_CONSECUENCIA`, banco histórico vía
   `cargarMiperBanco`) en vez de partir de un archivo `.xlsx` existente. Se
   probó primero una versión que cargaba una plantilla derivada del Excel
@@ -910,10 +910,16 @@ pestaña por pestaña antes de programar nada.
   causa exacta pese a que todas las herramientas de validación disponibles
   en este entorno (openpyxl, zipfile, Gnumeric) reportaban el archivo como
   válido. Se abandonó ese camino por completo: construir todo desde cero es
-  el uso que ExcelJS sí soporta de forma confiable. El estilo replica lo
-  medido directamente sobre el Excel que mandó el cliente: Proceso/Puesto/
-  Tarea/Equipos combinados y en verde (`92D050`) cuando una tarea tiene
-  varios peligros, y el Nivel de Riesgo coloreado como semáforo (Tolerable
+  el uso que ExcelJS sí soporta de forma confiable.
+  No hay una pestaña "MATRIZ DE RIESGOS" separada — a pedido del cliente,
+  la que se edita/crece es OBRAS PREVIAS: trae el encabezado del documento
+  que se está generando (entidad/firmas/protocolos) y, en la tabla, el
+  banco histórico completo seguido de las filas nuevas de esta obra al
+  final, como un registro único que se sigue extendiendo (igual que el uso
+  real que el cliente le da a su archivo). El estilo replica lo medido
+  directamente sobre el Excel que mandó el cliente: Proceso/Puesto/Tarea/
+  Equipos combinados y en verde (`92D050`) cuando una tarea tiene varios
+  peligros, y el Nivel de Riesgo coloreado como semáforo (Tolerable
   `66FF33` / Moderado `FFFF00` / Importante `FFC000` / Intolerable
   `FF0000`). El archivo se sube a Drive/Matriz de Riesgos/ con nombre
   `Matriz_IPER_{obra}_Rev{N}.xlsx`. ExcelJS se eligió en vez de SheetJS
