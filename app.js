@@ -7236,13 +7236,17 @@ async function guardarMiperTarea(ev) {
 }
 
 // ── Matriz de riesgos: agregar fila ─────────────────────────────────────
+// Una tarea real casi siempre tiene VARIOS peligros, cada uno con su propio
+// riesgo — el formulario deja agregar N bloques de Peligro+Riesgo+Evaluación
+// de una sola vez (uno por defecto, "+ Agregar otro" suma más) y los guarda
+// todos juntos como filas separadas de la matriz al enviar.
+let miperBloqueContador = 0;
 function abrirFormMiperFila() {
   const obra = obraMiperEfectiva();
   if (!obra) { toast('Elige una obra primero', 'error'); return; }
   const tareas = allMiperLevantamiento.filter(t => t.obra === obra);
   if (tareas.length === 0) { toast('Primero agrega una tarea en el Levantamiento', 'error'); return; }
-  const catalogo = miperCatalogoCompleto();
-  const familias = [...new Set(catalogo.map(r => r.familia))];
+  miperBloqueContador = 0;
   document.getElementById('miper-fila-body').innerHTML = `
     <form id="form-miper-fila" onsubmit="guardarMiperFila(event)">
       <input type="hidden" name="obra" value="${esc(obra)}">
@@ -7254,53 +7258,93 @@ function abrirFormMiperFila() {
       </div>
       <div class="card-sub" id="miper-fila-tarea-info"></div>
       <div class="form-group"><label>Equipos, máquinas y herramientas</label><input name="equipos" placeholder="Ej: Taladro, esmeril, andamio"></div>
-      <div class="form-group"><label>Peligro / factor de riesgo</label><input name="peligro" required placeholder="Ej: No usar EPP, desorden en el área"></div>
 
-      <div class="form-group"><label>Riesgo</label>
-        <select name="riesgoIdx" required onchange="onCambioRiesgoMiperFila(this)">
-          <option value="">Elige un riesgo del catálogo...</option>
-          ${familias.map(fam => `<optgroup label="${esc(MIPER_FAMILIA_LABEL[fam] || fam)}">
-            ${catalogo.map((r,i) => r.familia === fam ? `<option value="${i}">${esc(r.riesgo)}${r.codigo ? ` (${esc(r.codigo)})` : ''}</option>` : '').join('')}
-          </optgroup>`).join('')}
-          <option value="__nuevo__">+ Agregar riesgo nuevo...</option>
-        </select>
-      </div>
-      <div id="miper-riesgo-detalle" class="card-sub hidden"></div>
-      <div id="miper-riesgo-nuevo" class="hidden">
-        <div class="form-group"><label>Familia del riesgo</label>
-          <select name="familiaNueva">
-            <option value="SEGURIDAD">Seguridad</option><option value="HIGIENE">Higiene</option>
-            <option value="MUSCULO_ESQUELETICO">Músculo-Esquelético</option><option value="PSICOSOCIAL">Psicosocial</option>
-          </select>
-        </div>
-        <div class="form-group"><label>Nombre del riesgo</label><input name="riesgoNuevoNombre" placeholder="Ej: Contacto con sustancia química"></div>
-        <div class="form-group"><label>Definición</label><textarea name="definicionNueva" rows="2"></textarea></div>
-        <div class="form-group"><label>Código</label><input name="codigoNuevo" placeholder="Ej: X1"></div>
-        <div class="form-group"><label>Medidas preventivas (una por línea)</label><textarea name="medidasNuevas" rows="4" placeholder="Una medida por línea"></textarea></div>
-        <div class="card-sub" style="margin-bottom:10px;">Este riesgo queda disponible para elegir en cualquier obra de ahí en adelante.</div>
-      </div>
+      <div class="sec-label" style="margin-top:10px;">Peligros y riesgos de esta tarea</div>
+      <div class="card-sub" style="margin-bottom:10px;">Agrega todos los peligros que apliquen — cada uno con su propio riesgo, probabilidad y consecuencia. Se guardan todos juntos como filas de la matriz.</div>
+      <div id="miper-bloques-peligro"></div>
+      <button type="button" class="action-btn" style="margin:6px 0;" onclick="agregarBloquePeligroMiper()">${ic('miper',14)} Agregar otro peligro / riesgo</button>
+      <button type="button" class="action-btn" style="margin-bottom:14px;" onclick="abrirBuscadorMiperBanco()">${ic('lupa',14)} Buscar en banco histórico</button>
 
-      <button type="button" class="action-btn" style="margin:4px 0 14px;" onclick="abrirBuscadorMiperBanco()">${ic('lupa',14)} Buscar en banco histórico</button>
-
-      <div class="form-group"><label>Probabilidad</label>
-        <select name="probabilidad" required onchange="actualizarVepMiperFila()">
-          <option value="">—</option>
-          ${MIPER_PROBABILIDAD.map(p => `<option value="${p.valor}">${p.nombre}</option>`).join('')}
-        </select>
-      </div>
-      <div class="form-group"><label>Consecuencia</label>
-        <select name="consecuencia" required onchange="actualizarVepMiperFila()">
-          <option value="">—</option>
-          ${MIPER_CONSECUENCIA.map(c => `<option value="${c.valor}">${c.nombre}</option>`).join('')}
-        </select>
-      </div>
-      <div class="card card--default" id="miper-vep-resultado" style="margin-bottom:14px;">
-        <div class="card-body"><div class="card-title">VEP y Nivel de Riesgo</div><div class="card-sub">Elige probabilidad y consecuencia</div></div>
-      </div>
       <button class="btn-add" type="submit">Guardar en la matriz</button>
     </form>
   `;
+  agregarBloquePeligroMiper();
   openPanel('panel-miper-fila');
+}
+function bloquePeligroHtmlMiper(idx, prefill) {
+  const catalogo = miperCatalogoCompleto();
+  const familias = [...new Set(catalogo.map(r => r.familia))];
+  const p = prefill || {};
+  return `
+  <div class="card card--default miper-bloque-peligro" data-idx="${idx}" style="flex-direction:column;align-items:stretch;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <div class="card-title">Peligro y riesgo</div>
+      <button type="button" class="btn-quitar-bloque hidden" onclick="quitarBloquePeligroMiper(${idx})" style="background:none;border:none;color:#c0392b;font-size:12px;font-weight:600;cursor:pointer;padding:4px;">✕ Quitar</button>
+    </div>
+    <div class="form-group"><label>Peligro / factor de riesgo</label><input data-field="peligro" required placeholder="Ej: No usar EPP, desorden en el área" value="${esc(p.peligro || '')}"></div>
+    <div class="form-group"><label>Riesgo</label>
+      <select data-field="riesgoIdx" required onchange="onCambioRiesgoMiperFilaBloque(this)">
+        <option value="">Elige un riesgo del catálogo...</option>
+        ${familias.map(fam => `<optgroup label="${esc(MIPER_FAMILIA_LABEL[fam] || fam)}">
+          ${catalogo.map((r,i) => r.familia === fam ? `<option value="${i}" ${p.riesgoIdx === i ? 'selected' : ''}>${esc(r.riesgo)}${r.codigo ? ` (${esc(r.codigo)})` : ''}</option>` : '').join('')}
+        </optgroup>`).join('')}
+        <option value="__nuevo__">+ Agregar riesgo nuevo...</option>
+      </select>
+    </div>
+    <div data-field="riesgoDetalle" class="card-sub hidden"></div>
+    <div data-field="riesgoNuevoWrap" class="hidden">
+      <div class="form-group"><label>Familia del riesgo</label>
+        <select data-field="familiaNueva">
+          <option value="SEGURIDAD">Seguridad</option><option value="HIGIENE">Higiene</option>
+          <option value="MUSCULO_ESQUELETICO">Músculo-Esquelético</option><option value="PSICOSOCIAL">Psicosocial</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Nombre del riesgo</label><input data-field="riesgoNuevoNombre" placeholder="Ej: Contacto con sustancia química"></div>
+      <div class="form-group"><label>Definición</label><textarea data-field="definicionNueva" rows="2"></textarea></div>
+      <div class="form-group"><label>Código</label><input data-field="codigoNuevo" placeholder="Ej: X1"></div>
+      <div class="form-group"><label>Medidas preventivas (una por línea)</label><textarea data-field="medidasNuevas" rows="3" placeholder="Una medida por línea"></textarea></div>
+      <div class="card-sub" style="margin-bottom:10px;">Este riesgo queda disponible para elegir en cualquier obra de ahí en adelante.</div>
+    </div>
+    <div class="form-group"><label>Probabilidad</label>
+      <select data-field="probabilidad" required onchange="actualizarVepMiperFilaBloque(this)">
+        <option value="">—</option>
+        ${MIPER_PROBABILIDAD.map(pr => `<option value="${pr.valor}" ${p.probabilidad == pr.valor ? 'selected' : ''}>${pr.nombre}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-group"><label>Consecuencia</label>
+      <select data-field="consecuencia" required onchange="actualizarVepMiperFilaBloque(this)">
+        <option value="">—</option>
+        ${MIPER_CONSECUENCIA.map(c => `<option value="${c.valor}" ${p.consecuencia == c.valor ? 'selected' : ''}>${c.nombre}</option>`).join('')}
+      </select>
+    </div>
+    <div class="card card--default" data-field="vepResultado">
+      <div class="card-body"><div class="card-title">VEP y Nivel de Riesgo</div><div class="card-sub">Elige probabilidad y consecuencia</div></div>
+    </div>
+  </div>`;
+}
+function agregarBloquePeligroMiper(prefill) {
+  const cont = document.getElementById('miper-bloques-peligro');
+  const idx = miperBloqueContador++;
+  cont.insertAdjacentHTML('beforeend', bloquePeligroHtmlMiper(idx, prefill));
+  actualizarBotonesQuitarBloqueMiper();
+  const bloque = cont.querySelector(`[data-idx="${idx}"]`);
+  if (prefill) {
+    if (prefill.riesgoIdx !== undefined) onCambioRiesgoMiperFilaBloque(bloque.querySelector('[data-field="riesgoIdx"]'));
+    if (prefill.probabilidad !== undefined || prefill.consecuencia !== undefined) actualizarVepMiperFilaBloque(bloque.querySelector('[data-field="probabilidad"]'));
+  }
+  return bloque;
+}
+function quitarBloquePeligroMiper(idx) {
+  const cont = document.getElementById('miper-bloques-peligro');
+  if (cont.children.length <= 1) { toast('Debe quedar al menos un peligro/riesgo', 'error'); return; }
+  const el = cont.querySelector(`[data-idx="${idx}"]`);
+  if (el) el.remove();
+  actualizarBotonesQuitarBloqueMiper();
+}
+function actualizarBotonesQuitarBloqueMiper() {
+  const cont = document.getElementById('miper-bloques-peligro');
+  const soloUno = cont.children.length <= 1;
+  cont.querySelectorAll('.btn-quitar-bloque').forEach(b => b.classList.toggle('hidden', soloUno));
 }
 function onCambioTareaMiperFila(selEl) {
   const f = selEl.form;
@@ -7308,10 +7352,11 @@ function onCambioTareaMiperFila(selEl) {
   const t = tareas[selEl.value];
   document.getElementById('miper-fila-tarea-info').textContent = t ? `Puesto: ${t.puesto} — ${t.rutinaria}` : '';
 }
-function onCambioRiesgoMiperFila(selEl) {
+function onCambioRiesgoMiperFilaBloque(selEl) {
+  const bloque = selEl.closest('.miper-bloque-peligro');
   const esNuevo = selEl.value === '__nuevo__';
-  document.getElementById('miper-riesgo-nuevo').classList.toggle('hidden', !esNuevo);
-  const detalle = document.getElementById('miper-riesgo-detalle');
+  bloque.querySelector('[data-field="riesgoNuevoWrap"]').classList.toggle('hidden', !esNuevo);
+  const detalle = bloque.querySelector('[data-field="riesgoDetalle"]');
   if (esNuevo || selEl.value === '') { detalle.classList.add('hidden'); detalle.innerHTML = ''; return; }
   const r = miperCatalogoCompleto()[selEl.value];
   if (!r) { detalle.classList.add('hidden'); return; }
@@ -7319,15 +7364,16 @@ function onCambioRiesgoMiperFila(selEl) {
   detalle.innerHTML = `<b>${esc(r.codigo || '')}</b> ${esc(r.definicion || '')}` +
     (r.medidas && r.medidas.length ? `<br><br><b>Medidas preventivas:</b><ul style="margin:4px 0 0 16px;padding:0;">${r.medidas.map(m => `<li>${esc(m)}</li>`).join('')}</ul>` : '');
 }
-function actualizarVepMiperFila() {
-  const f = document.getElementById('form-miper-fila');
-  if (!f) return;
-  const el = document.getElementById('miper-vep-resultado');
-  if (!f.probabilidad.value || !f.consecuencia.value) {
+function actualizarVepMiperFilaBloque(selEl) {
+  const bloque = selEl.closest('.miper-bloque-peligro');
+  const prob = bloque.querySelector('[data-field="probabilidad"]').value;
+  const cons = bloque.querySelector('[data-field="consecuencia"]').value;
+  const el = bloque.querySelector('[data-field="vepResultado"]');
+  if (!prob || !cons) {
     el.innerHTML = `<div class="card-body"><div class="card-title">VEP y Nivel de Riesgo</div><div class="card-sub">Elige probabilidad y consecuencia</div></div>`;
     return;
   }
-  const r = miperNivelRiesgo(f.probabilidad.value, f.consecuencia.value);
+  const r = miperNivelRiesgo(prob, cons);
   el.innerHTML = `<div class="card-body"><div class="card-title">VEP = ${r.vep} <span class="badge ${r.color}">${r.nivel}</span></div><div class="card-sub">${esc(r.accion)}</div></div>`;
 }
 async function guardarMiperFila(ev) {
@@ -7338,38 +7384,61 @@ async function guardarMiperFila(ev) {
     const tareas = allMiperLevantamiento.filter(t => t.obra === obra);
     const t = tareas[f.tareaIdx.value];
     if (!t) { toast('Elige la tarea', 'error'); return; }
-    const peligro = f.peligro.value.trim();
-    if (!peligro) { toast('Describe el peligro', 'error'); return; }
-    if (!f.probabilidad.value || !f.consecuencia.value) { toast('Elige probabilidad y consecuencia', 'error'); return; }
-    if (!f.riesgoIdx.value) { toast('Elige un riesgo', 'error'); return; }
+    const equipos = f.equipos.value.trim();
 
-    let riesgoNombre, codigo, familia;
-    if (f.riesgoIdx.value === '__nuevo__') {
-      riesgoNombre = f.riesgoNuevoNombre.value.trim();
-      if (!riesgoNombre) { toast('Escribe el nombre del riesgo nuevo', 'error'); return; }
-      familia = f.familiaNueva.value;
-      codigo = f.codigoNuevo.value.trim();
-      const definicion = f.definicionNueva.value.trim();
-      const medidas = f.medidasNuevas.value.split('\n').map(s => s.trim()).filter(Boolean);
-      await appendSheet(`'${CONFIG.SHEET_MIPER_RIESGOS_CUSTOM}'!A:H`, [[
-        allMiperRiesgosCustom.length + 1, familia, riesgoNombre, definicion, codigo,
-        medidas.join(' | '), new Date().toLocaleString('es-CL'), userEmail || ''
-      ]]);
-      allMiperRiesgosCustom.push({ fila: 0, n: '', familia, riesgo: riesgoNombre, definicion, codigo,
-        medidas: medidas.join(' | '), fechaRegistro: '', registradoPor: userEmail || '' });
-    } else {
-      const r = miperCatalogoCompleto()[f.riesgoIdx.value];
-      if (!r) { toast('Elige un riesgo válido', 'error'); return; }
-      riesgoNombre = r.riesgo; codigo = r.codigo; familia = r.familia;
+    const bloques = [...document.querySelectorAll('#miper-bloques-peligro .miper-bloque-peligro')];
+    if (bloques.length === 0) { toast('Agrega al menos un peligro', 'error'); return; }
+
+    const filasNuevas = [];
+    const riesgosCustomNuevos = [];
+    for (const bloque of bloques) {
+      const peligro = bloque.querySelector('[data-field="peligro"]').value.trim();
+      if (!peligro) { toast('Describe el peligro en todos los bloques', 'error'); return; }
+      const riesgoIdxVal = bloque.querySelector('[data-field="riesgoIdx"]').value;
+      if (!riesgoIdxVal) { toast('Elige un riesgo en todos los bloques', 'error'); return; }
+      const probabilidad = bloque.querySelector('[data-field="probabilidad"]').value;
+      const consecuencia = bloque.querySelector('[data-field="consecuencia"]').value;
+      if (!probabilidad || !consecuencia) { toast('Elige probabilidad y consecuencia en todos los bloques', 'error'); return; }
+
+      let riesgoNombre, codigo, familia;
+      if (riesgoIdxVal === '__nuevo__') {
+        riesgoNombre = bloque.querySelector('[data-field="riesgoNuevoNombre"]').value.trim();
+        if (!riesgoNombre) { toast('Escribe el nombre del riesgo nuevo en todos los bloques que lo requieran', 'error'); return; }
+        familia = bloque.querySelector('[data-field="familiaNueva"]').value;
+        codigo = bloque.querySelector('[data-field="codigoNuevo"]').value.trim();
+        const definicion = bloque.querySelector('[data-field="definicionNueva"]').value.trim();
+        const medidas = bloque.querySelector('[data-field="medidasNuevas"]').value.split('\n').map(s => s.trim()).filter(Boolean);
+        riesgosCustomNuevos.push({ familia, riesgoNombre, definicion, codigo, medidas });
+      } else {
+        const r = miperCatalogoCompleto()[riesgoIdxVal];
+        if (!r) { toast('Elige un riesgo válido', 'error'); return; }
+        riesgoNombre = r.riesgo; codigo = r.codigo; familia = r.familia;
+      }
+
+      const { vep, nivel } = miperNivelRiesgo(probabilidad, consecuencia);
+      filasNuevas.push({ peligro, riesgoNombre, codigo, familia, probabilidad, consecuencia, vep, nivel });
     }
 
-    const { vep, nivel } = miperNivelRiesgo(f.probabilidad.value, f.consecuencia.value);
-    await appendSheet(`'${CONFIG.SHEET_MIPER_MATRIZ}'!A:R`, [[
-      allMiperMatriz.length + 1, obra, t.proceso, t.puesto, t.tarea, f.equipos.value.trim(), peligro,
-      riesgoNombre, codigo, familia, f.probabilidad.value, f.consecuencia.value, vep, nivel,
-      codigo, MIPER_FAMILIA_LABEL[familia] || familia, new Date().toLocaleString('es-CL'), userEmail || ''
-    ]]);
-    toast('Riesgo agregado a la matriz ✓', 'ok');
+    // Los riesgos custom se guardan uno por uno para numerarlos bien en la
+    // hoja (varios bloques del mismo envío pueden traer riesgos nuevos).
+    for (const rc of riesgosCustomNuevos) {
+      await appendSheet(`'${CONFIG.SHEET_MIPER_RIESGOS_CUSTOM}'!A:H`, [[
+        allMiperRiesgosCustom.length + 1, rc.familia, rc.riesgoNombre, rc.definicion, rc.codigo,
+        rc.medidas.join(' | '), new Date().toLocaleString('es-CL'), userEmail || ''
+      ]]);
+      allMiperRiesgosCustom.push({ fila: 0, n: '', familia: rc.familia, riesgo: rc.riesgoNombre, definicion: rc.definicion,
+        codigo: rc.codigo, medidas: rc.medidas.join(' | '), fechaRegistro: '', registradoPor: userEmail || '' });
+    }
+
+    const fechaRegistro = new Date().toLocaleString('es-CL');
+    const filas = filasNuevas.map((fn, i) => [
+      allMiperMatriz.length + 1 + i, obra, t.proceso, t.puesto, t.tarea, equipos, fn.peligro,
+      fn.riesgoNombre, fn.codigo, fn.familia, fn.probabilidad, fn.consecuencia, fn.vep, fn.nivel,
+      fn.codigo, MIPER_FAMILIA_LABEL[fn.familia] || fn.familia, fechaRegistro, userEmail || ''
+    ]);
+    await appendSheet(`'${CONFIG.SHEET_MIPER_MATRIZ}'!A:R`, filas);
+
+    toast(`${filas.length} riesgo(s) agregado(s) a la matriz ✓`, 'ok');
     closePanel('panel-miper-fila');
     await cargarTodo(true);
   } catch (e) { toast(e.message, 'error'); }
@@ -7422,19 +7491,42 @@ function aplicarPrefillMiperFila(r) {
   if (!f) return;
   const tareas = allMiperLevantamiento.filter(t => t.obra === f.obra.value);
   const tIdx = tareas.findIndex(t => t.proceso.toLowerCase() === String(r.proceso||'').toLowerCase() && t.tarea.toLowerCase() === String(r.tarea||'').toLowerCase());
-  if (tIdx >= 0) { f.tareaIdx.value = tIdx; onCambioTareaMiperFila(f.tareaIdx); }
-  f.equipos.value = r.equipos || '';
-  f.peligro.value = r.peligro || '';
+  if (tIdx >= 0 && !f.tareaIdx.value) { f.tareaIdx.value = tIdx; onCambioTareaMiperFila(f.tareaIdx); }
+  if (!f.equipos.value && r.equipos) f.equipos.value = r.equipos;
+
   const catalogo = miperCatalogoCompleto();
   const rIdx = catalogo.findIndex(c => c.riesgo.toLowerCase() === String(r.riesgo||'').toLowerCase());
-  if (rIdx >= 0) { f.riesgoIdx.value = rIdx; onCambioRiesgoMiperFila(f.riesgoIdx); }
-  else if (r.riesgo) { toast(`"${r.riesgo}" no está en el catálogo — elígelo como "+ Agregar riesgo nuevo..." si quieres agregarlo`, 'ok'); }
   const probOpt = MIPER_PROBABILIDAD.find(p => p.valor === Number(r.probabilidad));
-  if (probOpt) f.probabilidad.value = probOpt.valor;
   const consOpt = MIPER_CONSECUENCIA.find(c => c.valor === Number(r.consecuencia));
-  if (consOpt) f.consecuencia.value = consOpt.valor;
-  actualizarVepMiperFila();
-  toast('Datos cargados desde el banco — revisa y guarda', 'ok');
+  const prefill = {
+    peligro: r.peligro || '',
+    riesgoIdx: rIdx >= 0 ? rIdx : undefined,
+    probabilidad: probOpt ? probOpt.valor : undefined,
+    consecuencia: consOpt ? consOpt.valor : undefined,
+  };
+
+  // Si el último bloque todavía está vacío (recién se abrió el formulario y
+  // nadie escribió nada ahí), se rellena ese mismo en vez de sumar uno de
+  // más que quedaría vacío y haría fallar el guardado.
+  const bloques = [...document.querySelectorAll('#miper-bloques-peligro .miper-bloque-peligro')];
+  const ultimo = bloques[bloques.length - 1];
+  const ultimoVacio = ultimo && !ultimo.querySelector('[data-field="peligro"]').value.trim();
+  if (ultimoVacio) {
+    ultimo.querySelector('[data-field="peligro"]').value = prefill.peligro;
+    if (prefill.riesgoIdx !== undefined) {
+      const sel = ultimo.querySelector('[data-field="riesgoIdx"]');
+      sel.value = prefill.riesgoIdx; onCambioRiesgoMiperFilaBloque(sel);
+    }
+    if (prefill.probabilidad !== undefined) ultimo.querySelector('[data-field="probabilidad"]').value = prefill.probabilidad;
+    if (prefill.consecuencia !== undefined) {
+      const consSel = ultimo.querySelector('[data-field="consecuencia"]');
+      consSel.value = prefill.consecuencia; actualizarVepMiperFilaBloque(consSel);
+    }
+  } else {
+    agregarBloquePeligroMiper(prefill);
+  }
+  if (rIdx < 0 && r.riesgo) toast(`"${r.riesgo}" no está en el catálogo — elígelo como "+ Agregar riesgo nuevo..." en el bloque que se completó`, 'ok');
+  else toast('Peligro agregado desde el banco — revisa y guarda', 'ok');
 }
 
 // ── Documento: encabezado + protocolos + firmas + Revisión/Próxima Revisión ──
@@ -7579,7 +7671,17 @@ async function generarPdfMiper(datos) {
     const words = (str || '').toString().split(/\s+/).filter(Boolean);
     const lines = []; let current = '';
     const fnt = f2 || font;
-    for (const w of words) {
+    for (let w of words) {
+      // Palabra sola más ancha que la columna (ej. "PROBABILIDAD" en una
+      // columna angosta de encabezado) — se corta por caracteres para que
+      // no se salga y quede tapada por la celda vecina.
+      while (fnt.widthOfTextAtSize(w, size) > maxWidth && w.length > 1) {
+        let cut = w.length - 1;
+        while (cut > 1 && fnt.widthOfTextAtSize(w.slice(0, cut), size) > maxWidth) cut--;
+        if (current) { lines.push(current); current = ''; }
+        lines.push(w.slice(0, cut));
+        w = w.slice(cut);
+      }
       const test = current ? current + ' ' + w : w;
       if (fnt.widthOfTextAtSize(test, size) > maxWidth && current) { lines.push(current); current = w; }
       else current = test;
@@ -7607,10 +7709,10 @@ async function generarPdfMiper(datos) {
   y -= 26;
 
   const campos = [
-    ['Entidad Empleadora', datos.entidadEmpleadora], ['Sucursal', datos.sucursal],
-    ['Responsable del levantamiento', datos.responsableLevantamiento],
-    ['Fecha', ddmmyyyy(datos.fecha)], ['Revisión', String(datos.revision)],
-    ['Próxima revisión', datos.proximaRevision ? ddmmyyyy(datos.proximaRevision) : '—'],
+    ['ENTIDAD EMPLEADORA', datos.entidadEmpleadora], ['SUCURSAL', datos.sucursal],
+    ['RESPONSABLE LEVANTAMIENTO', datos.responsableLevantamiento],
+    ['FECHA', ddmmyyyy(datos.fecha)], ['REVISION', String(datos.revision)],
+    ['PROXIMA REVISION', datos.proximaRevision ? ddmmyyyy(datos.proximaRevision) : '—'],
   ];
   campos.forEach(([label, val]) => {
     p1.drawText(label + ':', { x: 50, y, size: 10, font: fontBold, color: negro });
@@ -7644,9 +7746,9 @@ async function generarPdfMiper(datos) {
   p1.drawText('FIRMAS', { x: 50, y, size: 11, font: fontBold, color: negro });
   y -= 24;
   const firmas = [
-    ['Elaboró', datos.nombreElaboro, datos.firmaElaboroUrl],
-    ['Revisó', datos.nombreReviso, datos.firmaRevisoUrl],
-    ['Aprobó', datos.nombreAprobo, datos.firmaAproboUrl],
+    ['NOMBRE Y FIRMA ELABORO', datos.nombreElaboro, datos.firmaElaboroUrl],
+    ['NOMBRE Y FIRMA REVISION', datos.nombreReviso, datos.firmaRevisoUrl],
+    ['NOMBRE Y FIRMA APROBACION', datos.nombreAprobo, datos.firmaAproboUrl],
   ];
   const colW = (W - 100) / 3;
   for (let i = 0; i < firmas.length; i++) {
@@ -7655,102 +7757,177 @@ async function generarPdfMiper(datos) {
     p1.drawRectangle({ x, y: y - 70, width: colW - 10, height: 60, borderColor: grisClaro, borderWidth: 1 });
     await drawSig(p1, firmaUrl, x + 5, y - 65, colW - 20, 50);
     p1.drawLine({ start: { x, y: y - 74 }, end: { x: x + colW - 10, y: y - 74 }, thickness: 0.7, color: gris });
-    p1.drawText(label, { x, y: y - 86, size: 9, font: fontBold, color: negro });
+    const labelLineas = wrapLines(label, colW - 12, 7.5, fontBold);
+    labelLineas.forEach((l, li) => p1.drawText(l, { x, y: y - 85 - li * 9, size: 7.5, font: fontBold, color: negro }));
     wrapLines(nombre || '—', colW - 12, 8).slice(0, 2).forEach((l, li) => {
-      p1.drawText(l, { x, y: y - 98 - li * 10, size: 8, font, color: gris });
+      p1.drawText(l, { x, y: y - 85 - labelLineas.length * 9 - li * 10, size: 8, font, color: gris });
     });
   }
 
   p1.drawText(`Generado por la app de Prevención de Riesgos — ${ddmmyyyy(hoyISO())}`, { x: 50, y: 30, size: 7.5, font, color: gris });
 
   // ---- Páginas siguientes: tabla de la matriz (apaisada) ----
+  // Mismas columnas y mismo orden que la pestaña MATRIZ DE RIESGOS del Excel
+  // original (Proceso/Puesto/Tarea/Equipos/Peligro/Riesgo/Evaluación de
+  // Riesgos/Medidas/Anexo). Cuando varias filas comparten Proceso/Puesto/
+  // Tarea/Equipos (mismo peligro múltiple de una tarea) esos 4 campos solo
+  // se escriben en la primera fila del grupo — igual que el Excel original,
+  // que los deja en blanco en las filas siguientes.
   const PW = 841.89, PH = 595.28;
   const cols = [
-    { key: 'proceso', label: 'Proceso', w: 90 },
-    { key: 'tarea', label: 'Tarea', w: 100 },
-    { key: 'peligro', label: 'Peligro / Factor de riesgo', w: 150 },
-    { key: 'riesgo', label: 'Riesgo', w: 110 },
-    { key: 'probabilidad', label: 'Prob.', w: 34 },
-    { key: 'consecuencia', label: 'Cons.', w: 34 },
-    { key: 'vep', label: 'VEP', w: 30 },
-    { key: 'nivelRiesgo', label: 'Nivel de Riesgo', w: 78 },
-    { key: 'codigoRiesgo', label: 'Medidas (código)', w: 82 },
-    { key: 'anexo', label: 'Anexo', w: 73 },
+    { key: 'proceso', label: 'PROCESO', w: 68 },
+    { key: 'puesto', label: 'PUESTO DE TRABAJO', w: 62 },
+    { key: 'tarea', label: 'TAREA', w: 78 },
+    { key: 'equipos', label: 'EQUIPOS, MAQUINARIAS Y HERRAMIENTAS', w: 72 },
+    { key: 'peligro', label: 'IDENTIFICACION DE PELIGROS / FACTORES DE RIESGO', w: 84 },
+    { key: 'riesgo', label: 'RIESGO', w: 68 },
+    { key: 'probabilidad', label: 'PROBABILIDAD', w: 54 },
+    { key: 'consecuencia', label: 'CONSECUENCIA', w: 54 },
+    { key: 'vep', label: 'VEP', w: 22 },
+    { key: 'nivelRiesgo', label: 'NIVEL DE RIESGO', w: 58 },
+    { key: 'medidasCodigo', label: 'MEDIDAS PREVENTIVAS - CODIGO', w: 46 },
+    { key: 'anexo', label: 'ANEXO', w: 54 },
   ];
-  const tableX = 40, tableTop = PH - 40, rowH = 34, headerH = 22;
+  const tableX = 40, tableTop = PH - 46, rowH = 30, headerH = 28;
   let page = null, cy = 0;
   function nuevaPaginaTabla() {
     page = pdfDoc.addPage([PW, PH]);
-    page.drawText(`MATRIZ DE RIESGOS (IPER) — ${datos.obra} — Rev. ${datos.revision}`, { x: tableX, y: PH - 24, size: 10, font: fontBold, color: verdeLst });
+    page.drawText(`MATRIZ DE IDENTIFICACION DE PELIGROS / FACTORES DE RIESGOS y EVALUACION DE RIESGOS — ${datos.obra} — Rev. ${datos.revision}`,
+      { x: tableX, y: PH - 24, size: 9.5, font: fontBold, color: verdeLst });
     cy = tableTop;
+    // Fila de subtítulo "EVALUACION DE RIESGOS" combinada sobre las 4 columnas de evaluación (igual que el Excel original).
+    const xEval = tableX + cols.slice(0, 6).reduce((s,c) => s + c.w, 0);
+    const wEval = cols.slice(6, 10).reduce((s,c) => s + c.w, 0);
+    page.drawRectangle({ x: xEval, y: cy - 10, width: wEval, height: 10, color: rgb(0.09,0.32,0.17) });
+    page.drawText('EVALUACION DE RIESGOS', { x: xEval + 3, y: cy - 8, size: 6.5, font: fontBold, color: rgb(1,1,1) });
+    cy -= 10;
     let cx = tableX;
     cols.forEach(c => {
       page.drawRectangle({ x: cx, y: cy - headerH, width: c.w, height: headerH, color: rgb(0.12,0.42,0.22) });
-      wrapLines(c.label, c.w - 6, 7.5, fontBold).slice(0,2).forEach((l, li) => {
-        page.drawText(l, { x: cx + 3, y: cy - 10 - li * 9, size: 7.5, font: fontBold, color: rgb(1,1,1) });
+      wrapLines(c.label, c.w - 5, 6.3, fontBold).slice(0,4).forEach((l, li) => {
+        page.drawText(l, { x: cx + 2.5, y: cy - 9 - li * 7.2, size: 6.3, font: fontBold, color: rgb(1,1,1) });
       });
       cx += c.w;
     });
     cy -= headerH;
   }
   nuevaPaginaTabla();
-  datos.filas.forEach(f => {
-    if (cy - rowH < 30) nuevaPaginaTabla();
-    let cx = tableX;
-    const nivelColor = nivelColorRgb[f.nivelRiesgo] || negro;
-    cols.forEach(c => {
-      page.drawRectangle({ x: cx, y: cy - rowH, width: c.w, height: rowH, borderColor: grisClaro, borderWidth: 0.6 });
-      let val = f[c.key];
-      const color = c.key === 'nivelRiesgo' ? nivelColor : negro;
-      const bold = c.key === 'nivelRiesgo';
-      wrapLines(String(val ?? ''), c.w - 6, 6.8).slice(0, 4).forEach((l, li) => {
-        page.drawText(l, { x: cx + 3, y: cy - 10 - li * 8, size: 6.8, font: bold ? fontBold : font, color });
+
+  let i = 0;
+  while (i < datos.filas.length) {
+    let j = i;
+    while (j + 1 < datos.filas.length &&
+      datos.filas[j+1].proceso === datos.filas[i].proceso && datos.filas[j+1].puesto === datos.filas[i].puesto &&
+      datos.filas[j+1].tarea === datos.filas[i].tarea && datos.filas[j+1].equipos === datos.filas[i].equipos) j++;
+    for (let k = i; k <= j; k++) {
+      const f = datos.filas[k];
+      if (cy - rowH < 30) nuevaPaginaTabla();
+      let cx = tableX;
+      const nivelColor = nivelColorRgb[f.nivelRiesgo] || negro;
+      cols.forEach(c => {
+        page.drawRectangle({ x: cx, y: cy - rowH, width: c.w, height: rowH, borderColor: grisClaro, borderWidth: 0.6 });
+        const repetido = k > i && (c.key === 'proceso' || c.key === 'puesto' || c.key === 'tarea' || c.key === 'equipos');
+        const val = repetido ? '' : f[c.key];
+        const color = c.key === 'nivelRiesgo' ? nivelColor : negro;
+        const bold = c.key === 'nivelRiesgo';
+        wrapLines(String(val ?? ''), c.w - 5, 6.3).slice(0, 4).forEach((l, li) => {
+          page.drawText(l, { x: cx + 2.5, y: cy - 9 - li * 7.2, size: 6.3, font: bold ? fontBold : font, color });
+        });
+        cx += c.w;
       });
-      cx += c.w;
-    });
-    cy -= rowH;
-  });
+      cy -= rowH;
+    }
+    i = j + 1;
+  }
 
   const bytes = await pdfDoc.save();
   return new Blob([bytes], { type: 'application/pdf' });
 }
 
 // ── Generador Excel ──────────────────────────────────────────────────────
+// Réplica estructural (encabezado, orden y nombre de columnas, celdas
+// combinadas) de la pestaña MATRIZ DE RIESGOS del Excel original — el build
+// "core" de SheetJS que se usa acá no soporta colores/fuentes de celda, así
+// que el contenido/estructura queda igual pero sin el relleno verde de los
+// encabezados del Excel original.
 async function generarExcelMiper(datos) {
   const XLSX = await cargarXlsxLib();
   const wb = XLSX.utils.book_new();
+  const NCOLS = 12; // Proceso, Puesto, Tarea, Equipos, Peligro, Riesgo, Probabilidad, Consecuencia, VEP, Nivel, Medidas-código, Anexo
 
-  const encabezado = [
-    ['MATRIZ DE IDENTIFICACIÓN DE PELIGROS Y EVALUACIÓN DE RIESGOS (IPER) — DS44'],
-    [],
-    ['Entidad Empleadora', datos.entidadEmpleadora],
-    ['Sucursal', datos.sucursal],
-    ['Responsable del levantamiento', datos.responsableLevantamiento],
-    ['Fecha', ddmmyyyy(datos.fecha)],
-    ['Revisión', datos.revision],
-    ['Próxima revisión', datos.proximaRevision ? ddmmyyyy(datos.proximaRevision) : ''],
-    ['Elaboró', datos.nombreElaboro], ['Revisó', datos.nombreReviso], ['Aprobó', datos.nombreAprobo],
-    [],
-    ['Protocolos de Vigilancia MINSAL aplicables'],
-    ...(datos.protocolosSel.length ? datos.protocolosSel.map(i => [MIPER_PROTOCOLOS[i]]) : [['Ninguno marcado como aplicable']]),
-    [],
-    ['Proceso', 'Puesto', 'Tarea', 'Equipos', 'Peligro', 'Riesgo', 'Código', 'Familia',
-     'Probabilidad', 'Consecuencia', 'VEP', 'Nivel de Riesgo', 'Medidas (código)', 'Anexo'],
-  ];
-  datos.filas.forEach(f => {
-    encabezado.push([f.proceso, f.puesto, f.tarea, f.equipos, f.peligro, f.riesgo, f.codigoRiesgo, f.familiaRiesgo,
-      f.probabilidad, f.consecuencia, f.vep, f.nivelRiesgo, f.medidasCodigo, f.anexo]);
-  });
-  const ws = XLSX.utils.aoa_to_sheet(encabezado);
+  const rows = [];
+  const merges = [];
+  function push(row) { rows.push(row); return rows.length - 1; }
+  function mergeRow(r, c1, c2) { if (c2 > c1) merges.push({ s: { r, c: c1 }, e: { r, c: c2 } }); }
+
+  let r = push(['MATRIZ DE IDENTIFICACION DE PELIGROS / FACTORES DE RIESGOS y EVALUACION DE RIESGOS']);
+  mergeRow(r, 0, NCOLS - 1);
+  push([]);
+
+  // Encabezado: mismo orden fila a fila del Excel original (izquierda datos
+  // de la obra, derecha nombre de quien elabora/revisa/aprueba).
+  r = push(['ENTIDAD EMPLEADORA', datos.entidadEmpleadora, '', '', '', '', 'NOMBRE Y FIRMA ELABORO', datos.nombreElaboro]);
+  mergeRow(r, 1, 4); mergeRow(r, 7, NCOLS - 1);
+  r = push(['SUCURSAL', datos.sucursal, '', '', '', '', 'NOMBRE Y FIRMA REVISION', datos.nombreReviso]);
+  mergeRow(r, 1, 4); mergeRow(r, 7, NCOLS - 1);
+  r = push(['RESPONSABLE LEVANTAMIENTO', datos.responsableLevantamiento, '', '', '', '', 'NOMBRE Y FIRMA APROBACION', datos.nombreAprobo]);
+  mergeRow(r, 1, 4); mergeRow(r, 7, NCOLS - 1);
+  r = push(['FECHA', ddmmyyyy(datos.fecha), '', 'REVISION', datos.revision, '', 'PROXIMA REVISION', datos.proximaRevision ? ddmmyyyy(datos.proximaRevision) : '']);
+  mergeRow(r, 7, NCOLS - 1);
+  push([]);
+
+  r = push(['PROTOCOLOS DE VIGILANCIA MINSAL APLICABLES']); mergeRow(r, 0, NCOLS - 1);
+  if (datos.protocolosSel.length === 0) {
+    r = push(['Ninguno marcado como aplicable']); mergeRow(r, 0, NCOLS - 1);
+  } else {
+    datos.protocolosSel.forEach(i => { r = push([MIPER_PROTOCOLOS[i]]); mergeRow(r, 0, NCOLS - 1); });
+  }
+  push([]);
+
+  // Encabezado de la tabla en 2 filas — igual que el Excel original:
+  // "EVALUACION DE RIESGOS" combinado horizontalmente sobre 4 columnas, y
+  // el resto de las columnas combinadas verticalmente entre ambas filas.
+  const filaHead1 = push(['PROCESO', 'PUESTO DE TRABAJO', 'TAREA', 'EQUIPOS MAQUINARIAS Y HERRAMIENTAS',
+    'IDENTIFICACION DE PELIGROS / FACTORES DE RIESGO', 'RIESGO', 'EVALUACION DE RIESGOS', '', '', '',
+    'MEDIDAS PREVENTIVAS - CODIGO', 'ANEXO']);
+  const filaHead2 = push(['', '', '', '', '', '', 'PROBABILIDAD', 'CONSECUENCIA', 'VEP', 'NIVEL DE RIESGO', '', '']);
+  [0,1,2,3,4,5,10,11].forEach(c => merges.push({ s: { r: filaHead1, c }, e: { r: filaHead2, c } }));
+  merges.push({ s: { r: filaHead1, c: 6 }, e: { r: filaHead1, c: 9 } });
+
+  // Filas de datos — Proceso/Puesto/Tarea/Equipos se combinan verticalmente
+  // cuando se repiten en filas consecutivas (una tarea con varios peligros),
+  // igual que el Excel original: esos 4 campos solo se escriben una vez.
+  let i = 0;
+  while (i < datos.filas.length) {
+    let j = i;
+    while (j + 1 < datos.filas.length &&
+      datos.filas[j+1].proceso === datos.filas[i].proceso && datos.filas[j+1].puesto === datos.filas[i].puesto &&
+      datos.filas[j+1].tarea === datos.filas[i].tarea && datos.filas[j+1].equipos === datos.filas[i].equipos) j++;
+    const rowIdxs = [];
+    for (let k = i; k <= j; k++) {
+      const f = datos.filas[k];
+      rowIdxs.push(push([
+        k === i ? f.proceso : '', k === i ? f.puesto : '', k === i ? f.tarea : '', k === i ? f.equipos : '',
+        f.peligro, f.riesgo, f.probabilidad, f.consecuencia, f.vep, f.nivelRiesgo, f.medidasCodigo, f.anexo,
+      ]));
+    }
+    if (rowIdxs.length > 1) {
+      [0,1,2,3].forEach(c => merges.push({ s: { r: rowIdxs[0], c }, e: { r: rowIdxs[rowIdxs.length - 1], c } }));
+    }
+    i = j + 1;
+  }
+
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!merges'] = merges;
   ws['!cols'] = [
-    {wch:16},{wch:22},{wch:22},{wch:20},{wch:34},{wch:24},{wch:9},{wch:14},
-    {wch:11},{wch:12},{wch:7},{wch:14},{wch:14},{wch:14},
+    {wch:18},{wch:20},{wch:22},{wch:24},{wch:36},{wch:24},
+    {wch:10},{wch:10},{wch:6},{wch:13},{wch:16},{wch:12},
   ];
   XLSX.utils.book_append_sheet(wb, ws, 'Matriz de Riesgos');
 
   const catCatalogo = miperCatalogoCompleto();
   const catRows = [['Familia', 'Riesgo', 'Código', 'Definición', 'Medidas preventivas']];
-  catCatalogo.forEach(r => catRows.push([MIPER_FAMILIA_LABEL[r.familia] || r.familia, r.riesgo, r.codigo, r.definicion, (r.medidas||[]).join(' | ')]));
+  catCatalogo.forEach(cr => catRows.push([MIPER_FAMILIA_LABEL[cr.familia] || cr.familia, cr.riesgo, cr.codigo, cr.definicion, (cr.medidas||[]).join(' | ')]));
   const wsCat = XLSX.utils.aoa_to_sheet(catRows);
   wsCat['!cols'] = [{wch:16},{wch:34},{wch:9},{wch:60},{wch:80}];
   XLSX.utils.book_append_sheet(wb, wsCat, 'Catálogo de riesgos');
