@@ -946,7 +946,17 @@ pestaña por pestaña antes de programar nada.
   `Matriz_IPER_{obra}_Rev{N}.xlsx`. ExcelJS se eligió en vez de SheetJS
   porque el build vendorizable de SheetJS (`xlsx.core.min.js`, usado en una
   primera versión) no soporta escribir color de celda — se probó y el
-  color quedaba silenciosamente descartado al guardar.
+  color quedaba silenciosamente descartado al guardar. Anchos de columna
+  ensanchados (a diferencia de los primeros calculados por proporción
+  directa del original) para que se lea bien con contenido real más largo,
+  en particular los procesos importados del Programa Edificio. Lleva el
+  logo de LST (`logo.png`, el azul vigente — codificado como JPEG pese a
+  la extensión `.png`) insertado solo en la hoja OBRAS PREVIAS, a la
+  derecha de la tabla impresa para no superponer ninguna celda; se validó
+  que el XML del dibujo generado tiene una única referencia `r:embed`
+  (sin `r:link` doble, que fue lo que se sospechó causó el daño real en
+  Excel del primer intento de agregar el logo, cuando todavía se partía
+  de la plantilla del cliente en vez de construir desde cero).
 
 ## Asignación de supervisor y modo restringido de supervisor
 

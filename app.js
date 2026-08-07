@@ -7858,7 +7858,11 @@ async function generarExcelMiper(datos) {
   // 18 columnas combinadas, Proceso son solo 4) traducido a una grilla más
   // simple de 12 columnas — misma proporción visual, sin las miles de
   // combinaciones de celda del archivo original.
-  const ANCHOS_TABLA = [9, 11, 24, 42, 44, 16, 8, 8, 6, 8, 10, 15];
+  // Anchos ajustados para que se lea bien con contenido real (procesos
+  // largos importados del Programa Edificio, ej. "INST. SIST. EVACUACION
+  // DE DESECHOS SOLIDOS") sin dejar de mantener Equipos/Peligro como las
+  // columnas más anchas, igual que en el Excel original.
+  const ANCHOS_TABLA = [22, 18, 28, 38, 42, 17, 9, 9, 7, 10, 11, 13];
   const TXT_EQUIPOS = 'EQUIPOS MAQUINRIAS Y HERRAMIENTAS';
 
   // Encabezado de tabla (4 filas: PROCESO/PUESTO/TAREA/EQUIPOS/PELIGRO/
@@ -8044,7 +8048,7 @@ async function generarExcelMiper(datos) {
       c.value = v; c.font = { name: 'Calibri', size: 10 }; c.border = borde; c.alignment = centrado1;
     });
   });
-  wsAnexo1.columns = [{width:14},{width:22},{width:20},{width:14},{width:20},{width:11},{width:10},{width:26}];
+  wsAnexo1.columns = [{width:24},{width:22},{width:26},{width:16},{width:20},{width:11},{width:10},{width:26}];
 
   // ---- Hojas ANEXO 2-5: catálogo de riesgos por familia ----
   const FAMILIAS_ANEXO = [
@@ -8092,7 +8096,7 @@ async function generarExcelMiper(datos) {
       cCod.value = riesgo.codigo; cCod.font = { size: 10 }; cCod.alignment = centradoAnexo;
       if (filaFinRiesgo > filaInicioRiesgo) [1, 2, 3, 4].forEach(c => ws.mergeCells(filaInicioRiesgo, c, filaFinRiesgo, c));
     });
-    ws.columns = [{width:12},{width:16},{width:30},{width:11},{width:75}];
+    ws.columns = [{width:16},{width:18},{width:32},{width:11},{width:75}];
   });
 
   // ---- Hoja ANEXO 6: Protocolos MINSAL ----
@@ -8158,6 +8162,18 @@ async function generarExcelMiper(datos) {
     wsCons.getCell(fr, 6).value = cse.valor; wsCons.getCell(fr,6).border = borde;
   });
   wsCons.columns = [{width:20},{width:22},{width:22},{width:22},{width:22},{width:10}];
+
+  // Logo LST — solo en la hoja principal (OBRAS PREVIAS), anclado a la
+  // derecha de la tabla impresa (columna 14 en adelante) para no superponer
+  // ni tocar ninguna celda/combinación del contenido real. logo.png es el
+  // logo azul vigente (aunque el archivo está codificado como JPEG pese a
+  // la extensión .png — igual que en generarPdfInvestigacion — por eso se
+  // declara extension:'jpeg'). Si no carga, el documento se genera igual.
+  try {
+    const logoBuf = await fetch('logo.png').then(r => { if (!r.ok) throw new Error('logo.png no disponible'); return r.arrayBuffer(); });
+    const logoId = wb.addImage({ buffer: logoBuf, extension: 'jpeg' });
+    wsPrevias.addImage(logoId, { tl: { col: 13, row: 0.1 }, ext: { width: 130, height: 104 } });
+  } catch (e) { /* sin logo, el Excel se genera igual */ }
 
   wb.views = [{ activeTab: 0 }];
 
