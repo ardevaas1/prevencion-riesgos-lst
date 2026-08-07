@@ -7979,7 +7979,7 @@ async function generarExcelMiper(datos) {
   titulo.value = 'MATRIZ DE IDENTIFICACION DE PELIGROS / FACTORES DE RIESGOS y EVALUACION DE RIESGOS';
   titulo.font = { bold: true, size: 14 };
   titulo.alignment = { vertical: 'middle', wrapText: true };
-  wsPrevias.getRow(r).height = 60;
+  wsPrevias.getRow(r).height = 34;
   r += 2;
   function campoIzq(fila, label, value) {
     wsPrevias.getCell(fila, 1).value = label; wsPrevias.getCell(fila, 1).font = { bold: true };
@@ -8176,7 +8176,7 @@ async function generarExcelMiper(datos) {
   try {
     const logoBuf = await fetch('logo.png').then(r => { if (!r.ok) throw new Error('logo.png no disponible'); return r.arrayBuffer(); });
     const logoId = wb.addImage({ buffer: logoBuf, extension: 'jpeg' });
-    wsPrevias.addImage(logoId, { tl: { col: 0.1, row: 0.1 }, ext: { width: 130, height: 104 } });
+    wsPrevias.addImage(logoId, { tl: { col: 0.15, row: 0.1 }, ext: { width: 65, height: 52 } });
   } catch (e) { /* sin logo, el Excel se genera igual */ }
 
   wb.views = [{ activeTab: 0 }];
