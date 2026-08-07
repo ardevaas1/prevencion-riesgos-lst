@@ -433,6 +433,7 @@ body.is-offline #app { padding-top: 30px; }
 .badge.red    { background: #ffebee; color: #c62828; }
 .badge.blue   { background: var(--accent-soft); color: #1565c0; }
 .badge.gray   { background: #f0f0f0; color: #888; }
+.badge.orange { background: #fff0e0; color: #c2530a; }
 
 .badge-row { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
 

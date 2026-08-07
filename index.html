@@ -242,6 +242,12 @@
       <div data-list="programapersonalizado"></div>
     </div>
 
+    <!-- MATRIZ DE RIESGOS (IPER, DS44) -->
+    <div class="page" id="page-miper">
+      <div class="sec-label">Matriz de Riesgos (IPER)</div>
+      <div data-list="miper"></div>
+    </div>
+
   </div>
 
   <!-- FAB agregar (contextual) -->
@@ -345,6 +351,7 @@
   <div class="dt-page" id="dt-page-hcr"><div data-list="hcr"></div></div>
   <div class="dt-page" id="dt-page-subcontratistas"><div data-list="subcontratistas"></div></div>
   <div class="dt-page" id="dt-page-programapersonalizado"><div data-list="programapersonalizado"></div></div>
+  <div class="dt-page" id="dt-page-miper"><div data-list="miper"></div></div>
 </div>
 
 </div><!-- /#app -->
@@ -1205,6 +1212,26 @@
   </div>
 </div>
 
+<!-- ===== PANELES: Matriz de Riesgos (IPER, DS44) ===== -->
+<div class="panel hidden" id="panel-miper-tarea">
+  <div class="panel-bar"><div class="pnl-back" onclick="closePanel('panel-miper-tarea')">‹ Volver</div><div class="pnl-title">Agregar tarea</div><div></div></div>
+  <div class="panel-body" id="miper-tarea-body"></div>
+</div>
+
+<div class="panel hidden" id="panel-miper-fila">
+  <div class="panel-bar"><div class="pnl-back" onclick="closePanel('panel-miper-fila')">‹ Volver</div><div class="pnl-title">Agregar riesgo</div><div></div></div>
+  <div class="panel-body" id="miper-fila-body"></div>
+</div>
+
+<div class="panel hidden" id="panel-miper-banco">
+  <div class="panel-bar"><div class="pnl-back" onclick="closePanel('panel-miper-banco')">‹ Volver</div><div class="pnl-title">Banco histórico</div><div></div></div>
+  <div class="panel-body" id="miper-banco-body"></div>
+</div>
+
+<div class="panel hidden" id="panel-miper-documento">
+  <div class="panel-bar"><div class="pnl-back" onclick="closePanel('panel-miper-documento')">‹ Volver</div><div class="pnl-title">Generar documento</div><div></div></div>
+  <div class="panel-body" id="miper-documento-body"></div>
+</div>
 
 <div class="toast hidden" id="toast"></div>
 
@@ -1217,6 +1244,7 @@
     procedimientos: 'Procedimientos de Trabajo Seguro', epp: 'Entrega de EPP',
     trabajadores: 'Trabajadores', charlas: 'Charlas de Seguridad', hcr: 'Hoja de Control de Riesgos (HCR)',
     subcontratistas: 'Subcontratistas', programapersonalizado: 'Programa Personalizado',
+    miper: 'Matriz de Riesgos (IPER)',
   };
 
   // Aplica el color del módulo activo a un header (móvil o el del sidebar
@@ -1257,7 +1285,8 @@
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     const map = { inicio:'page-inicio', inspecciones:'page-inspecciones', incidentes:'page-incidentes',
       procedimientos:'page-procedimientos', epp:'page-epp', trabajadores:'page-trabajadores', charlas:'page-charlas',
-      hcr:'page-hcr', subcontratistas:'page-subcontratistas', programapersonalizado:'page-programapersonalizado' };
+      hcr:'page-hcr', subcontratistas:'page-subcontratistas', programapersonalizado:'page-programapersonalizado',
+      miper:'page-miper' };
     document.getElementById(map[nombre]).classList.add('active');
 
     // Header móvil: en Inicio muestra el logo (color naranjo de marca);
@@ -1299,6 +1328,7 @@
       procedimientos: abrirFormProcedimiento, epp: abrirFormEpp, trabajadores: abrirFormTrabajador,
       charlas: abrirNuevaCharla, hcr: abrirNuevoHcr, subcontratistas: abrirFormSubcontratista,
       programapersonalizado: () => abrirFormActividadPrograma(),
+      miper: () => abrirMenuAgregarMiper(),
     };
     const fab = document.getElementById('fab-add');
     const dtFab = document.getElementById('dt-fab-add');

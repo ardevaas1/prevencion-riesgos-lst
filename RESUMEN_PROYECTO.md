@@ -72,7 +72,7 @@ repositorio de GitHub **separado**.
 - `logo.png`, `logo-white.png`, `logo-transparent.png` — logos LST heredados
   de Flota, cada uno usado en un lugar distinto (ver abajo).
 - `APPS_SCRIPT_INIT.js` — se pega en el Apps Script del Sheet para crear las
-  13 pestañas con encabezados. Es seguro volver a ejecutarlo cuando se agregan
+  17 pestañas con encabezados. Es seguro volver a ejecutarlo cuando se agregan
   columnas/pestañas nuevas (no borra datos existentes).
 - `APPS_SCRIPT_WEBAPP_SUBCONTRATISTAS.js` — **opcional**: Web App de Apps
   Script que evita tener que darle acceso de Editor del Sheet/Drive a cada
@@ -97,12 +97,22 @@ repositorio de GitHub **separado**.
   empaquetado localmente, usado solo para **leer** texto de las charlas de
   la biblioteca (pdf-lib solo sabe escribir) — ver "Plantillas de Charla"
   más abajo.
+- `vendor/xlsx.core.min.js` — SheetJS (build "core", sin codepages extra),
+  empaquetado localmente, usado solo por el módulo Matriz de Riesgos para
+  generar el Excel — carga bajo demanda igual que `pdf-lib` (`cargarXlsxLib`).
+- `vendor/miper-banco.js` — banco histórico (513 filas) del módulo Matriz de
+  Riesgos, carga bajo demanda (`cargarMiperBanco`) — ver "Módulo Matriz de
+  Riesgos (IPER, DS44)" más abajo.
 
-## Estructura de datos (Google Sheet, 14 pestañas)
+## Estructura de datos (Google Sheet, 18 pestañas)
 
 `TRABAJADORES`, `INSPECCIONES`, `CHARLAS`, `INCIDENTES`, `INVESTIGACIONES`,
 `HCR`, `DIAT`, `PROCEDIMIENTOS`, `ENTREGA_EPP`, `USUARIOS`, `SUBCONTRATISTAS`,
-`SUBCONTRATISTAS_DOCS`, `PROGRAMA_PERSONALIZADO`.
+`SUBCONTRATISTAS_DOCS`, `PROGRAMA_PERSONALIZADO`, `MIPER_LEVANTAMIENTO`,
+`MIPER_MATRIZ`, `MIPER_RIESGOS_CUSTOM`, `MIPER_DOCUMENTOS`.
+
+Las 4 pestañas `MIPER_*` son del módulo Matriz de Riesgos (IPER, DS44) — ver
+"Módulo Matriz de Riesgos (IPER, DS44)" más abajo.
 
 `PROGRAMA_PERSONALIZADO` (`N°`, `Obra`, `Mes`, `Supervisor`, `Cargo`,
 `Actividad`, `Frecuencia`, `Dias Marcados`, `Fecha Registro`, `Registrado
@@ -819,6 +829,64 @@ que Trabajadores/Inspecciones/...).
   31 columnas de día no entran con un tamaño de letra legible en una hoja
   carta vertical. `dibujarFilaTabla` es un helper genérico de filas con
   bordes que se reutiliza tanto en la tabla resumen como en la grilla.
+
+## Módulo Matriz de Riesgos (IPER, DS44)
+
+Digitaliza el Excel "Miper DS44" (Matriz de Identificación de Peligros y
+Evaluación de Riesgos) — originalmente 13 pestañas — como un módulo por obra
+más. Construido a partir de decisiones explícitas del cliente, tomadas
+pestaña por pestaña antes de programar nada.
+
+- **Anexo 1 → Levantamiento de tareas (`MIPER_LEVANTAMIENTO`):** paso previo
+  obligatorio — se registra Proceso/Puesto/Tarea/Rutinaria/Lugar antes de
+  poder agregar filas a la matriz. `N Personas` y `Sexo` NO se escriben a
+  mano: se calculan solos contando trabajadores activos de la obra cuyo
+  `Cargo` calza (substring en cualquier dirección, best-effort — el Excel no
+  trae una relación estructurada Puesto↔Cargo) con el Puesto escrito
+  (`trabajadoresPorPuestoMiper`).
+- **Anexos 2-5 → catálogo de riesgos (`MIPER_CATALOGO_RIESGOS` en `app.js`):**
+  los 23 riesgos originales (Seguridad/Higiene/Músculo-Esquelético/
+  Psicosocial, cada uno con definición/código/medidas preventivas) quedan
+  fijos en el código, mismo patrón que `CHARLAS_BIBLIOTECA`. Un supervisor
+  puede agregar un riesgo que no esté en la lista ("+ Agregar riesgo
+  nuevo..." en el formulario de la matriz) — ese riesgo se guarda en la hoja
+  `MIPER_RIESGOS_CUSTOM` y queda disponible para elegir en cualquier obra de
+  ahí en adelante (`miperCatalogoCompleto()` junta catálogo fijo + custom).
+- **VEP y Nivel de Riesgo automáticos (`miperNivelRiesgo`):** el supervisor
+  solo elige Probabilidad (Baja/Media/Alta = 1/2/4) y Consecuencia
+  (Ligeramente Dañino/Dañino/Extremadamente Dañino = 1/2/4) — VEP =
+  Probabilidad × Consecuencia y el Nivel de Riesgo sale de la tabla `MIPER_VEP`
+  (≤2 Tolerable, 4 Moderado, 8 Importante, 16 Intolerable), igual que las
+  pestañas VEP/PROBABILIDAD/CONSECUENCIA del Excel original — esas 3 pestañas
+  pasaron a ser tablas internas, no pantallas propias.
+- **Banco histórico (`vendor/miper-banco.js`):** las 513 filas de la pestaña
+  "OBRAS PREVIAS" del Excel quedan vendorizadas como archivo aparte (~210KB),
+  cargado bajo demanda (`cargarMiperBanco`, mismo patrón lazy-load que
+  `pdf-lib`) solo al abrir el buscador desde el formulario de la matriz. El
+  supervisor busca por proceso/tarea/riesgo y "usa" una fila para prellenar
+  el formulario (`aplicarPrefillMiperFila`) — si el nombre del riesgo de esa
+  fila histórica no calza exacto con el catálogo actual (el propio Excel
+  tiene inconsistencias entre pestañas, ej. "Atrapamiento" vs
+  "Atrapamientos"), se avisa y el supervisor lo elige a mano.
+- **Anexo 6 → Protocolos MINSAL:** checklist fijo de 5 protocolos
+  (`MIPER_PROTOCOLOS`), marcado por documento generado (no por fila de la
+  matriz).
+- **Documento (`MIPER_DOCUMENTOS`):** encabezado (Entidad Empleadora/
+  Sucursal/Responsable/Fecha) autocompletado desde el último documento de la
+  obra, 3 firmas digitales (Elaboró/Revisó/Aprobó, mismo pad de firma que
+  Charla/HCR/Investigación), checklist de protocolos y Próxima Revisión como
+  fecha real. `Revision` es autonumérica (sube sola en cada documento nuevo
+  de la obra); `renderMiper` muestra un aviso (verde/amber/rojo) según qué
+  tan cerca esté la Próxima Revisión.
+- **Salida dual PDF/Excel (`generarPdfMiper` / `generarExcelMiper`):** el
+  supervisor elige generar PDF, Excel o ambos. El PDF es desde cero con
+  pdf-lib (portada con encabezado/firmas/protocolos + páginas apaisadas con
+  la tabla completa de la matriz, coloreada por Nivel de Riesgo). El Excel
+  usa `vendor/xlsx.core.min.js` (SheetJS, build "core" sin codepages extra,
+  ~427KB, vendorizado desde el paquete npm `xlsx@0.18.5`) cargado bajo
+  demanda (`cargarXlsxLib`) — 2 hojas: la matriz y el catálogo de riesgos
+  completo (fijo + custom). Ambos archivos se suben a
+  Drive/Matriz de Riesgos/ con nombre `Matriz_IPER_{obra}_Rev{N}`.
 
 ## Asignación de supervisor y modo restringido de supervisor
 

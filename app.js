@@ -74,6 +74,82 @@ const PROGRAMAS_PERSONALIZADOS = [
   { codigo: 'SGSST-PER-010', nombre: 'Charla de Seguridad', archivo: 'plantillas/programas/SGSST-PER-010_Charla_de_Seguridad.pdf', tipo: 'cubierto_charla' },
   { codigo: 'SGSST-PER-011', nombre: 'Hoja de Control de Riesgos (HCR)', archivo: 'plantillas/programas/SGSST-PER-011_Hoja_de_Control_de_Riesgos_HCR.pdf', tipo: 'cubierto_hcr' },
 ];
+
+// ── Matriz IPER (DS44) ──────────────────────────────────────
+// Catálogo fijo de riesgos (Anexos 2 a 5 del Excel original: Seguridad,
+// Higiene, Músculo-Esquelético, Psicosocial) — 23 riesgos con su definición,
+// código y medidas preventivas ya redactadas. Los riesgos que un supervisor
+// agregue a mano en la Matriz que NO estén acá se guardan en la hoja
+// MIPER_RIESGOS_CUSTOM y se suman a esta lista en memoria al cargar datos
+// (ver cargarTodo → allMiperRiesgosCustom / miperCatalogoCompleto()).
+const MIPER_CATALOGO_RIESGOS = [
+  { familia: "SEGURIDAD", riesgo: "Caída al mismo nivel", definicion: "Caída que se produce en el mismo plano de sustentación, por ejemplo: caídas en lugares de tránsito o superficies de trabajo, caídas sobre o contra objetos", codigo: "A1", medidas: ["Transitar por áreas habilitadas, despejadas y libres de obstáculos", "Mantener el área de trabajo limpia y ordenada", "No transitar con las manos en los bolsillos", "No correr por las áreas de tránsito", "No utilizar ropa o cordones sueltos o sin abrochar", "No dejar cables a nivel de piso, manténgalos en forma aérea o señalizados", "Transitar por lugares iluminados natural o artificialmente", "No utilizar elementos distractores como teléfono celular", "No transitar con la vista bloqueada u obstruida", "No pisar o caminar retrocediendo, sin antes observar el área de transito"] },
+  { familia: "SEGURIDAD", riesgo: "Caida a distinto nivel", definicion: "Caída a un plano inferior de sustentación desde una altura no superior a 1,8 m, (incluye caídas en profundidades no mayores a 1,8 m. en excavaciones, agujeros, zanjas, etc.).", codigo: "A2", medidas: ["Chequee el buen estado de la silla y mobiliario", "Al subir o bajar de equipos, utilice 3 puntos de apoyo", "Al subir o bajar por escala portatil, utilice 3 puntos de apoyo", "Utilizar pasamanos al transitar por escaleras", "No sentarse en vanos de ventanas o pasamanos de escaleras, o lugares que puedan generar una caída", "Mantener vanos o aberturas cerradas, segregadas y señalizadas", "No retire barandas, diagonales, tapas o elementos dispuestos para proteger desniveles o vanos", "No saltar excavaciones, vanos o aberturas", "Utilice plataformas autorizadas y en buen estado, no improvise con el objetivo de ahorrar tiempo"] },
+  { familia: "SEGURIDAD", riesgo: "Caida desde altura fisica", definicion: "Caída a un plano inferior de sustentación, desde una altura superior a 1,8 m. Caídas desde alturas (incluye caídas en profundidades mayores a 1,8 m).", codigo: "A3", medidas: ["Mantener examen de altura fisica vigente", "Todo trabajador que realice trabajos sobre el 1.8 mt. deberá estar capacitado y autorizado por el supervisor", "Uso obligatorio de arnés de seguridad, caboS de vida (doble cola), casco y barbiquejo", "Anclar mosqueton a punto de anclaje estructural", "No utilizar telefono celular al transitar sobre plataformas en altura fisica", "No improvise plataformas de trabajo para alcanzar mayor altura", "No retire barandas, diagonales, tapas o elementos dispuestos para proteger desniveles o vanos.", "Mantenga siempre las excavaciones, cámaras o zanjas señalizadas y protegidas perimetralmente con barreras fisicas", "No salte excavaciones o zanjas de un lado a otro, privilegie transitar por sectores habilitados.", "Los cabos de vida deberán tener un mosquetón con doble seguro tipo gancho escala, queda prohibido ahorcar el cabo de vida.", "Si sufre de vértigo o está en tratamiento psiquiátrico, o psicológico no realice trabajos en altura física.", "No utilice equipos de altura que hayan sufrido una caída. Se deben dar de baja por la empresa", "Las líneas horizontales se afianzaran con 3 prensas o candados Crosby en cada extremo a bastón metálico, cáncamo o punto de anclaje estructural certificado, las cuales podrán ser de perlón o de acero.", "Las líneas de vida horizontales deben ser usadas por 2 trabajadores como máximo", "Las líneas verticales, deben ser utilizadas por 1 solo trabajador a la vez", "Utilice 3 puntos de apoyo al subir o bajar de equipos"] },
+  { familia: "SEGURIDAD", riesgo: "Atrapamientos", definicion: "Enganche o aprisionamiento del cuerpo, o parte de éste, por mecanismos de las máquinas, objetos, piezas, materiales, equipos o vehículos que han perdido su estabilidad.", codigo: "B1", medidas: ["Mantener partes móviles protegidas o encapsuladas. No retirar protecciones", "Realizar inspecciones periódicas de los equipos para detectar y reparar cualquier daño o desgaste", "No utilizar ropa o pelo suelto, así como joyas", "Utilizar señales de advertencia y delimitación de áreas para indicar los peligros y las zonas restringidas", "Instalar dispositivos de parada de emergencia de fácil acceso", "Al realizar mantenciones o cambios de elementos móviles, realizar siempre con el equipo apagado y desenergizado", "Realice el aislamiento y bloqueo de fuentes de energía, antes de intervenir equipos en movimiento.", "No exponer las manos a puntos de atrapamientos, bajo o entre cargas", "No exponga las manos o extremidades a partes móviles", "No exponga sus manos a puntos de atrapamientos, como abertura o cierre de puertas, cajones o mobiliario", "No exponga sus manos a puntos de atrapamientos, como abertura o cierre de escotillas de andamios", "Utilice guantes de seguridad, dependiendo el tipo de actividad y riesgo a cubrir."] },
+  { familia: "SEGURIDAD", riesgo: "Caida de objetos", definicion: "Caída de elementos que golpean al cuerpo, por ejemplo, materiales, herramientas, estructuras, etc.", codigo: "B2", medidas: ["Mantenga el área de trabajo segregada perimetralmente, por medio de conos, cadenas plásticas al realizar trabajos en altura", "Proteja niveles inferiores donde exista tránsito de trabajadores o peatones, por medio de placas estructurales o elementos capaces de contener la caída de materiales o herramientas", "No realice trabajos en la misma vertical con otra especialidad, realice una coordinación entre supervisión y trabajadores", "Utilice coleto o morral, para transportar herramientas en altura", "Implemente señalética de trabajos en altura y caída de materiales", "Suba y baje el material con un cordel de perlón con mosquetón gancho escala o roldana (pasteca), no se exponga bajo la carga suspendida que eventualmente podría caer a niveles inferiores", "No deje materiales o herramientas en bordes de las plataformas de trabajo o sobre estructuras"] },
+  { familia: "SEGURIDAD", riesgo: "Cortes por objetos / herramientas cortopunzantes", definicion: "Cortes y/o punzaciones generadas en parte del cuerpo debido al contacto de éste con objetos cortantes, punzantes y/o abrasivos.", codigo: "B3", medidas: ["No exponer las manos a línea de fuego durante el uso de herramientas manuales o cartoneros", "Realizar cortes o dimensionado de materiales, sobre bancos de trabajo y no en voladizo", "Realizar cortes de materiales manteniendo una distancia mínima de 20 Cm. Con el punto de corte", "Utilice las herramientas, de acuerdo a lo indicado por el fabricante. No improvise con hechizas", "Retire clavos, tornillos o cantos vivos anormales, de materiales en desuso", "Se prohíbe utilizar herramientas de corte sin sus protecciones o retirar de equipos o herramientas", "Las herramientas eléctricas, como: sierra circular, esmeril angular, taladro percutor, u otra herramienta critica, se deben operar o utilizar con ambas manos para controlar la exposición de extremidades", "Verifique el buen estado de discos de corte, los cuales no se deben de utilizar excediendo sus RPM", "Acopie elementos metálicos en forma horizontal, controlando que no se levanten con el viento", "Utilizar guantes dependiendo la actividad o especialidad (cabretilla, palma látex o anticorte)", "Mantenga puntas expuestas de fierro protegidas con madera u otro elemento protector", "Emplear recipientes de desecho resistentes a las perforaciones y con cierre hermético", "Utilice ropa manga larga, para controlar la exposición de brazos y piernas a elementos cortantes", "Utilizar señales de advertencia para identificar las áreas donde se manipulan elementos cortopunzantes", "Utilizar cuchillos con mangos antideslizantes y hojas de acero inoxidable.", "Utilice ventosas para la manipulación de cristales o termopaneles, los cuales deben estar secos para evitar deslizamiento"] },
+  { familia: "SEGURIDAD", riesgo: "Aplastamiento por carga suspendida", definicion: "Caída de elementos que son levantados, izados o mantenidos por medio equipos manuales como tecles, roldanas o elementos mecanicos como camión pluma o grúas", codigo: "B4", medidas: ["No trabajar bajo carga suspendida", "Elaborar plan de izaje de cargas, según tabla de carga del equipo", "Chequear el buen estado de los elementos de izaje", "Verificar factor de seguridad 5:1 de aparejos", "No sobrepasar la capacidad de carga de los aparejos", "Realizar izaje en terreno estable y nivelado", "Capacitar a los trabajadores sobre los riesgos asociados a la manipulación de cargas y las técnicas de levantamiento seguras", "Mantener el área de trabajo segregada perimetralmente y señalizada", "Establecer una comunicación clara y efectiva entre los trabajadores involucrados en las operaciones de izaje", "Realizar un mantenimiento preventivo de los equipos, para evitar fallas que puedan provocar accidentes"] },
+  { familia: "SEGURIDAD", riesgo: "Golpeado por o contra", definicion: "Encuentro violento del cuerpo, o de una parte de éste, con uno o varios objetos, estén éstos en movimiento o no", codigo: "B5", medidas: ["Utilizar guantes y lentes de seguridad", "Manipule las herramientas desde sus azas, no las retire o las deje de utilizar por comodidad", "Estibe las cargas correctamente y amarre con cordel o fajas en al menos 3 puntos de contacto", "Utilice casco y calzado de protección."] },
+  { familia: "SEGURIDAD", riesgo: "Volcamiento de plataforma", definicion: "Encuentro violento del cuerpo, o de una parte de éste, con uno o varios objetos, estén éstos en movimiento o no", codigo: "B6", medidas: ["Las plataformas fijas o móviles, como andamios, carreras, banquillos, alza hombres, entre otros, deben ser chequeadas previo a su uso, verificando el buen estado y con todas sus partes y piezas", "Utilice plataformas de trabajo autorizadas, los andamios deben tener su tarjeta de aprobación o prohibición de uso", "En maniobras de izaje, utilice las bases o almohadillas para estabilizadores, además el terreno debe ser nivelado y estable", "Evaluar las condiciones del terreno donde se utilizará la plataforma, como pendientes, suelo blando, obstáculos y posibles inestabilidades", "Rechazar cualquier plataforma que presente algún tipo de daño o desgaste que pueda comprometer su estabilidad", "Asegurarse de que los estabilizadores estén completamente extendidos y firmemente apoyados sobre una superficie nivelada antes de operar la plataforma.", "Distribuir la carga de manera uniforme sobre la plataforma para evitar desequilibrios", "Evitar sobrecargar la plataforma más allá de su capacidad nominal", "Respetar los límites de velocidad establecidos por el fabricante", "Evitar operar la plataforma en condiciones de viento superior a 35 Km/hr", "No operar la plataforma sobre superficies resbaladizas o mojadas", "Respetar el ángulo máximo de inclinación permitido por el fabricante", "Al trabajar sobre escalera portatil, asegure que se encuentra amarrada en nivel superior y que su angulo de trabajo es 1:4", "Asegurarse de que el contrapeso esté correctamente posicionado"] },
+  { familia: "SEGURIDAD", riesgo: "Contacto con personas", definicion: "Lesiones recibidas en el cuerpo, o parte de éste (agresiones, patadas, mordiscos, etc.) debido a la acción de otras personas", codigo: "C1", medidas: ["Mantenga siempre la calma", "En caso de sufrir un asalto, no oponga resistencia", "En presencia de delincuentes, no ejecute acciones que pueden poner en riesgo su vida o la de otras personas", "Una vez que se encuentre en un lugar seguro, llame a carabineros (133) si su supervisor se lo indica", "Si presenta una lesión producto del asalto, asista a un establecimiento de salud indicado por su supervisor", "Si las instalaciones del centro de trabajo o los elementos de seguridad presentan daños, informe a su supervisor", "Mantén bien iluminado el lugar, especialmente en la entrada y el perímetro exterior", "Las cámaras de vigilancia evitan a los delincuentes y pueden servir como evidencia en caso de robo"] },
+  { familia: "SEGURIDAD", riesgo: "Contacto termico por calor", definicion: "Acción y efecto de hacer contacto físico con superficies o productos calientes", codigo: "D1", medidas: ["No transite con objetos o agua caliente por pasillo o escaleras, utilice cafeteria o casino para consumir liquidos calientes", "Utilice ropa de cuero y guantes mosqueteros, al soldar, esmerilar o chispas incandescentes", "Observe la presencia de equipo con partes calientes, evitando la exposición de extremidades"] },
+  { familia: "SEGURIDAD", riesgo: "Comtacto accidental con 220 o 380 volts", definicion: "Es todo contacto de las personas con masas puestas accidentalmente en tensión", codigo: "E1", medidas: ["No intervenir circuitos o herramientas eléctricas.", "No amarre extensiones en andamios o estructuras metálicas (aísle mediante madera o pvc)", "Antes de utilizar un equipo o herramienta eléctrico, se debe verificar que todas sus componentes se encuentren en buen estado, por ejemplo: enchufe, cordón o cable alimentador, pantalla, teclado.", "Los equipos se deberán conectar a red de alimentación que tenga protección diferencial. No sobrecargas circuitos.", "No trabajar nunca con energía viva, con cables o cordones con el alambre expuesto", "Para desconectar un equipo, manipule desde su enchufe y no del cable o cordón alimentador", "No se debe utilizar ningún equipo ni instalación eléctrica cuando esté mojada; así como el personal que manipule un equipo, deberá estar con las manos y guantes secos.", "En caso de identificar líneas eléctricas, no se podrá trabajar a menos de 1,5 Mts. de distancia, para lo cual se deberá saber si las líneas se encuentran energizadas, el voltaje y el radio de seguridad, en ningún caso se aproxime con plataformas metálicas fijas o móviles a líneas eléctricas", "La mantención, reparación y/o intervención de las herramientas, extensiones o tableros eléctricos solo debe ser realizada por el personal eléctrico autorizado", "No realizar ningún tipo de trabajo con herramientas eléctricas bajo lluvia", "Chequee el perímetro de trabajo y desplazamiento de la plataforma fija o móvil, con el objetivo de identificar y controlar las líneas energizadas"] },
+  { familia: "SEGURIDAD", riesgo: "Proyección de fragmentos y/o particulas", definicion: "Contacto violento del cuerpo, o una parte de éste, con elementos proyectados como: piezas, fragmentos, partículas o líquido.", codigo: "F1", medidas: ["Utilice lentes de seguridad mica transparente para trabajos interiores y mica oscura para trabajos al exterior", "Utilice careta facial en generación de chispas incandescentes", "No deben manipularse, ni alterarse los elementos de seguridad y resguardos de las máquinas o herramientas a utilizar", "Evitar el uso de herramientas de corte o abrasión cerca de personas no protegidas", "Utilizar biombos o encerramientos para controlar la proyección de particulas", "En el uso de discos se debe comprobar el buen estado de los discos, desechando aquellos que se encuentren desgastados o agrietados, además de no sobrepasar las revoluciones establecidas por el fabricante con respecto al equipo donde será utilizado"] },
+  { familia: "SEGURIDAD", riesgo: "Atropello o golpe con vehiculo", definicion: "Impacto entre un peatón y un vehículo en movimiento", codigo: "G1", medidas: ["No hable o manipule el teléfono celular mientras conduce", "No desplace personal en pick up o carrocerías de los vehículos o equipos", "Mantener una conducta de peatón siempre a la defensiva", "Cruce en sectores autorizados y habilitados, como esquinas y paso de cebra", "Al bajar de su vehículo, verifique que este se encuentre enganchado, parqueado y con motor aoagado", "Verifique que el conductor siempre lo visualice; no se exponga a puntos ciegos del vehículo o equipo", "Utilizar señales de advertencia y delimitación de áreas para indicar los peligros y las zonas restringidas", "Instalar espejos convexos en puntos ciegos", "Establecer límites de velocidad adecuados para las zonas de trabajo", "Asegurar una iluminación adecuada en las áreas de trabajo, especialmente en las zonas de circulación de vehículos y peatones", "Capacitar a los trabajadores sobre los riesgos de atropello, las normas de seguridad vial", "Realizar un mantenimiento preventivo regular de los vehículos para garantizar su buen estado de funcionamiento.", "Utilizar chaleco reflectante como última capa, donde exista desplazamiento de equipos"] },
+  { familia: "SEGURIDAD", riesgo: "Choque, colision o volcamiento", definicion: "Lesiones generadas en el cuerpo de un conductor o pasajero de un vehículo cuando éste se vuelca o impacta con otro vehículo y/o estructura externa", codigo: "G2", medidas: ["Operar o conducir equipos por personal autorizado y con licencia municipal vigente", "Mantener una conducta a la defensiva en la conducción. No conduzca fatigado o cansado", "Usar cinturón de seguridad para todos los pasajeros del vehículo", "De cumplimiento a lo establecido en la ley de tránsito N°18290, Ley Emilia", "Transitar con luces encendidas del vehículo", "Mantenga una distancia prudente entre usted y el vehículo que va delante (ley de los 3 segundos)", "Verifique que el vehículo o equipo se encuentre en buen estado, caso contrario no lo utilice, de aviso", "Realizar un mantenimiento preventivo regular de los vehículos (frenos, neumáticos, dirección, luces, etc)", "No conducir bajo los efectos del alcohol o drogas", "Adaptar la velocidad a las condiciones de la vía", "Evitar distracciones al conducir (teléfono móvil, lectura, sacar ropa, fumar)", "Asegurar la carga de los vehículos de forma adecuada para evitar desplazamientos durante la marcha", "Conduzca con ambas manos al volante", "No transitar con cargas que generen la vista bloqueada u obstruida"] },
+  { familia: "SEGURIDAD", riesgo: "Exposicion a radiaciones no ionizantes", definicion: "Exposición de un trabajador a altas dosis de radiaciones no ionizantes - ultravioleta (UV) exposición como accidente.", codigo: "H1", medidas: ["Aplicar o protector solar (Factor 30 como mínimo), 20 minutos antes de empezar los trabajos expuestos directamente a radiación UV (Aplicar bloqueador cada 3 horas).", "Mantener una hidratación permanente, bebiendo al menos 2, 5 lts. De agua diario", "Utilice lentes de protección UV, gorro legionario, además de ropa manga larga", "Utilizar estructuras o materiales que proporcionen sombra, como toldos, sombrillas o carpas", "En caso de ser posible, programar las tareas que requieren exposición al sol durante las horas de menor radiación", "Rotar a los trabajadores expuestos a la radiación UV con otros que realizan tareas en interiores", "Establecer límites de tiempo de exposición al sol", "Instalar señalización que advierta sobre los riesgos de la radiación UV y las medidas de protección."] },
+  { familia: "SEGURIDAD", riesgo: "Generación de amagos de incendio", definicion: "Conjunto de condiciones (combustibles, comburentes y fuentes de ignición) cuya conjunción en un momento determinado, pueden originar un fuego incontrolado. Sus efectos son generalmente no deseados, produciendo lesiones personales por el humo (gases tóxicos y altas temperaturas) y daños materiales", codigo: "I1", medidas: ["Mantener extintor visible en el lugar de trabajo (PQS o CO2)", "Estar capacitado o instruido en el manejo de extintor", "No generar proyección de partículas a sectores con productos inflamables o combustibles", "No fumar o realizar en lugares habilitados y autorizados", "No dejar calefactores eléctricos volcados o tapados", "Inspeccionar y mantener regularmente equipos eléctricos, maquinaria y sistemas de calefacción para prevenir sobrecalentamientos", "Mantener el lugar de trabajo limpio y ordenado, eliminando acumulaciones de polvo y residuos que puedan ser combustibles", "Mantener en buen estado los equipos de protección contra incendios, como mangueras y boquillas"] },
+  { familia: "HIGIENE", riesgo: "Exposicion a ruido", definicion: "Permanencia en un ambiente de trabajo con presencia continua de altos niveles de presión sonora (en forma estable o fluctuante), con la potencialidad de alterar el órgano de la audición", codigo: "O1", medidas: ["Utilizar protección auditiva en ambos oídos, sobre los 82 decibeles (DB)", "Rodear las fuentes de ruido con barreras acústicas para evitar su propagación", "Instalar pantallas entre la fuente de ruido y los trabajadores", "Utilizar materiales absorbentes en paredes, techos y suelos para reducir la reverberación del sonido", "Realizar evaluaciones auditivas periódicas a los trabajadores expuestos", "Instruir a los trabajadores sobre los riesgos del ruido, las medidas de prevención y el uso correcto de los protectores auditivos"] },
+  { familia: "HIGIENE", riesgo: "Exposición a vibraciones", definicion: "Permanencia en un ambiente de trabajo con presencia de energía vibratoria que se transfiere al componente mano-brazo, el cual actúa como receptor de energía mecánica", codigo: "O2", medidas: ["Realice una rotación o pausas en el puesto de trabajo, cuando utilice herramientas que generen vibraciones, como martillo kango, equipos de compactación, entre otros. La actividad, no debe superar los 30 minutos continuos de operación", "Realizar un mantenimiento preventivo regular para reducir la vibración", "Optimizar la ergonomía de los puestos de trabajo para reducir la transmisión de vibraciones al cuerpo", "Utilizar herramientas con empuñaduras antideslizantes y de tamaño adecuado", "Establecer pausas frecuentes para permitir que los músculos se recuperen", "Capacitar a los trabajadores sobre los riesgos de la exposición a vibraciones y las medidas de prevención", "Utilizar guantes antivibratorios"] },
+  { familia: "HIGIENE", riesgo: "Exposicion a silice", definicion: "Permanencia en un ambiente de trabajo con presencia de partículas sólidas en suspensión como Sílice", codigo: "P1", medidas: ["Realizar limpiezas frecuentes con métodos húmedos para evitar la suspensión del polvo", "Instalar señalización que advierta sobre la presencia de sílice y las medidas de seguridad", "Proporcionar a los trabajadores equipos de protección respiratoria - respirador doble vía con filtros para polvo P100", "Reemplazar materiales que contienen sílice cristalina por alternativas más seguras cuando sea posible.", "Aislar las operaciones que generan polvo de sílice en cabinas o cuartos cerrados con ventilación local"] },
+  { familia: "MUSCULO_ESQUELETICO", riesgo: "Sobrecarga física debido a la manipulación manual de cargas", definicion: "Trabajos en donde se deban levantar, descender o transportar manualmente objetos de más de 3 kilos. Trabajos en donde se deban empujar o arrastrar objetos utilizando 1 o 2 manos.", codigo: "R1", medidas: ["El trabajador debe estar instruido en una adecuada postura ergonómica y técnicas de levantamiento de carga", "Mantener una correcta postura ergonómica al levantar o manejar cargas, manteniendo los pies separados, rodillas flectadas, espalda recta, carga cerca del cuerpo y sujeción firme", "El trabajador debe aplicar en todo momento las técnicas de levantamiento de carga", "Disponer y utilizar ayuda mecánica para el traslado de cargas, según corresponda", "El personal debe estar informado del peso de la carga a manipular", "No levantar más de 25 Kg. por trabajador hombre y 20 Kg. por trabajadora mujer", "Se prohíbe la manipulación de cargas por mujeres embarazadas", "Conozca o estime el peso de una carga. Solicite ayuda en caso de ser necesario.", "Instruir en la realización de una rutina de elongación y calentamiento muscular previo al inicio de la tarea"] },
+  { familia: "MUSCULO_ESQUELETICO", riesgo: "Sobrecarga física debido al trabajo repetitivo de miembros superiores", definicion: "Tarea donde se involucra los miembros superiores (hombro, brazo, antebrazo, mano), caracterizada por tareas durante las cuales las mismas acciones de trabajo son repetidas por más del 50% de la duración de éstas, y/o el tiempo de ciclo es inferior a 30 segundos, y con una duración total de una hora o más durante la jornada laboral y con un tiempo total de 5 o más horas a la semana", codigo: "R2", medidas: ["Ajustar la altura de las mesas, sillas y equipos para permitir una postura de trabajo cómoda y neutral", "Organizar el espacio de trabajo de manera que se minimicen los movimientos innecesarios y se eviten las posturas forzadas", "Rotar a los trabajadores entre diferentes tareas para reducir la exposición a movimientos repetitivos", "Establecer pausas cortas y frecuentes durante la jornada laboral para permitir que los músculos se relajen", "Capacitar en postura correcta y ergonómica, técnicas de levantamiento cargas y riesgos asociados a movimientos repetitivos.", "Realizar mantencion de equipos y herramientas para garantizar el correcto funcionamiento y minimizar la carga de trabajo", "Instruir en la realización de una rutina de elongación y calentamiento muscular previo al inicio de la tarea", "El trabajador durante la tarea de 1 hora, debe realizar una pausa de descanso e hidratación de 10 minutos"] },
+  { familia: "PSICOSOCIAL", riesgo: "Carga de trabajo", definicion: "La carga de trabajo son las exigencias que se le hacen a los trabajadores y trabajadoras para que cumplan con un determinado objetivo o tarea en un tiempo acotado o limitado. Es decir, en la carga de trabajo existe una relación entre la cantidad de tareas y el tiempo en que se deben realizar, que puede ser desde minutos hasta semanas o más", codigo: "S1", medidas: ["Crear un ambiente de trabajo donde se valore la diversidad, la igualdad y el respeto mutuo.", "Capacitar a los trabajadores sobre acoso laboral, sus consecuencias y cómo identificarlo.", "Garantizar la confidencialidad de las personas que denuncian el acoso", "Contar con un Protocolo de Acoso, que los trabajadores estén en conocimiento", "Contar con un Procedimiento de Denuncias", "Contar con un Procedimiento de Investigación de Acoso", "Expresar tus necesidades y preocupaciones de manera clara y respetuosa", "Aprender a decir \"no\" cuando sea necesario"] },
+];
+// Protocolos de Vigilancia Epidemiológica MINSAL (Anexo 6) — checklist fijo,
+// se marca por obra cuáles aplican según los riesgos identificados.
+const MIPER_PROTOCOLOS = [
+  "Protocolo de Vigilancia del Ambiente de Trabajo y de la Salud de los Trabajadores con Exposición a Sílice",
+  "Protocolo de Exposición Ocupacional a Ruido PREXOR",
+  "Protocolo de Vigilancia para Trabajadores Expuestos a Factores de Riesgo de Trastornos Musculo-Esqueléticos de Extremidades Superiores Relacionas con el Trabajo (TMERTEESS)",
+  "Protocolo de Vigilancia de Riesgos Psicosociales en el Trabajo",
+  "Guía Técnica sobre Radiación Ultravioleta de Origen Solar",
+];
+// Probabilidad × Consecuencia = VEP; el VEP determina el Nivel de Riesgo
+// (tabla "VEP" del Excel original). Con probabilidad y consecuencia acotadas
+// a {1,2,4} el VEP solo puede dar 1,2,4,8 o 16 — de ahí el corte "≤2".
+const MIPER_PROBABILIDAD = [
+  { valor: 1, nombre: 'Baja', desc: 'El daño ocurrirá rara vez o en contadas ocasiones (posibilidad remota).' },
+  { valor: 2, nombre: 'Media', desc: 'El daño ocurrirá en varias ocasiones (posibilidad mediana, puede pasar).' },
+  { valor: 4, nombre: 'Alta', desc: 'El daño ocurrirá siempre o casi siempre (posibilidad inmediata).' },
+];
+const MIPER_CONSECUENCIA = [
+  { valor: 1, nombre: 'Ligeramente Dañino', desc: 'Pequeñas lesiones o daños superficiales, con recuperación rápida.' },
+  { valor: 2, nombre: 'Dañino', desc: 'Lesiones que pueden causar incapacidad temporal, con recuperación considerable.' },
+  { valor: 4, nombre: 'Extremadamente Dañino', desc: 'Amputaciones, fracturas mayores, lesiones múltiples o fatales.' },
+];
+const MIPER_VEP = [
+  { max: 2,  nombre: 'Tolerable',   color: 'green', accion: 'No se necesita mejorar la acción preventiva. Requiere comprobaciones periódicas para asegurar que se mantiene la eficacia de las medidas de control.' },
+  { max: 4,  nombre: 'Moderado',    color: 'amber', accion: 'Se deben hacer esfuerzos para reducir el riesgo, determinando las inversiones precisas, en un período determinado.' },
+  { max: 8,  nombre: 'Importante',  color: 'orange',accion: 'No se debe comenzar ni continuar el trabajo hasta que se haya reducido el riesgo (pueden precisarse recursos considerables).' },
+  { max: 16, nombre: 'Intolerable', color: 'red',   accion: 'No debe comenzar ni continuar el trabajo hasta que se reduzca el riesgo. Si no es posible reducirlo, se debe prohibir el trabajo.' },
+];
+function miperNivelRiesgo(probabilidad, consecuencia) {
+  const vep = (Number(probabilidad)||0) * (Number(consecuencia)||0);
+  const nivel = MIPER_VEP.find(v => vep <= v.max) || MIPER_VEP[MIPER_VEP.length-1];
+  return { vep, nivel: nivel.nombre, color: nivel.color, accion: nivel.accion };
+}
+// Catálogo fijo + riesgos agregados a mano por cualquier obra (persistidos en
+// MIPER_RIESGOS_CUSTOM) — se recalcula cada vez que cambian los datos.
+let allMiperRiesgosCustom = [];
+function miperCatalogoCompleto() {
+  const custom = allMiperRiesgosCustom.map(c => ({
+    familia: c.familia, riesgo: c.riesgo, definicion: c.definicion, codigo: c.codigo,
+    medidas: c.medidas ? c.medidas.split(' | ').filter(Boolean) : [], custom: true,
+  }));
+  return [...MIPER_CATALOGO_RIESGOS, ...custom];
+}
 // Coordenadas medidas directamente sobre cada PDF real (pypdfium2, puntos
 // PDF con origen abajo-izquierda — mismo sistema que pdf-lib, se usan tal
 // cual sin conversión). Motor compartido: generarPdfChecklistGenerico.
@@ -477,6 +553,39 @@ function cargarPdfLib() {
   }
   return pdfLibPromise;
 }
+// xlsx.core.min.js (≈425KB) solo hace falta al generar el Excel de la
+// Matriz IPER — mismo patrón de carga bajo demanda que cargarPdfLib.
+let xlsxLibPromise = null;
+function cargarXlsxLib() {
+  if (window.XLSX) return Promise.resolve(window.XLSX);
+  if (!xlsxLibPromise) {
+    xlsxLibPromise = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'vendor/xlsx.core.min.js';
+      s.onload = () => resolve(window.XLSX);
+      s.onerror = () => { xlsxLibPromise = null; reject(new Error('No se pudo cargar xlsx')); };
+      document.head.appendChild(s);
+    });
+  }
+  return xlsxLibPromise;
+}
+// vendor/miper-banco.js (≈240KB) trae el banco histórico de la Matriz IPER
+// (filas Proceso/Tarea/Peligro/Riesgo ya usadas en obras anteriores, para
+// copiar en vez de re-tipear) — solo hace falta al abrir ese buscador.
+let miperBancoPromise = null;
+function cargarMiperBanco() {
+  if (window.MIPER_BANCO_HISTORICO) return Promise.resolve(window.MIPER_BANCO_HISTORICO);
+  if (!miperBancoPromise) {
+    miperBancoPromise = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'vendor/miper-banco.js';
+      s.onload = () => resolve(window.MIPER_BANCO_HISTORICO || []);
+      s.onerror = () => { miperBancoPromise = null; reject(new Error('No se pudo cargar el banco histórico')); };
+      document.head.appendChild(s);
+    });
+  }
+  return miperBancoPromise;
+}
 async function ensureToken() {
   if (tokenValido()) return;
   return new Promise((resolve, reject) => {
@@ -743,6 +852,7 @@ const ICONS = {
   refrescar: '<svg viewBox="0 0 24 24" fill="none"><path d="M4 12a8 8 0 0 1 13.66-5.66M20 12a8 8 0 0 1-13.66 5.66" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M17 3v4h-4M7 21v-4h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   salir: '<svg viewBox="0 0 24 24" fill="none"><path d="M9 21H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 17l5-5-5-5M21 12H9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   programapersonalizado: '<svg viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="17" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M8 2.5v3M16 2.5v3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M4 9.5h16" stroke="currentColor" stroke-width="1.5"/><path d="M8 13.5l2 2 4-4.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  miper: '<svg viewBox="0 0 24 24" fill="none"><path d="M12 2 3 6.5v6C3 17 6.9 20.7 12 22c5.1-1.3 9-5 9-9.5v-6L12 2Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M12 8v5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="16" r="1" fill="currentColor"/></svg>',
 };
 function ic(name, size) { return ICONS[name].replace('<svg ', `<svg style="width:${size||14}px;height:${size||14}px;vertical-align:-3px;flex-shrink:0" `); }
 
@@ -752,7 +862,7 @@ function ic(name, size) { return ICONS[name].replace('<svg ', `<svg style="width
 const MODULOS_COLOR = {
   inspecciones: 'flota', incidentes: 'and', procedimientos: 'cont',
   epp: 'mov', trabajadores: 'inv', charlas: 'flota', hcr: 'and',
-  subcontratistas: 'cont', programapersonalizado: 'mov',
+  subcontratistas: 'cont', programapersonalizado: 'mov', miper: 'and',
 };
 
 function renderModulosHome() {
@@ -766,6 +876,7 @@ function renderModulosHome() {
     { key: 'hcr', nombre: 'Hoja de Control de Riesgos (HCR)', desc: 'Registro diario por cuadrilla, antes de ejecutar el trabajo' },
     { key: 'subcontratistas', nombre: 'Subcontratistas', desc: 'Documentación y control por empresa' },
     { key: 'programapersonalizado', nombre: 'Programa Personalizado', desc: 'Cumplimiento mensual por supervisor' },
+    { key: 'miper', nombre: 'Matriz de Riesgos (IPER)', desc: 'Identificación de peligros y evaluación de riesgos DS44' },
   ]
     // Un supervisor logueado (ver miSupervisorPerfil) no ve Entrega de EPP
     // en absoluto — a pedido explícito, ese módulo queda fuera de su vista.
@@ -899,6 +1010,9 @@ let allUsuarios = [];
 let allSubcontratistas = [];
 let allSubDocs = [];
 let allProgramaPersonalizado = [];
+let allMiperLevantamiento = [];
+let allMiperMatriz = [];
+let allMiperDocumentos = [];
 
 // Renderiza todos los módulos "principales" de una sola vez — se llama tanto
 // al terminar de cargar datos como al elegir/cambiar la Obra activa (ver
@@ -913,6 +1027,7 @@ function renderModulosPrincipales() {
   renderTrabajadores(); renderInspecciones(); renderIncidentes(); renderProcedimientos(); renderEpp(); renderCharlas(); renderHcr();
   renderSubcontratistas();
   renderProgramaPersonalizado();
+  renderMiper();
 }
 
 async function cargarTodo(silencioso) {
@@ -973,7 +1088,7 @@ async function cargarTodo(silencioso) {
       return;
     }
 
-    const [trab, insp, inc, proc, epp, charlas, invest, hcr, diat, subs, docs, prog] = await fetchSheetsBatch([
+    const [trab, insp, inc, proc, epp, charlas, invest, hcr, diat, subs, docs, prog, miperLev, miperMat, miperRiesgos, miperDocs] = await fetchSheetsBatch([
       `'${CONFIG.SHEET_TRABAJADORES}'!A2:AC2000`,
       `'${CONFIG.SHEET_INSPECCIONES}'!A2:M2000`,
       `'${CONFIG.SHEET_INCIDENTES}'!A2:V2000`,
@@ -986,6 +1101,10 @@ async function cargarTodo(silencioso) {
       `'${CONFIG.SHEET_SUBCONTRATISTAS}'!A2:B2000`,
       `'${CONFIG.SHEET_SUBCONTRATISTAS_DOCS}'!A2:H2000`,
       `'${CONFIG.SHEET_PROGRAMA_PERSONALIZADO}'!A2:L4000`,
+      `'${CONFIG.SHEET_MIPER_LEVANTAMIENTO}'!A2:L2000`,
+      `'${CONFIG.SHEET_MIPER_MATRIZ}'!A2:R4000`,
+      `'${CONFIG.SHEET_MIPER_RIESGOS_CUSTOM}'!A2:H500`,
+      `'${CONFIG.SHEET_MIPER_DOCUMENTOS}'!A2:P500`,
     ]);
     if (!silencioso) splash(85, 'Preparando la app...');
     allTrabajadores = trab.map((r,i) => rowToTrabajador(r,i));
@@ -1001,6 +1120,10 @@ async function cargarTodo(silencioso) {
     allSubcontratistas = subs.map((r,i) => rowToSubcontratista(r,i));
     allSubDocs = docs.map((r,i) => rowToSubDoc(r,i));
     allProgramaPersonalizado = prog.map((r,i) => rowToProgramaPersonalizado(r,i));
+    allMiperLevantamiento = miperLev.map((r,i) => rowToMiperLevantamiento(r,i));
+    allMiperMatriz = miperMat.map((r,i) => rowToMiperMatriz(r,i));
+    allMiperRiesgosCustom = miperRiesgos.map((r,i) => rowToMiperRiesgoCustom(r,i));
+    allMiperDocumentos = miperDocs.map((r,i) => rowToMiperDocumento(r,i));
     renderModulosPrincipales();
     if (!silencioso) splash(100, '¡Listo!');
     else toast('Datos actualizados ✓', 'ok');
@@ -1130,6 +1253,29 @@ function parseRegistrosPdfPrograma(str) {
 function parseDatosChecklistMensual(str) {
   if (!str) return null;
   try { return JSON.parse(str); } catch (e) { return null; }
+}
+function rowToMiperLevantamiento(r, i) {
+  return { fila: i+2, n: r[0]||'', obra: r[1]||'', proceso: r[2]||'', puesto: r[3]||'', tarea: r[4]||'',
+    rutinaria: r[5]||'Rutinaria', lugar: r[6]||'', nPersonas: r[7]||'', sexo: r[8]||'',
+    observaciones: r[9]||'', fechaRegistro: r[10]||'', registradoPor: r[11]||'' };
+}
+function rowToMiperMatriz(r, i) {
+  return { fila: i+2, n: r[0]||'', obra: r[1]||'', proceso: r[2]||'', puesto: r[3]||'', tarea: r[4]||'',
+    equipos: r[5]||'', peligro: r[6]||'', riesgo: r[7]||'', codigoRiesgo: r[8]||'', familiaRiesgo: r[9]||'',
+    probabilidad: Number(r[10])||0, consecuencia: Number(r[11])||0, vep: Number(r[12])||0,
+    nivelRiesgo: r[13]||'', medidasCodigo: r[14]||'', anexo: r[15]||'',
+    fechaRegistro: r[16]||'', registradoPor: r[17]||'' };
+}
+function rowToMiperRiesgoCustom(r, i) {
+  return { fila: i+2, n: r[0]||'', familia: r[1]||'', riesgo: r[2]||'', definicion: r[3]||'', codigo: r[4]||'',
+    medidas: r[5]||'', fechaRegistro: r[6]||'', registradoPor: r[7]||'' };
+}
+function rowToMiperDocumento(r, i) {
+  return { fila: i+2, n: r[0]||'', obra: r[1]||'', entidadEmpleadora: r[2]||'', sucursal: r[3]||'',
+    responsableLevantamiento: r[4]||'', fecha: r[5]||'', revision: Number(r[6])||0, proximaRevision: r[7]||'',
+    protocolos: (() => { try { return JSON.parse(r[8]||'[]'); } catch(e) { return []; } })(),
+    nombreElaboro: r[9]||'', nombreReviso: r[10]||'', nombreAprobo: r[11]||'',
+    pdf: r[12]||'', excel: r[13]||'', fechaRegistro: r[14]||'', registradoPor: r[15]||'' };
 }
 function rowToProgramaPersonalizado(r, i) {
   return { fila: i+2, n: r[0]||'', obra: r[1]||'', mes: r[2]||'', supervisor: r[3]||'', cargo: r[4]||'',
@@ -6912,3 +7058,703 @@ window.addEventListener('DOMContentLoaded', () => {
   // Caso 3: primera vez → mostrar login normal con botón
   mostrarLogin('Usa tu cuenta corporativa autorizada', false);
 });
+
+// ============================================================
+// MÓDULO: MATRIZ DE RIESGOS (IPER, DS44)
+// ------------------------------------------------------------
+// Automatiza el Excel "Miper DS44": Anexo 1 (Levantamiento de procesos y
+// tareas) alimenta la Matriz de Riesgos (Anexo 2-5 = catálogo de riesgos,
+// Probabilidad × Consecuencia = VEP → Nivel de Riesgo automático), Anexo 6
+// queda como checklist de Protocolos MINSAL, y el encabezado + 3 firmas +
+// Revisión/Próxima Revisión se genera como documento PDF y/o Excel.
+// ============================================================
+const MIPER_FAMILIA_LABEL = {
+  SEGURIDAD: 'Seguridad', HIGIENE: 'Higiene',
+  MUSCULO_ESQUELETICO: 'Músculo-Esquelético', PSICOSOCIAL: 'Psicosocial',
+};
+
+let obraMiperSel = 'todas';
+function obraMiperEfectiva() {
+  const obraGlobal = obraFiltroActivo();
+  const obras = opcionesObrasDisponibles();
+  return obraGlobal || (obraMiperSel !== 'todas' && obras.includes(obraMiperSel) ? obraMiperSel : null);
+}
+function onCambioObraMiper(v) { obraMiperSel = v; renderMiper(); }
+
+function renderMiper() {
+  const obraGlobal = obraFiltroActivo();
+  const obras = opcionesObrasDisponibles();
+  const obraEfectiva = obraMiperEfectiva();
+  const selectorObraHtml = obraGlobal ? '' : `
+    <div class="stats-obra-bar">${ic('obra',16)}
+      <select class="obra-selector" onchange="onCambioObraMiper(this.value)">
+        <option value="todas">Elige una obra...</option>
+        ${obras.map(o => `<option value="${esc(o)}" ${o===obraMiperSel?'selected':''}>${esc(o)}</option>`).join('')}
+      </select>
+    </div>`;
+  if (!obraEfectiva) {
+    setListHTML('miper', selectorObraHtml + emptyState('Elige una obra', 'Selecciona una obra arriba para ver su Matriz de Riesgos (IPER)'));
+    return;
+  }
+
+  const tareas = allMiperLevantamiento.filter(t => t.obra === obraEfectiva);
+  const filas = allMiperMatriz.filter(f => f.obra === obraEfectiva);
+  const docs = allMiperDocumentos.filter(d => d.obra === obraEfectiva).sort((a,b) => b.fila - a.fila);
+  const ultimoDoc = docs[0] || null;
+
+  const conteoNivel = { Tolerable: 0, Moderado: 0, Importante: 0, Intolerable: 0 };
+  filas.forEach(f => { if (conteoNivel[f.nivelRiesgo] !== undefined) conteoNivel[f.nivelRiesgo]++; });
+  const nivelBadges = MIPER_VEP.map(v => `<span class="badge ${v.color}">${conteoNivel[v.nombre]} ${v.nombre}</span>`).join('');
+
+  let avisoRevision = '';
+  if (ultimoDoc && ultimoDoc.proximaRevision) {
+    const dias = Math.round((new Date(ultimoDoc.proximaRevision) - new Date(hoyISO())) / 86400000);
+    if (dias < 0) avisoRevision = `<span class="badge red">Revisión vencida hace ${Math.abs(dias)} día(s)</span>`;
+    else if (dias <= 30) avisoRevision = `<span class="badge amber">Próxima revisión en ${dias} día(s)</span>`;
+    else avisoRevision = `<span class="badge green">Próxima revisión: ${ddmmyyyy(ultimoDoc.proximaRevision)}</span>`;
+  }
+
+  setListHTML('miper', `
+    ${selectorObraHtml}
+    <div class="card card--default">
+      <div class="card-icon modulo-icon--and">${ic('miper',18)}</div>
+      <div class="card-body">
+        <div class="card-title">${tareas.length} tarea(s) levantada(s) · ${filas.length} riesgo(s) evaluado(s)</div>
+        <div class="badge-row">${filas.length ? nivelBadges : '<span class="badge gray">Sin riesgos evaluados todavía</span>'}</div>
+      </div>
+    </div>
+
+    <div class="sec-label" style="margin-top:14px;">Levantamiento de procesos y tareas</div>
+    <button class="action-btn" onclick="abrirFormMiperTarea()">${ic('hoja',14)} Agregar tarea</button>
+    ${tareas.length === 0 ? emptyState('Sin tareas levantadas', 'Agrega la primera tarea con el botón de arriba') :
+      tareas.slice().reverse().map(t => `
+      <div class="card card--default">
+        <div class="card-body">
+          <div class="card-title">${esc(t.proceso)} — ${esc(t.tarea)}</div>
+          <div class="card-sub">${esc(t.puesto)} · ${esc(t.rutinaria)}${t.lugar ? ' · ' + esc(t.lugar) : ''}</div>
+          <div class="badge-row"><span class="badge blue">${t.nPersonas || 0} persona(s)</span>${t.sexo ? `<span class="badge gray">${esc(t.sexo)}</span>` : ''}</div>
+        </div>
+      </div>`).join('')}
+
+    <div class="sec-label" style="margin-top:14px;">Matriz de riesgos</div>
+    <button class="action-btn" onclick="${tareas.length ? "abrirFormMiperFila()" : "toast('Primero agrega una tarea en el Levantamiento','error')"}">${ic('miper',14)} Agregar riesgo</button>
+    ${filas.length === 0 ? emptyState('Sin riesgos en la matriz', 'Agrega el primer riesgo evaluado con el botón de arriba') :
+      filas.slice().reverse().map(f => {
+        const nivel = MIPER_VEP.find(v => v.nombre === f.nivelRiesgo) || MIPER_VEP[0];
+        return `
+      <div class="card card--default">
+        <div class="card-body">
+          <div class="card-title">${esc(f.riesgo)}</div>
+          <div class="card-sub">${esc(f.proceso)} — ${esc(f.tarea)}</div>
+          <div class="card-sub">${esc(f.peligro)}</div>
+          <div class="badge-row"><span class="badge ${nivel.color}">${esc(f.nivelRiesgo)} · VEP ${f.vep}</span>${f.codigoRiesgo ? `<span class="badge gray">${esc(f.codigoRiesgo)}</span>` : ''}</div>
+        </div>
+      </div>`;
+      }).join('')}
+
+    <div class="sec-label" style="margin-top:14px;">Documento</div>
+    <div class="card card--default" onclick="abrirDocumentoMiper()">
+      <div class="card-icon modulo-icon--and">${ic('documento',18)}</div>
+      <div class="card-body">
+        <div class="card-title">${ultimoDoc ? `Revisión ${ultimoDoc.revision}` : 'Sin documento generado todavía'}</div>
+        <div class="card-sub">${ultimoDoc ? `Generado el ${esc(ultimoDoc.fecha)}` : 'Completa el encabezado, firmas y protocolos para generar el PDF/Excel'}</div>
+        ${avisoRevision ? `<div class="badge-row">${avisoRevision}</div>` : ''}
+      </div>
+      <div class="card-arrow">›</div>
+    </div>
+  `);
+}
+
+// ── Botón "+" del módulo: siempre abre Levantamiento (paso obligatorio
+// antes de poder agregar filas a la matriz) ──
+function abrirMenuAgregarMiper() {
+  if (!obraMiperEfectiva()) { toast('Elige una obra primero', 'error'); return; }
+  abrirFormMiperTarea();
+}
+
+// ── Anexo 1: Levantamiento de procesos y tareas ─────────────────────────
+function procesosSugeridosMiper() {
+  return [...new Set(allMiperLevantamiento.map(t => t.proceso).filter(Boolean))].sort((a,b) => a.localeCompare(b,'es'));
+}
+function puestosSugeridosMiper() {
+  return [...new Set(allTrabajadores.map(t => t.cargo).filter(Boolean))].sort((a,b) => a.localeCompare(b,'es'));
+}
+// Match best-effort: no hay relación estructurada entre "Puesto" (texto
+// libre, a veces varios cargos juntos, ej. "Jefe de obra, supervisor,
+// jornales") y el campo Cargo de cada trabajador — se cuenta cualquier
+// trabajador activo de la obra cuyo cargo aparezca (como substring, en
+// cualquier dirección) dentro del puesto escrito.
+function trabajadoresPorPuestoMiper(obra, puesto) {
+  const p = (puesto || '').toLowerCase();
+  if (!p) return [];
+  return allTrabajadores.filter(t => t.estado === 'Activo' && t.obra === obra && t.cargo &&
+    (p.includes(t.cargo.toLowerCase()) || t.cargo.toLowerCase().includes(p)));
+}
+function abrirFormMiperTarea() {
+  const obraEfectiva = obraMiperEfectiva() || obraPreseleccionada();
+  document.getElementById('miper-tarea-body').innerHTML = `
+    <form id="form-miper-tarea" onsubmit="guardarMiperTarea(event)">
+      <div class="form-group"><label>Obra</label>
+        <select name="obra" onchange="onCambioObraSelect(this,'input-miper-tarea-obra-otra')" required>${opcionesObraSelectHTML(obraEfectiva)}</select>
+        <input type="text" id="input-miper-tarea-obra-otra" class="hidden" placeholder="Nombre de la obra" style="margin-top:8px;">
+      </div>
+      <div class="form-group"><label>Proceso</label><input name="proceso" required list="dl-miper-procesos" placeholder="Ej: Excavaciones"></div>
+      <datalist id="dl-miper-procesos">${procesosSugeridosMiper().map(p => `<option value="${esc(p)}">`).join('')}</datalist>
+      <div class="form-group"><label>Puesto de trabajo</label><input name="puesto" required list="dl-miper-puestos" placeholder="Ej: Jornal, Enfierrador"></div>
+      <datalist id="dl-miper-puestos">${puestosSugeridosMiper().map(p => `<option value="${esc(p)}">`).join('')}</datalist>
+      <div class="form-group"><label>Tarea</label><input name="tarea" required placeholder="Ej: Armado de moldaje"></div>
+      <div class="form-group"><label>Tipo</label><select name="rutinaria"><option>Rutinaria</option><option>No Rutinaria</option></select></div>
+      <div class="form-group"><label>Lugar donde se realiza la tarea</label><input name="lugar" placeholder="Ej: Interior y exterior de obra"></div>
+      <div class="form-group"><label>Observaciones</label><textarea name="observaciones" rows="2"></textarea></div>
+      <div class="card-sub" style="margin:6px 0 14px;">El N° de personas y el sexo se calculan solos contando los trabajadores activos de la obra cuyo cargo coincide con el puesto que escribiste arriba — revisa el resultado en la lista después de guardar y ajusta el puesto si no calzó bien.</div>
+      <button class="btn-add" type="submit">Guardar tarea</button>
+    </form>`;
+  const selObra = document.getElementById('form-miper-tarea').obra;
+  onCambioObraSelect(selObra, 'input-miper-tarea-obra-otra');
+  openPanel('panel-miper-tarea');
+}
+async function guardarMiperTarea(ev) {
+  ev.preventDefault();
+  const f = ev.target;
+  try {
+    const obra = valorObra(f.obra, 'input-miper-tarea-obra-otra');
+    if (!obra) { toast('Selecciona la obra', 'error'); return; }
+    const proceso = f.proceso.value.trim(), puesto = f.puesto.value.trim(), tarea = f.tarea.value.trim();
+    if (!proceso || !puesto || !tarea) { toast('Completa proceso, puesto y tarea', 'error'); return; }
+    const match = trabajadoresPorPuestoMiper(obra, puesto);
+    const nPersonas = match.length;
+    const sexos = [...new Set(match.map(t => t.sexo).filter(Boolean))];
+    const sexo = sexos.length === 0 ? '' : sexos.length === 1 ? sexos[0] : 'Mixto';
+    await appendSheet(`'${CONFIG.SHEET_MIPER_LEVANTAMIENTO}'!A:L`, [[
+      allMiperLevantamiento.length + 1, obra, proceso, puesto, tarea, f.rutinaria.value, f.lugar.value.trim(),
+      nPersonas, sexo, f.observaciones.value.trim(), new Date().toLocaleString('es-CL'), userEmail || ''
+    ]]);
+    toast('Tarea agregada ✓', 'ok');
+    closePanel('panel-miper-tarea');
+    await cargarTodo(true);
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+// ── Matriz de riesgos: agregar fila ─────────────────────────────────────
+function abrirFormMiperFila() {
+  const obra = obraMiperEfectiva();
+  if (!obra) { toast('Elige una obra primero', 'error'); return; }
+  const tareas = allMiperLevantamiento.filter(t => t.obra === obra);
+  if (tareas.length === 0) { toast('Primero agrega una tarea en el Levantamiento', 'error'); return; }
+  const catalogo = miperCatalogoCompleto();
+  const familias = [...new Set(catalogo.map(r => r.familia))];
+  document.getElementById('miper-fila-body').innerHTML = `
+    <form id="form-miper-fila" onsubmit="guardarMiperFila(event)">
+      <input type="hidden" name="obra" value="${esc(obra)}">
+      <div class="form-group"><label>Tarea</label>
+        <select name="tareaIdx" required onchange="onCambioTareaMiperFila(this)">
+          <option value="">Elige una tarea...</option>
+          ${tareas.map((t,i) => `<option value="${i}">${esc(t.proceso)} — ${esc(t.tarea)}</option>`).join('')}
+        </select>
+      </div>
+      <div class="card-sub" id="miper-fila-tarea-info"></div>
+      <div class="form-group"><label>Equipos, máquinas y herramientas</label><input name="equipos" placeholder="Ej: Taladro, esmeril, andamio"></div>
+      <div class="form-group"><label>Peligro / factor de riesgo</label><input name="peligro" required placeholder="Ej: No usar EPP, desorden en el área"></div>
+
+      <div class="form-group"><label>Riesgo</label>
+        <select name="riesgoIdx" required onchange="onCambioRiesgoMiperFila(this)">
+          <option value="">Elige un riesgo del catálogo...</option>
+          ${familias.map(fam => `<optgroup label="${esc(MIPER_FAMILIA_LABEL[fam] || fam)}">
+            ${catalogo.map((r,i) => r.familia === fam ? `<option value="${i}">${esc(r.riesgo)}${r.codigo ? ` (${esc(r.codigo)})` : ''}</option>` : '').join('')}
+          </optgroup>`).join('')}
+          <option value="__nuevo__">+ Agregar riesgo nuevo...</option>
+        </select>
+      </div>
+      <div id="miper-riesgo-detalle" class="card-sub hidden"></div>
+      <div id="miper-riesgo-nuevo" class="hidden">
+        <div class="form-group"><label>Familia del riesgo</label>
+          <select name="familiaNueva">
+            <option value="SEGURIDAD">Seguridad</option><option value="HIGIENE">Higiene</option>
+            <option value="MUSCULO_ESQUELETICO">Músculo-Esquelético</option><option value="PSICOSOCIAL">Psicosocial</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Nombre del riesgo</label><input name="riesgoNuevoNombre" placeholder="Ej: Contacto con sustancia química"></div>
+        <div class="form-group"><label>Definición</label><textarea name="definicionNueva" rows="2"></textarea></div>
+        <div class="form-group"><label>Código</label><input name="codigoNuevo" placeholder="Ej: X1"></div>
+        <div class="form-group"><label>Medidas preventivas (una por línea)</label><textarea name="medidasNuevas" rows="4" placeholder="Una medida por línea"></textarea></div>
+        <div class="card-sub" style="margin-bottom:10px;">Este riesgo queda disponible para elegir en cualquier obra de ahí en adelante.</div>
+      </div>
+
+      <button type="button" class="action-btn" style="margin:4px 0 14px;" onclick="abrirBuscadorMiperBanco()">${ic('lupa',14)} Buscar en banco histórico</button>
+
+      <div class="form-group"><label>Probabilidad</label>
+        <select name="probabilidad" required onchange="actualizarVepMiperFila()">
+          <option value="">—</option>
+          ${MIPER_PROBABILIDAD.map(p => `<option value="${p.valor}">${p.nombre}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group"><label>Consecuencia</label>
+        <select name="consecuencia" required onchange="actualizarVepMiperFila()">
+          <option value="">—</option>
+          ${MIPER_CONSECUENCIA.map(c => `<option value="${c.valor}">${c.nombre}</option>`).join('')}
+        </select>
+      </div>
+      <div class="card card--default" id="miper-vep-resultado" style="margin-bottom:14px;">
+        <div class="card-body"><div class="card-title">VEP y Nivel de Riesgo</div><div class="card-sub">Elige probabilidad y consecuencia</div></div>
+      </div>
+      <button class="btn-add" type="submit">Guardar en la matriz</button>
+    </form>
+  `;
+  openPanel('panel-miper-fila');
+}
+function onCambioTareaMiperFila(selEl) {
+  const f = selEl.form;
+  const tareas = allMiperLevantamiento.filter(t => t.obra === f.obra.value);
+  const t = tareas[selEl.value];
+  document.getElementById('miper-fila-tarea-info').textContent = t ? `Puesto: ${t.puesto} — ${t.rutinaria}` : '';
+}
+function onCambioRiesgoMiperFila(selEl) {
+  const esNuevo = selEl.value === '__nuevo__';
+  document.getElementById('miper-riesgo-nuevo').classList.toggle('hidden', !esNuevo);
+  const detalle = document.getElementById('miper-riesgo-detalle');
+  if (esNuevo || selEl.value === '') { detalle.classList.add('hidden'); detalle.innerHTML = ''; return; }
+  const r = miperCatalogoCompleto()[selEl.value];
+  if (!r) { detalle.classList.add('hidden'); return; }
+  detalle.classList.remove('hidden');
+  detalle.innerHTML = `<b>${esc(r.codigo || '')}</b> ${esc(r.definicion || '')}` +
+    (r.medidas && r.medidas.length ? `<br><br><b>Medidas preventivas:</b><ul style="margin:4px 0 0 16px;padding:0;">${r.medidas.map(m => `<li>${esc(m)}</li>`).join('')}</ul>` : '');
+}
+function actualizarVepMiperFila() {
+  const f = document.getElementById('form-miper-fila');
+  if (!f) return;
+  const el = document.getElementById('miper-vep-resultado');
+  if (!f.probabilidad.value || !f.consecuencia.value) {
+    el.innerHTML = `<div class="card-body"><div class="card-title">VEP y Nivel de Riesgo</div><div class="card-sub">Elige probabilidad y consecuencia</div></div>`;
+    return;
+  }
+  const r = miperNivelRiesgo(f.probabilidad.value, f.consecuencia.value);
+  el.innerHTML = `<div class="card-body"><div class="card-title">VEP = ${r.vep} <span class="badge ${r.color}">${r.nivel}</span></div><div class="card-sub">${esc(r.accion)}</div></div>`;
+}
+async function guardarMiperFila(ev) {
+  ev.preventDefault();
+  const f = ev.target;
+  try {
+    const obra = f.obra.value;
+    const tareas = allMiperLevantamiento.filter(t => t.obra === obra);
+    const t = tareas[f.tareaIdx.value];
+    if (!t) { toast('Elige la tarea', 'error'); return; }
+    const peligro = f.peligro.value.trim();
+    if (!peligro) { toast('Describe el peligro', 'error'); return; }
+    if (!f.probabilidad.value || !f.consecuencia.value) { toast('Elige probabilidad y consecuencia', 'error'); return; }
+    if (!f.riesgoIdx.value) { toast('Elige un riesgo', 'error'); return; }
+
+    let riesgoNombre, codigo, familia;
+    if (f.riesgoIdx.value === '__nuevo__') {
+      riesgoNombre = f.riesgoNuevoNombre.value.trim();
+      if (!riesgoNombre) { toast('Escribe el nombre del riesgo nuevo', 'error'); return; }
+      familia = f.familiaNueva.value;
+      codigo = f.codigoNuevo.value.trim();
+      const definicion = f.definicionNueva.value.trim();
+      const medidas = f.medidasNuevas.value.split('\n').map(s => s.trim()).filter(Boolean);
+      await appendSheet(`'${CONFIG.SHEET_MIPER_RIESGOS_CUSTOM}'!A:H`, [[
+        allMiperRiesgosCustom.length + 1, familia, riesgoNombre, definicion, codigo,
+        medidas.join(' | '), new Date().toLocaleString('es-CL'), userEmail || ''
+      ]]);
+      allMiperRiesgosCustom.push({ fila: 0, n: '', familia, riesgo: riesgoNombre, definicion, codigo,
+        medidas: medidas.join(' | '), fechaRegistro: '', registradoPor: userEmail || '' });
+    } else {
+      const r = miperCatalogoCompleto()[f.riesgoIdx.value];
+      if (!r) { toast('Elige un riesgo válido', 'error'); return; }
+      riesgoNombre = r.riesgo; codigo = r.codigo; familia = r.familia;
+    }
+
+    const { vep, nivel } = miperNivelRiesgo(f.probabilidad.value, f.consecuencia.value);
+    await appendSheet(`'${CONFIG.SHEET_MIPER_MATRIZ}'!A:R`, [[
+      allMiperMatriz.length + 1, obra, t.proceso, t.puesto, t.tarea, f.equipos.value.trim(), peligro,
+      riesgoNombre, codigo, familia, f.probabilidad.value, f.consecuencia.value, vep, nivel,
+      codigo, MIPER_FAMILIA_LABEL[familia] || familia, new Date().toLocaleString('es-CL'), userEmail || ''
+    ]]);
+    toast('Riesgo agregado a la matriz ✓', 'ok');
+    closePanel('panel-miper-fila');
+    await cargarTodo(true);
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+// ── Banco histórico (filas de obras anteriores, ver vendor/miper-banco.js) ──
+let miperBancoCache = [];
+async function abrirBuscadorMiperBanco() {
+  document.getElementById('miper-banco-body').innerHTML = `<div class="card-sub">Cargando banco histórico...</div>`;
+  openPanel('panel-miper-banco');
+  try {
+    miperBancoCache = await cargarMiperBanco();
+    renderBuscadorMiperBanco('');
+  } catch (e) {
+    document.getElementById('miper-banco-body').innerHTML = `<div class="card-sub">${esc(e.message)}</div>`;
+  }
+}
+function renderBuscadorMiperBanco(q) {
+  const query = (q || '').toLowerCase().trim();
+  const resultados = !query ? miperBancoCache.slice(0, 40) : miperBancoCache.filter(r =>
+    `${r.proceso} ${r.tarea} ${r.riesgo} ${r.peligro}`.toLowerCase().includes(query)
+  ).slice(0, 60);
+  document.getElementById('miper-banco-body').innerHTML = `
+    <div class="search-area"><div class="searchbox"><span class="search-ic">${ic('lupa',16)}</span>
+      <input type="text" placeholder="Busca por proceso, tarea o riesgo..." value="${esc(q || '')}" oninput="renderBuscadorMiperBanco(this.value)"></div></div>
+    <div class="card-sub" style="margin-bottom:8px;">${resultados.length} resultado(s)${query ? '' : ' — mostrando los primeros 40, escribe para filtrar'}</div>
+    ${resultados.map(r => {
+      const nivel = MIPER_VEP.find(v => v.nombre === r.nivel) || MIPER_VEP.find(v => r.vep <= v.max) || MIPER_VEP[0];
+      const idx = miperBancoCache.indexOf(r);
+      return `
+      <div class="card card--default" onclick="usarFilaBancoMiper(${idx})">
+        <div class="card-body">
+          <div class="card-title">${esc(r.riesgo)}</div>
+          <div class="card-sub">${esc(r.proceso)} — ${esc(r.tarea)}</div>
+          <div class="card-sub">${esc(r.peligro)}</div>
+          <div class="badge-row"><span class="badge ${nivel.color}">${esc(r.nivel)}</span>${r.medidasCodigo ? `<span class="badge gray">${esc(r.medidasCodigo)}</span>` : ''}</div>
+        </div>
+      </div>`;
+    }).join('') || emptyState('Sin resultados', 'Prueba con otra palabra')}
+  `;
+}
+function usarFilaBancoMiper(idx) {
+  const r = miperBancoCache[idx];
+  if (!r) return;
+  closePanel('panel-miper-banco');
+  aplicarPrefillMiperFila(r);
+}
+function aplicarPrefillMiperFila(r) {
+  const f = document.getElementById('form-miper-fila');
+  if (!f) return;
+  const tareas = allMiperLevantamiento.filter(t => t.obra === f.obra.value);
+  const tIdx = tareas.findIndex(t => t.proceso.toLowerCase() === String(r.proceso||'').toLowerCase() && t.tarea.toLowerCase() === String(r.tarea||'').toLowerCase());
+  if (tIdx >= 0) { f.tareaIdx.value = tIdx; onCambioTareaMiperFila(f.tareaIdx); }
+  f.equipos.value = r.equipos || '';
+  f.peligro.value = r.peligro || '';
+  const catalogo = miperCatalogoCompleto();
+  const rIdx = catalogo.findIndex(c => c.riesgo.toLowerCase() === String(r.riesgo||'').toLowerCase());
+  if (rIdx >= 0) { f.riesgoIdx.value = rIdx; onCambioRiesgoMiperFila(f.riesgoIdx); }
+  else if (r.riesgo) { toast(`"${r.riesgo}" no está en el catálogo — elígelo como "+ Agregar riesgo nuevo..." si quieres agregarlo`, 'ok'); }
+  const probOpt = MIPER_PROBABILIDAD.find(p => p.valor === Number(r.probabilidad));
+  if (probOpt) f.probabilidad.value = probOpt.valor;
+  const consOpt = MIPER_CONSECUENCIA.find(c => c.valor === Number(r.consecuencia));
+  if (consOpt) f.consecuencia.value = consOpt.valor;
+  actualizarVepMiperFila();
+  toast('Datos cargados desde el banco — revisa y guarda', 'ok');
+}
+
+// ── Documento: encabezado + protocolos + firmas + Revisión/Próxima Revisión ──
+function abrirDocumentoMiper() {
+  const obra = obraMiperEfectiva();
+  if (!obra) { toast('Elige una obra primero', 'error'); return; }
+  const filas = allMiperMatriz.filter(f => f.obra === obra);
+  if (filas.length === 0) { toast('Agrega al menos un riesgo a la matriz antes de generar el documento', 'error'); return; }
+  const docs = allMiperDocumentos.filter(d => d.obra === obra).sort((a,b) => b.fila - a.fila);
+  const ultimo = docs[0] || null;
+  const revisionSiguiente = ultimo ? ultimo.revision + 1 : 0;
+  document.getElementById('miper-documento-body').innerHTML = `
+    <form id="form-miper-documento" onsubmit="generarDocumentoMiper(event)">
+      <div class="form-group"><label>Entidad Empleadora</label><input name="entidadEmpleadora" required value="${esc(ultimo ? ultimo.entidadEmpleadora : '')}"></div>
+      <div class="form-group"><label>Sucursal</label><input name="sucursal" required value="${esc(ultimo ? ultimo.sucursal : obra)}"></div>
+      <div class="form-group"><label>Responsable del levantamiento</label><input name="responsableLevantamiento" required value="${esc(ultimo ? ultimo.responsableLevantamiento : '')}"></div>
+      <div class="form-group"><label>Fecha</label><input type="date" name="fecha" required value="${hoyISO()}"></div>
+      <div class="form-group"><label>Revisión</label><input value="${revisionSiguiente}" readonly></div>
+      <div class="form-group"><label>Próxima revisión</label><input type="date" name="proximaRevision" required></div>
+
+      <div class="sec-label">Protocolos de Vigilancia MINSAL aplicables</div>
+      ${MIPER_PROTOCOLOS.map((p,i) => `
+        <label style="display:flex;gap:8px;align-items:flex-start;margin-bottom:10px;font-size:13.5px;line-height:1.4;">
+          <input type="checkbox" name="protocolo" value="${i}" style="margin-top:3px;flex-shrink:0;" ${ultimo && ultimo.protocolos.includes(i) ? 'checked' : ''}>
+          <span>${esc(p)}</span>
+        </label>
+      `).join('')}
+
+      <div class="sec-label" style="margin-top:14px;">Firmas</div>
+      <div class="form-group"><label>Elaboró — nombre</label><input name="nombreElaboro" required value="${esc(ultimo ? ultimo.nombreElaboro : '')}"></div>
+      <div class="form-group"><label>Firma de quien elabora</label>
+        <div class="firma-box"><canvas id="firma-canvas-miper-elaboro"></canvas></div>
+        <div class="firma-actions"><button type="button" onclick="limpiarFirmaId('firma-canvas-miper-elaboro')">Borrar firma</button></div>
+      </div>
+      <div class="form-group"><label>Revisó — nombre</label><input name="nombreReviso" value="${esc(ultimo ? ultimo.nombreReviso : '')}"></div>
+      <div class="form-group"><label>Firma de quien revisa</label>
+        <div class="firma-box"><canvas id="firma-canvas-miper-reviso"></canvas></div>
+        <div class="firma-actions"><button type="button" onclick="limpiarFirmaId('firma-canvas-miper-reviso')">Borrar firma</button></div>
+      </div>
+      <div class="form-group"><label>Aprobó — nombre</label><input name="nombreAprobo" value="${esc(ultimo ? ultimo.nombreAprobo : '')}"></div>
+      <div class="form-group"><label>Firma de quien aprueba</label>
+        <div class="firma-box"><canvas id="firma-canvas-miper-aprobo"></canvas></div>
+        <div class="firma-actions"><button type="button" onclick="limpiarFirmaId('firma-canvas-miper-aprobo')">Borrar firma</button></div>
+      </div>
+
+      <div class="form-group"><label>Formato de salida</label>
+        <select name="formato">
+          <option value="pdf">PDF</option>
+          <option value="excel">Excel (.xlsx)</option>
+          <option value="ambos">PDF y Excel</option>
+        </select>
+      </div>
+      <button class="btn-add" type="submit">Generar documento</button>
+    </form>
+    ${docs.length ? `<div class="sec-label" style="margin-top:18px;">Documentos anteriores</div>${docs.map(d => `
+      <div class="card card--default">
+        <div class="card-body">
+          <div class="card-title">Revisión ${d.revision}</div>
+          <div class="card-sub">${esc(d.fecha)}</div>
+          <div class="badge-row">
+            ${d.pdf ? `<a class="badge blue" href="${esc(d.pdf)}" target="_blank" rel="noopener">Ver PDF</a>` : ''}
+            ${d.excel ? `<a class="badge green" href="${esc(d.excel)}" target="_blank" rel="noopener">Ver Excel</a>` : ''}
+          </div>
+        </div>
+      </div>`).join('')}` : ''}
+  `;
+  setTimeout(() => {
+    initFirmaPad('firma-canvas-miper-elaboro');
+    initFirmaPad('firma-canvas-miper-reviso');
+    initFirmaPad('firma-canvas-miper-aprobo');
+  }, 80);
+  openPanel('panel-miper-documento');
+}
+async function generarDocumentoMiper(ev) {
+  ev.preventDefault();
+  const f = ev.target;
+  try {
+    const obra = obraMiperEfectiva();
+    const filas = allMiperMatriz.filter(x => x.obra === obra);
+    if (filas.length === 0) { toast('No hay filas en la matriz', 'error'); return; }
+    if (firmaEstaVacia('firma-canvas-miper-elaboro')) { toast('Falta la firma de quien elabora', 'error'); return; }
+    if (!f.nombreElaboro.value.trim()) { toast('Falta el nombre de quien elabora', 'error'); return; }
+
+    const protocolosSel = Array.from(f.querySelectorAll('input[name="protocolo"]:checked')).map(el => Number(el.value));
+    const docsPrevios = allMiperDocumentos.filter(d => d.obra === obra).sort((a,b) => b.fila - a.fila);
+    const revision = docsPrevios[0] ? docsPrevios[0].revision + 1 : 0;
+
+    const datos = {
+      obra, entidadEmpleadora: f.entidadEmpleadora.value.trim(), sucursal: f.sucursal.value.trim(),
+      responsableLevantamiento: f.responsableLevantamiento.value.trim(), fecha: f.fecha.value,
+      revision, proximaRevision: f.proximaRevision.value, protocolosSel,
+      nombreElaboro: f.nombreElaboro.value.trim(),
+      firmaElaboroUrl: firmaCanvasADataURL('firma-canvas-miper-elaboro'),
+      nombreReviso: f.nombreReviso.value.trim(),
+      firmaRevisoUrl: firmaEstaVacia('firma-canvas-miper-reviso') ? null : firmaCanvasADataURL('firma-canvas-miper-reviso'),
+      nombreAprobo: f.nombreAprobo.value.trim(),
+      firmaAproboUrl: firmaEstaVacia('firma-canvas-miper-aprobo') ? null : firmaCanvasADataURL('firma-canvas-miper-aprobo'),
+      filas,
+    };
+
+    const formato = f.formato.value;
+    let pdfLink = '', excelLink = '';
+    const folderId = await getModuloFolder('Matriz de Riesgos');
+    const nombreBase = `Matriz_IPER_${obra}_Rev${revision}`.replace(/\s+/g, '_');
+
+    if (formato === 'pdf' || formato === 'ambos') {
+      const pdfBlob = await generarPdfMiper(datos);
+      const up = await subirBytesADrive(pdfBlob, folderId, `${nombreBase}.pdf`);
+      pdfLink = up.link;
+    }
+    if (formato === 'excel' || formato === 'ambos') {
+      const excelBlob = await generarExcelMiper(datos);
+      const up = await subirBytesADrive(excelBlob, folderId, `${nombreBase}.xlsx`);
+      excelLink = up.link;
+    }
+
+    await appendSheet(`'${CONFIG.SHEET_MIPER_DOCUMENTOS}'!A:P`, [[
+      allMiperDocumentos.length + 1, obra, datos.entidadEmpleadora, datos.sucursal, datos.responsableLevantamiento,
+      datos.fecha, revision, datos.proximaRevision, JSON.stringify(protocolosSel),
+      datos.nombreElaboro, datos.nombreReviso, datos.nombreAprobo,
+      pdfLink, excelLink, new Date().toLocaleString('es-CL'), userEmail || ''
+    ]]);
+    toast('Documento generado ✓', 'ok');
+    closePanel('panel-miper-documento');
+    await cargarTodo(true);
+  } catch (e) { console.error(e); toast(e.message, 'error'); }
+}
+
+// ── Generador PDF ────────────────────────────────────────────────────────
+async function generarPdfMiper(datos) {
+  const { PDFDocument, rgb, StandardFonts } = await cargarPdfLib();
+  const pdfDoc = await PDFDocument.create();
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const negro = rgb(0.1, 0.1, 0.12), gris = rgb(0.45, 0.45, 0.48), grisClaro = rgb(0.88, 0.88, 0.9), verdeLst = rgb(0.12, 0.42, 0.22);
+  const nivelColorRgb = {
+    Tolerable: rgb(0.16, 0.5, 0.28), Moderado: rgb(0.85, 0.6, 0.05),
+    Importante: rgb(0.85, 0.42, 0.08), Intolerable: rgb(0.78, 0.15, 0.15),
+  };
+
+  function wrapLines(str, maxWidth, size, f2) {
+    const words = (str || '').toString().split(/\s+/).filter(Boolean);
+    const lines = []; let current = '';
+    const fnt = f2 || font;
+    for (const w of words) {
+      const test = current ? current + ' ' + w : w;
+      if (fnt.widthOfTextAtSize(test, size) > maxWidth && current) { lines.push(current); current = w; }
+      else current = test;
+    }
+    if (current) lines.push(current);
+    return lines;
+  }
+  async function drawSig(page, dataUrl, x, y, w, h) {
+    if (!dataUrl) return;
+    const bytes = Uint8Array.from(atob(dataUrl.split(',')[1]), c => c.charCodeAt(0));
+    const img = await pdfDoc.embedPng(bytes);
+    const dims = escalarFirmaCasillero(img, w, h);
+    page.drawImage(img, { x, y, width: dims.width, height: dims.height });
+  }
+
+  // ---- Página 1: Portada / encabezado / firmas / protocolos ----
+  const p1 = pdfDoc.addPage([595.28, 841.89]);
+  const W = 595.28, H = 841.89;
+  let y = H - 50;
+  p1.drawText('MATRIZ DE IDENTIFICACIÓN DE PELIGROS', { x: 50, y, size: 17, font: fontBold, color: verdeLst });
+  y -= 21;
+  p1.drawText('Y EVALUACIÓN DE RIESGOS (IPER) — DS44', { x: 50, y, size: 17, font: fontBold, color: verdeLst });
+  y -= 30;
+  p1.drawLine({ start: { x: 50, y }, end: { x: W - 50, y }, thickness: 1.2, color: grisClaro });
+  y -= 26;
+
+  const campos = [
+    ['Entidad Empleadora', datos.entidadEmpleadora], ['Sucursal', datos.sucursal],
+    ['Responsable del levantamiento', datos.responsableLevantamiento],
+    ['Fecha', ddmmyyyy(datos.fecha)], ['Revisión', String(datos.revision)],
+    ['Próxima revisión', datos.proximaRevision ? ddmmyyyy(datos.proximaRevision) : '—'],
+  ];
+  campos.forEach(([label, val]) => {
+    p1.drawText(label + ':', { x: 50, y, size: 10, font: fontBold, color: negro });
+    p1.drawText(String(val || '—'), { x: 230, y, size: 10, font, color: negro });
+    y -= 18;
+  });
+
+  y -= 10;
+  p1.drawText('PROTOCOLOS DE VIGILANCIA MINSAL APLICABLES', { x: 50, y, size: 11, font: fontBold, color: negro });
+  y -= 18;
+  if (datos.protocolosSel.length === 0) {
+    p1.drawText('Ninguno marcado como aplicable.', { x: 50, y, size: 9, font, color: gris });
+    y -= 14;
+  } else {
+    datos.protocolosSel.forEach(i => {
+      const lineas = wrapLines('- ' + MIPER_PROTOCOLOS[i], W - 100, 9);
+      lineas.forEach(l => { p1.drawText(l, { x: 50, y, size: 9, font, color: negro }); y -= 13; });
+    });
+  }
+
+  y -= 12;
+  p1.drawText('RESUMEN DE LA MATRIZ', { x: 50, y, size: 11, font: fontBold, color: negro });
+  y -= 18;
+  const conteo = { Tolerable: 0, Moderado: 0, Importante: 0, Intolerable: 0 };
+  datos.filas.forEach(f => { if (conteo[f.nivelRiesgo] !== undefined) conteo[f.nivelRiesgo]++; });
+  p1.drawText(`${datos.filas.length} riesgo(s) evaluado(s) en total — ` +
+    Object.entries(conteo).map(([k,v]) => `${k}: ${v}`).join(' · '),
+    { x: 50, y, size: 9, font, color: negro });
+  y -= 30;
+
+  p1.drawText('FIRMAS', { x: 50, y, size: 11, font: fontBold, color: negro });
+  y -= 24;
+  const firmas = [
+    ['Elaboró', datos.nombreElaboro, datos.firmaElaboroUrl],
+    ['Revisó', datos.nombreReviso, datos.firmaRevisoUrl],
+    ['Aprobó', datos.nombreAprobo, datos.firmaAproboUrl],
+  ];
+  const colW = (W - 100) / 3;
+  for (let i = 0; i < firmas.length; i++) {
+    const [label, nombre, firmaUrl] = firmas[i];
+    const x = 50 + i * colW;
+    p1.drawRectangle({ x, y: y - 70, width: colW - 10, height: 60, borderColor: grisClaro, borderWidth: 1 });
+    await drawSig(p1, firmaUrl, x + 5, y - 65, colW - 20, 50);
+    p1.drawLine({ start: { x, y: y - 74 }, end: { x: x + colW - 10, y: y - 74 }, thickness: 0.7, color: gris });
+    p1.drawText(label, { x, y: y - 86, size: 9, font: fontBold, color: negro });
+    wrapLines(nombre || '—', colW - 12, 8).slice(0, 2).forEach((l, li) => {
+      p1.drawText(l, { x, y: y - 98 - li * 10, size: 8, font, color: gris });
+    });
+  }
+
+  p1.drawText(`Generado por la app de Prevención de Riesgos — ${ddmmyyyy(hoyISO())}`, { x: 50, y: 30, size: 7.5, font, color: gris });
+
+  // ---- Páginas siguientes: tabla de la matriz (apaisada) ----
+  const PW = 841.89, PH = 595.28;
+  const cols = [
+    { key: 'proceso', label: 'Proceso', w: 90 },
+    { key: 'tarea', label: 'Tarea', w: 100 },
+    { key: 'peligro', label: 'Peligro / Factor de riesgo', w: 150 },
+    { key: 'riesgo', label: 'Riesgo', w: 110 },
+    { key: 'probabilidad', label: 'Prob.', w: 34 },
+    { key: 'consecuencia', label: 'Cons.', w: 34 },
+    { key: 'vep', label: 'VEP', w: 30 },
+    { key: 'nivelRiesgo', label: 'Nivel de Riesgo', w: 78 },
+    { key: 'codigoRiesgo', label: 'Medidas (código)', w: 82 },
+    { key: 'anexo', label: 'Anexo', w: 73 },
+  ];
+  const tableX = 40, tableTop = PH - 40, rowH = 34, headerH = 22;
+  let page = null, cy = 0;
+  function nuevaPaginaTabla() {
+    page = pdfDoc.addPage([PW, PH]);
+    page.drawText(`MATRIZ DE RIESGOS (IPER) — ${datos.obra} — Rev. ${datos.revision}`, { x: tableX, y: PH - 24, size: 10, font: fontBold, color: verdeLst });
+    cy = tableTop;
+    let cx = tableX;
+    cols.forEach(c => {
+      page.drawRectangle({ x: cx, y: cy - headerH, width: c.w, height: headerH, color: rgb(0.12,0.42,0.22) });
+      wrapLines(c.label, c.w - 6, 7.5, fontBold).slice(0,2).forEach((l, li) => {
+        page.drawText(l, { x: cx + 3, y: cy - 10 - li * 9, size: 7.5, font: fontBold, color: rgb(1,1,1) });
+      });
+      cx += c.w;
+    });
+    cy -= headerH;
+  }
+  nuevaPaginaTabla();
+  datos.filas.forEach(f => {
+    if (cy - rowH < 30) nuevaPaginaTabla();
+    let cx = tableX;
+    const nivelColor = nivelColorRgb[f.nivelRiesgo] || negro;
+    cols.forEach(c => {
+      page.drawRectangle({ x: cx, y: cy - rowH, width: c.w, height: rowH, borderColor: grisClaro, borderWidth: 0.6 });
+      let val = f[c.key];
+      const color = c.key === 'nivelRiesgo' ? nivelColor : negro;
+      const bold = c.key === 'nivelRiesgo';
+      wrapLines(String(val ?? ''), c.w - 6, 6.8).slice(0, 4).forEach((l, li) => {
+        page.drawText(l, { x: cx + 3, y: cy - 10 - li * 8, size: 6.8, font: bold ? fontBold : font, color });
+      });
+      cx += c.w;
+    });
+    cy -= rowH;
+  });
+
+  const bytes = await pdfDoc.save();
+  return new Blob([bytes], { type: 'application/pdf' });
+}
+
+// ── Generador Excel ──────────────────────────────────────────────────────
+async function generarExcelMiper(datos) {
+  const XLSX = await cargarXlsxLib();
+  const wb = XLSX.utils.book_new();
+
+  const encabezado = [
+    ['MATRIZ DE IDENTIFICACIÓN DE PELIGROS Y EVALUACIÓN DE RIESGOS (IPER) — DS44'],
+    [],
+    ['Entidad Empleadora', datos.entidadEmpleadora],
+    ['Sucursal', datos.sucursal],
+    ['Responsable del levantamiento', datos.responsableLevantamiento],
+    ['Fecha', ddmmyyyy(datos.fecha)],
+    ['Revisión', datos.revision],
+    ['Próxima revisión', datos.proximaRevision ? ddmmyyyy(datos.proximaRevision) : ''],
+    ['Elaboró', datos.nombreElaboro], ['Revisó', datos.nombreReviso], ['Aprobó', datos.nombreAprobo],
+    [],
+    ['Protocolos de Vigilancia MINSAL aplicables'],
+    ...(datos.protocolosSel.length ? datos.protocolosSel.map(i => [MIPER_PROTOCOLOS[i]]) : [['Ninguno marcado como aplicable']]),
+    [],
+    ['Proceso', 'Puesto', 'Tarea', 'Equipos', 'Peligro', 'Riesgo', 'Código', 'Familia',
+     'Probabilidad', 'Consecuencia', 'VEP', 'Nivel de Riesgo', 'Medidas (código)', 'Anexo'],
+  ];
+  datos.filas.forEach(f => {
+    encabezado.push([f.proceso, f.puesto, f.tarea, f.equipos, f.peligro, f.riesgo, f.codigoRiesgo, f.familiaRiesgo,
+      f.probabilidad, f.consecuencia, f.vep, f.nivelRiesgo, f.medidasCodigo, f.anexo]);
+  });
+  const ws = XLSX.utils.aoa_to_sheet(encabezado);
+  ws['!cols'] = [
+    {wch:16},{wch:22},{wch:22},{wch:20},{wch:34},{wch:24},{wch:9},{wch:14},
+    {wch:11},{wch:12},{wch:7},{wch:14},{wch:14},{wch:14},
+  ];
+  XLSX.utils.book_append_sheet(wb, ws, 'Matriz de Riesgos');
+
+  const catCatalogo = miperCatalogoCompleto();
+  const catRows = [['Familia', 'Riesgo', 'Código', 'Definición', 'Medidas preventivas']];
+  catCatalogo.forEach(r => catRows.push([MIPER_FAMILIA_LABEL[r.familia] || r.familia, r.riesgo, r.codigo, r.definicion, (r.medidas||[]).join(' | ')]));
+  const wsCat = XLSX.utils.aoa_to_sheet(catRows);
+  wsCat['!cols'] = [{wch:16},{wch:34},{wch:9},{wch:60},{wch:80}];
+  XLSX.utils.book_append_sheet(wb, wsCat, 'Catálogo de riesgos');
+
+  const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+  return new Blob([wbout], { type: 'application/octet-stream' });
+}

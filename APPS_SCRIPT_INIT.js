@@ -116,6 +116,37 @@ function inicializarPlanilla() {
     'Datos Checklist Mensual'
   ]);
 
+  // Matriz IPER (DS44) — Anexo 1: levantamiento de procesos/tareas por obra.
+  crearHoja(ss, 'MIPER_LEVANTAMIENTO', [
+    'N°', 'Obra', 'Proceso', 'Puesto', 'Tarea', 'Rutinaria', 'Lugar',
+    'N Personas', 'Sexo', 'Observaciones', 'Fecha Registro', 'Registrado Por'
+  ]);
+
+  // Matriz IPER — filas de la matriz (una fila = un peligro/riesgo evaluado
+  // para una tarea). VEP y Nivel de Riesgo los calcula la app sola.
+  crearHoja(ss, 'MIPER_MATRIZ', [
+    'N°', 'Obra', 'Proceso', 'Puesto', 'Tarea', 'Equipos', 'Peligro', 'Riesgo',
+    'Codigo Riesgo', 'Familia Riesgo', 'Probabilidad', 'Consecuencia', 'VEP',
+    'Nivel Riesgo', 'Medidas Codigo', 'Anexo', 'Fecha Registro', 'Registrado Por'
+  ]);
+
+  // Matriz IPER — riesgos agregados a mano por los supervisores que no
+  // estaban en el catálogo fijo de la app (Anexos 2-5 del DS44); quedan
+  // disponibles para elegir en cualquier obra de ahí en adelante.
+  crearHoja(ss, 'MIPER_RIESGOS_CUSTOM', [
+    'N°', 'Familia', 'Riesgo', 'Definicion', 'Codigo', 'Medidas',
+    'Fecha Registro', 'Registrado Por'
+  ]);
+
+  // Matriz IPER — un registro por versión/documento generado de la matriz
+  // de una obra (encabezado, firmas, protocolos marcados y el PDF/Excel).
+  crearHoja(ss, 'MIPER_DOCUMENTOS', [
+    'N°', 'Obra', 'Entidad Empleadora', 'Sucursal', 'Responsable Levantamiento',
+    'Fecha', 'Revision', 'Proxima Revision', 'Protocolos',
+    'Nombre Elaboro', 'Nombre Reviso', 'Nombre Aprobo',
+    'PDF', 'Excel', 'Fecha Registro', 'Registrado Por'
+  ]);
+
   // Elimina la hoja "Hoja 1" / "Sheet1" default si quedó vacía
   const porDefecto = ss.getSheetByName('Hoja 1') || ss.getSheetByName('Sheet1');
   if (porDefecto && porDefecto.getLastRow() === 0 && ss.getSheets().length > 1) {

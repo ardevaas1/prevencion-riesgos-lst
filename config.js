@@ -20,6 +20,14 @@ const CONFIG = {
   SHEET_SUBCONTRATISTAS_DOCS: 'SUBCONTRATISTAS_DOCS',
   SHEET_PROGRAMA_PERSONALIZADO: 'PROGRAMA_PERSONALIZADO',
 
+  // Matriz IPER (DS44) — ver MIPER_CATALOGO_RIESGOS/MIPER_PROTOCOLOS en app.js
+  // para los catálogos fijos (no van en el Sheet), y vendor/miper-banco.js
+  // para el banco histórico de filas reutilizables.
+  SHEET_MIPER_LEVANTAMIENTO: 'MIPER_LEVANTAMIENTO',
+  SHEET_MIPER_MATRIZ:        'MIPER_MATRIZ',
+  SHEET_MIPER_RIESGOS_CUSTOM:'MIPER_RIESGOS_CUSTOM',
+  SHEET_MIPER_DOCUMENTOS:    'MIPER_DOCUMENTOS',
+
   DRIVE_ROOT_FOLDER: '1evnqIfGtNCO_hQq9rwgBWMZgk647zMIe',
 
   SCOPES: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file',
