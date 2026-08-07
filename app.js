@@ -4360,6 +4360,13 @@ function initFirmaPad(canvasId) {
   const id = canvasId || 'firma-canvas';
   firmaCanvasId = id;
   const canvas = document.getElementById(id);
+  if (!canvas) return;
+  // El canvas puede llegar acá todavía sin layout (ej. justo después de
+  // reemplazar el HTML del panel, con varias firmas inicializándose casi
+  // en paralelo) — con ancho 0 quedaría un canvas inválido (getImageData
+  // revienta al firmar). Si pasa, se reintenta en el próximo frame en vez
+  // de dejarlo así.
+  if (canvas.clientWidth === 0) { requestAnimationFrame(() => initFirmaPad(id)); return; }
   canvas.width = canvas.clientWidth; canvas.height = 180;
   const ctx = canvas.getContext('2d');
   firmaCtx = ctx;
@@ -4388,6 +4395,7 @@ function limpiarFirmaId(canvasId) {
 function limpiarFirma() { limpiarFirmaId(firmaCanvasId); }
 function firmaEstaVacia(canvasId) {
   const canvas = document.getElementById(canvasId);
+  if (!canvas || canvas.width === 0 || canvas.height === 0) return true;
   const ctx = canvas.getContext('2d');
   const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
   for (let i = 3; i < data.length; i += 4) if (data[i] !== 0) return false;
