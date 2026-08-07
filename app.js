@@ -6326,7 +6326,7 @@ async function dibujarPaginaGrillaSupervisor(pdfDoc, ctx, encabezadoFn, obra, me
   let y = H - 74;
   page.drawText(`PROGRAMA DE ACTIVIDADES — ${g.supervisor}`, { x: 40, y, size: 12, font: fontBold, color: negro });
   y -= 15;
-  page.drawText(`${g.cargo || ''} · Obra: ${obra} · Mes: ${nombreMes(mes)}`, { x: 40, y, size: 9, font, color: gris });
+  page.drawText(`${g.cargo || ''} - Obra: ${obra} - Mes: ${nombreMes(mes)}`, { x: 40, y, size: 9, font, color: gris });
   y -= 20;
 
   const dias = diasEnMes(mes);
@@ -6476,7 +6476,7 @@ async function generarInformeProgramaPersonalizado(obra, mes, responsable) {
       page.drawImage(logoImg, { x: 40, y: H - 46, width: logoDim.width, height: logoDim.height });
       const tituloTxt = 'INFORME PROGRAMA PERSONALIZADO';
       page.drawText(tituloTxt, { x: W/2 - fontBold.widthOfTextAtSize(tituloTxt, 13)/2, y: H - 40, size: 13, font: fontBold, color: negro });
-      const info = `${obra} · ${nombreMes(mes)}`;
+      const info = `${obra} - ${nombreMes(mes)}`;
       page.drawText(info, { x: W - 40 - font.widthOfTextAtSize(info, 9), y: H - 40, size: 9, font, color: gris });
       page.drawLine({ start: { x: 40, y: H - 58 }, end: { x: W - 40, y: H - 58 }, thickness: 1, color: grisLinea });
     }
@@ -6530,7 +6530,7 @@ async function generarInformeProgramaPersonalizado(obra, mes, responsable) {
     y = 792 - 90;
     page.drawText('ESTADO GENERAL DE LA OBRA', { x: 40, y, size: 12, font: fontBold, color: negro });
     y -= 10;
-    page.drawText(`${obra} · ${nombreMes(mes)}`, { x: 40, y: y - 10, size: 9, font, color: gris });
+    page.drawText(`${obra} - ${nombreMes(mes)}`, { x: 40, y: y - 10, size: 9, font, color: gris });
 
     const trabajadoresObraLista = allTrabajadores.filter(t => t.obra === obra && t.estado === 'Activo');
     const porCargo = Object.entries(trabajadoresObraLista.reduce((acc, t) => {
@@ -6656,7 +6656,7 @@ async function generarInformeProgramaPersonalizado(obra, mes, responsable) {
       y -= 20;
     });
     y -= 6;
-    page.drawText(`Acumulado ${st.anio} · ${st.nAccidentes} accidente(s) con tiempo perdido.`, { x: 40, y, size: 9, font, color: gris });
+    page.drawText(`Acumulado ${st.anio} - ${st.nAccidentes} accidente(s) con tiempo perdido.`, { x: 40, y, size: 9, font, color: gris });
 
     y -= 40;
     const yBaseIndices = y - 90;
@@ -6667,7 +6667,7 @@ async function generarInformeProgramaPersonalizado(obra, mes, responsable) {
     y = yBaseIndices - 40;
     page.drawText('ENTREGA DE EPP EN LA OBRA', { x: 40, y, size: 12, font: fontBold, color: negro });
     y -= 20;
-    page.drawText(`${eppItemsObra.entregas} entrega(s) registrada(s) en ${nombreMes(mes)} · ${eppItemsObra.totalItems} implemento(s) en total.`, { x: 40, y, size: 10, font, color: negro });
+    page.drawText(`${eppItemsObra.entregas} entrega(s) registrada(s) en ${nombreMes(mes)} - ${eppItemsObra.totalItems} implemento(s) en total.`, { x: 40, y, size: 10, font, color: negro });
     y -= 22;
     const itemsOrdenados = Object.entries(eppItemsObra.items).sort((a, b) => b[1] - a[1]);
     if (itemsOrdenados.length === 0) {
