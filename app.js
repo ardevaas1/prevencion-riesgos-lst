@@ -7217,7 +7217,7 @@ function abrirImportarProgramaMiper() {
   const obraEfectiva = obraMiperEfectiva() || obraPreseleccionada();
   document.getElementById('miper-programa-body').innerHTML = `
     <div class="card-sub" style="margin-bottom:12px;">
-      Sube el Excel del Programa de la obra (mismo formato que "PROGRAMA EDIFICIO – RENDIMIENTOS REALES DE TERRENO": una fila por partida con código ITEM + nombre). La app detecta los encabezados de sección (ej: "A.1 INSTALACION DE FAENAS...") como Proceso, y cada partida con código y nombre como Tarea.
+      Sube el Excel de programación de la obra (el mismo que usa la oficina técnica). Así, al agregar una tarea vas a poder elegir el Proceso y la Tarea de una lista real, en vez de escribirlos a mano. Si no lo tienes a mano, no pasa nada: puedes seguir sin este paso y escribirlo directo.
     </div>
     <div class="form-group"><label>Obra</label>
       <select id="select-miper-programa-obra" onchange="onCambioObraSelect(this,'input-miper-programa-obra-otra')">${opcionesObraSelectHTML(obraEfectiva)}</select>
