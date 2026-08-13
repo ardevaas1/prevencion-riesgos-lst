@@ -29,6 +29,10 @@ const CONFIG = {
   SHEET_MIPER_DOCUMENTOS:    'MIPER_DOCUMENTOS',
   SHEET_MIPER_PROGRAMA:      'MIPER_PROGRAMA',
 
+  // Capacitación DS44 art.16 (8 hrs) — ver CAPACITACION_DS44_MODULOS en
+  // app.js para el contenido fijo de los 7 módulos.
+  SHEET_CAPACITACION_DS44: 'CAPACITACION_DS44',
+
   DRIVE_ROOT_FOLDER: '1evnqIfGtNCO_hQq9rwgBWMZgk647zMIe',
 
   SCOPES: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file',

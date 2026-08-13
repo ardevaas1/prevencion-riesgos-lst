@@ -120,15 +120,18 @@ repositorio de GitHub **separado**.
   Riesgos, carga bajo demanda (`cargarMiperBanco`) — ver "Módulo Matriz de
   Riesgos (IPER, DS44)" más abajo.
 
-## Estructura de datos (Google Sheet, 19 pestañas)
+## Estructura de datos (Google Sheet, 20 pestañas)
 
 `TRABAJADORES`, `INSPECCIONES`, `CHARLAS`, `INCIDENTES`, `INVESTIGACIONES`,
 `HCR`, `DIAT`, `PROCEDIMIENTOS`, `ENTREGA_EPP`, `USUARIOS`, `SUBCONTRATISTAS`,
 `SUBCONTRATISTAS_DOCS`, `PROGRAMA_PERSONALIZADO`, `MIPER_LEVANTAMIENTO`,
-`MIPER_MATRIZ`, `MIPER_RIESGOS_CUSTOM`, `MIPER_DOCUMENTOS`, `MIPER_PROGRAMA`.
+`MIPER_MATRIZ`, `MIPER_RIESGOS_CUSTOM`, `MIPER_DOCUMENTOS`, `MIPER_PROGRAMA`,
+`CAPACITACION_DS44`.
 
 Las 5 pestañas `MIPER_*` son del módulo Matriz de Riesgos (IPER, DS44) — ver
-"Módulo Matriz de Riesgos (IPER, DS44)" más abajo.
+"Módulo Matriz de Riesgos (IPER, DS44)" más abajo. `CAPACITACION_DS44` es del
+módulo de capacitación DS44 art.16 — ver "Módulo Capacitación DS44 art.16 (8
+hrs)" más abajo.
 
 `PROGRAMA_PERSONALIZADO` (`N°`, `Obra`, `Mes`, `Supervisor`, `Cargo`,
 `Actividad`, `Frecuencia`, `Dias Marcados`, `Fecha Registro`, `Registrado
@@ -952,11 +955,71 @@ pestaña por pestaña antes de programar nada.
   en particular los procesos importados del Programa Edificio. Lleva el
   logo de LST (`logo.png`, el azul vigente — codificado como JPEG pese a
   la extensión `.png`) insertado solo en la hoja OBRAS PREVIAS, a la
-  derecha de la tabla impresa para no superponer ninguna celda; se validó
+  izquierda del título (chico, 65×52px, para no taparlo — a pedido del
+  cliente tras dos rondas de ajuste de posición y tamaño); se validó
   que el XML del dibujo generado tiene una única referencia `r:embed`
   (sin `r:link` doble, que fue lo que se sospechó causó el daño real en
   Excel del primer intento de agregar el logo, cuando todavía se partía
   de la plantilla del cliente en vez de construir desde cero).
+
+## Módulo Capacitación DS44 art.16 (8 hrs)
+
+Curso obligatorio de 8 horas exigido por el artículo 16 del Decreto Supremo
+N° 44 de 2023 (Resolución Exenta N° 1117/2026, "Guía Técnica" que reglamenta
+el curso). A diferencia del resto de la app (que registra/trazabiliza
+documentos ya generados fuera de la app), este módulo **dicta el curso
+dentro de la app**: el trabajador hace los módulos de contenido + evaluación
+en modo autoservicio desde su celular, y el prevencionista de LST registra
+aparte la sesión sincrónica/presencial obligatoria.
+
+- **Estructura (`CAPACITACION_DS44_MODULOS` en `app.js`):** 7 módulos fijos
+  en el código (Introducción sin evaluación + 6 módulos de contenido con
+  evaluación, según el índice de la Guía Técnica: marco legal, identificación
+  de peligros, riesgos y salud, medidas preventivas, emergencias, y
+  señalización/incendios). El contenido de estos 6 módulos fue redactado
+  citando la ley/DS44/Guía Técnica — **no es el "curso tipo" SCORM oficial**
+  de la Subsecretaría de Previsión Social: la Guía Técnica exige un trámite
+  formal (solicitud + aceptación de términos en previsionsocial.gob.cl/ds44)
+  para obtenerlo, que solo LST puede completar. La idea es sustituir este
+  contenido por el oficial una vez LST lo solicite.
+- **Módulo real de MIPER (`especial: 'miper'` en el módulo "Identificación de
+  peligros"):** en vez de un ejemplo genérico, `resumenMiperParaCapacitacion`
+  muestra un resumen real (conteo por Nivel de Riesgo + últimas 3 filas) de
+  la Matriz de Riesgos (`MIPER_MATRIZ`) de la obra del trabajador — a pedido
+  explícito del cliente, para usar la matriz real de la obra como ejemplo
+  práctico en vez de contenido genérico.
+- **Evaluación no excluyente:** la Guía Técnica exige que la evaluación sea
+  "de carácter pedagógico, no selectivo ni excluyente" — no hay nota mínima
+  que reprueba. Si el trabajador responde mal, ve el error inline (✗ + "vuelve
+  a intentarlo") y puede reintentar las veces que necesite; el panel nunca lo
+  saca ni bloquea el avance por una respuesta incorrecta.
+- **Sesión sincrónica/presencial:** la Guía Técnica exige que la parte
+  sincrónica del curso (cuando se dicta directamente, no con el curso tipo
+  completo) la dé un facilitador experto en prevención de riesgos — LST usa
+  su propio prevencionista para esto. La app no dicta esa parte: solo
+  registra que ocurrió (`abrirRegistrarSincronicoDs44`/`guardarSincronicoDs44`
+  — nombre del facilitador + fecha).
+- **Modelo de datos (`CAPACITACION_DS44`):** patrón nuevo en esta app —
+  "encontrar-o-crear" (`obtenerOCrearCapacitacionDs44`): la primera vez que
+  un trabajador abre su curso se hace un único `appendSheet`, y de ahí en
+  adelante todo avance (módulo completado, sesión sincrónica, certificado)
+  es un `PUT` de una sola celda sobre esa misma fila — la fila nunca se
+  vuelve a agregar. `Modulos Completados` guarda un JSON
+  `[{modulo, fecha, resultado, intentos}]`.
+- **Certificado y vigencia:** al completar los 7 módulos (evaluación
+  correcta) + la sesión sincrónica, `verificarCompletarCursoDs44` genera un
+  PDF con pdf-lib (`generarCertificadoDs44`), lo sube a Drive y guarda la
+  fecha de completado + vencimiento a 2 años (portabilidad entre empleadores
+  del mismo rubro dentro de ese plazo, según la Guía Técnica) — mismo patrón
+  de vigencia que Examen de Altura.
+- **Integración con la ficha del trabajador:** nueva sección "Capacitación
+  DS44 (8 hrs)" en la ficha (mismo patrón que Contrato/Examen de Altura) con
+  badge de estado y botón "Ver curso" que abre `abrirCursoDs44(trabajador,
+  obra)` pasando la obra real del trabajador de forma explícita (no la obra
+  activa del filtro global, que puede no coincidir).
+- **Sin FAB propio:** el módulo no tiene botón "+" de acción rápida — se
+  entra siempre eligiendo un trabajador (desde la lista del módulo o desde
+  su ficha), nunca creando un registro suelto.
 
 ## Asignación de supervisor y modo restringido de supervisor
 

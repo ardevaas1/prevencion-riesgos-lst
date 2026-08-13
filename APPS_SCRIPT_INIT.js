@@ -156,6 +156,16 @@ function inicializarPlanilla() {
     'Fecha Registro', 'Registrado Por'
   ]);
 
+  // Capacitación DS44 art.16 (8 hrs obligatorias) — un registro por
+  // trabajador+obra. Modulos Completados guarda un JSON con el progreso de
+  // cada uno de los 7 módulos (fecha, resultado, intentos). Vencimiento se
+  // calcula a 2 años desde Fecha Completado (Resolución 1117 exenta, 2026).
+  crearHoja(ss, 'CAPACITACION_DS44', [
+    'N°', 'Trabajador', 'Rut', 'Obra', 'Fecha Inicio', 'Modulos Completados',
+    'Fecha Completado', 'Fecha Vencimiento', 'Facilitador Sincronico',
+    'Fecha Sincronico', 'Certificado', 'Fecha Registro', 'Registrado Por'
+  ]);
+
   // Elimina la hoja "Hoja 1" / "Sheet1" default si quedó vacía
   const porDefecto = ss.getSheetByName('Hoja 1') || ss.getSheetByName('Sheet1');
   if (porDefecto && porDefecto.getLastRow() === 0 && ss.getSheets().length > 1) {

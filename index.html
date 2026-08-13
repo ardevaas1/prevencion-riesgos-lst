@@ -248,6 +248,12 @@
       <div data-list="miper"></div>
     </div>
 
+    <!-- CAPACITACIÓN DS44 ART.16 (8 HRS) -->
+    <div class="page" id="page-capacitacionds44">
+      <div class="sec-label">Capacitación DS44 (8 hrs)</div>
+      <div data-list="capacitacionds44"></div>
+    </div>
+
   </div>
 
   <!-- FAB agregar (contextual) -->
@@ -352,6 +358,7 @@
   <div class="dt-page" id="dt-page-subcontratistas"><div data-list="subcontratistas"></div></div>
   <div class="dt-page" id="dt-page-programapersonalizado"><div data-list="programapersonalizado"></div></div>
   <div class="dt-page" id="dt-page-miper"><div data-list="miper"></div></div>
+  <div class="dt-page" id="dt-page-capacitacionds44"><div data-list="capacitacionds44"></div></div>
 </div>
 
 </div><!-- /#app -->
@@ -1238,6 +1245,22 @@
   <div class="panel-body" id="miper-programa-body"></div>
 </div>
 
+<!-- ===== PANELES: Capacitación DS44 art.16 (8 hrs) ===== -->
+<div class="panel hidden" id="panel-ds44-curso">
+  <div class="panel-bar"><div class="pnl-back" onclick="closePanel('panel-ds44-curso')">‹ Volver</div><div class="pnl-title">Curso DS44</div><div></div></div>
+  <div class="panel-body" id="ds44-curso-body"></div>
+</div>
+
+<div class="panel hidden" id="panel-ds44-modulo">
+  <div class="panel-bar"><div class="pnl-back" onclick="closePanel('panel-ds44-modulo')">‹ Volver</div><div class="pnl-title">Módulo</div><div></div></div>
+  <div class="panel-body" id="ds44-modulo-body"></div>
+</div>
+
+<div class="panel hidden" id="panel-ds44-sincronico">
+  <div class="panel-bar"><div class="pnl-back" onclick="closePanel('panel-ds44-sincronico')">‹ Volver</div><div class="pnl-title">Sesión sincrónica</div><div></div></div>
+  <div class="panel-body" id="ds44-sincronico-body"></div>
+</div>
+
 <div class="toast hidden" id="toast"></div>
 
 <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -1249,7 +1272,7 @@
     procedimientos: 'Procedimientos de Trabajo Seguro', epp: 'Entrega de EPP',
     trabajadores: 'Trabajadores', charlas: 'Charlas de Seguridad', hcr: 'Hoja de Control de Riesgos (HCR)',
     subcontratistas: 'Subcontratistas', programapersonalizado: 'Programa Personalizado',
-    miper: 'Matriz de Riesgos (IPER)',
+    miper: 'Matriz de Riesgos (IPER)', capacitacionds44: 'Capacitación DS44 (8 hrs)',
   };
 
   // Aplica el color del módulo activo a un header (móvil o el del sidebar
@@ -1291,7 +1314,7 @@
     const map = { inicio:'page-inicio', inspecciones:'page-inspecciones', incidentes:'page-incidentes',
       procedimientos:'page-procedimientos', epp:'page-epp', trabajadores:'page-trabajadores', charlas:'page-charlas',
       hcr:'page-hcr', subcontratistas:'page-subcontratistas', programapersonalizado:'page-programapersonalizado',
-      miper:'page-miper' };
+      miper:'page-miper', capacitacionds44:'page-capacitacionds44' };
     document.getElementById(map[nombre]).classList.add('active');
 
     // Header móvil: en Inicio muestra el logo (color naranjo de marca);
