@@ -8465,7 +8465,7 @@ function abrirModuloDs44(trabajador, obra, idx) {
              ${p.opciones.map((op, oi) => `
              <label style="display:flex;gap:8px;align-items:flex-start;margin:6px 0;font-size:13.5px;line-height:1.4;">
                <input type="radio" name="p${pi}" value="${oi}" style="margin-top:3px;flex-shrink:0;">
-               <span>${esc(op)}</span>
+               <span style="flex:1;min-width:0;">${esc(op)}</span>
              </label>`).join('')}
              <div class="card-sub ds44-resultado-pregunta hidden" data-resultado="${pi}"></div>
            </div>`).join('')}
