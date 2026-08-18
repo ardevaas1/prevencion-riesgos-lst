@@ -7179,20 +7179,28 @@ window.addEventListener('DOMContentLoaded', () => {
       }
       let resuelto = false;
       const prevCb = tokenClient.callback;
+      // Si el navegador bloquea el popup del intento silencioso (puede pasar
+      // porque este intento arranca solo, sin un tap directo del usuario que
+      // lo autorice — algunos navegadores/dispositivos bloquean cualquier
+      // popup que no venga pegado a un gesto real), reintentar con el mismo
+      // truco tampoco sirve: el navegador lo va a volver a bloquear. Por eso
+      // acá se reintenta como máximo una vez (antes eran 2, ~20s de espera)
+      // y con timeouts más cortos, para llegar rápido al botón manual
+      // "Iniciar sesión" — un tap real sí abre el popup sin que lo bloqueen.
       const watchdog = setTimeout(() => {
         if (resuelto) return;
         resuelto = true;
         tokenClient.callback = prevCb;
-        if (intentos < 3) { setTimeout(intentarSilencioso, 1200); }
+        if (intentos < 2) { setTimeout(intentarSilencioso, 600); }
         else { mostrarLogin('Usa tu cuenta corporativa autorizada', false); }
-      }, 6000);
+      }, 3000);
       tokenClient.callback = async (resp) => {
         if (resuelto) return;
         resuelto = true;
         clearTimeout(watchdog);
         tokenClient.callback = prevCb;
         if (resp.error) {
-          if (intentos < 3 && resp.error !== 'access_denied') { setTimeout(intentarSilencioso, 1200); }
+          if (intentos < 2 && resp.error !== 'access_denied') { setTimeout(intentarSilencioso, 600); }
           else { mostrarLogin('Usa tu cuenta corporativa autorizada', false); }
           return;
         }
