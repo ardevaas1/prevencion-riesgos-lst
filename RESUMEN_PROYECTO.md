@@ -937,22 +937,38 @@ pestaña por pestaña antes de programar nada.
   el uso que ExcelJS sí soporta de forma confiable.
   No hay una pestaña "MATRIZ DE RIESGOS" separada — a pedido del cliente,
   la que se edita/crece es OBRAS PREVIAS: trae el encabezado del documento
-  que se está generando (entidad/firmas/protocolos) y, en la tabla, el
-  banco histórico completo seguido de las filas nuevas de esta obra al
-  final, como un registro único que se sigue extendiendo (igual que el uso
-  real que el cliente le da a su archivo). El estilo replica lo medido
-  directamente sobre el Excel que mandó el cliente: Proceso/Puesto/Tarea/
-  Equipos combinados y en verde (`92D050`) cuando una tarea tiene varios
-  peligros, y el Nivel de Riesgo coloreado como semáforo (Tolerable
-  `66FF33` / Moderado `FFFF00` / Importante `FFC000` / Intolerable
-  `FF0000`). El archivo se sube a Drive/Matriz de Riesgos/ con nombre
-  `Matriz_IPER_{obra}_Rev{N}.xlsx`. ExcelJS se eligió en vez de SheetJS
-  porque el build vendorizable de SheetJS (`xlsx.core.min.js`, usado en una
-  primera versión) no soporta escribir color de celda — se probó y el
-  color quedaba silenciosamente descartado al guardar. Anchos de columna
-  ensanchados (a diferencia de los primeros calculados por proporción
-  directa del original) para que se lea bien con contenido real más largo,
-  en particular los procesos importados del Programa Edificio. Lleva el
+  que se está generando (entidad/firmas) y, en la tabla, el banco histórico
+  completo seguido de las filas nuevas de esta obra al final, como un
+  registro único que se sigue extendiendo (igual que el uso real que el
+  cliente le da a su archivo). Los protocolos de vigilancia aplicables NO
+  se repiten acá — viven solo en ANEXO 6, igual que en el original.
+  El estilo replica lo medido directamente sobre el Excel real que mandó
+  el cliente (comparado celda por celda con openpyxl, no a ojo): campos del
+  encabezado (Entidad Empleadora, Sucursal, etc.) en celdas combinadas de 2
+  filas de alto, igual aire que el original; anchos de columna calculados
+  sumando el ancho real de cada grupo de columnas combinadas del original
+  (ej. Equipos y Peligro son las más anchas, ~148-152 unidades, porque en
+  el original también lo son); combinación en dos niveles — Proceso+Puesto
+  se combinan sobre TODO el bloque de filas que comparte esos dos valores
+  (que puede cubrir varias Tareas distintas), y Tarea+Equipos se combinan
+  solo dentro de ese bloque, sobre las filas que además comparten esos dos
+  — igual jerarquía que el original (evita repetir el proceso cada vez que
+  cambia solo la tarea); cada bloque combinado con borde medio en su
+  perímetro y borde fino en las celdas de datos sueltas (Peligro/Riesgo/
+  Probabilidad/etc.), sin color custom en los bordes — el original usa el
+  color "automático" (negro) de Excel, no un gris. Verde `92D050` en los
+  bloques Proceso/Puesto/Tarea/Equipos, Nivel de Riesgo coloreado como
+  semáforo (Tolerable `66FF33` / Moderado `FFFF00` / Importante `FFC000` /
+  Intolerable `FF0000`). El archivo se sube a Drive/Matriz de Riesgos/ con
+  nombre `Matriz_IPER_{obra}_Rev{N}.xlsx`. ExcelJS se eligió en vez de
+  SheetJS porque el build vendorizable de SheetJS (`xlsx.core.min.js`,
+  usado en una primera versión) no soporta escribir color de celda — se
+  probó y el color quedaba silenciosamente descartado al guardar.
+  Ojo con un detalle no obvio de ExcelJS al combinar celdas verticalmente:
+  todas las celdas de un rango combinado comparten el MISMO objeto de
+  estilo (tocar el borde de cualquier fila del rango pisa el de las demás)
+  — por eso el borde de cada bloque se fija una sola vez sobre la celda
+  ancla (primera fila), no por fila individual dentro del rango. Lleva el
   logo de LST (`logo.png`, el azul vigente — codificado como JPEG pese a
   la extensión `.png`) insertado solo en la hoja OBRAS PREVIAS, a la
   izquierda del título (chico, 65×52px, para no taparlo — a pedido del

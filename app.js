@@ -7985,22 +7985,22 @@ async function generarExcelMiper(datos) {
   const wb = new ExcelJS.Workbook();
   wb.creator = 'Prevención de Riesgos LST';
 
-  const bordeFino = { style: 'thin', color: { argb: 'FF999999' } };
+  // Sin color explícito = negro por defecto, igual que el original (que usa
+  // el color "automático" de Excel, no un gris custom).
+  const bordeFino = { style: 'thin' };
+  const bordeMedio = { style: 'medium' };
   const borde = { top: bordeFino, left: bordeFino, bottom: bordeFino, right: bordeFino };
   const NCOLS = 12;
   // Anchos y textos de encabezado medidos directamente sobre el Excel del
   // cliente (incluido el error de tipeo "MAQUINRIAS" — se replica tal cual
-  // porque así está en el documento original). Los anchos son
-  // proporcionales al ancho combinado real de cada columna en el Excel
-  // original (que usa muchas columnas angostas combinadas, ej. Equipos son
-  // 18 columnas combinadas, Proceso son solo 4) traducido a una grilla más
-  // simple de 12 columnas — misma proporción visual, sin las miles de
-  // combinaciones de celda del archivo original.
-  // Anchos ajustados para que se lea bien con contenido real (procesos
-  // largos importados del Programa Edificio, ej. "INST. SIST. EVACUACION
-  // DE DESECHOS SOLIDOS") sin dejar de mantener Equipos/Peligro como las
-  // columnas más anchas, igual que en el Excel original.
-  const ANCHOS_TABLA = [22, 18, 28, 38, 42, 17, 9, 9, 7, 10, 11, 13];
+  // porque así está en el documento original). El original usa 84 columnas
+  // angostas agrupadas en 12 columnas lógicas combinadas (ej. Equipos son
+  // 18 columnas combinadas, Proceso son solo 4) — acá se usa una grilla de
+  // 12 columnas (una por columna lógica) con el mismo ancho TOTAL sumado
+  // de cada grupo en el original (en las mismas unidades de ancho de
+  // Excel), para que la proporción entre columnas sea la real, no una
+  // aproximación visual.
+  const ANCHOS_TABLA = [30.9, 38.3, 81.4, 147.9, 151.7, 56.2, 25.3, 25.3, 16.9, 25.3, 33.7, 50.6];
   const TXT_EQUIPOS = 'EQUIPOS MAQUINRIAS Y HERRAMIENTAS';
 
   // Encabezado de tabla (4 filas: PROCESO/PUESTO/TAREA/EQUIPOS/PELIGRO/
@@ -8043,58 +8043,91 @@ async function generarExcelMiper(datos) {
     });
     return f4 + 1;
   }
-  // Filas de datos — Proceso/Puesto/Tarea/Equipos combinados y en verde
-  // cuando se repiten en filas consecutivas (una tarea con varios
-  // peligros), Nivel de Riesgo coloreado como semáforo — igual que el
-  // Excel original. Fuente/alineación de cada columna calcada del Excel
+  // Filas de datos — dos niveles de combinación, igual que el Excel
+  // original: Proceso+Puesto se combinan sobre TODO el bloque de filas
+  // consecutivas que comparten Proceso y Puesto (que puede cubrir varias
+  // Tareas distintas), y dentro de ese bloque, Tarea+Equipos se combinan
+  // solo sobre las filas consecutivas que además comparten Tarea y
+  // Equipos (una tarea con varios peligros). Nivel de Riesgo coloreado
+  // como semáforo. Fuente/alineación de cada columna calcada del Excel
   // original: Proceso/Puesto en 12pt negrita centrado, el resto en 10pt
   // normal (Peligro/Riesgo alineados a la izquierda, el resto centrado).
+  // Cada bloque (externo e interno) queda enmarcado con borde medio en su
+  // perímetro, con separadores finos adentro — igual que el original.
   function escribirFilasTabla(ws, filaInicio, filas) {
     const fuenteGrupo = { name: 'Calibri', bold: true, size: 12 };
     const fuenteDato = { name: 'Calibri', size: 10 };
     const alinCentro = { wrapText: true, vertical: 'middle', horizontal: 'center' };
     const alinIzq = { wrapText: true, vertical: 'middle', horizontal: 'left' };
-    let r = filaInicio, i = 0;
-    while (i < filas.length) {
-      let j = i;
-      while (j + 1 < filas.length &&
-        filas[j+1].proceso === filas[i].proceso && filas[j+1].puesto === filas[i].puesto &&
-        filas[j+1].tarea === filas[i].tarea && filas[j+1].equipos === filas[i].equipos) j++;
-      const filaGrupoInicio = r;
-      for (let k = i; k <= j; k++) {
-        const f = filas[k];
-        ws.getCell(r, 5).value = f.peligro; ws.getCell(r, 5).font = fuenteDato; ws.getCell(r, 5).alignment = alinIzq;
-        ws.getCell(r, 6).value = f.riesgo; ws.getCell(r, 6).font = fuenteDato; ws.getCell(r, 6).alignment = alinIzq;
-        ws.getCell(r, 7).value = f.probabilidad; ws.getCell(r, 7).font = fuenteDato; ws.getCell(r, 7).alignment = alinCentro;
-        ws.getCell(r, 8).value = f.consecuencia; ws.getCell(r, 8).font = fuenteDato; ws.getCell(r, 8).alignment = alinCentro;
-        ws.getCell(r, 9).value = f.vep; ws.getCell(r, 9).font = fuenteDato; ws.getCell(r, 9).alignment = alinCentro;
-        const nivel = f.nivelRiesgo || f.nivel;
-        const nivelCell = ws.getCell(r, 10);
-        nivelCell.value = nivel; nivelCell.font = fuenteDato; nivelCell.alignment = alinCentro;
-        nivelCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: MIPER_COLOR_NIVEL_EXCEL[nivel] || 'FFFFFFFF' } };
-        ws.getCell(r, 11).value = f.medidasCodigo; ws.getCell(r, 11).font = fuenteDato; ws.getCell(r, 11).alignment = alinCentro;
-        ws.getCell(r, 12).value = f.anexo; ws.getCell(r, 12).font = fuenteDato; ws.getCell(r, 12).alignment = alinCentro;
-        for (let c = 1; c <= NCOLS; c++) ws.getCell(r, c).border = borde;
-        r++;
+
+    // ExcelJS trata todas las celdas de un rango combinado como el mismo
+    // objeto de estilo (cualquier celda del rango que se toque termina
+    // pisando el borde de las demás) — por eso alcanza con fijar el borde
+    // una sola vez sobre la celda ancla: Excel lo dibuja igual como un
+    // único marco alrededor de todo el rectángulo combinado.
+    function enmarcarBloque(filaTop, colIni, colFin) {
+      for (let c = colIni; c <= colFin; c++) {
+        ws.getCell(filaTop, c).border = { top: bordeMedio, bottom: bordeMedio, left: bordeMedio, right: bordeMedio };
       }
-      const filaGrupoFin = r - 1;
-      const f0 = filas[i];
-      ws.getCell(filaGrupoInicio, 1).value = f0.proceso;
-      ws.getCell(filaGrupoInicio, 2).value = f0.puesto;
-      ws.getCell(filaGrupoInicio, 3).value = f0.tarea;
-      ws.getCell(filaGrupoInicio, 4).value = f0.equipos;
-      if (filaGrupoFin > filaGrupoInicio) [1, 2, 3, 4].forEach(c => ws.mergeCells(filaGrupoInicio, c, filaGrupoFin, c));
+    }
+
+    let r = filaInicio, iExt = 0;
+    while (iExt < filas.length) {
+      let jExt = iExt;
+      while (jExt + 1 < filas.length &&
+        filas[jExt+1].proceso === filas[iExt].proceso && filas[jExt+1].puesto === filas[iExt].puesto) jExt++;
+      const filaExtInicio = r;
+
+      let iInt = iExt;
+      while (iInt <= jExt) {
+        let jInt = iInt;
+        while (jInt + 1 <= jExt &&
+          filas[jInt+1].tarea === filas[iInt].tarea && filas[jInt+1].equipos === filas[iInt].equipos) jInt++;
+        const filaIntInicio = r;
+        for (let k = iInt; k <= jInt; k++) {
+          const f = filas[k];
+          ws.getCell(r, 5).value = f.peligro; ws.getCell(r, 5).font = fuenteDato; ws.getCell(r, 5).alignment = alinIzq;
+          ws.getCell(r, 6).value = f.riesgo; ws.getCell(r, 6).font = fuenteDato; ws.getCell(r, 6).alignment = alinIzq;
+          ws.getCell(r, 7).value = f.probabilidad; ws.getCell(r, 7).font = fuenteDato; ws.getCell(r, 7).alignment = alinCentro;
+          ws.getCell(r, 8).value = f.consecuencia; ws.getCell(r, 8).font = fuenteDato; ws.getCell(r, 8).alignment = alinCentro;
+          ws.getCell(r, 9).value = f.vep; ws.getCell(r, 9).font = fuenteDato; ws.getCell(r, 9).alignment = alinCentro;
+          const nivel = f.nivelRiesgo || f.nivel;
+          const nivelCell = ws.getCell(r, 10);
+          nivelCell.value = nivel; nivelCell.font = fuenteDato; nivelCell.alignment = alinCentro;
+          nivelCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: MIPER_COLOR_NIVEL_EXCEL[nivel] || 'FFFFFFFF' } };
+          ws.getCell(r, 11).value = f.medidasCodigo; ws.getCell(r, 11).font = fuenteDato; ws.getCell(r, 11).alignment = alinCentro;
+          ws.getCell(r, 12).value = f.anexo; ws.getCell(r, 12).font = fuenteDato; ws.getCell(r, 12).alignment = alinCentro;
+          for (let c = 5; c <= NCOLS; c++) {
+            const cell = ws.getCell(r, c);
+            cell.border = { top: bordeFino, bottom: bordeFino, left: bordeFino, right: c === NCOLS ? bordeMedio : bordeFino };
+          }
+          r++;
+        }
+        const filaIntFin = r - 1;
+        const fInt = filas[iInt];
+        ws.getCell(filaIntInicio, 3).value = fInt.tarea;
+        ws.getCell(filaIntInicio, 4).value = fInt.equipos;
+        if (filaIntFin > filaIntInicio) [3, 4].forEach(c => ws.mergeCells(filaIntInicio, c, filaIntFin, c));
+        [3, 4].forEach(c => {
+          const cell = ws.getCell(filaIntInicio, c);
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: MIPER_COLOR_BLOQUE_TAREA_EXCEL } };
+          cell.font = fuenteDato; cell.alignment = alinCentro;
+        });
+        enmarcarBloque(filaIntInicio, 3, 4);
+        iInt = jInt + 1;
+      }
+      const filaExtFin = r - 1;
+      const fExt = filas[iExt];
+      ws.getCell(filaExtInicio, 1).value = fExt.proceso;
+      ws.getCell(filaExtInicio, 2).value = fExt.puesto;
+      if (filaExtFin > filaExtInicio) [1, 2].forEach(c => ws.mergeCells(filaExtInicio, c, filaExtFin, c));
       [1, 2].forEach(c => {
-        const cell = ws.getCell(filaGrupoInicio, c);
+        const cell = ws.getCell(filaExtInicio, c);
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: MIPER_COLOR_BLOQUE_TAREA_EXCEL } };
         cell.font = fuenteGrupo; cell.alignment = alinCentro;
       });
-      [3, 4].forEach(c => {
-        const cell = ws.getCell(filaGrupoInicio, c);
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: MIPER_COLOR_BLOQUE_TAREA_EXCEL } };
-        cell.font = fuenteDato; cell.alignment = alinCentro;
-      });
-      i = j + 1;
+      enmarcarBloque(filaExtInicio, 1, 2);
+      iExt = jExt + 1;
     }
     return r;
   }
@@ -8119,38 +8152,44 @@ async function generarExcelMiper(datos) {
   titulo.alignment = { vertical: 'middle', wrapText: true };
   wsPrevias.getRow(r).height = 34;
   r += 2;
+  // Cada campo ocupa 2 filas de alto (combinadas) en vez de 1 — igual que
+  // el original (ENTIDAD EMPLEADORA en B7:I8, etc.), para que el bloque de
+  // encabezado tenga el mismo aire/altura que el documento real, no una
+  // fila angosta por dato. Los "PROTOCOLOS DE VIGILANCIA..." NO van acá:
+  // en el original esa lista vive solo en ANEXO 6 (que este generador ya
+  // arma más abajo), no repetida dentro de OBRAS PREVIAS.
   function campoIzq(fila, label, value) {
-    wsPrevias.getCell(fila, 1).value = label; wsPrevias.getCell(fila, 1).font = { bold: true };
-    wsPrevias.mergeCells(fila, 2, fila, 5); wsPrevias.getCell(fila, 2).value = value;
+    wsPrevias.mergeCells(fila, 1, fila + 1, 1);
+    const cLabel = wsPrevias.getCell(fila, 1);
+    cLabel.value = label; cLabel.font = { bold: true }; cLabel.alignment = { vertical: 'middle', wrapText: true };
+    wsPrevias.mergeCells(fila, 2, fila + 1, 5);
+    const cVal = wsPrevias.getCell(fila, 2);
+    cVal.value = value; cVal.alignment = { vertical: 'middle' };
   }
   function campoDer(fila, label, value) {
-    wsPrevias.getCell(fila, 7).value = label; wsPrevias.getCell(fila, 7).font = { bold: true };
-    wsPrevias.mergeCells(fila, 8, fila, NCOLS); wsPrevias.getCell(fila, 8).value = value;
+    wsPrevias.mergeCells(fila, 7, fila + 1, 7);
+    const cLabel = wsPrevias.getCell(fila, 7);
+    cLabel.value = label; cLabel.font = { bold: true }; cLabel.alignment = { vertical: 'middle', wrapText: true };
+    wsPrevias.mergeCells(fila, 8, fila + 1, NCOLS);
+    const cVal = wsPrevias.getCell(fila, 8);
+    cVal.value = value; cVal.alignment = { vertical: 'middle' };
   }
   campoIzq(r, 'ENTIDAD EMPLEADORA', datos.entidadEmpleadora);
-  campoDer(r, 'NOMBRE Y FIRMA ELABORO', datos.nombreElaboro); r++;
+  campoDer(r, 'NOMBRE Y FIRMA ELABORO', datos.nombreElaboro); r += 2;
   campoIzq(r, 'SUCURSAL', datos.sucursal);
-  campoDer(r, 'NOMBRE Y FIRMA REVISION', datos.nombreReviso); r++;
+  campoDer(r, 'NOMBRE Y FIRMA REVISION', datos.nombreReviso); r += 2;
   campoIzq(r, 'RESPONSABLE LEVANTAMIENTO', datos.responsableLevantamiento);
-  campoDer(r, 'NOMBRE Y FIRMA APROBACION', datos.nombreAprobo); r++;
-  wsPrevias.getCell(r, 1).value = 'FECHA'; wsPrevias.getCell(r, 1).font = { bold: true };
-  wsPrevias.getCell(r, 2).value = ddmmyyyy(datos.fecha);
-  wsPrevias.getCell(r, 4).value = 'REVISION'; wsPrevias.getCell(r, 4).font = { bold: true };
-  wsPrevias.getCell(r, 5).value = datos.revision;
+  campoDer(r, 'NOMBRE Y FIRMA APROBACION', datos.nombreAprobo); r += 2;
+  wsPrevias.mergeCells(r, 1, r + 1, 1);
+  { const c = wsPrevias.getCell(r, 1); c.value = 'FECHA'; c.font = { bold: true }; c.alignment = { vertical: 'middle' }; }
+  wsPrevias.mergeCells(r, 2, r + 1, 2);
+  { const c = wsPrevias.getCell(r, 2); c.value = ddmmyyyy(datos.fecha); c.alignment = { vertical: 'middle' }; }
+  wsPrevias.mergeCells(r, 4, r + 1, 4);
+  { const c = wsPrevias.getCell(r, 4); c.value = 'REVISION'; c.font = { bold: true }; c.alignment = { vertical: 'middle' }; }
+  wsPrevias.mergeCells(r, 5, r + 1, 5);
+  { const c = wsPrevias.getCell(r, 5); c.value = datos.revision; c.alignment = { vertical: 'middle' }; }
   campoDer(r, 'PROXIMA REVISION', datos.proximaRevision ? ddmmyyyy(datos.proximaRevision) : '');
-  r += 2;
-  wsPrevias.mergeCells(r, 1, r, NCOLS);
-  wsPrevias.getCell(r, 1).value = 'PROTOCOLOS DE VIGILANCIA MINSAL APLICABLES';
-  wsPrevias.getCell(r, 1).font = { bold: true };
-  r++;
-  if (datos.protocolosSel.length === 0) {
-    wsPrevias.mergeCells(r, 1, r, NCOLS); wsPrevias.getCell(r, 1).value = 'Ninguno marcado como aplicable'; r++;
-  } else {
-    datos.protocolosSel.forEach(i => {
-      wsPrevias.mergeCells(r, 1, r, NCOLS); wsPrevias.getCell(r, 1).value = '- ' + MIPER_PROTOCOLOS[i]; r++;
-    });
-  }
-  r++;
+  r += 3;
   r = escribirEncabezadoTabla(wsPrevias, r);
   let banco = [];
   try { banco = await cargarMiperBanco(); } catch (e) { /* si no carga el banco histórico, solo quedan las filas nuevas */ }
