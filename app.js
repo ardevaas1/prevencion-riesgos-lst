@@ -925,6 +925,23 @@ async function llamarWebAppSubcontratista(accion, datos) {
   return data;
 }
 
+// Sugerencias con IA para la Matriz de Riesgos (MIPER) — ver
+// APPS_SCRIPT_WEBAPP_MIPER_IA.js. Mismo motivo de Content-Type
+// "text/plain" que llamarWebAppSubcontratista (evita el preflight OPTIONS
+// que Apps Script no responde).
+async function llamarWebAppMiperIa(datos) {
+  if (!CONFIG.MIPER_IA_WEBAPP_URL) throw new Error('Falta configurar MIPER_IA_WEBAPP_URL en config.js');
+  const res = await fetch(CONFIG.MIPER_IA_WEBAPP_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ accion: 'sugerirRiesgos', ...datos }),
+  });
+  if (!res.ok) throw new Error('Error ' + res.status + ' llamando a la Web App de sugerencias IA');
+  const data = await res.json();
+  if (data.error) throw new Error(data.error);
+  return data;
+}
+
 // ── UI helpers ───────────────────────────────────────────────
 function splash(pct, hint) {
   const fill = document.getElementById('splash-progress');
@@ -7582,6 +7599,8 @@ function abrirFormMiperFila() {
       </div>
       <div class="card-sub" id="miper-fila-tarea-info"></div>
       <div class="form-group"><label>Equipos, máquinas y herramientas</label><input name="equipos" placeholder="Ej: Taladro, esmeril, andamio"></div>
+      ${CONFIG.MIPER_IA_WEBAPP_URL ? `
+      <button type="button" class="action-btn" style="margin-bottom:14px;" onclick="sugerirRiesgosIaMiper()">${ic('miper',14)} Sugerencia automática (revisa antes de guardar)</button>` : ''}
 
       <div class="sec-label" style="margin-top:10px;">Peligros y riesgos de esta tarea</div>
       <div class="card-sub" style="margin-bottom:10px;">Agrega todos los peligros que apliquen — cada uno con su propio riesgo, probabilidad y consecuencia. Se guardan todos juntos como filas de la matriz.</div>
@@ -7594,6 +7613,39 @@ function abrirFormMiperFila() {
   `;
   agregarBloquePeligroMiper();
   openPanel('panel-miper-fila');
+}
+// Le pide a la IA (vía APPS_SCRIPT_WEBAPP_MIPER_IA.js) que sugiera
+// Peligro/Riesgo/Probabilidad/Consecuencia para la Tarea+Equipos ya
+// elegidos a mano — Proceso/Puesto/Tarea/Equipos siempre quedan como los
+// escribió el supervisor, la IA solo elige riesgos del catálogo YA
+// VIGENTE (nunca inventa uno nuevo) y arma los bloques con
+// agregarBloquePeligroMiper(prefill), el mismo mecanismo que ya usa el
+// buscador del banco histórico — el supervisor los revisa/edita/borra
+// como cualquier bloque normal antes de "Guardar en la matriz": no se
+// guarda nada solo por pedir la sugerencia.
+async function sugerirRiesgosIaMiper() {
+  const f = document.getElementById('form-miper-fila');
+  if (!f.tareaIdx.value) { toast('Elige una tarea primero', 'error'); return; }
+  const tareas = allMiperLevantamiento.filter(t => t.obra === f.obra.value);
+  const t = tareas[f.tareaIdx.value];
+  const equipos = f.equipos.value.trim();
+  const catalogo = miperCatalogoCompleto();
+  toast('Pidiendo sugerencias a la IA...');
+  try {
+    const data = await llamarWebAppMiperIa({
+      proceso: t.proceso, puesto: t.puesto, tarea: t.tarea, equipos,
+      catalogo: catalogo.map(r => ({ codigo: r.codigo, riesgo: r.riesgo, familia: r.familia, definicion: r.definicion })),
+    });
+    const sugerencias = (data.sugerencias || []).map(s => ({ ...s, riesgoIdx: catalogo.findIndex(r => r.codigo === s.codigo) }))
+      .filter(s => s.riesgoIdx !== -1);
+    if (sugerencias.length === 0) { toast('La IA no encontró sugerencias — completa a mano', 'error'); return; }
+    document.getElementById('miper-bloques-peligro').innerHTML = '';
+    miperBloqueContador = 0;
+    sugerencias.forEach(s => agregarBloquePeligroMiper(s));
+    toast(`${sugerencias.length} sugerencias agregadas — revísalas antes de guardar`, 'ok');
+  } catch (e) {
+    toast('Error pidiendo sugerencias: ' + e.message, 'error');
+  }
 }
 function bloquePeligroHtmlMiper(idx, prefill) {
   const catalogo = miperCatalogoCompleto();

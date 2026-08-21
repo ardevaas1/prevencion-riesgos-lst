@@ -1057,6 +1057,44 @@ aparte la sesión sincrónica/presencial obligatoria.
   entra siempre eligiendo un trabajador (desde la lista del módulo o desde
   su ficha), nunca creando un registro suelto.
 
+- **Sugerencias con IA para Peligro/Riesgo (opcional):** a pedido del
+  cliente, para que completar la matriz sea más simple. Proceso/Puesto de
+  Trabajo/Tarea (Levantamiento) y Equipos (al agregar una fila) siguen
+  siendo 100% manuales — la IA NUNCA los toca. Lo que sí puede sugerir,
+  con esos 4 datos como contexto: Peligro/Riesgo/Probabilidad/Consecuencia
+  para esa tarea puntual, eligiendo el Riesgo del catálogo YA VIGENTE
+  (`MIPER_CATALOGO_RIESGOS` + custom) — nunca inventa un riesgo nuevo, solo
+  el texto concreto del Peligro y la evaluación. Botón "Sugerir con IA"
+  (`sugerirRiesgosIaMiper` en `app.js`) en el formulario de agregar fila,
+  visible solo si `CONFIG.MIPER_IA_WEBAPP_URL` está configurado — si no,
+  el módulo sigue 100% manual como siempre. Reusa el mismo mecanismo de
+  prellenado (`agregarBloquePeligroMiper(prefill)`) que ya usaba el
+  buscador del banco histórico, así que las sugerencias quedan en los
+  mismos bloques editables de siempre — el supervisor las revisa, ajusta o
+  borra antes de tocar "Guardar en la matriz". Nada se autoguarda: es
+  prellenado, no autocompletado silencioso.
+  Backend: `APPS_SCRIPT_WEBAPP_MIPER_IA.js` (Web App de Apps Script, mismo
+  patrón que Subcontratistas — necesaria porque una API key de LLM no se
+  puede exponer en código que corre en el navegador). Recibe Proceso/
+  Puesto/Tarea/Equipos + el catálogo completo (sin las medidas preventivas,
+  para no inflar el prompt) y llama a la API de Claude pidiendo un array
+  JSON `[{codigo, peligro, probabilidad, consecuencia}]`; filtra cualquier
+  código que la IA haya devuelto y que no esté realmente en el catálogo
+  recibido, antes de devolver la respuesta. Requiere que el cliente
+  consiga su propia API key de Anthropic (console.anthropic.com) y la
+  guarde como propiedad del script — instrucciones completas en el
+  encabezado de ese archivo. Mismo detalle de CORS que
+  `llamarWebAppSubcontratista`: `Content-Type: text/plain` al llamar (no
+  `application/json`), porque Apps Script no responde al preflight OPTIONS
+  que el navegador manda para JSON.
+  Probado end-to-end con Playwright (interacción real: elegir tarea,
+  escribir equipos, click en "Sugerir con IA" con la Web App mockeada):
+  confirma que el contexto mandado es exactamente lo que el supervisor
+  escribió a mano, que un código inventado por la IA se filtra antes de
+  llegar al formulario, que el prellenado dispara el mismo detalle de
+  riesgo (definición/medidas) que la selección manual, y que el supervisor
+  puede seguir editando el texto sugerido antes de guardar.
+
 ## Asignación de supervisor y modo restringido de supervisor
 
 A pedido explícito ("prefiero que sea manual y que luego la persona

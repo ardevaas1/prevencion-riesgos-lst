@@ -45,4 +45,10 @@ const CONFIG = {
   // (la app cae automáticamente a este camino solo cuando detecta que la
   // cuenta no tiene permiso directo sobre el Sheet).
   SUBCONTRATISTAS_WEBAPP_URL: 'https://script.google.com/macros/s/AKfycbweJpxQTzVhSce2dvJsQnxclMVRDMFBLGvd9IL7_UY-LSLJFgFc1x2VvEyl7e7Rr8Xb/exec',
+
+  // URL de la Web App de Apps Script para sugerencias con IA en la Matriz
+  // de Riesgos (ver APPS_SCRIPT_WEBAPP_MIPER_IA.js) — deja vacío ('') si no
+  // la vas a usar: el botón "Sugerir con IA" simplemente no aparece y el
+  // resto del módulo MIPER sigue funcionando 100% manual, como siempre.
+  MIPER_IA_WEBAPP_URL: '',
 };
