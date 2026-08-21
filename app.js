@@ -8080,6 +8080,14 @@ async function generarExcelMiper(datos) {
     const fuenteDato = { name: 'Calibri', size: 10 };
     const alinCentro = { wrapText: true, vertical: 'middle', horizontal: 'center' };
     const alinIzq = { wrapText: true, vertical: 'middle', horizontal: 'left' };
+    // Proceso/Puesto/Tarea/Equipos pueden quedar combinados sobre MUCHAS
+    // filas (un proceso con varias tareas, o una tarea con varios
+    // peligros) — con el banco histórico real esto puede ser más de 200
+    // filas. Centrar verticalmente ahí deja el texto flotando a la mitad
+    // del bloque, invisible al abrir el archivo (que arranca mirando la
+    // fila de arriba) — se alinea arriba en vez de al centro para que el
+    // texto siempre se vea apenas se llega a ese bloque.
+    const alinCentroArriba = { wrapText: true, vertical: 'top', horizontal: 'center' };
 
     // ExcelJS trata todas las celdas de un rango combinado como el mismo
     // objeto de estilo (cualquier celda del rango que se toque termina
@@ -8145,7 +8153,7 @@ async function generarExcelMiper(datos) {
           const cell = ws.getCell(filaIntInicio, g.ini);
           cell.value = key === 'tarea' ? fInt.tarea : fInt.equipos;
           cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: MIPER_COLOR_BLOQUE_TAREA_EXCEL } };
-          cell.font = fuenteDato; cell.alignment = alinCentro;
+          cell.font = fuenteDato; cell.alignment = alinCentroArriba;
           ws.mergeCells(filaIntInicio, g.ini, filaIntFin, g.fin);
           enmarcarBloque(filaIntInicio, key);
         });
@@ -8158,7 +8166,7 @@ async function generarExcelMiper(datos) {
         const cell = ws.getCell(filaExtInicio, g.ini);
         cell.value = key === 'proceso' ? fExt.proceso : fExt.puesto;
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: MIPER_COLOR_BLOQUE_TAREA_EXCEL } };
-        cell.font = fuenteGrupo; cell.alignment = alinCentro;
+        cell.font = fuenteGrupo; cell.alignment = alinCentroArriba;
         ws.mergeCells(filaExtInicio, g.ini, filaExtFin, g.fin);
         enmarcarBloque(filaExtInicio, key);
       });
