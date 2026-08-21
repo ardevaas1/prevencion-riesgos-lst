@@ -937,63 +937,58 @@ pestaña por pestaña antes de programar nada.
   el uso que ExcelJS sí soporta de forma confiable.
   No hay una pestaña "MATRIZ DE RIESGOS" separada — a pedido del cliente,
   la que se edita/crece es OBRAS PREVIAS: trae el encabezado del documento
-  que se está generando (entidad/firmas) y, en la tabla, el banco histórico
-  completo seguido de las filas nuevas de esta obra al final, como un
-  registro único que se sigue extendiendo (igual que el uso real que el
-  cliente le da a su archivo). Los protocolos de vigilancia aplicables NO
-  se repiten acá — viven solo en ANEXO 6, igual que en el original.
-  El estilo replica lo medido directamente sobre el Excel real que mandó
-  el cliente (comparado celda por celda con openpyxl, no a ojo).
-  **Columnas (`GRUPOS_TABLA` en `app.js`):** un primer intento colapsó las
-  84 columnas angostas del original en 12 columnas lógicas, cada una tan
-  ancha como la suma real de su grupo (~30 a ~152 unidades) — se veía
-  parejo en el dump de celdas, pero en la práctica 2-3 columnas gigantes
-  dominaban toda la pantalla y el resto (incluidas las firmas del
-  encabezado, puestas más a la derecha) quedaba a cientos de unidades de
-  ancho, invisible sin hacer scroll horizontal — el cliente lo notó
-  comparándolo con un formato hecho para otra empresa (Cecinas Naranjo)
-  que sí se ve parejo. Se corrigió usando la MISMA cantidad de columnas
-  angostas por grupo que el original (Proceso 4, Puesto 5, Tarea 10,
-  Equipos 18, Peligro 18, Riesgo 7, Probabilidad/Consecuencia/Nivel 3 c/u,
-  VEP 2, Medidas 4, Anexo 6 — mismas letras de columna que el archivo real:
-  B-E, F-J, K-T, U-AL, AM-BD, etc.), sin ancho custom (todas al default de
-  Excel) — la proporción entre grupos sale sola de cuántas columnas tiene
-  cada uno, igual que en el original.
-  **Encabezado del documento:** campos (Entidad Empleadora, Sucursal, etc.)
-  en celdas combinadas de 2 filas de alto, en pares lado a lado con su
-  firma correspondiente (Entidad Empleadora junto a Nombre y Firma
-  Elaboró, etc.) — esto solo funciona bien con columnas angostas de
-  verdad; con el intento de 12 columnas anchas un campo puesto a la
-  derecha quedaba invisible, así que en ese momento se probó apilar todo
-  en una sola columna (ya no hace falta con columnas angostas).
-  **Combinación en dos niveles** — Proceso+Puesto se combinan sobre TODO
-  el bloque de filas que comparte esos dos valores (que puede cubrir
-  varias Tareas distintas), y Tarea+Equipos se combinan solo dentro de ese
-  bloque, sobre las filas que además comparten esos dos — igual jerarquía
-  que el original (evita repetir el proceso cada vez que cambia solo la
-  tarea); cada bloque combinado con borde medio en su perímetro y borde
-  fino en las celdas de datos sueltas (Peligro/Riesgo/Probabilidad/etc.),
-  sin color custom en los bordes — el original usa el color "automático"
-  (negro) de Excel, no un gris. Verde `92D050` en los bloques Proceso/
-  Puesto/Tarea/Equipos, Nivel de Riesgo coloreado como semáforo (Tolerable
-  `66FF33` / Moderado `FFFF00` / Importante `FFC000` / Intolerable
-  `FF0000`).
-  **Hoja LEYENDA CODIGOS:** una fila resumen por cada código de medida
-  preventiva usado en la matriz (Peligro, Riesgo, Probabilidad,
-  Consecuencia, VEP, Nivel de Riesgo con su color, la medida preventiva
-  completa desde el catálogo, y el Anexo), encabezado verde y fila
-  congelada — diseño calcado del mismo formato de Cecinas Naranjo que le
-  gustó al cliente.
+  que se está generando (entidad/firmas/protocolos de vigilancia aplicables)
+  y, en la tabla, el banco histórico completo seguido de las filas nuevas
+  de esta obra al final, como un registro único que se sigue extendiendo
+  (igual que el uso real que el cliente le da a su archivo).
+  Grilla simplificada de 12 columnas (`ANCHOS_TABLA` en `app.js`, una por
+  cada campo lógico: Proceso/Puesto/Tarea/Equipos/Peligro/Riesgo/
+  Probabilidad/Consecuencia/VEP/Nivel/Medidas/Anexo) con anchos ajustados
+  a ojo para que se lea bien en pantalla — no es una réplica columna por
+  columna del original (que usa 84 columnas angostas combinadas). Se
+  probó una versión que sí replicaba esa estructura columna por columna
+  (mismas letras B-E/F-J/K-T/etc. que el archivo real, combinación en dos
+  niveles Proceso+Puesto/Tarea+Equipos, hoja extra "LEYENDA CODIGOS" con
+  un resumen por código) pero el cliente pidió revertirla completa: "el
+  resto del documento estaba bien, no hacía falta cambiar nada" — la
+  única pieza de ese intento que se mantuvo fue la idea general del
+  encabezado (campos lado a lado con su firma correspondiente), ya
+  presente en la versión simple desde antes.
+  **Limitación conocida, no resuelta a pedido del cliente:** con esta
+  grilla de 12 columnas, algunas celdas se ven cortadas en Excel real —
+  las etiquetas del encabezado (ej. "ENTIDAD EMPLEADORA") pueden recortar
+  contra el valor de al lado, y el texto de Peligro/Riesgo con wrap activo
+  puede quedar cortado si la fila no es lo bastante alta (ExcelJS no
+  recalcula el alto de fila según el texto que envuelve). Se verificó con
+  la herramienta de renderizado (ver más abajo) y se lo señaló al cliente
+  en vez de corregirlo unilateralmente, dado que pidió explícitamente no
+  tocar esta parte — si en algún momento se quiere corregir, la solución
+  ya existe (se armó y se revirtió): `lineasNecesarias()` para calcular el
+  alto de fila real según el texto, ver el historial de commits de este
+  archivo.
+  Verde `92D050` en los bloques Proceso/Puesto/Tarea/Equipos combinados
+  cuando se repiten en filas consecutivas, Nivel de Riesgo coloreado como
+  semáforo (Tolerable `66FF33` / Moderado `FFFF00` / Importante `FFC000` /
+  Intolerable `FF0000`).
+  **Cómo revisar el resultado visualmente:** este sandbox no tiene forma
+  de abrir Excel real — ni LibreOffice ni Gnumeric funcionan acá (fallan
+  con "source file could not be loaded" incluso en un archivo trivial,
+  aparentemente una restricción del entorno) — así que las correcciones de
+  formato se validaban a ciegas, solo con capturas que mandaba el cliente
+  hasta que se armó `render_xlsx.py` (openpyxl + Pillow, en el scratchpad
+  de la sesión): dibuja la hoja a una imagen PNG respetando anchos/altos
+  reales, celdas combinadas, relleno, bordes fino/medio, negrita,
+  alineación y wrap text — incluyendo el desborde de texto sin wrap hacia
+  celdas vacías vecinas (y el recorte contra celdas con contenido, que es
+  como se comporta Excel real) para no mostrar falsos solapamientos. No es
+  pixel-perfect contra Excel real, pero alcanza para pescar problemas de
+  layout (texto fuera de vista, filas muy cortas, columnas desbalanceadas)
+  antes de mandarle un archivo al cliente.
   El archivo se sube a Drive/Matriz de Riesgos/ con nombre
   `Matriz_IPER_{obra}_Rev{N}.xlsx`. ExcelJS se eligió en vez de SheetJS
   porque el build vendorizable de SheetJS (`xlsx.core.min.js`, usado en una
   primera versión) no soporta escribir color de celda — se probó y el
-  color quedaba silenciosamente descartado al guardar.
-  Ojo con un detalle no obvio de ExcelJS al combinar celdas verticalmente:
-  todas las celdas de un rango combinado comparten el MISMO objeto de
-  estilo (tocar el borde de cualquier fila del rango pisa el de las demás)
-  — por eso el borde de cada bloque se fija una sola vez sobre la celda
-  ancla (primera fila), no por fila individual dentro del rango. Lleva el
+  color quedaba silenciosamente descartado al guardar. Lleva el
   logo de LST (`logo.png`, el azul vigente — codificado como JPEG pese a
   la extensión `.png`) insertado solo en la hoja OBRAS PREVIAS, a la
   izquierda del título (chico, 65×52px, para no taparlo — a pedido del
