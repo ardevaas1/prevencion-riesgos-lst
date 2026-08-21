@@ -8021,6 +8021,21 @@ async function generarExcelMiper(datos) {
   ];
   const ULTIMA_COL = GRUPOS_TABLA[GRUPOS_TABLA.length - 1].fin;
   const grupoCol = (key) => GRUPOS_TABLA.find(g => g.key === key);
+  // ExcelJS no recalcula solo el alto de una fila según el texto que
+  // envuelve (wrap text) — si se deja una altura fija, un texto largo
+  // (algunas medidas preventivas del catálogo superan los 1500
+  // caracteres) queda con la mayoría del texto tapado/superpuesto con la
+  // fila de abajo al abrir el archivo en Excel real. Esto estima cuántas
+  // líneas necesita un texto al envolver en una columna de cierto ancho
+  // (en unidades de ancho de Excel, sumando todas las columnas angostas
+  // combinadas del grupo), para poder darle a la fila el alto real que
+  // necesita.
+  function lineasNecesarias(texto, anchoColumnaUnidades) {
+    if (!texto) return 1;
+    const charsPorLinea = Math.max(10, Math.round(anchoColumnaUnidades * 1.15));
+    return Math.max(1, Math.ceil(String(texto).length / charsPorLinea));
+  }
+  const ALTO_UNIDADES_POR_LINEA = 14;
 
   // Encabezado de tabla (4 filas: PROCESO/PUESTO/TAREA/EQUIPOS/PELIGRO/
   // RIESGO/MEDIDAS/ANEXO combinados sobre las 4, EVALUACION DE RIESGOS con
@@ -8139,11 +8154,17 @@ async function generarExcelMiper(datos) {
           }
           escribirCampoAncho(r, 'medidas', f.medidasCodigo, fuenteDato, alinCentro);
           escribirCampoAncho(r, 'anexo', f.anexo, fuenteDato, alinCentro);
-          const gPeligro = grupoCol('peligro');
+          const gPeligro = grupoCol('peligro'), gRiesgo = grupoCol('riesgo');
           for (let c = gPeligro.ini; c <= ULTIMA_COL; c++) {
             const cell = ws.getCell(r, c);
             cell.border = { top: bordeFino, bottom: bordeFino, left: bordeFino, right: c === ULTIMA_COL ? bordeMedio : bordeFino };
           }
+          const lineasFila = Math.max(
+            lineasNecesarias(f.peligro, (gPeligro.fin - gPeligro.ini + 1) * 8.43),
+            lineasNecesarias(f.riesgo, (gRiesgo.fin - gRiesgo.ini + 1) * 8.43),
+            1
+          );
+          if (lineasFila > 1) ws.getRow(r).height = lineasFila * ALTO_UNIDADES_POR_LINEA + 6;
           r++;
         }
         const filaIntFin = r - 1;
@@ -8266,7 +8287,11 @@ async function generarExcelMiper(datos) {
       cell.alignment = { horizontal: (c === 2 || c === 8) ? 'left' : 'center', vertical: 'middle', wrapText: true };
     });
     wsLeyenda.getCell(rLey, 7).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: MIPER_COLOR_NIVEL_EXCEL[nivel] || 'FFFFFFFF' } };
-    wsLeyenda.getRow(rLey).height = 30;
+    // Alto dinámico: algunas medidas preventivas del catálogo son varios
+    // párrafos juntos (hasta ~1500 caracteres) — con una altura fija se
+    // ven cortadas/superpuestas con la fila de abajo.
+    const lineasLeyenda = Math.max(lineasNecesarias(f.peligro, 42), lineasNecesarias(medidaTexto, 55), 2);
+    wsLeyenda.getRow(rLey).height = lineasLeyenda * ALTO_UNIDADES_POR_LINEA + 6;
     rLey++;
   });
   wsLeyenda.columns = [{width:10},{width:42},{width:30},{width:12},{width:12},{width:8},{width:14},{width:55},{width:18}];
