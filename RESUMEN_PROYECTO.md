@@ -943,27 +943,52 @@ pestaña por pestaña antes de programar nada.
   cliente le da a su archivo). Los protocolos de vigilancia aplicables NO
   se repiten acá — viven solo en ANEXO 6, igual que en el original.
   El estilo replica lo medido directamente sobre el Excel real que mandó
-  el cliente (comparado celda por celda con openpyxl, no a ojo): campos del
-  encabezado (Entidad Empleadora, Sucursal, etc.) en celdas combinadas de 2
-  filas de alto, igual aire que el original; anchos de columna calculados
-  sumando el ancho real de cada grupo de columnas combinadas del original
-  (ej. Equipos y Peligro son las más anchas, ~148-152 unidades, porque en
-  el original también lo son); combinación en dos niveles — Proceso+Puesto
-  se combinan sobre TODO el bloque de filas que comparte esos dos valores
-  (que puede cubrir varias Tareas distintas), y Tarea+Equipos se combinan
-  solo dentro de ese bloque, sobre las filas que además comparten esos dos
-  — igual jerarquía que el original (evita repetir el proceso cada vez que
-  cambia solo la tarea); cada bloque combinado con borde medio en su
-  perímetro y borde fino en las celdas de datos sueltas (Peligro/Riesgo/
-  Probabilidad/etc.), sin color custom en los bordes — el original usa el
-  color "automático" (negro) de Excel, no un gris. Verde `92D050` en los
-  bloques Proceso/Puesto/Tarea/Equipos, Nivel de Riesgo coloreado como
-  semáforo (Tolerable `66FF33` / Moderado `FFFF00` / Importante `FFC000` /
-  Intolerable `FF0000`). El archivo se sube a Drive/Matriz de Riesgos/ con
-  nombre `Matriz_IPER_{obra}_Rev{N}.xlsx`. ExcelJS se eligió en vez de
-  SheetJS porque el build vendorizable de SheetJS (`xlsx.core.min.js`,
-  usado en una primera versión) no soporta escribir color de celda — se
-  probó y el color quedaba silenciosamente descartado al guardar.
+  el cliente (comparado celda por celda con openpyxl, no a ojo).
+  **Columnas (`GRUPOS_TABLA` en `app.js`):** un primer intento colapsó las
+  84 columnas angostas del original en 12 columnas lógicas, cada una tan
+  ancha como la suma real de su grupo (~30 a ~152 unidades) — se veía
+  parejo en el dump de celdas, pero en la práctica 2-3 columnas gigantes
+  dominaban toda la pantalla y el resto (incluidas las firmas del
+  encabezado, puestas más a la derecha) quedaba a cientos de unidades de
+  ancho, invisible sin hacer scroll horizontal — el cliente lo notó
+  comparándolo con un formato hecho para otra empresa (Cecinas Naranjo)
+  que sí se ve parejo. Se corrigió usando la MISMA cantidad de columnas
+  angostas por grupo que el original (Proceso 4, Puesto 5, Tarea 10,
+  Equipos 18, Peligro 18, Riesgo 7, Probabilidad/Consecuencia/Nivel 3 c/u,
+  VEP 2, Medidas 4, Anexo 6 — mismas letras de columna que el archivo real:
+  B-E, F-J, K-T, U-AL, AM-BD, etc.), sin ancho custom (todas al default de
+  Excel) — la proporción entre grupos sale sola de cuántas columnas tiene
+  cada uno, igual que en el original.
+  **Encabezado del documento:** campos (Entidad Empleadora, Sucursal, etc.)
+  en celdas combinadas de 2 filas de alto, en pares lado a lado con su
+  firma correspondiente (Entidad Empleadora junto a Nombre y Firma
+  Elaboró, etc.) — esto solo funciona bien con columnas angostas de
+  verdad; con el intento de 12 columnas anchas un campo puesto a la
+  derecha quedaba invisible, así que en ese momento se probó apilar todo
+  en una sola columna (ya no hace falta con columnas angostas).
+  **Combinación en dos niveles** — Proceso+Puesto se combinan sobre TODO
+  el bloque de filas que comparte esos dos valores (que puede cubrir
+  varias Tareas distintas), y Tarea+Equipos se combinan solo dentro de ese
+  bloque, sobre las filas que además comparten esos dos — igual jerarquía
+  que el original (evita repetir el proceso cada vez que cambia solo la
+  tarea); cada bloque combinado con borde medio en su perímetro y borde
+  fino en las celdas de datos sueltas (Peligro/Riesgo/Probabilidad/etc.),
+  sin color custom en los bordes — el original usa el color "automático"
+  (negro) de Excel, no un gris. Verde `92D050` en los bloques Proceso/
+  Puesto/Tarea/Equipos, Nivel de Riesgo coloreado como semáforo (Tolerable
+  `66FF33` / Moderado `FFFF00` / Importante `FFC000` / Intolerable
+  `FF0000`).
+  **Hoja LEYENDA CODIGOS:** una fila resumen por cada código de medida
+  preventiva usado en la matriz (Peligro, Riesgo, Probabilidad,
+  Consecuencia, VEP, Nivel de Riesgo con su color, la medida preventiva
+  completa desde el catálogo, y el Anexo), encabezado verde y fila
+  congelada — diseño calcado del mismo formato de Cecinas Naranjo que le
+  gustó al cliente.
+  El archivo se sube a Drive/Matriz de Riesgos/ con nombre
+  `Matriz_IPER_{obra}_Rev{N}.xlsx`. ExcelJS se eligió en vez de SheetJS
+  porque el build vendorizable de SheetJS (`xlsx.core.min.js`, usado en una
+  primera versión) no soporta escribir color de celda — se probó y el
+  color quedaba silenciosamente descartado al guardar.
   Ojo con un detalle no obvio de ExcelJS al combinar celdas verticalmente:
   todas las celdas de un rango combinado comparten el MISMO objeto de
   estilo (tocar el borde de cualquier fila del rango pisa el de las demás)

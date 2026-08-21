@@ -7990,18 +7990,37 @@ async function generarExcelMiper(datos) {
   const bordeFino = { style: 'thin' };
   const bordeMedio = { style: 'medium' };
   const borde = { top: bordeFino, left: bordeFino, bottom: bordeFino, right: bordeFino };
-  const NCOLS = 12;
-  // Anchos y textos de encabezado medidos directamente sobre el Excel del
-  // cliente (incluido el error de tipeo "MAQUINRIAS" — se replica tal cual
-  // porque así está en el documento original). El original usa 84 columnas
-  // angostas agrupadas en 12 columnas lógicas combinadas (ej. Equipos son
-  // 18 columnas combinadas, Proceso son solo 4) — acá se usa una grilla de
-  // 12 columnas (una por columna lógica) con el mismo ancho TOTAL sumado
-  // de cada grupo en el original (en las mismas unidades de ancho de
-  // Excel), para que la proporción entre columnas sea la real, no una
-  // aproximación visual.
-  const ANCHOS_TABLA = [30.9, 38.3, 81.4, 147.9, 151.7, 56.2, 25.3, 25.3, 16.9, 25.3, 33.7, 50.6];
+  // Textos de encabezado medidos directamente sobre el Excel del cliente
+  // (incluido el error de tipeo "MAQUINRIAS" — se replica tal cual porque
+  // así está en el documento original).
   const TXT_EQUIPOS = 'EQUIPOS MAQUINRIAS Y HERRAMIENTAS';
+  // El original usa 84 columnas angostas (ancho por defecto de Excel) con
+  // cada campo combinado sobre varias de ellas — Equipos son 18 columnas
+  // combinadas, Proceso son solo 4, etc. Un primer intento colapsó esto a
+  // 12 columnas (una por campo), cada una tan ancha como la suma real del
+  // grupo — pero eso deja 2-3 columnas gigantes dominando toda la
+  // pantalla y el resto invisible sin hacer scroll, muy distinto a como
+  // se ve un Excel normal (y a cómo se ve el original). Acá se usan las
+  // mismas cantidades de columnas angostas por grupo que el original, sin
+  // ancho custom (default de Excel en todas), para que la grilla se vea
+  // pareja — mismo criterio que un formato de otra empresa (Cecinas
+  // Naranjo) que el cliente pidió imitar.
+  const GRUPOS_TABLA = [
+    { key: 'proceso',      ini: 2,  fin: 5  },  // B-E  (4 cols, igual que el original)
+    { key: 'puesto',       ini: 6,  fin: 10 },  // F-J  (5 cols)
+    { key: 'tarea',        ini: 11, fin: 20 },  // K-T  (10 cols)
+    { key: 'equipos',      ini: 21, fin: 38 },  // U-AL (18 cols)
+    { key: 'peligro',      ini: 39, fin: 56 },  // AM-BD (18 cols)
+    { key: 'riesgo',       ini: 57, fin: 63 },  // BE-BK (7 cols)
+    { key: 'probabilidad', ini: 64, fin: 66 },  // BL-BN (3 cols)
+    { key: 'consecuencia', ini: 67, fin: 69 },  // BO-BQ (3 cols)
+    { key: 'vep',          ini: 70, fin: 71 },  // BR-BS (2 cols)
+    { key: 'nivel',        ini: 72, fin: 74 },  // BT-BV (3 cols)
+    { key: 'medidas',      ini: 75, fin: 78 },  // BW-BZ (4 cols)
+    { key: 'anexo',        ini: 79, fin: 84 },  // CA-CF (6 cols)
+  ];
+  const ULTIMA_COL = GRUPOS_TABLA[GRUPOS_TABLA.length - 1].fin;
+  const grupoCol = (key) => GRUPOS_TABLA.find(g => g.key === key);
 
   // Encabezado de tabla (4 filas: PROCESO/PUESTO/TAREA/EQUIPOS/PELIGRO/
   // RIESGO/MEDIDAS/ANEXO combinados sobre las 4, EVALUACION DE RIESGOS con
@@ -8011,34 +8030,36 @@ async function generarExcelMiper(datos) {
   function escribirEncabezadoTabla(ws, filaHead1) {
     const f2 = filaHead1 + 1, f3 = filaHead1 + 2, f4 = filaHead1 + 3;
     const centrado = { wrapText: true, vertical: 'middle', horizontal: 'center' };
-    const principales = ['PROCESO', 'PUESTO DE TRABAJO', 'TAREA', TXT_EQUIPOS,
-      'IDENTIFICACION DE PELIGROS / FACTORES DE RIESGO', 'RIESGO'];
-    principales.forEach((h, i) => {
-      const c = i + 1;
-      const cell = ws.getCell(filaHead1, c);
+    const principales = [['proceso', 'PROCESO'], ['puesto', 'PUESTO DE TRABAJO'], ['tarea', 'TAREA'],
+      ['equipos', TXT_EQUIPOS], ['peligro', 'IDENTIFICACION DE PELIGROS / FACTORES DE RIESGO'], ['riesgo', 'RIESGO']];
+    principales.forEach(([key, h]) => {
+      const g = grupoCol(key);
+      const cell = ws.getCell(filaHead1, g.ini);
       cell.value = h; cell.font = { name: 'Calibri', bold: true, size: 10 }; cell.alignment = centrado;
-      ws.mergeCells(filaHead1, c, f4, c);
+      ws.mergeCells(filaHead1, g.ini, f4, g.fin);
     });
-    const evalCell = ws.getCell(filaHead1, 7);
+    const gProb = grupoCol('probabilidad'), gNivel = grupoCol('nivel');
+    const evalCell = ws.getCell(filaHead1, gProb.ini);
     evalCell.value = 'EVALUACION DE RIESGOS'; evalCell.font = { name: 'Calibri', bold: true, size: 10 }; evalCell.alignment = centrado;
-    ws.mergeCells(filaHead1, 7, filaHead1, 10);
-    const subEvalCell = ws.getCell(f2, 7);
+    ws.mergeCells(filaHead1, gProb.ini, filaHead1, gNivel.fin);
+    const subEvalCell = ws.getCell(f2, gProb.ini);
     subEvalCell.value = 'DE SEGURIDAD / EMERGENCIA'; subEvalCell.font = { name: 'Calibri', bold: true, size: 9 }; subEvalCell.alignment = centrado;
-    ws.mergeCells(f2, 7, f2, 10);
-    ['PROBABILIDAD', 'CONSECUENCIA', 'VEP', 'NIVEL DE\nRIESGO'].forEach((h, i) => {
-      const c = 7 + i;
-      const cell = ws.getCell(f3, c);
+    ws.mergeCells(f2, gProb.ini, f2, gNivel.fin);
+    [['probabilidad', 'PROBABILIDAD'], ['consecuencia', 'CONSECUENCIA'], ['vep', 'VEP'], ['nivel', 'NIVEL DE\nRIESGO']].forEach(([key, h]) => {
+      const g = grupoCol(key);
+      const cell = ws.getCell(f3, g.ini);
       cell.value = h; cell.font = { name: 'Calibri', bold: true, size: 9 }; cell.alignment = centrado;
-      ws.mergeCells(f3, c, f4, c);
+      ws.mergeCells(f3, g.ini, f4, g.fin);
     });
-    const medCell = ws.getCell(filaHead1, 11);
+    const gMed = grupoCol('medidas'), gAnexo = grupoCol('anexo');
+    const medCell = ws.getCell(filaHead1, gMed.ini);
     medCell.value = 'MEDIDAS\nPREVENTIVAS - CODIGO'; medCell.font = { name: 'Calibri', bold: true, size: 10 }; medCell.alignment = centrado;
-    ws.mergeCells(filaHead1, 11, f4, 11);
-    const anexoCell = ws.getCell(filaHead1, 12);
+    ws.mergeCells(filaHead1, gMed.ini, f4, gMed.fin);
+    const anexoCell = ws.getCell(filaHead1, gAnexo.ini);
     anexoCell.value = 'ANEXO'; anexoCell.font = { name: 'Calibri', bold: true, size: 10 }; anexoCell.alignment = centrado;
-    ws.mergeCells(filaHead1, 12, f4, 12);
+    ws.mergeCells(filaHead1, gAnexo.ini, f4, gAnexo.fin);
     [filaHead1, f2, f3, f4].forEach(rr => {
-      for (let c = 1; c <= NCOLS; c++) ws.getCell(rr, c).border = borde;
+      for (let c = 2; c <= ULTIMA_COL; c++) ws.getCell(rr, c).border = borde;
       ws.getRow(rr).height = 15;
     });
     return f4 + 1;
@@ -8065,10 +8086,22 @@ async function generarExcelMiper(datos) {
     // pisando el borde de las demás) — por eso alcanza con fijar el borde
     // una sola vez sobre la celda ancla: Excel lo dibuja igual como un
     // único marco alrededor de todo el rectángulo combinado.
-    function enmarcarBloque(filaTop, colIni, colFin) {
-      for (let c = colIni; c <= colFin; c++) {
+    function enmarcarBloque(filaTop, key) {
+      const g = grupoCol(key);
+      for (let c = g.ini; c <= g.fin; c++) {
         ws.getCell(filaTop, c).border = { top: bordeMedio, bottom: bordeMedio, left: bordeMedio, right: bordeMedio };
       }
+    }
+    // Cada campo de datos también va combinado a lo ancho de TODAS las
+    // columnas de su grupo (ej. el Peligro de una fila ocupa una sola
+    // celda combinada de 18 columnas) — igual que el original, en vez de
+    // una sola columna angosta.
+    function escribirCampoAncho(fila, key, valor, font, align) {
+      const g = grupoCol(key);
+      const cell = ws.getCell(fila, g.ini);
+      cell.value = valor; cell.font = font; cell.alignment = align;
+      ws.mergeCells(fila, g.ini, fila, g.fin);
+      return g;
     }
 
     let r = filaInicio, iExt = 0;
@@ -8086,53 +8119,52 @@ async function generarExcelMiper(datos) {
         const filaIntInicio = r;
         for (let k = iInt; k <= jInt; k++) {
           const f = filas[k];
-          ws.getCell(r, 5).value = f.peligro; ws.getCell(r, 5).font = fuenteDato; ws.getCell(r, 5).alignment = alinIzq;
-          ws.getCell(r, 6).value = f.riesgo; ws.getCell(r, 6).font = fuenteDato; ws.getCell(r, 6).alignment = alinIzq;
-          ws.getCell(r, 7).value = f.probabilidad; ws.getCell(r, 7).font = fuenteDato; ws.getCell(r, 7).alignment = alinCentro;
-          ws.getCell(r, 8).value = f.consecuencia; ws.getCell(r, 8).font = fuenteDato; ws.getCell(r, 8).alignment = alinCentro;
-          ws.getCell(r, 9).value = f.vep; ws.getCell(r, 9).font = fuenteDato; ws.getCell(r, 9).alignment = alinCentro;
+          escribirCampoAncho(r, 'peligro', f.peligro, fuenteDato, alinIzq);
+          escribirCampoAncho(r, 'riesgo', f.riesgo, fuenteDato, alinIzq);
+          escribirCampoAncho(r, 'probabilidad', f.probabilidad, fuenteDato, alinCentro);
+          escribirCampoAncho(r, 'consecuencia', f.consecuencia, fuenteDato, alinCentro);
+          escribirCampoAncho(r, 'vep', f.vep, fuenteDato, alinCentro);
           const nivel = f.nivelRiesgo || f.nivel;
-          const nivelCell = ws.getCell(r, 10);
-          nivelCell.value = nivel; nivelCell.font = fuenteDato; nivelCell.alignment = alinCentro;
-          nivelCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: MIPER_COLOR_NIVEL_EXCEL[nivel] || 'FFFFFFFF' } };
-          ws.getCell(r, 11).value = f.medidasCodigo; ws.getCell(r, 11).font = fuenteDato; ws.getCell(r, 11).alignment = alinCentro;
-          ws.getCell(r, 12).value = f.anexo; ws.getCell(r, 12).font = fuenteDato; ws.getCell(r, 12).alignment = alinCentro;
-          for (let c = 5; c <= NCOLS; c++) {
+          const gNivel = escribirCampoAncho(r, 'nivel', nivel, fuenteDato, alinCentro);
+          for (let c = gNivel.ini; c <= gNivel.fin; c++) {
+            ws.getCell(r, c).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: MIPER_COLOR_NIVEL_EXCEL[nivel] || 'FFFFFFFF' } };
+          }
+          escribirCampoAncho(r, 'medidas', f.medidasCodigo, fuenteDato, alinCentro);
+          escribirCampoAncho(r, 'anexo', f.anexo, fuenteDato, alinCentro);
+          const gPeligro = grupoCol('peligro');
+          for (let c = gPeligro.ini; c <= ULTIMA_COL; c++) {
             const cell = ws.getCell(r, c);
-            cell.border = { top: bordeFino, bottom: bordeFino, left: bordeFino, right: c === NCOLS ? bordeMedio : bordeFino };
+            cell.border = { top: bordeFino, bottom: bordeFino, left: bordeFino, right: c === ULTIMA_COL ? bordeMedio : bordeFino };
           }
           r++;
         }
         const filaIntFin = r - 1;
         const fInt = filas[iInt];
-        ws.getCell(filaIntInicio, 3).value = fInt.tarea;
-        ws.getCell(filaIntInicio, 4).value = fInt.equipos;
-        if (filaIntFin > filaIntInicio) [3, 4].forEach(c => ws.mergeCells(filaIntInicio, c, filaIntFin, c));
-        [3, 4].forEach(c => {
-          const cell = ws.getCell(filaIntInicio, c);
+        ['tarea', 'equipos'].forEach(key => {
+          const g = grupoCol(key);
+          const cell = ws.getCell(filaIntInicio, g.ini);
+          cell.value = key === 'tarea' ? fInt.tarea : fInt.equipos;
           cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: MIPER_COLOR_BLOQUE_TAREA_EXCEL } };
           cell.font = fuenteDato; cell.alignment = alinCentro;
+          ws.mergeCells(filaIntInicio, g.ini, filaIntFin, g.fin);
+          enmarcarBloque(filaIntInicio, key);
         });
-        enmarcarBloque(filaIntInicio, 3, 4);
         iInt = jInt + 1;
       }
       const filaExtFin = r - 1;
       const fExt = filas[iExt];
-      ws.getCell(filaExtInicio, 1).value = fExt.proceso;
-      ws.getCell(filaExtInicio, 2).value = fExt.puesto;
-      if (filaExtFin > filaExtInicio) [1, 2].forEach(c => ws.mergeCells(filaExtInicio, c, filaExtFin, c));
-      [1, 2].forEach(c => {
-        const cell = ws.getCell(filaExtInicio, c);
+      ['proceso', 'puesto'].forEach(key => {
+        const g = grupoCol(key);
+        const cell = ws.getCell(filaExtInicio, g.ini);
+        cell.value = key === 'proceso' ? fExt.proceso : fExt.puesto;
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: MIPER_COLOR_BLOQUE_TAREA_EXCEL } };
         cell.font = fuenteGrupo; cell.alignment = alinCentro;
+        ws.mergeCells(filaExtInicio, g.ini, filaExtFin, g.fin);
+        enmarcarBloque(filaExtInicio, key);
       });
-      enmarcarBloque(filaExtInicio, 1, 2);
       iExt = jExt + 1;
     }
     return r;
-  }
-  function anchoColumnas(ws, anchos) {
-    ws.columns = anchos.map(w => ({ width: w }));
   }
 
   // ---- Hoja 1: OBRAS PREVIAS (única hoja de matriz — no hay una hoja
@@ -8143,54 +8175,53 @@ async function generarExcelMiper(datos) {
   // que se sigue extendiendo, igual que en el Excel del cliente). ----
   const wsPrevias = wb.addWorksheet('OBRAS PREVIAS');
   let r = 1;
-  // Columnas 1-3 quedan libres para el logo (arriba a la izquierda); el
-  // título parte en la columna 4.
-  wsPrevias.mergeCells(r, 4, r, NCOLS);
-  const titulo = wsPrevias.getCell(r, 4);
+  // Columna 1 queda libre para el logo (arriba a la izquierda); el título
+  // parte en la columna 2 y llega hasta el final de la tabla.
+  wsPrevias.mergeCells(r, 2, r, ULTIMA_COL);
+  const titulo = wsPrevias.getCell(r, 2);
   titulo.value = 'MATRIZ DE IDENTIFICACION DE PELIGROS / FACTORES DE RIESGOS y EVALUACION DE RIESGOS';
   titulo.font = { bold: true, size: 14 };
-  titulo.alignment = { vertical: 'middle', wrapText: true };
+  titulo.alignment = { vertical: 'middle', wrapText: true, horizontal: 'center' };
   wsPrevias.getRow(r).height = 34;
   r += 2;
-  // Cada campo ocupa 2 filas de alto (combinadas) en vez de 1 — igual que
-  // el original (ENTIDAD EMPLEADORA en B7:I8, etc.), para que el bloque de
-  // encabezado tenga el mismo aire/altura que el documento real. Los
-  // "PROTOCOLOS DE VIGILANCIA..." NO van acá: en el original esa lista
-  // vive solo en ANEXO 6 (que este generador ya arma más abajo), no
-  // repetida dentro de OBRAS PREVIAS.
-  // Todos los campos van APILADOS uno debajo del otro (label en columna 1,
-  // valor en columna 2) en vez de en dos columnas lado a lado — a
-  // diferencia del Excel original (que tiene 84 columnas angostas y le
-  // sobra espacio para poner Entidad/Sucursal a la izquierda y las firmas
-  // a la derecha en la misma fila), acá las columnas 3/4/5 son las mismas
-  // que después necesitan ser muy anchas para Tarea/Equipos/Peligro en la
-  // tabla — si un campo de la derecha se pusiera en la columna 7, quedaría
-  // a más de 500 unidades de ancho del borde izquierdo (invisible sin
-  // hacer scroll horizontal). Apilando todo en columna 1-2 se ve completo
-  // en una sola pantalla, sin scroll.
-  function campo(fila, label, value) {
-    wsPrevias.mergeCells(fila, 1, fila + 1, 1);
-    const cLabel = wsPrevias.getCell(fila, 1);
+  // Cada campo ocupa 2 filas de alto (combinadas), y va lado a lado con su
+  // par de la derecha (Entidad Empleadora junto a Nombre y Firma Elaboró,
+  // etc.) — igual que el original. Esto solo funciona bien ahora que las
+  // columnas de la tabla son angostas por defecto (ver GRUPOS_TABLA más
+  // arriba): con el intento anterior, que usaba 12 columnas súper anchas,
+  // un campo puesto más a la derecha terminaba a más de 500 unidades del
+  // borde izquierdo — invisible sin hacer scroll horizontal — por eso ahí
+  // se apilaban todos los campos en una sola columna. Con columnas
+  // angostas de verdad esto ya no pasa. Los "PROTOCOLOS DE VIGILANCIA..."
+  // NO van acá: en el original esa lista vive solo en ANEXO 6 (que este
+  // generador ya arma más abajo), no repetida dentro de OBRAS PREVIAS.
+  function campo(fila, label, value, colLabel, colValor, colValorFin) {
+    wsPrevias.mergeCells(fila, colLabel, fila + 1, colValor - 1);
+    const cLabel = wsPrevias.getCell(fila, colLabel);
     cLabel.value = label; cLabel.font = { bold: true }; cLabel.alignment = { vertical: 'middle', wrapText: true };
-    wsPrevias.mergeCells(fila, 2, fila + 1, 3);
-    const cVal = wsPrevias.getCell(fila, 2);
+    wsPrevias.mergeCells(fila, colValor, fila + 1, colValorFin);
+    const cVal = wsPrevias.getCell(fila, colValor);
     cVal.value = value; cVal.alignment = { vertical: 'middle' };
   }
-  campo(r, 'ENTIDAD EMPLEADORA', datos.entidadEmpleadora); r += 2;
-  campo(r, 'SUCURSAL', datos.sucursal); r += 2;
-  campo(r, 'RESPONSABLE LEVANTAMIENTO', datos.responsableLevantamiento); r += 2;
-  campo(r, 'FECHA', ddmmyyyy(datos.fecha)); r += 2;
-  campo(r, 'REVISION', datos.revision); r += 2;
-  campo(r, 'PROXIMA REVISION', datos.proximaRevision ? ddmmyyyy(datos.proximaRevision) : ''); r += 2;
-  campo(r, 'NOMBRE Y FIRMA ELABORO', datos.nombreElaboro); r += 2;
-  campo(r, 'NOMBRE Y FIRMA REVISION', datos.nombreReviso); r += 2;
-  campo(r, 'NOMBRE Y FIRMA APROBACION', datos.nombreAprobo); r += 3;
+  campo(r, 'ENTIDAD EMPLEADORA', datos.entidadEmpleadora, 2, 10, 17);
+  campo(r, 'NOMBRE Y FIRMA ELABORO', datos.nombreElaboro, 18, 61, 72); r += 2;
+  campo(r, 'SUCURSAL', datos.sucursal, 2, 10, 17);
+  campo(r, 'NOMBRE Y FIRMA REVISION', datos.nombreReviso, 18, 61, 72); r += 2;
+  campo(r, 'RESPONSABLE LEVANTAMIENTO', datos.responsableLevantamiento, 2, 10, 17);
+  campo(r, 'NOMBRE Y FIRMA APROBACION', datos.nombreAprobo, 18, 61, 72); r += 2;
+  campo(r, 'FECHA', ddmmyyyy(datos.fecha), 2, 10, 17);
+  { const c = wsPrevias.getCell(r, 18); wsPrevias.mergeCells(r, 18, r + 1, 39); c.value = 'REVISION'; c.font = { bold: true }; c.alignment = { vertical: 'middle', horizontal: 'center' }; }
+  { const c = wsPrevias.getCell(r, 40); wsPrevias.mergeCells(r, 40, r + 1, 45); c.value = datos.revision; c.alignment = { vertical: 'middle', horizontal: 'center' }; }
+  campo(r, 'PROXIMA REVISION', datos.proximaRevision ? ddmmyyyy(datos.proximaRevision) : '', 46, 61, 72);
+  r += 3;
   r = escribirEncabezadoTabla(wsPrevias, r);
   let banco = [];
   try { banco = await cargarMiperBanco(); } catch (e) { /* si no carga el banco histórico, solo quedan las filas nuevas */ }
   const todasLasFilas = [...banco, ...datos.filas];
   escribirFilasTabla(wsPrevias, r, todasLasFilas);
-  anchoColumnas(wsPrevias, ANCHOS_TABLA);
+  // Sin anchos custom: todas las columnas quedan con el ancho por defecto
+  // de Excel, igual que el original — la proporción entre grupos sale
+  // sola de cuántas columnas angostas tiene cada uno (ver GRUPOS_TABLA).
 
   // ---- Hoja 2: LEYENDA CODIGOS (una fila resumen por cada código de
   // medida preventiva usado en la matriz, para no tener que buscarlo fila
