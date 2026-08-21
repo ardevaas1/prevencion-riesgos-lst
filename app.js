@@ -8154,47 +8154,84 @@ async function generarExcelMiper(datos) {
   r += 2;
   // Cada campo ocupa 2 filas de alto (combinadas) en vez de 1 — igual que
   // el original (ENTIDAD EMPLEADORA en B7:I8, etc.), para que el bloque de
-  // encabezado tenga el mismo aire/altura que el documento real, no una
-  // fila angosta por dato. Los "PROTOCOLOS DE VIGILANCIA..." NO van acá:
-  // en el original esa lista vive solo en ANEXO 6 (que este generador ya
-  // arma más abajo), no repetida dentro de OBRAS PREVIAS.
-  function campoIzq(fila, label, value) {
+  // encabezado tenga el mismo aire/altura que el documento real. Los
+  // "PROTOCOLOS DE VIGILANCIA..." NO van acá: en el original esa lista
+  // vive solo en ANEXO 6 (que este generador ya arma más abajo), no
+  // repetida dentro de OBRAS PREVIAS.
+  // Todos los campos van APILADOS uno debajo del otro (label en columna 1,
+  // valor en columna 2) en vez de en dos columnas lado a lado — a
+  // diferencia del Excel original (que tiene 84 columnas angostas y le
+  // sobra espacio para poner Entidad/Sucursal a la izquierda y las firmas
+  // a la derecha en la misma fila), acá las columnas 3/4/5 son las mismas
+  // que después necesitan ser muy anchas para Tarea/Equipos/Peligro en la
+  // tabla — si un campo de la derecha se pusiera en la columna 7, quedaría
+  // a más de 500 unidades de ancho del borde izquierdo (invisible sin
+  // hacer scroll horizontal). Apilando todo en columna 1-2 se ve completo
+  // en una sola pantalla, sin scroll.
+  function campo(fila, label, value) {
     wsPrevias.mergeCells(fila, 1, fila + 1, 1);
     const cLabel = wsPrevias.getCell(fila, 1);
     cLabel.value = label; cLabel.font = { bold: true }; cLabel.alignment = { vertical: 'middle', wrapText: true };
-    wsPrevias.mergeCells(fila, 2, fila + 1, 5);
+    wsPrevias.mergeCells(fila, 2, fila + 1, 3);
     const cVal = wsPrevias.getCell(fila, 2);
     cVal.value = value; cVal.alignment = { vertical: 'middle' };
   }
-  function campoDer(fila, label, value) {
-    wsPrevias.mergeCells(fila, 7, fila + 1, 7);
-    const cLabel = wsPrevias.getCell(fila, 7);
-    cLabel.value = label; cLabel.font = { bold: true }; cLabel.alignment = { vertical: 'middle', wrapText: true };
-    wsPrevias.mergeCells(fila, 8, fila + 1, NCOLS);
-    const cVal = wsPrevias.getCell(fila, 8);
-    cVal.value = value; cVal.alignment = { vertical: 'middle' };
-  }
-  campoIzq(r, 'ENTIDAD EMPLEADORA', datos.entidadEmpleadora);
-  campoDer(r, 'NOMBRE Y FIRMA ELABORO', datos.nombreElaboro); r += 2;
-  campoIzq(r, 'SUCURSAL', datos.sucursal);
-  campoDer(r, 'NOMBRE Y FIRMA REVISION', datos.nombreReviso); r += 2;
-  campoIzq(r, 'RESPONSABLE LEVANTAMIENTO', datos.responsableLevantamiento);
-  campoDer(r, 'NOMBRE Y FIRMA APROBACION', datos.nombreAprobo); r += 2;
-  wsPrevias.mergeCells(r, 1, r + 1, 1);
-  { const c = wsPrevias.getCell(r, 1); c.value = 'FECHA'; c.font = { bold: true }; c.alignment = { vertical: 'middle' }; }
-  wsPrevias.mergeCells(r, 2, r + 1, 2);
-  { const c = wsPrevias.getCell(r, 2); c.value = ddmmyyyy(datos.fecha); c.alignment = { vertical: 'middle' }; }
-  wsPrevias.mergeCells(r, 4, r + 1, 4);
-  { const c = wsPrevias.getCell(r, 4); c.value = 'REVISION'; c.font = { bold: true }; c.alignment = { vertical: 'middle' }; }
-  wsPrevias.mergeCells(r, 5, r + 1, 5);
-  { const c = wsPrevias.getCell(r, 5); c.value = datos.revision; c.alignment = { vertical: 'middle' }; }
-  campoDer(r, 'PROXIMA REVISION', datos.proximaRevision ? ddmmyyyy(datos.proximaRevision) : '');
-  r += 3;
+  campo(r, 'ENTIDAD EMPLEADORA', datos.entidadEmpleadora); r += 2;
+  campo(r, 'SUCURSAL', datos.sucursal); r += 2;
+  campo(r, 'RESPONSABLE LEVANTAMIENTO', datos.responsableLevantamiento); r += 2;
+  campo(r, 'FECHA', ddmmyyyy(datos.fecha)); r += 2;
+  campo(r, 'REVISION', datos.revision); r += 2;
+  campo(r, 'PROXIMA REVISION', datos.proximaRevision ? ddmmyyyy(datos.proximaRevision) : ''); r += 2;
+  campo(r, 'NOMBRE Y FIRMA ELABORO', datos.nombreElaboro); r += 2;
+  campo(r, 'NOMBRE Y FIRMA REVISION', datos.nombreReviso); r += 2;
+  campo(r, 'NOMBRE Y FIRMA APROBACION', datos.nombreAprobo); r += 3;
   r = escribirEncabezadoTabla(wsPrevias, r);
   let banco = [];
   try { banco = await cargarMiperBanco(); } catch (e) { /* si no carga el banco histórico, solo quedan las filas nuevas */ }
-  escribirFilasTabla(wsPrevias, r, [...banco, ...datos.filas]);
+  const todasLasFilas = [...banco, ...datos.filas];
+  escribirFilasTabla(wsPrevias, r, todasLasFilas);
   anchoColumnas(wsPrevias, ANCHOS_TABLA);
+
+  // ---- Hoja 2: LEYENDA CODIGOS (una fila resumen por cada código de
+  // medida preventiva usado en la matriz, para no tener que buscarlo fila
+  // por fila) — diseño calcado de un formato que le gustó al cliente hecho
+  // para otra empresa (Cecinas Naranjo): fondo verde en el encabezado, sin
+  // bordes, fila de encabezado congelada. Un código puede repetirse en
+  // muchas filas de la matriz (mismo peligro en distintas tareas/obras) —
+  // acá sale una sola vez, con los datos de su primera aparición y el
+  // texto de medida preventiva completo desde el catálogo.
+  const wsLeyenda = wb.addWorksheet('LEYENDA CODIGOS');
+  const encLeyenda = ['CÓDIGO', 'PELIGRO / FACTOR DE RIESGO', 'RIESGO', 'PROBABILIDAD', 'CONSECUENCIA', 'VEP', 'NIVEL DE RIESGO', 'MEDIDA PREVENTIVA', 'ANEXO'];
+  encLeyenda.forEach((h, i) => {
+    const cell = wsLeyenda.getCell(1, i + 1);
+    cell.value = h; cell.font = { name: 'Calibri', bold: true, size: 10 };
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: MIPER_COLOR_BLOQUE_TAREA_EXCEL } };
+    cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+  });
+  wsLeyenda.getRow(1).height = 24;
+  const catalogoLeyenda = miperCatalogoCompleto();
+  const codigosVistos = new Set();
+  let rLey = 2;
+  todasLasFilas.forEach(f => {
+    const codigo = f.medidasCodigo;
+    if (!codigo || codigosVistos.has(codigo)) return;
+    codigosVistos.add(codigo);
+    const catEntry = catalogoLeyenda.find(c => c.codigo === codigo);
+    const medidaTexto = catEntry && catEntry.medidas.length ? catEntry.medidas.join(', ') : '';
+    const nivel = f.nivelRiesgo || f.nivel;
+    const vals = [codigo, f.peligro, f.riesgo, f.probabilidad, f.consecuencia, f.vep, nivel, medidaTexto, f.anexo];
+    vals.forEach((v, i) => {
+      const c = i + 1;
+      const cell = wsLeyenda.getCell(rLey, c);
+      cell.value = v; cell.font = { name: 'Calibri', size: 10 };
+      cell.alignment = { horizontal: (c === 2 || c === 8) ? 'left' : 'center', vertical: 'middle', wrapText: true };
+    });
+    wsLeyenda.getCell(rLey, 7).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: MIPER_COLOR_NIVEL_EXCEL[nivel] || 'FFFFFFFF' } };
+    wsLeyenda.getRow(rLey).height = 30;
+    rLey++;
+  });
+  wsLeyenda.columns = [{width:10},{width:42},{width:30},{width:12},{width:12},{width:8},{width:14},{width:55},{width:18}];
+  wsLeyenda.views = [{ state: 'frozen', ySplit: 1 }];
 
   // ---- Hoja 3: ANEXO 1 - LEVANTAMIENTO PROCESO (tareas levantadas de la obra) ----
   // Encabezado con "Tarea" como grupo sobre 2 subcolumnas (Nombre /
