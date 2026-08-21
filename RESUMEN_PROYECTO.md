@@ -1064,36 +1064,43 @@ aparte la sesión sincrónica/presencial obligatoria.
   con esos 4 datos como contexto: Peligro/Riesgo/Probabilidad/Consecuencia
   para esa tarea puntual, eligiendo el Riesgo del catálogo YA VIGENTE
   (`MIPER_CATALOGO_RIESGOS` + custom) — nunca inventa un riesgo nuevo, solo
-  el texto concreto del Peligro y la evaluación. Botón "Sugerir con IA"
-  (`sugerirRiesgosIaMiper` en `app.js`) en el formulario de agregar fila,
-  visible solo si `CONFIG.MIPER_IA_WEBAPP_URL` está configurado — si no,
-  el módulo sigue 100% manual como siempre. Reusa el mismo mecanismo de
-  prellenado (`agregarBloquePeligroMiper(prefill)`) que ya usaba el
-  buscador del banco histórico, así que las sugerencias quedan en los
-  mismos bloques editables de siempre — el supervisor las revisa, ajusta o
-  borra antes de tocar "Guardar en la matriz". Nada se autoguarda: es
-  prellenado, no autocompletado silencioso.
+  el texto concreto del Peligro y la evaluación. Botón "Sugerencia
+  automática" (`sugerirRiesgosIaMiper` en `app.js`) en el formulario de
+  agregar fila, visible solo si `CONFIG.MIPER_IA_WEBAPP_URL` está
+  configurado — si no, el módulo sigue 100% manual como siempre. Reusa el
+  mismo mecanismo de prellenado (`agregarBloquePeligroMiper(prefill)`) que
+  ya usaba el buscador del banco histórico, así que las sugerencias quedan
+  en los mismos bloques editables de siempre — el supervisor las revisa,
+  ajusta o borra antes de tocar "Guardar en la matriz". Nada se
+  autoguarda: es prellenado, no autocompletado silencioso.
   Backend: `APPS_SCRIPT_WEBAPP_MIPER_IA.js` (Web App de Apps Script, mismo
   patrón que Subcontratistas — necesaria porque una API key de LLM no se
   puede exponer en código que corre en el navegador). Recibe Proceso/
   Puesto/Tarea/Equipos + el catálogo completo (sin las medidas preventivas,
-  para no inflar el prompt) y llama a la API de Claude pidiendo un array
-  JSON `[{codigo, peligro, probabilidad, consecuencia}]`; filtra cualquier
+  para no inflar el prompt) y llama a la API de Gemini (Google, modelo
+  `gemini-2.5-flash-lite`, **tier gratis** — se eligió sobre Claude/Anthropic
+  a pedido explícito del cliente por costo; el volumen esperado de este
+  botón es bajo y el límite gratis de Gemini para ese modelo, ~15
+  solicitudes/minuto y ~1.000/día, alcanza de sobra) pidiendo un array JSON
+  `[{codigo, peligro, probabilidad, consecuencia}]`; filtra cualquier
   código que la IA haya devuelto y que no esté realmente en el catálogo
   recibido, antes de devolver la respuesta. Requiere que el cliente
-  consiga su propia API key de Anthropic (console.anthropic.com) y la
-  guarde como propiedad del script — instrucciones completas en el
-  encabezado de ese archivo. Mismo detalle de CORS que
+  consiga su propia API key gratis en aistudio.google.com/apikey (sin
+  tarjeta de crédito) y la guarde como propiedad del script — instrucciones
+  completas en el encabezado de ese archivo. Ojo: en el tier gratis de
+  Gemini, Google puede usar los datos enviados (descripciones de tareas de
+  obra, no datos personales) para mejorar sus modelos — se documentó esa
+  salvedad para el cliente antes de implementar. Mismo detalle de CORS que
   `llamarWebAppSubcontratista`: `Content-Type: text/plain` al llamar (no
   `application/json`), porque Apps Script no responde al preflight OPTIONS
   que el navegador manda para JSON.
   Probado end-to-end con Playwright (interacción real: elegir tarea,
-  escribir equipos, click en "Sugerir con IA" con la Web App mockeada):
-  confirma que el contexto mandado es exactamente lo que el supervisor
-  escribió a mano, que un código inventado por la IA se filtra antes de
-  llegar al formulario, que el prellenado dispara el mismo detalle de
-  riesgo (definición/medidas) que la selección manual, y que el supervisor
-  puede seguir editando el texto sugerido antes de guardar.
+  escribir equipos, click en "Sugerencia automática" con la Web App
+  mockeada): confirma que el contexto mandado es exactamente lo que el
+  supervisor escribió a mano, que un código inventado por la IA se filtra
+  antes de llegar al formulario, que el prellenado dispara el mismo
+  detalle de riesgo (definición/medidas) que la selección manual, y que el
+  supervisor puede seguir editando el texto sugerido antes de guardar.
 
 ## Asignación de supervisor y modo restringido de supervisor
 

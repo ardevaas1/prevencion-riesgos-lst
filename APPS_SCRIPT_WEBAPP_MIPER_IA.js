@@ -4,25 +4,32 @@
 // QUÉ HACE: el supervisor completa a mano Proceso/Puesto de Trabajo/Tarea
 // (Levantamiento) y Equipos (al agregar una fila de la matriz) — eso NO lo
 // toca este script. Con esos 4 datos como contexto, este endpoint le pide a
-// Claude (la IA de Anthropic) que elija del CATÁLOGO DE RIESGOS YA VIGENTE
-// (el mismo que usa el resto de la app — no inventa riesgos nuevos) cuáles
-// aplican a esa tarea puntual, con una Probabilidad y Consecuencia
-// sugeridas. La app prellena el formulario con esas sugerencias — el
-// supervisor las revisa, ajusta o borra las que no correspondan, y recién
-// ahí guarda. Nada se guarda automáticamente: es un prellenado, no un
-// autoguardado.
+// Gemini (la IA de Google, tier gratis) que elija del CATÁLOGO DE RIESGOS
+// YA VIGENTE (el mismo que usa el resto de la app — no inventa riesgos
+// nuevos) cuáles aplican a esa tarea puntual, con una Probabilidad y
+// Consecuencia sugeridas. La app prellena el formulario con esas
+// sugerencias — el supervisor las revisa, ajusta o borra las que no
+// correspondan, y recién ahí guarda. Nada se guarda automáticamente: es un
+// prellenado, no un autoguardado.
+//
+// COSTO: $0. Se usa el tier gratis de la API de Gemini (modelo
+// gemini-2.5-flash-lite), que alcanza de sobra para este uso (cada
+// sugerencia es una llamada puntual al armar una fila del MIPER, no algo
+// de alto volumen). Ojo: en el tier gratis, Google puede usar los datos
+// enviados (proceso/puesto/tarea/equipos — descripciones de tareas de
+// obra, no datos personales) para mejorar sus modelos. Si eso no te
+// acomoda, revisa el tier pagado de Gemini o no uses esta función.
 //
 // CÓMO DESPLEGARLO:
-// 1. Consigue una API key de Anthropic en https://console.anthropic.com
-//    (Settings → API Keys). Esto tiene costo por uso (no es gratis) — cada
-//    sugerencia hace una llamada a la API.
+// 1. Consigue una API key gratis en https://aistudio.google.com/apikey
+//    (con tu cuenta de Google, sin tarjeta de crédito).
 // 2. Ve a tu Sheet → Extensiones → Apps Script (puede ser el MISMO proyecto
 //    donde ya pegaste APPS_SCRIPT_INIT.js, en un archivo nuevo).
 // 3. Crea un archivo nuevo (ícono "+" al lado de "Archivos") y pega este
 //    código completo ahí.
 // 4. Ve a "Configuración del proyecto" (ícono de tuerca, panel izquierdo) →
 //    "Propiedades de secuencia de comandos" → "Añadir propiedad de
-//    secuencia de comandos". Propiedad: CLAUDE_API_KEY — Valor: tu API key
+//    secuencia de comandos". Propiedad: GEMINI_API_KEY — Valor: tu API key
 //    (así queda guardada del lado del servidor, nunca expuesta en el
 //    navegador).
 // 5. Arriba a la derecha, botón "Implementar" → "Nueva implementación".
@@ -31,14 +38,15 @@
 //    - Quién tiene acceso: "Cualquier usuario".
 // 6. Implementar. La primera vez te va a pedir autorizar el script.
 // 7. Copia la URL que te da (termina en "/exec") y pégala en config.js, en
-//    MIPER_IA_WEBAPP_URL. Si lo dejas vacío, el botón "Sugerir con IA"
-//    simplemente no aparece — el resto de la app sigue funcionando igual.
+//    MIPER_IA_WEBAPP_URL. Si lo dejas vacío, el botón "Sugerencia
+//    automática" simplemente no aparece — el resto de la app sigue
+//    funcionando igual.
 // 8. Ojo: cada vez que cambies este código hay que crear una NUEVA VERSIÓN
 //    de la implementación (Implementar → Gestionar implementaciones →
 //    ✏️ → "Nueva versión") para que los cambios se apliquen.
 // ============================================================
 
-const CLAUDE_MODEL = 'claude-sonnet-5';
+const GEMINI_MODEL = 'gemini-2.5-flash-lite';
 
 function doPost(e) {
   let body;
@@ -58,8 +66,8 @@ function respuesta(obj) {
 }
 
 function sugerirRiesgos(body) {
-  const apiKey = PropertiesService.getScriptProperties().getProperty('CLAUDE_API_KEY');
-  if (!apiKey) throw new Error('Falta configurar CLAUDE_API_KEY en las propiedades del script');
+  const apiKey = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
+  if (!apiKey) throw new Error('Falta configurar GEMINI_API_KEY en las propiedades del script');
 
   const proceso = (body.proceso || '').toString().trim();
   const puesto = (body.puesto || '').toString().trim();
@@ -85,27 +93,28 @@ El "codigo" DEBE ser uno de los códigos del catálogo que se te da — nunca in
 
   const userPrompt = `Proceso: ${proceso}\nPuesto de trabajo: ${puesto}\nTarea: ${tarea}\nEquipos, máquinas y herramientas: ${equipos}\n\nCatálogo de riesgos disponible:\n${JSON.stringify(catalogoCompacto)}`;
 
-  const res = UrlFetchApp.fetch('https://api.anthropic.com/v1/messages', {
+  const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + GEMINI_MODEL + ':generateContent';
+  const res = UrlFetchApp.fetch(url, {
     method: 'post',
     contentType: 'application/json',
-    headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+    headers: { 'x-goog-api-key': apiKey },
     payload: JSON.stringify({
-      model: CLAUDE_MODEL,
-      max_tokens: 2000,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: userPrompt }],
+      systemInstruction: { parts: [{ text: systemPrompt }] },
+      contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+      generationConfig: { responseMimeType: 'application/json' },
     }),
     muteHttpExceptions: true,
   });
 
   const status = res.getResponseCode();
   const data = JSON.parse(res.getContentText());
-  if (status !== 200) throw new Error('Error de la API de Claude: ' + (data.error && data.error.message || res.getContentText()));
+  if (status !== 200) throw new Error('Error de la API de Gemini: ' + (data.error && data.error.message || res.getContentText()));
 
-  const textoRespuesta = (data.content && data.content[0] && data.content[0].text) || '';
+  const candidato = data.candidates && data.candidates[0];
+  const textoRespuesta = (candidato && candidato.content && candidato.content.parts && candidato.content.parts[0] && candidato.content.parts[0].text) || '';
   let sugerencias;
   try {
-    // Por si la IA igual agrega texto alrededor pese a la instrucción, se
+    // Por si la IA igual agrega texto alrededor pese a responseMimeType, se
     // recorta al primer '[' y último ']' antes de parsear.
     const ini = textoRespuesta.indexOf('[');
     const fin = textoRespuesta.lastIndexOf(']');
