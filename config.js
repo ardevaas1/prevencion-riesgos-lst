@@ -50,5 +50,5 @@ const CONFIG = {
   // de Riesgos (ver APPS_SCRIPT_WEBAPP_MIPER_IA.js) — deja vacío ('') si no
   // la vas a usar: el botón "Sugerir con IA" simplemente no aparece y el
   // resto del módulo MIPER sigue funcionando 100% manual, como siempre.
-  MIPER_IA_WEBAPP_URL: '',
+  MIPER_IA_WEBAPP_URL: 'https://script.google.com/macros/s/AKfycbzfmF5VyA0qLCvagViCb9l3N_d89UgHObTqnFyCSKEkA4IQ6xL6kMRtCrb9eaX7vJQ7Sw/exec',
 };
