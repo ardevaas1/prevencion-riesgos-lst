@@ -13,7 +13,7 @@
 // prellenado, no un autoguardado.
 //
 // COSTO: $0. Se usa el tier gratis de la API de Gemini (modelo
-// gemini-2.5-flash-lite), que alcanza de sobra para este uso (cada
+// gemini-3.5-flash-lite), que alcanza de sobra para este uso (cada
 // sugerencia es una llamada puntual al armar una fila del MIPER, no algo
 // de alto volumen). Ojo: en el tier gratis, Google puede usar los datos
 // enviados (proceso/puesto/tarea/equipos — descripciones de tareas de
@@ -46,7 +46,7 @@
 //    ✏️ → "Nueva versión") para que los cambios se apliquen.
 // ============================================================
 
-const GEMINI_MODEL = 'gemini-2.5-flash-lite';
+const GEMINI_MODEL = 'gemini-3.5-flash-lite';
 
 function doPost(e) {
   let body;

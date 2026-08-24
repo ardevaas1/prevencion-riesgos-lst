@@ -1078,10 +1078,10 @@ aparte la sesión sincrónica/presencial obligatoria.
   puede exponer en código que corre en el navegador). Recibe Proceso/
   Puesto/Tarea/Equipos + el catálogo completo (sin las medidas preventivas,
   para no inflar el prompt) y llama a la API de Gemini (Google, modelo
-  `gemini-2.5-flash-lite`, **tier gratis** — se eligió sobre Claude/Anthropic
+  `gemini-3.5-flash-lite`, **tier gratis** — se eligió sobre Claude/Anthropic
   a pedido explícito del cliente por costo; el volumen esperado de este
   botón es bajo y el límite gratis de Gemini para ese modelo, ~15
-  solicitudes/minuto y ~1.000/día, alcanza de sobra) pidiendo un array JSON
+  solicitudes/minuto y ~1.500/día, alcanza de sobra) pidiendo un array JSON
   `[{codigo, peligro, probabilidad, consecuencia}]`; filtra cualquier
   código que la IA haya devuelto y que no esté realmente en el catálogo
   recibido, antes de devolver la respuesta. Requiere que el cliente
