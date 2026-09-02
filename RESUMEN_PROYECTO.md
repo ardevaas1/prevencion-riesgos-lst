@@ -1001,58 +1001,42 @@ pestaña por pestaña antes de programar nada.
 ## Módulo Capacitación DS44 art.16 (8 hrs)
 
 Curso obligatorio de 8 horas exigido por el artículo 16 del Decreto Supremo
-N° 44 de 2023 (Resolución Exenta N° 1117/2026, "Guía Técnica" que reglamenta
-el curso). A diferencia del resto de la app (que registra/trazabiliza
-documentos ya generados fuera de la app), este módulo **dicta el curso
-dentro de la app**: el trabajador hace los módulos de contenido + evaluación
-en modo autoservicio desde su celular, y el prevencionista de LST registra
-aparte la sesión sincrónica/presencial obligatoria.
+N° 44 de 2023. La capacitación se dicta aparte (a cargo de un experto en
+prevención de riesgos de LST) — la app **no** dicta el curso ni evalúa al
+trabajador. Solo registra el resultado por trabajador: fecha de vigencia +
+certificado subido, **mismo patrón exacto que Examen de Altura** en la
+ficha del trabajador (`abrirEditarAltura`/`guardarAltura`).
 
-- **Estructura (`CAPACITACION_DS44_MODULOS` en `app.js`):** 7 módulos fijos
-  en el código (Introducción sin evaluación + 6 módulos de contenido con
-  evaluación, según el índice de la Guía Técnica: marco legal, identificación
-  de peligros, riesgos y salud, medidas preventivas, emergencias, y
-  señalización/incendios). El contenido de estos 6 módulos fue redactado
-  citando la ley/DS44/Guía Técnica — **no es el "curso tipo" SCORM oficial**
-  de la Subsecretaría de Previsión Social: la Guía Técnica exige un trámite
-  formal (solicitud + aceptación de términos en previsionsocial.gob.cl/ds44)
-  para obtenerlo, que solo LST puede completar. La idea es sustituir este
-  contenido por el oficial una vez LST lo solicite.
-- **Módulo real de MIPER (`especial: 'miper'` en el módulo "Identificación de
-  peligros"):** en vez de un ejemplo genérico, `resumenMiperParaCapacitacion`
-  muestra un resumen real (conteo por Nivel de Riesgo + últimas 3 filas) de
-  la Matriz de Riesgos (`MIPER_MATRIZ`) de la obra del trabajador — a pedido
-  explícito del cliente, para usar la matriz real de la obra como ejemplo
-  práctico en vez de contenido genérico.
-- **Evaluación no excluyente:** la Guía Técnica exige que la evaluación sea
-  "de carácter pedagógico, no selectivo ni excluyente" — no hay nota mínima
-  que reprueba. Si el trabajador responde mal, ve el error inline (✗ + "vuelve
-  a intentarlo") y puede reintentar las veces que necesite; el panel nunca lo
-  saca ni bloquea el avance por una respuesta incorrecta.
-- **Sesión sincrónica/presencial:** la Guía Técnica exige que la parte
-  sincrónica del curso (cuando se dicta directamente, no con el curso tipo
-  completo) la dé un facilitador experto en prevención de riesgos — LST usa
-  su propio prevencionista para esto. La app no dicta esa parte: solo
-  registra que ocurrió (`abrirRegistrarSincronicoDs44`/`guardarSincronicoDs44`
-  — nombre del facilitador + fecha).
-- **Modelo de datos (`CAPACITACION_DS44`):** patrón nuevo en esta app —
-  "encontrar-o-crear" (`obtenerOCrearCapacitacionDs44`): la primera vez que
-  un trabajador abre su curso se hace un único `appendSheet`, y de ahí en
-  adelante todo avance (módulo completado, sesión sincrónica, certificado)
-  es un `PUT` de una sola celda sobre esa misma fila — la fila nunca se
-  vuelve a agregar. `Modulos Completados` guarda un JSON
-  `[{modulo, fecha, resultado, intentos}]`.
-- **Certificado y vigencia:** al completar los 7 módulos (evaluación
-  correcta) + la sesión sincrónica, `verificarCompletarCursoDs44` genera un
-  PDF con pdf-lib (`generarCertificadoDs44`), lo sube a Drive y guarda la
-  fecha de completado + vencimiento a 2 años (portabilidad entre empleadores
-  del mismo rubro dentro de ese plazo, según la Guía Técnica) — mismo patrón
-  de vigencia que Examen de Altura.
-- **Integración con la ficha del trabajador:** nueva sección "Capacitación
-  DS44 (8 hrs)" en la ficha (mismo patrón que Contrato/Examen de Altura) con
-  badge de estado y botón "Ver curso" que abre `abrirCursoDs44(trabajador,
-  obra)` pasando la obra real del trabajador de forma explícita (no la obra
-  activa del filtro global, que puede no coincidir).
+- **Historia:** la primera versión de este módulo sí dictaba el curso
+  dentro de la app (7 módulos de contenido con evaluación de selección
+  múltiple, más registro de la sesión sincrónica/presencial). A pedido
+  explícito del cliente se sacó esa parte por completo — quedó solo la
+  opción de subir el certificado, igual que Examen de Altura — porque en la
+  práctica la capacitación ya se dicta presencialmente y lo único que hace
+  falta trazar es el certificado y su vigencia.
+- **Flujo actual:** por trabajador, se define "Vigente hasta" (fecha) y se
+  sube el documento del certificado (opcional, igual que Examen de Altura —
+  se puede guardar solo la fecha y subir el archivo después).
+  `abrirEditarDs44(trabajador, obra)` abre el formulario (`panel-editar-ds44`)
+  y `guardarCertificadoDs44` sube el archivo a la carpeta del trabajador en
+  Drive (`uploadFileTrabajador`, prefijo `certificado_ds44`) y actualiza las
+  columnas `H` (vigencia) y `K` (certificado) de `CAPACITACION_DS44`.
+- **Modelo de datos (`CAPACITACION_DS44`):** patrón "encontrar-o-crear"
+  (`obtenerOCrearCapacitacionDs44`): la primera vez que se registra algo
+  para un trabajador se hace un único `appendSheet`, y de ahí en adelante
+  cada actualización es un `PUT` de una sola celda sobre esa misma fila — la
+  fila nunca se vuelve a agregar. Las columnas de la versión anterior
+  (`Modulos Completados`, `Fecha Completado`, `Facilitador`/`Fecha
+  Sincrónico`) siguen existiendo en el Sheet por compatibilidad con filas
+  viejas, pero ya no se usan ni se escriben — solo `Fecha Vencimiento` y
+  `Certificado` importan ahora.
+- **Estado (`ds44Estado`):** igual que Examen de Altura — "Sin registrar"
+  (gris) si no hay fecha de vigencia, "Vencido" (rojo) si la fecha ya pasó,
+  "Vigente hasta [fecha]" (verde) si no.
+- **Integración con la ficha del trabajador:** sección "Capacitación DS44 (8
+  hrs)" en la ficha (mismo patrón visual que Contrato/Examen de Altura):
+  Vigencia + badge de Estado + link "Ver certificado" (si hay documento) +
+  botón "Subir certificado"/"Actualizar certificado".
 - **Sin FAB propio:** el módulo no tiene botón "+" de acción rápida — se
   entra siempre eligiendo un trabajador (desde la lista del módulo o desde
   su ficha), nunca creando un registro suelto.

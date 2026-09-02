@@ -117,112 +117,6 @@ const MIPER_PROTOCOLOS = [
   "Guía Técnica sobre Radiación Ultravioleta de Origen Solar",
 ];
 
-// ── Capacitación DS44 art.16 (8 horas obligatorias) ─────────────────────
-// Contenido base de los 7 módulos exigidos por la Guía Técnica aprobada por
-// la Resolución 1117 Exenta (07-ago-2026, Subsecretaría de Previsión
-// Social), que reglamenta el artículo 16 del DS 44/2023. Es contenido
-// redactado citando la ley 16.744, el DS44 y la propia Guía Técnica —
-// cumple los contenidos mínimos exigidos, pero NO es el "curso tipo"
-// oficial en SCORM de la Subsecretaría (ese hay que solicitarlo aparte en
-// previsionsocial.gob.cl/ds44 y reemplaza este contenido cuando esté
-// disponible). Cada módulo termina con una evaluación de selección
-// múltiple, sin reprobación: se puede repetir las veces que sea necesario
-// hasta responder todo bien (así lo exige la Guía Técnica, punto 1.2:
-// evaluación de carácter pedagógico, no selectivo ni excluyente). El
-// módulo "Identificación de peligros" usa datos reales de la Matriz de
-// Riesgos (IPER) de la obra del trabajador en vez de un ejemplo genérico.
-const CAPACITACION_DS44_MODULOS = [
-  {
-    titulo: 'Introducción',
-    contenido: [
-      'Este curso cumple con el artículo 16 del Decreto Supremo N° 44 de 2023, del Ministerio del Trabajo y Previsión Social, que obliga a toda entidad empleadora a capacitar a sus trabajadores en prevención de riesgos laborales, con una duración mínima de 8 horas.',
-      'La capacitación es obligatoria para todos los trabajadores de LST, sin importar su cargo, tipo de contrato o antigüedad — incluye a quienes recién ingresan y a quienes cambian de obra o de actividad.',
-      'El curso está dividido en 6 módulos de contenido, cada uno con una evaluación breve al final. No hay nota mínima que "repruebe": si no respondes bien a la primera, puedes intentarlo de nuevo las veces que necesites hasta responder correctamente — lo importante es que entiendas el contenido, no memorizarlo.',
-      'Al completar los 6 módulos se genera tu certificado, válido por 2 años desde la fecha de término. Si cambias de empleador dentro del mismo rubro, este certificado se reconoce mientras no hayan pasado esos 2 años.',
-    ],
-    preguntas: [],
-  },
-  {
-    titulo: 'Marco general de la Seguridad y Salud en el Trabajo',
-    contenido: [
-      'La Ley N° 16.744 establece el seguro social obligatorio contra accidentes del trabajo y enfermedades profesionales en Chile. Te protege desde el momento en que empiezas tu jornada hasta que termina, incluyendo el trayecto directo entre tu casa y el trabajo (accidente de trayecto).',
-      'Como trabajador, tienes derecho a: trabajar en condiciones seguras, recibir los Elementos de Protección Personal (EPP) necesarios sin costo, ser informado de los riesgos de tu puesto de trabajo (derecho a saber), y negarte a realizar una labor si tienes fundadas razones para creer que pone en riesgo tu vida o salud.',
-      'La entidad empleadora tiene la obligación de: identificar y evaluar los riesgos de cada puesto de trabajo, entregar EPP adecuados, capacitar a los trabajadores, investigar los accidentes que ocurran, y mantener condiciones de trabajo seguras.',
-      'Si sufres un accidente del trabajo o una enfermedad profesional, tienes derecho a atención médica gratuita hasta tu recuperación (prestaciones médicas), y si quedas con incapacidad para trabajar, a subsidios o indemnizaciones (prestaciones económicas) — todo esto a través del Organismo Administrador de la ley 16.744 al que esté afiliada la empresa (una mutualidad, por ejemplo).',
-      'Si tienes un accidente, debes avisar de inmediato a tu supervisor. La empresa está obligada a denunciarlo (formulario DIAT) ante el Organismo Administrador. Si no estás de acuerdo con una decisión sobre tu caso, puedes reclamar ante la Superintendencia de Seguridad Social.',
-    ],
-    preguntas: [
-      { texto: '¿Qué cubre la Ley 16.744?', opciones: ['Solo accidentes dentro de la obra', 'Accidentes del trabajo, enfermedades profesionales y el trayecto directo casa-trabajo', 'Solo enfermedades profesionales'], correcta: 1 },
-      { texto: 'Si crees que una tarea pone en riesgo tu vida o salud, ¿qué derecho tienes?', opciones: ['Ninguno, hay que hacer la tarea igual', 'Negarte a realizarla si tienes fundadas razones', 'Solo puedes reclamar después del accidente'], correcta: 1 },
-      { texto: 'Si sufres un accidente del trabajo, ¿qué debes hacer primero?', opciones: ['Esperar a que termine tu turno para avisar', 'Avisar de inmediato a tu supervisor', 'Ir directo a tu casa a descansar'], correcta: 1 },
-    ],
-  },
-  {
-    titulo: 'Identificación de peligros y evaluación de riesgos',
-    contenido: [
-      'Un peligro es cualquier fuente, situación o acto con potencial de causar daño (una superficie resbalosa, un cable eléctrico expuesto, trabajar en altura sin protección). El riesgo es la probabilidad de que ese peligro cause realmente un daño, combinada con la gravedad de ese daño.',
-      'Los riesgos laborales se clasifican en varias familias: de Seguridad (caídas, golpes, atrapamientos, cortes), de Higiene (ruido, vibraciones, exposición a sílice), Músculo-Esqueléticos (manipulación manual de carga, movimientos repetitivos) y Psicosociales (carga de trabajo, entre otros).',
-      'La Matriz de Identificación de Peligros y Evaluación de Riesgos (MIPER) es la herramienta que usa LST para identificar, de forma sistemática, los peligros de cada tarea de cada obra, evaluar su nivel de riesgo, y definir las medidas preventivas correspondientes. Cada fila de la matriz representa un peligro específico de una tarea, con su Probabilidad, Consecuencia, el VEP resultante (Probabilidad × Consecuencia) y el Nivel de Riesgo (Tolerable, Moderado, Importante o Intolerable).',
-      'Abajo puedes ver un resumen real de la Matriz de Riesgos de tu obra — así es como se ve la MIPER aplicada al trabajo que se está haciendo hoy.',
-      'Cuando se identifica un riesgo Importante o Intolerable, la prioridad de las medidas preventivas sigue este orden (prelación): 1) eliminar el peligro, 2) sustituirlo por algo menos peligroso, 3) controles de ingeniería (barreras, ventilación), 4) controles administrativos (procedimientos, señalización, capacitación), y 5) como última barrera, el Equipo de Protección Personal (EPP).',
-    ],
-    especial: 'miper',
-    preguntas: [
-      { texto: '¿Cuál es la diferencia entre peligro y riesgo?', opciones: ['Son lo mismo', 'El peligro es la fuente de daño; el riesgo es la probabilidad y gravedad de que ese daño ocurra', 'El riesgo es solo para trabajos en altura'], correcta: 1 },
-      { texto: '¿Qué significa MIPER?', opciones: ['Un tipo de EPP', 'Matriz de Identificación de Peligros y Evaluación de Riesgos', 'Un organismo fiscalizador'], correcta: 1 },
-      { texto: 'Según la prelación de medidas preventivas, ¿qué debe intentarse primero?', opciones: ['Entregar EPP', 'Eliminar el peligro', 'Poner un letrero de advertencia'], correcta: 1 },
-    ],
-  },
-  {
-    titulo: 'Riesgos laborales y efectos en la salud',
-    contenido: [
-      'Una enfermedad profesional es la causada de manera directa por el ejercicio del trabajo y que produce incapacidad o muerte — a diferencia de un accidente, no ocurre de golpe: se desarrolla por exposición repetida a un mismo factor de riesgo a lo largo del tiempo (por ejemplo, pérdida de audición por ruido, o problemas respiratorios por exposición a sílice).',
-      'Las entidades empleadoras tienen la obligación de someter a vigilancia de la salud a los trabajadores expuestos a ciertos factores de riesgo (ruido, sílice, radiación UV, trastornos músculo-esqueléticos, riesgos psicosociales) — esto incluye exámenes periódicos y seguimiento médico a cargo del Organismo Administrador.',
-      'Si notas síntomas que podrían estar relacionados con tu trabajo (dolor persistente, pérdida de audición, dificultad para respirar), avisa a tu supervisor y solicita ser evaluado — mientras antes se detecte, más fácil es evitar un daño mayor.',
-    ],
-    preguntas: [
-      { texto: '¿Qué diferencia a una enfermedad profesional de un accidente del trabajo?', opciones: ['No hay diferencia', 'La enfermedad se desarrolla por exposición repetida en el tiempo, el accidente ocurre de forma súbita', 'La enfermedad profesional no está cubierta por la ley 16.744'], correcta: 1 },
-      { texto: '¿Quién debe hacer seguimiento médico a los trabajadores expuestos a factores de riesgo como ruido o sílice?', opciones: ['El propio trabajador, por su cuenta', 'El Organismo Administrador de la ley 16.744, con vigilancia de la salud', 'Nadie, es responsabilidad personal'], correcta: 1 },
-    ],
-  },
-  {
-    titulo: 'Medidas preventivas y protección',
-    contenido: [
-      'El Equipo de Protección Personal (EPP) es la última barrera de protección, no la primera — pero cuando es necesario, debe ser el adecuado para el riesgo específico de la tarea (por ejemplo, no todo guante protege contra cortes; no todo protector auditivo tiene la misma atenuación de ruido), estar en buen estado, y usarse correctamente durante toda la tarea.',
-      'Hay trabajadores que requieren atención especial por su condición: por ejemplo, mujeres embarazadas (no pueden levantar carga ni exponerse a ciertos agentes), trabajadores nuevos o jóvenes (mayor riesgo por falta de experiencia), y personas con alguna condición de salud preexistente relevante para el puesto.',
-      'LST cuenta con protocolos de vigilancia ambiental y de la salud del Ministerio de Salud aplicables según los riesgos de cada obra (sílice, ruido, trastornos músculo-esqueléticos, riesgos psicosociales, radiación UV) — estos determinan qué exámenes y monitoreos corresponden.',
-    ],
-    preguntas: [
-      { texto: 'El EPP es...', opciones: ['La primera medida que se debe aplicar siempre', 'La última barrera de protección, después de eliminar/sustituir/controlar el riesgo', 'Opcional si el trabajador prefiere no usarlo'], correcta: 1 },
-      { texto: '¿Por qué una mujer embarazada requiere atención especial en la gestión de riesgos?', opciones: ['No la requiere, es igual que cualquier trabajador', 'Porque no puede levantar carga ni exponerse a ciertos agentes de riesgo', 'Solo por comodidad personal'], correcta: 1 },
-    ],
-  },
-  {
-    titulo: 'Gestión de emergencias y desastres',
-    contenido: [
-      'Toda entidad empleadora debe tener un Plan de Gestión de Riesgos de Emergencia, Catástrofe o Desastre — que define cómo actuar ante incendios, sismos, accidentes graves u otras situaciones críticas, y quiénes son responsables de coordinar la respuesta (Comité de Gestión de Riesgos de Desastre).',
-      'Los elementos básicos de un plan de emergencia incluyen: vías de evacuación señalizadas y despejadas, puntos de encuentro definidos, roles claros (quién da la alarma, quién coordina la evacuación, quién hace el conteo de personas), y comunicación con los servicios de emergencia externos.',
-      'Como trabajador, tienes derecho a interrumpir tu actividad y evacuar de forma segura ante una emergencia, sin que eso te traiga consecuencias — y el deber de conocer las vías de evacuación y el punto de encuentro de tu obra específica.',
-    ],
-    preguntas: [
-      { texto: '¿Qué es el punto de encuentro?', opciones: ['El lugar donde se guardan las herramientas', 'El lugar seguro definido donde los trabajadores deben reunirse tras una evacuación', 'La oficina del supervisor'], correcta: 1 },
-      { texto: 'Ante una emergencia, ¿qué derecho tiene el trabajador?', opciones: ['Ninguno, debe seguir trabajando hasta que se lo indiquen', 'Interrumpir su actividad y evacuar de forma segura, sin consecuencias', 'Solo puede evacuar si el supervisor no está presente'], correcta: 1 },
-    ],
-  },
-  {
-    titulo: 'Señalización y prevención de incendios',
-    contenido: [
-      'La señalética de seguridad usa colores y formas estandarizadas para comunicar rápido, sin necesidad de leer texto: rojo (prohibición/equipos contra incendio), amarillo (advertencia/peligro), azul (obligación, como "uso obligatorio de casco"), y verde (información de emergencia/evacuación/primeros auxilios).',
-      'El fuego necesita tres elementos para existir: combustible, oxígeno y una fuente de calor (el "triángulo del fuego"). Según el tipo de material que se quema (sólidos comunes, líquidos inflamables, gases, equipos eléctricos energizados, metales), el extintor adecuado es distinto — usar el extintor equivocado puede empeorar un incendio en vez de apagarlo.',
-      'Si detectas un amago de incendio: da la alarma, usa el extintor solo si estás capacitado y el fuego es controlable, y si no puedes controlarlo, evacúa de inmediato siguiendo el plan de emergencia de la obra — nunca arriesgues tu vida intentando apagar un fuego que ya te supera.',
-    ],
-    preguntas: [
-      { texto: '¿Qué significa una señalética de color amarillo?', opciones: ['Prohibición', 'Advertencia o peligro', 'Obligación'], correcta: 1 },
-      { texto: '¿Cuáles son los tres elementos del triángulo del fuego?', opciones: ['Agua, viento y tierra', 'Combustible, oxígeno y fuente de calor', 'Humo, ceniza y chispa'], correcta: 1 },
-      { texto: 'Si el fuego te supera y no puedes controlarlo con un extintor, ¿qué debes hacer?', opciones: ['Insistir hasta apagarlo', 'Evacuar de inmediato siguiendo el plan de emergencia', 'Esperar a que llegue el supervisor'], correcta: 1 },
-    ],
-  },
-];
 // Probabilidad × Consecuencia = VEP; el VEP determina el Nivel de Riesgo
 // (tabla "VEP" del Excel original). Con probabilidad y consecuencia acotadas
 // a {1,2,4} el VEP solo puede dar 1,2,4,8 o 16 — de ahí el corte "≤2".
@@ -1912,12 +1806,18 @@ function abrirFichaTrabajador(nombre) {
       <button class="action-btn" onclick="abrirEditarAltura(${t.fila})">${t.alturaVigencia ? 'Actualizar examen' : 'Subir examen'}</button>
     </div>
 
-    ${t.obra ? `
+    ${t.obra ? (() => {
+      const recDs44 = capacitacionDs44RecordDe(t.nombre, t.obra);
+      const estadoDs44 = ds44Estado(recDs44);
+      return `
     <div class="ficha-section">
       <div class="ficha-sec-title">Capacitación DS44 (8 hrs)</div>
-      <div class="field-row"><span class="fl">Estado</span><span class="badge ${ds44Estado(capacitacionDs44RecordDe(t.nombre, t.obra)).badge}">${esc(ds44Estado(capacitacionDs44RecordDe(t.nombre, t.obra)).label)}</span></div>
-      <button class="action-btn" onclick="abrirCursoDs44('${esc(t.nombre).replace(/'/g,"\\'")}','${esc(t.obra).replace(/'/g,"\\'")}')">Ver curso</button>
-    </div>` : ''}
+      <div class="field-row"><span class="fl">Vigencia</span><span class="fv">${esc(recDs44 && recDs44.fechaVencimiento || '—')}</span></div>
+      <div class="field-row"><span class="fl">Estado</span><span class="badge ${estadoDs44.badge}">${esc(estadoDs44.label)}</span></div>
+      ${recDs44 && recDs44.certificado ? `<div class="field-row"><span class="fl">Documento</span><a href="${esc(recDs44.certificado)}" target="_blank" class="badge blue">${ic('documento',12)} Ver certificado</a></div>` : ''}
+      <button class="action-btn" onclick="abrirEditarDs44('${esc(t.nombre).replace(/'/g,"\\'")}','${esc(t.obra).replace(/'/g,"\\'")}')">${recDs44 && recDs44.fechaVencimiento ? 'Actualizar certificado' : 'Subir certificado'}</button>
+    </div>`;
+    })() : ''}
 
     ${miSupervisorPerfil ? '' : `
     <div class="ficha-section">
@@ -8378,13 +8278,10 @@ async function generarExcelMiper(datos) {
 // ============================================================
 // MÓDULO: Capacitación DS44 art.16 (8 hrs obligatorias)
 // ============================================================
-// Un trabajador (elegido por el supervisor logueado, que le pasa el
-// celular/tablet en terreno) hace los 6 módulos de contenido + evaluación
-// de forma autoservicio, y el prevencionista de LST registra aparte la
-// sesión sincrónica/presencial (obligatoria si el curso se dicta
-// directamente, según la Guía Técnica). Al completar ambas cosas se genera
-// el certificado y el vencimiento a 2 años, mismo patrón que Examen de
-// Altura en la ficha del trabajador.
+// La capacitación se dicta aparte (a cargo de un experto en prevención de
+// riesgos de LST) — acá solo se registra el resultado: fecha de vigencia +
+// el certificado subido. Mismo patrón simple que Examen de Altura en la
+// ficha del trabajador (ver abrirEditarAltura/guardarAltura).
 let obraCapDs44Sel = 'todas';
 function obraCapDs44Efectiva() {
   const obraGlobal = obraFiltroActivo();
@@ -8396,29 +8293,12 @@ function onCambioObraCapDs44(v) { obraCapDs44Sel = v; renderCapacitacionDs44(); 
 function capacitacionDs44RecordDe(trabajador, obra) {
   return allCapacitacionDs44.find(r => r.trabajador === trabajador && r.obra === obra) || null;
 }
-// Los primeros 6 módulos (índice 0 = Introducción, sin evaluación, cuentan
-// como completos apenas se ven) tienen evaluación; el total de módulos con
-// evaluación son los que tienen preguntas.
-function ds44ModulosOk(rec) {
-  if (!rec) return 0;
-  return CAPACITACION_DS44_MODULOS.filter((mod, idx) => {
-    const m = rec.modulosCompletados.find(x => x.modulo === idx);
-    return m && (mod.preguntas.length === 0 || m.resultado === true);
-  }).length;
-}
 function ds44Estado(rec) {
-  const total = CAPACITACION_DS44_MODULOS.length;
-  if (!rec) return { label: 'Sin iniciar', badge: 'gray' };
-  const ok = ds44ModulosOk(rec);
-  if (rec.fechaCompletado) {
-    const vencido = rec.fechaVencimiento && new Date(rec.fechaVencimiento) < new Date(hoyISO());
-    return vencido
-      ? { label: `Vencido (venció ${ddmmyyyy(rec.fechaVencimiento)})`, badge: 'red' }
-      : { label: `Vigente hasta ${ddmmyyyy(rec.fechaVencimiento)}`, badge: 'green' };
-  }
-  if (ok < total) return { label: `En curso (${ok}/${total} módulos)`, badge: 'amber' };
-  if (!rec.fechaSincronico) return { label: 'Módulos listos — falta sesión presencial', badge: 'amber' };
-  return { label: 'En curso', badge: 'amber' };
+  if (!rec || !rec.fechaVencimiento) return { label: 'Sin registrar', badge: 'gray' };
+  const vencido = rec.fechaVencimiento < hoyISO();
+  return vencido
+    ? { label: `Vencido (venció ${ddmmyyyy(rec.fechaVencimiento)})`, badge: 'red' }
+    : { label: `Vigente hasta ${ddmmyyyy(rec.fechaVencimiento)}`, badge: 'green' };
 }
 
 function renderCapacitacionDs44() {
@@ -8445,7 +8325,7 @@ function renderCapacitacionDs44() {
       <div class="card-icon modulo-icon--inv">${ic('capacitacion',18)}</div>
       <div class="card-body">
         <div class="card-title">Capacitación DS44 art.16 — 8 horas obligatorias</div>
-        <div class="card-sub">Vigencia 2 años. Elige un trabajador para tomar o continuar su curso.</div>
+        <div class="card-sub">Vigencia 2 años. Elige un trabajador para subir o actualizar su certificado.</div>
       </div>
     </div>
     ${trabajadores.length === 0 ? emptyState('Sin trabajadores activos', 'No hay trabajadores activos en esta obra') :
@@ -8453,7 +8333,7 @@ function renderCapacitacionDs44() {
         const rec = capacitacionDs44RecordDe(t.nombre, obraEfectiva);
         const estado = ds44Estado(rec);
         return `
-      <div class="card card--default" onclick="abrirCursoDs44('${esc(t.nombre)}')">
+      <div class="card card--default" onclick="abrirEditarDs44('${esc(t.nombre)}','${esc(obraEfectiva)}')">
         <div class="card-body">
           <div class="card-title">${esc(t.nombre)}</div>
           <div class="card-sub">${esc(t.cargo || '')}</div>
@@ -8463,113 +8343,6 @@ function renderCapacitacionDs44() {
       </div>`;
       }).join('')}
   `);
-}
-
-function abrirCursoDs44(trabajador, obraParam) {
-  const obra = obraParam || obraCapDs44Efectiva();
-  const rec = capacitacionDs44RecordDe(trabajador, obra);
-  const estado = ds44Estado(rec);
-  document.getElementById('ds44-curso-body').innerHTML = `
-    <div class="card card--default">
-      <div class="card-body">
-        <div class="card-title">${esc(trabajador)}</div>
-        <div class="badge-row"><span class="badge ${estado.badge}">${estado.label}</span></div>
-      </div>
-    </div>
-    <div class="sec-label" style="margin-top:14px;">Módulos (autoservicio)</div>
-    ${CAPACITACION_DS44_MODULOS.map((mod, idx) => {
-      const m = rec && rec.modulosCompletados.find(x => x.modulo === idx);
-      const ok = m && (mod.preguntas.length === 0 || m.resultado === true);
-      return `
-      <div class="card card--default" onclick="abrirModuloDs44('${esc(trabajador)}','${esc(obra)}', ${idx})">
-        <div class="card-icon modulo-icon--inv">${ok ? ic('check',18) : ic('capacitacion',18)}</div>
-        <div class="card-body">
-          <div class="card-title">${idx+1}. ${esc(mod.titulo)}</div>
-          <div class="card-sub">${ok ? 'Completado' : mod.preguntas.length ? `${mod.preguntas.length} preguntas` : 'Solo lectura'}</div>
-        </div>
-        <div class="card-arrow">›</div>
-      </div>`;
-    }).join('')}
-    <div class="sec-label" style="margin-top:14px;">Sesión sincrónica/presencial</div>
-    <div class="card-sub" style="margin-bottom:8px;">La parte práctica la debe dar un experto en prevención de riesgos de LST — este botón solo registra que ocurrió.</div>
-    ${rec && rec.fechaSincronico
-      ? `<div class="card card--default"><div class="card-body"><div class="card-title">Registrada</div><div class="card-sub">${esc(rec.facilitadorSincronico)} — ${ddmmyyyy(rec.fechaSincronico)}</div></div></div>`
-      : `<button class="action-btn" onclick="abrirRegistrarSincronicoDs44('${esc(trabajador)}','${esc(obra)}')">${ic('capacitacion',14)} Registrar sesión sincrónica/presencial</button>`}
-    ${rec && rec.certificado ? `
-    <div class="sec-label" style="margin-top:14px;">Certificado</div>
-    <a class="card card--default" href="${esc(rec.certificado)}" target="_blank" rel="noopener">
-      <div class="card-icon modulo-icon--inv">${ic('documento',18)}</div>
-      <div class="card-body"><div class="card-title">Ver certificado</div><div class="card-sub">Vigente hasta ${ddmmyyyy(rec.fechaVencimiento)}</div></div>
-    </a>` : ''}
-  `;
-  openPanel('panel-ds44-curso');
-}
-
-function abrirModuloDs44(trabajador, obra, idx) {
-  const mod = CAPACITACION_DS44_MODULOS[idx];
-  const contenidoHtml = mod.contenido.map(p => `<p style="margin:0 0 10px;line-height:1.5;">${esc(p)}</p>`).join('');
-  const miperHtml = mod.especial === 'miper' ? resumenMiperParaCapacitacion(obra) : '';
-  const sinQuiz = mod.preguntas.length === 0;
-  document.getElementById('ds44-modulo-body').innerHTML = `
-    <div class="sec-label">${idx+1}. ${esc(mod.titulo)}</div>
-    ${contenidoHtml}
-    ${miperHtml}
-    ${sinQuiz
-      ? `<button class="btn-add" type="button" onclick="guardarModuloDs44('${esc(trabajador)}','${esc(obra)}',${idx},null)">Entendido, continuar</button>`
-      : `<div class="sec-label" style="margin-top:14px;">Evaluación</div>
-         <div class="card-sub" style="margin-bottom:10px;">Si te equivocas en algo, te dejamos intentarlo de nuevo — no hay nota mínima que reprobar.</div>
-         <form id="form-ds44-quiz" onsubmit="return false;">
-           ${mod.preguntas.map((p, pi) => `
-           <div class="form-group" data-pregunta="${pi}">
-             <label>${esc(p.texto)}</label>
-             ${p.opciones.map((op, oi) => `
-             <label style="display:flex;gap:8px;align-items:flex-start;margin:6px 0;font-size:13.5px;line-height:1.4;">
-               <input type="radio" name="p${pi}" value="${oi}" style="margin-top:3px;flex-shrink:0;">
-               <span style="flex:1;min-width:0;">${esc(op)}</span>
-             </label>`).join('')}
-             <div class="card-sub ds44-resultado-pregunta hidden" data-resultado="${pi}"></div>
-           </div>`).join('')}
-         </form>
-         <button class="btn-add" type="button" onclick="enviarQuizDs44('${esc(trabajador)}','${esc(obra)}',${idx})">Revisar respuestas</button>`}
-  `;
-  openPanel('panel-ds44-modulo');
-}
-
-// Muestra un resumen real (no un ejemplo genérico) de la Matriz de Riesgos
-// de la obra del trabajador, para el módulo de Identificación de Peligros.
-function resumenMiperParaCapacitacion(obra) {
-  const filas = allMiperMatriz.filter(f => f.obra === obra);
-  if (filas.length === 0) {
-    return `<div class="card card--default"><div class="card-body"><div class="card-sub">Todavía no hay filas cargadas en la Matriz de Riesgos de esta obra — cuando se carguen, este módulo mostrará ejemplos reales.</div></div></div>`;
-  }
-  const conteo = { Tolerable: 0, Moderado: 0, Importante: 0, Intolerable: 0 };
-  filas.forEach(f => { if (conteo[f.nivelRiesgo] !== undefined) conteo[f.nivelRiesgo]++; });
-  const muestra = filas.slice(-3);
-  return `
-    <div class="card card--default">
-      <div class="card-body">
-        <div class="card-title">MIPER real de tu obra (${esc(obra)})</div>
-        <div class="badge-row">${MIPER_VEP.map(v => `<span class="badge ${v.color}">${conteo[v.nombre]||0} ${v.nombre}</span>`).join('')}</div>
-        ${muestra.map(f => `<div class="card-sub" style="margin-top:6px;">${esc(f.proceso)} — ${esc(f.tarea)}: <strong>${esc(f.riesgo)}</strong> (${esc(f.nivelRiesgo)})</div>`).join('')}
-      </div>
-    </div>`;
-}
-
-function enviarQuizDs44(trabajador, obra, idx) {
-  const mod = CAPACITACION_DS44_MODULOS[idx];
-  const form = document.getElementById('form-ds44-quiz');
-  let todasOk = true;
-  mod.preguntas.forEach((p, pi) => {
-    const sel = form.querySelector(`input[name="p${pi}"]:checked`);
-    const resultadoEl = form.querySelector(`[data-resultado="${pi}"]`);
-    if (!sel) { todasOk = false; resultadoEl.textContent = 'Elige una opción.'; resultadoEl.classList.remove('hidden'); return; }
-    const ok = Number(sel.value) === p.correcta;
-    if (!ok) todasOk = false;
-    resultadoEl.textContent = ok ? '✓ Correcto' : '✗ Esa no es — vuelve a intentarlo';
-    resultadoEl.style.color = ok ? '#1f6b39' : '#c0392b';
-    resultadoEl.classList.remove('hidden');
-  });
-  if (todasOk) guardarModuloDs44(trabajador, obra, idx, true);
 }
 
 async function obtenerOCrearCapacitacionDs44(trabajador, obra) {
@@ -8595,114 +8368,36 @@ async function actualizarCeldaDs44(fila, col, valor) {
   await fetch(url, { method: 'PUT', headers: { 'Content-Type': 'application/json', ...authHeader() },
     body: JSON.stringify({ values: [[valor]] }) });
 }
-async function guardarModuloDs44(trabajador, obra, idx, resultado) {
-  try {
-    const rec = await obtenerOCrearCapacitacionDs44(trabajador, obra);
-    const existente = rec.modulosCompletados.find(m => m.modulo === idx);
-    const ahora = new Date().toLocaleString('es-CL');
-    if (existente) { existente.fecha = ahora; existente.resultado = resultado; existente.intentos = (existente.intentos || 0) + 1; }
-    else rec.modulosCompletados.push({ modulo: idx, fecha: ahora, resultado, intentos: 1 });
-    await actualizarCeldaDs44(rec.fila, 'F', JSON.stringify(rec.modulosCompletados));
-    toast('Módulo guardado ✓', 'ok');
-    await verificarCompletarCursoDs44(rec);
-    closePanel('panel-ds44-modulo');
-    abrirCursoDs44(trabajador, obra);
-    renderCapacitacionDs44();
-  } catch (e) { toast(e.message, 'error'); }
-}
 
-function abrirRegistrarSincronicoDs44(trabajador, obra) {
-  document.getElementById('ds44-sincronico-body').innerHTML = `
-    <form id="form-ds44-sincronico" onsubmit="guardarSincronicoDs44(event,'${esc(trabajador)}','${esc(obra)}')">
-      <div class="card-sub" style="margin-bottom:12px;">Registra que ${esc(trabajador)} recibió la parte sincrónica/presencial del curso, dada por un experto en prevención de riesgos.</div>
-      <div class="form-group"><label>Facilitador (nombre)</label><input name="facilitador" required placeholder="Ej: Diego Herrera — Prevención de Riesgos"></div>
-      <div class="form-group"><label>Fecha</label><input type="date" name="fecha" required value="${hoyISO()}"></div>
-      <button class="btn-add" type="submit">Guardar</button>
-    </form>`;
-  openPanel('panel-ds44-sincronico');
+function abrirEditarDs44(trabajador, obra) {
+  const rec = capacitacionDs44RecordDe(trabajador, obra);
+  const f = document.getElementById('form-editar-ds44');
+  f.reset();
+  f.trabajador.value = trabajador;
+  f.obra.value = obra;
+  f.vigencia.value = rec ? rec.fechaVencimiento || '' : '';
+  openPanel('panel-editar-ds44');
 }
-async function guardarSincronicoDs44(ev, trabajador, obra) {
+async function guardarCertificadoDs44(ev) {
   ev.preventDefault();
   const f = ev.target;
+  const trabajador = f.trabajador.value;
+  const obra = f.obra.value;
   try {
     const rec = await obtenerOCrearCapacitacionDs44(trabajador, obra);
-    rec.facilitadorSincronico = f.facilitador.value.trim();
-    rec.fechaSincronico = f.fecha.value;
-    await actualizarCeldaDs44(rec.fila, 'I', rec.facilitadorSincronico);
-    await actualizarCeldaDs44(rec.fila, 'J', rec.fechaSincronico);
-    toast('Sesión registrada ✓', 'ok');
-    await verificarCompletarCursoDs44(rec);
-    closePanel('panel-ds44-sincronico');
-    abrirCursoDs44(trabajador, obra);
+    const archivoFile = f.archivo.files[0];
+    if (archivoFile) {
+      const up = await uploadFileTrabajador(archivoFile, trabajador, 'certificado_ds44');
+      rec.certificado = up.link;
+      await actualizarCeldaDs44(rec.fila, 'K', rec.certificado);
+    }
+    rec.fechaVencimiento = f.vigencia.value;
+    await actualizarCeldaDs44(rec.fila, 'H', rec.fechaVencimiento);
+    toast('Certificado DS44 actualizado ✓', 'ok');
+    closePanel('panel-editar-ds44');
+    await cargarTodo(true);
+    if (!document.getElementById('panel-ficha-trabajador').classList.contains('hidden')) abrirFichaTrabajador(trabajador);
     renderCapacitacionDs44();
   } catch (e) { toast(e.message, 'error'); }
 }
 
-async function verificarCompletarCursoDs44(rec) {
-  if (rec.fechaCompletado) return;
-  const total = CAPACITACION_DS44_MODULOS.length;
-  if (ds44ModulosOk(rec) < total || !rec.fechaSincronico) return;
-  const hoy = new Date();
-  const fechaCompletado = hoyISO();
-  const venc = new Date(hoy); venc.setFullYear(venc.getFullYear() + 2);
-  const fechaVencimiento = venc.toISOString().slice(0, 10);
-  rec.fechaCompletado = fechaCompletado;
-  rec.fechaVencimiento = fechaVencimiento;
-  await actualizarCeldaDs44(rec.fila, 'G', fechaCompletado);
-  await actualizarCeldaDs44(rec.fila, 'H', fechaVencimiento);
-  try {
-    const blob = await generarCertificadoDs44(rec);
-    const folderId = await getModuloFolder('Capacitacion DS44');
-    const up = await subirBytesADrive(blob, folderId, `Certificado_DS44_${rec.trabajador}`.replace(/\s+/g, '_') + '.pdf');
-    rec.certificado = up.link;
-    await actualizarCeldaDs44(rec.fila, 'K', up.link);
-  } catch (e) { console.error(e); }
-  toast('¡Curso DS44 completado! Certificado generado ✓', 'ok');
-}
-
-async function generarCertificadoDs44(rec) {
-  const { PDFDocument, rgb, StandardFonts } = await cargarPdfLib();
-  const pdfDoc = await PDFDocument.create();
-  const page = pdfDoc.addPage([595, 842]); // A4 vertical
-  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-  const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-  const negro = rgb(0.15, 0.15, 0.15), gris = rgb(0.4, 0.4, 0.4), azul = rgb(0.08, 0.4, 0.75);
-  const W = 595, cx = W / 2;
-  try {
-    const logoBytes = await fetch('logo.png').then(r => r.arrayBuffer());
-    const logoImg = await pdfDoc.embedJpg(logoBytes);
-    const logoDim = logoImg.scale(50 / logoImg.height);
-    page.drawImage(logoImg, { x: cx - logoDim.width / 2, y: 760, width: logoDim.width, height: logoDim.height });
-  } catch (e) { /* sin logo, el certificado se genera igual */ }
-  const centrado = (texto, y, size, f, color) => {
-    const w = f.widthOfTextAtSize(texto, size);
-    page.drawText(texto, { x: cx - w / 2, y, size, font: f, color: color || negro });
-  };
-  centrado('CERTIFICADO DE CAPACITACIÓN', 690, 20, fontBold, negro);
-  centrado('Prevención de Riesgos Laborales — Artículo 16, D.S. N° 44 de 2023', 668, 11, font, gris);
-  centrado('Se certifica que', 620, 12, font, gris);
-  centrado(rec.trabajador, 592, 22, fontBold, azul);
-  if (rec.rut) centrado(`RUT ${rec.rut}`, 570, 11, font, gris);
-  const parrafo = `completó la capacitación obligatoria de 8 horas en prevención de riesgos laborales, cubriendo los contenidos mínimos exigidos por el artículo 16 del Decreto Supremo N° 44 de 2023 y la Guía Técnica aprobada por la Resolución 1.117 Exenta de la Subsecretaría de Previsión Social.`;
-  let y = 535;
-  const maxWidth = 440;
-  {
-    let linea = '';
-    for (const palabra of parrafo.split(' ')) {
-      const prueba = linea ? linea + ' ' + palabra : palabra;
-      if (font.widthOfTextAtSize(prueba, 11) > maxWidth) { centrado(linea, y, 11, font, negro); y -= 16; linea = palabra; }
-      else linea = prueba;
-    }
-    if (linea) { centrado(linea, y, 11, font, negro); y -= 16; }
-  }
-  y -= 20;
-  centrado(`Obra: ${rec.obra}`, y, 11, fontBold, negro); y -= 18;
-  centrado(`Fecha de término: ${ddmmyyyy(rec.fechaCompletado)}`, y, 11, font, negro); y -= 18;
-  centrado(`Facilitador sesión práctica: ${rec.facilitadorSincronico || '—'}`, y, 11, font, negro); y -= 18;
-  centrado(`Vigencia: 2 años — hasta el ${ddmmyyyy(rec.fechaVencimiento)}`, y, 11, fontBold, azul); y -= 30;
-  page.drawLine({ start: { x: 100, y: 130 }, end: { x: W - 100, y: 130 }, thickness: 0.8, color: gris });
-  centrado('Constructora LST — Prevención de Riesgos', 112, 10, font, gris);
-  centrado(`Emitido el ${ddmmyyyy(hoyISO())}`, 96, 9, font, gris);
-  const bytes = await pdfDoc.save();
-  return new Blob([bytes], { type: 'application/pdf' });
-}

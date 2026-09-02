@@ -1245,20 +1245,21 @@
   <div class="panel-body" id="miper-programa-body"></div>
 </div>
 
-<!-- ===== PANELES: Capacitación DS44 art.16 (8 hrs) ===== -->
-<div class="panel hidden" id="panel-ds44-curso">
-  <div class="panel-bar"><div class="pnl-back" onclick="closePanel('panel-ds44-curso')">‹ Volver</div><div class="pnl-title">Curso DS44</div><div></div></div>
-  <div class="panel-body" id="ds44-curso-body"></div>
-</div>
-
-<div class="panel hidden" id="panel-ds44-modulo">
-  <div class="panel-bar"><div class="pnl-back" onclick="closePanel('panel-ds44-modulo')">‹ Volver</div><div class="pnl-title">Módulo</div><div></div></div>
-  <div class="panel-body" id="ds44-modulo-body"></div>
-</div>
-
-<div class="panel hidden" id="panel-ds44-sincronico">
-  <div class="panel-bar"><div class="pnl-back" onclick="closePanel('panel-ds44-sincronico')">‹ Volver</div><div class="pnl-title">Sesión sincrónica</div><div></div></div>
-  <div class="panel-body" id="ds44-sincronico-body"></div>
+<!-- ===== PANEL: Certificado Capacitación DS44 art.16 (subir/actualizar) ===== -->
+<div class="panel hidden" id="panel-editar-ds44">
+  <div class="panel-bar"><div class="pnl-back" onclick="closePanel('panel-editar-ds44')">‹ Volver</div><div class="pnl-title">Capacitación DS44 (8 hrs)</div><div></div></div>
+  <div class="panel-body">
+    <form id="form-editar-ds44" onsubmit="guardarCertificadoDs44(event)">
+      <input type="hidden" name="trabajador">
+      <input type="hidden" name="obra">
+      <div class="form-group"><label>Vigente hasta</label><input type="date" name="vigencia" required></div>
+      <div class="form-group">
+        <label>Certificado (opcional)</label>
+        <label class="upload-label" onclick="event.currentTarget.classList.add('selected')"><svg viewBox="0 0 24 24" fill="none" class="inline-ic"><path d="M7 3h7l4 4v14H7Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M14 3v4h4" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg> Subir archivo<input type="file" name="archivo" accept="application/pdf,image/*" style="display:none"></label>
+      </div>
+      <button class="btn-add" type="submit">Guardar certificado</button>
+    </form>
+  </div>
 </div>
 
 <div class="toast hidden" id="toast"></div>
