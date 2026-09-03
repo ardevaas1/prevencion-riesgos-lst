@@ -320,10 +320,32 @@ const NIVELES_RIESGO = [
   { value: 'Alto',  color: 'red'   },
 ];
 const TIPOS_EVENTO_INC = ['Cuasiaccidente', 'Incidente', 'Accidente Leve', 'Accidente Grave', 'Accidente Fatal'];
+// Catálogo completo entregado por el cliente (reemplaza la lista plana que
+// había antes). Cada ítem puede tener `tipos` (detalle/variante — se elige
+// de una lista fija, ej. color del casco o tipo de guante) y/o `talla`
+// (talla o N°, se escribe a mano porque varía por trabajador). Ninguno de
+// los dos es obligatorio para entregar el ítem — se puede marcar solo el
+// ítem sin elegir tipo ni escribir talla si no corresponde detallarlo.
 const EPP_ITEMS = [
-  'Casco', 'Lentes de seguridad', 'Guantes', 'Zapatos de seguridad',
-  'Chaleco reflectante', 'Protección auditiva', 'Arnés de seguridad',
-  'Mascarilla / Respirador', 'Careta facial', 'Ropa de agua', 'Otro'
+  { nombre: 'Casco de seguridad', tipoLabel: 'Color', tipos: ['Amarillo', 'Rojo', 'Azul', 'Blanco', 'Naranjo', 'Verde', 'Gris'] },
+  { nombre: 'Protector auditivo', tipoLabel: 'Tipo', tipos: ['Tapón auditivo', 'Fono auditivo para casco', 'Fono auditivo tipo cintillo'] },
+  { nombre: 'Guantes', tipoLabel: 'Tipo', tipos: ['Guante Multiflex', 'Guante Cabritilla', 'Guante PU', 'Guante de Albañil', 'Guante Antivibración', 'Guante de Aseo', 'Guante Quirúrgico', 'Guante de Soldador', 'Guante Hycrom'] },
+  { nombre: 'Calzado de seguridad', tipoLabel: 'Tipo', tipos: ['Zapatos básicos', 'Zapatos de supervisor'], talla: true, tallaLabel: 'N°' },
+  { nombre: 'Barbiquejo' },
+  { nombre: 'Antiparras de seguridad', tipoLabel: 'Tipo', tipos: ['Lente claro', 'Lente oscuro', 'Cubre lentes claro', 'Cubre lentes oscuro', 'Antiparra con goma negra', 'Antiparra con goma blanca'] },
+  { nombre: 'Mascarilla', tipoLabel: 'Tipo', tipos: ['Mascarilla desechable 3 pliegues', 'Mascarilla KN95', 'Mascarilla doble filtro'] },
+  { nombre: 'Filtros', tipoLabel: 'Tipo', tipos: ['Rosado (polvo)', 'Amarillo (gases y vapores)'] },
+  { nombre: 'Traje de agua', tipoLabel: 'Tipo', tipos: ['PVC', 'Ejecutivo'], talla: true, tallaLabel: 'Talla' },
+  { nombre: 'Botas', tipoLabel: 'Tipo', tipos: ['Básica', 'Supervisor'] },
+  { nombre: 'Chaleco reflectante' },
+  { nombre: 'Geólogo', tipoLabel: 'Color', tipos: ['Azul', 'Rojo', 'Naranjo', 'Verde flúor'] },
+  { nombre: 'Arnés de seguridad', talla: true, tallaLabel: 'Talla' },
+  { nombre: 'Cabos de vida', tipoLabel: 'Tipo', tipos: ['Tipo Y', 'Simple'] },
+  { nombre: 'Legionario' },
+  { nombre: 'Rodilleras' },
+  { nombre: 'Careta facial' },
+  { nombre: 'Traje Tyvek' },
+  { nombre: 'Bloqueador solar factor 50+' },
 ];
 
 // ── Sugerencia automática de charla según el texto del incidente ──────
@@ -359,14 +381,14 @@ function sugerirTemaCharla(texto) {
 // (reponer EPP), de herramienta/equipo en mal estado (mantención), o si
 // existe un Procedimiento de Trabajo Seguro vigente para esa área (revisarlo).
 const REGLAS_SUGERENCIA_EPP = [
-  { item: 'Casco', palabras: ['sin casco', 'casco dañado', 'casco roto', 'no tenia casco', 'no tenía casco', 'falta casco', 'casco malo'] },
-  { item: 'Lentes de seguridad', palabras: ['sin lentes', 'lentes rayados', 'lentes rotos', 'lentes dañados', 'falta lentes'] },
+  { item: 'Casco de seguridad', palabras: ['sin casco', 'casco dañado', 'casco roto', 'no tenia casco', 'no tenía casco', 'falta casco', 'casco malo'] },
+  { item: 'Antiparras de seguridad', palabras: ['sin lentes', 'lentes rayados', 'lentes rotos', 'lentes dañados', 'falta lentes'] },
   { item: 'Guantes', palabras: ['sin guantes', 'guantes rotos', 'guantes dañados', 'falta guantes', 'guantes en mal estado'] },
-  { item: 'Zapatos de seguridad', palabras: ['sin zapatos de seguridad', 'zapatos dañados', 'zapatos rotos', 'zapatos en mal estado'] },
+  { item: 'Calzado de seguridad', palabras: ['sin zapatos de seguridad', 'zapatos dañados', 'zapatos rotos', 'zapatos en mal estado'] },
   { item: 'Chaleco reflectante', palabras: ['sin chaleco', 'chaleco roto', 'chaleco dañado'] },
-  { item: 'Protección auditiva', palabras: ['sin proteccion auditiva', 'sin protección auditiva', 'tapones dañados'] },
+  { item: 'Protector auditivo', palabras: ['sin proteccion auditiva', 'sin protección auditiva', 'tapones dañados'] },
   { item: 'Arnés de seguridad', palabras: ['sin arnes', 'sin arnés', 'arnes dañado', 'arnés dañado', 'arnes roto', 'arnés roto', 'arnes en mal estado'] },
-  { item: 'Mascarilla / Respirador', palabras: ['sin mascarilla', 'mascarilla rota', 'sin respirador', 'respirador dañado'] },
+  { item: 'Mascarilla', palabras: ['sin mascarilla', 'mascarilla rota', 'sin respirador', 'respirador dañado'] },
   { item: 'Careta facial', palabras: ['sin careta', 'careta rota', 'careta dañada'] },
 ];
 function sugerirReposicionEpp(texto) {
@@ -1121,7 +1143,7 @@ async function cargarTodo(silencioso) {
       `'${CONFIG.SHEET_INSPECCIONES}'!A2:M2000`,
       `'${CONFIG.SHEET_INCIDENTES}'!A2:V2000`,
       `'${CONFIG.SHEET_PROCEDIMIENTOS}'!A2:I2000`,
-      `'${CONFIG.SHEET_EPP}'!A2:I2000`,
+      `'${CONFIG.SHEET_EPP}'!A2:J2000`,
       `'${CONFIG.SHEET_CHARLAS}'!A2:N2000`,
       `'${CONFIG.SHEET_INVESTIGACIONES}'!A2:AT2000`,
       `'${CONFIG.SHEET_HCR}'!A2:V2000`,
@@ -1246,7 +1268,7 @@ function rowToProcedimiento(r, i) {
 }
 function rowToEpp(r, i) {
   return { fila: i+2, n: r[0]||'', fecha: r[1]||'', trabajador: r[2]||'', rut: r[3]||'', epp: r[4]||'',
-    cantidad: r[5]||'', firma: r[6]||'', responsable: r[7]||'', fechaRegistro: r[8]||'' };
+    cantidad: r[5]||'', firma: r[6]||'', responsable: r[7]||'', fechaRegistro: r[8]||'', documento: r[9]||'' };
 }
 function rowToUsuario(r, i) {
   return { fila: i+2, correo: (r[0]||'').trim().toLowerCase(), rol: (r[1]||'').trim().toLowerCase(),
@@ -1686,7 +1708,7 @@ function abrirFichaTrabajador(nombre) {
   const orden = [];
   eppDeEste.forEach(e => {
     const key = e.fecha + '|' + e.firma;
-    if (!grupos[key]) { grupos[key] = { fecha: e.fecha, firma: e.firma, items: [] }; orden.push(key); }
+    if (!grupos[key]) { grupos[key] = { fecha: e.fecha, firma: e.firma, documento: e.documento, items: [] }; orden.push(key); }
     grupos[key].items.push(...itemsDeFilaEpp(e).map(x => `${x.item} (${x.cantidad})`));
   });
   const entregasHtml = orden.length === 0
@@ -1694,7 +1716,10 @@ function abrirFichaTrabajador(nombre) {
     : orden.reverse().map(k => grupos[k]).map(g => `
         <div class="field-row">
           <span>${esc(g.fecha)}<br><span style="color:#888;font-size:12px;">${esc(g.items.join(' · '))}</span></span>
-          ${g.firma ? `<a href="${esc(g.firma)}" target="_blank" class="badge blue">${ic('firma',12)} Firma</a>` : ''}
+          <span class="badge-row" style="justify-content:flex-end;">
+            ${g.documento ? `<a href="${esc(g.documento)}" target="_blank" class="badge blue">${ic('documento',12)} Documento</a>` : ''}
+            ${g.firma ? `<a href="${esc(g.firma)}" target="_blank" class="badge blue">${ic('firma',12)} Firma</a>` : ''}
+          </span>
         </div>`).join('');
 
   const incDeEste = allIncidentes.filter(i => i.trabajador === nombre).reverse();
@@ -4456,13 +4481,22 @@ async function onAgregarCorreoSubcontratista(ev, empresa) {
 // ============================================================
 // MÓDULO: ENTREGA DE EPP (con firma)
 // ============================================================
+// Un nombre guardado "pertenece" al catálogo si es exactamente un ítem
+// base, o si viene compuesto con su tipo/talla (ver nombreCompletoEpp) —
+// en ese caso NO se agrega como fila histórica aparte, porque ya está
+// cubierto por el ítem base + su selector de tipo/talla.
+function perteneceACatalogoEpp(nombre) {
+  return EPP_ITEMS.some(it => nombre === it.nombre || nombre.startsWith(it.nombre + ' - ') || nombre.startsWith(it.nombre + ' N°') || nombre.startsWith(it.nombre + ' Talla '));
+}
 function opcionesEppDisponibles() {
-  // Catálogo base + cualquier tipo "Otro" que alguien haya escrito antes
-  // (se detecta automáticamente porque ya quedó guardado en entregas previas)
-  const historicos = [...new Set(allEpp.flatMap(e => itemsDeFilaEpp(e).map(x => x.item)).filter(Boolean))];
-  const todos = [...new Set([...EPP_ITEMS.filter(x => x !== 'Otro'), ...historicos])];
-  todos.sort((a, b) => a.localeCompare(b, 'es'));
-  return todos;
+  // Catálogo base (con sus tipos/talla) + cualquier ítem escrito en "+
+  // Escribir otro tipo de EPP" que no esté ya cubierto por el catálogo
+  // (se detecta automáticamente porque ya quedó guardado en entregas
+  // previas) — esos quedan como checkbox simple, sin tipo/talla propios.
+  const historicos = [...new Set(allEpp.flatMap(e => itemsDeFilaEpp(e).map(x => x.item)).filter(Boolean))]
+    .filter(nombre => !perteneceACatalogoEpp(nombre));
+  historicos.sort((a, b) => a.localeCompare(b, 'es'));
+  return [...EPP_ITEMS, ...historicos.map(nombre => ({ nombre }))];
 }
 
 function renderEpp() {
@@ -4481,7 +4515,7 @@ function renderEpp() {
   const orden = [];
   eppObra.forEach(e => {
     const key = e.fecha + '|' + e.trabajador + '|' + e.firma;
-    if (!grupos[key]) { grupos[key] = { fecha: e.fecha, trabajador: e.trabajador, firma: e.firma, items: [] }; orden.push(key); }
+    if (!grupos[key]) { grupos[key] = { fecha: e.fecha, trabajador: e.trabajador, firma: e.firma, documento: e.documento, items: [] }; orden.push(key); }
     grupos[key].items.push(...itemsDeFilaEpp(e).map(x => `${x.item} (${x.cantidad})`));
   });
   const items = orden.map(k => grupos[k]).reverse();
@@ -4492,7 +4526,10 @@ function renderEpp() {
         <div class="card-title">${esc(g.trabajador)}</div>
         <div class="card-sub">${esc(g.fecha)}</div>
         <div class="card-sub">${esc(g.items.join(' · '))}</div>
-        <div class="badge-row">${g.firma ? `<a href="${esc(g.firma)}" target="_blank" class="badge blue">${ic('firma',12)} Ver firma</a>` : '<span class="badge gray">Sin firma</span>'}</div>
+        <div class="badge-row">
+          ${g.documento ? `<a href="${esc(g.documento)}" target="_blank" class="badge blue">${ic('documento',12)} Ver documento</a>` : ''}
+          ${g.firma ? `<a href="${esc(g.firma)}" target="_blank" class="badge blue">${ic('firma',12)} Ver firma</a>` : '<span class="badge gray">Sin firma</span>'}
+        </div>
       </div>
     </div>`).join(''));
 }
@@ -4501,23 +4538,49 @@ let firmaCtx = null, firmaActiva = false;
 
 function renderChecklistEpp() {
   document.getElementById('checklist-epp').innerHTML = opcionesEppDisponibles().map(item => `
-    <div class="chk-row" data-item="${esc(item)}">
+    <div class="chk-row" data-item="${esc(item.nombre)}" ${item.tallaLabel ? `data-talla-label="${esc(item.tallaLabel)}"` : ''}>
       <label class="chk-row-label">
         <span class="chk-row-checkbox-wrap">
           <input type="checkbox" class="chk-row-input" onchange="onToggleEppItem(this)">
           <span class="chk-row-checkbox"></span>
         </span>
-        <span>${esc(item)}</span>
+        <span>${esc(item.nombre)}</span>
       </label>
       <input type="number" class="epp-item-qty hidden" min="1" value="1">
+      ${item.tipos || item.talla ? `
+      <div class="epp-item-variantes hidden">
+        ${item.tipos ? `<select class="epp-item-tipo">
+          <option value="">${esc(item.tipoLabel || 'Tipo')}...</option>
+          ${item.tipos.map(t => `<option value="${esc(t)}">${esc(t)}</option>`).join('')}
+        </select>` : ''}
+        ${item.talla ? `<input class="epp-item-talla" placeholder="${esc(item.tallaLabel || 'Talla')}">` : ''}
+      </div>` : ''}
     </div>`).join('');
 }
 function onToggleEppItem(chk) {
-  chk.closest('.chk-row').querySelector('.epp-item-qty').classList.toggle('hidden', !chk.checked);
+  const row = chk.closest('.chk-row');
+  row.querySelector('.epp-item-qty').classList.toggle('hidden', !chk.checked);
+  const variantes = row.querySelector('.epp-item-variantes');
+  if (variantes) variantes.classList.toggle('hidden', !chk.checked);
 }
 function onCambioEppOtro() {
   const nombre = document.getElementById('input-epp-otro').value.trim();
   document.getElementById('grupo-epp-otro-qty').classList.toggle('hidden', !nombre);
+}
+// Compone el nombre final del ítem con su tipo/talla elegidos (ej. "Casco
+// de seguridad - Amarillo", "Calzado de seguridad - Zapatos básicos N°42")
+// — así queda todo en un solo string, igual que el resto de la app guarda
+// los ítems de EPP (sin necesitar columnas nuevas en el Sheet).
+function nombreCompletoEpp(row) {
+  let nombre = row.dataset.item;
+  const tipoSel = row.querySelector('.epp-item-tipo');
+  if (tipoSel && tipoSel.value) nombre += ' - ' + tipoSel.value;
+  const tallaInput = row.querySelector('.epp-item-talla');
+  if (tallaInput && tallaInput.value.trim()) {
+    const label = row.dataset.tallaLabel || 'Talla';
+    nombre += label === 'N°' ? ` N°${tallaInput.value.trim()}` : ` ${label} ${tallaInput.value.trim()}`;
+  }
+  return nombre;
 }
 function recolectarItemsEpp() {
   const items = [];
@@ -4525,7 +4588,7 @@ function recolectarItemsEpp() {
     const chk = row.querySelector('.chk-row-input');
     if (chk.checked) {
       const cantidad = parseInt(row.querySelector('.epp-item-qty').value, 10) || 1;
-      items.push({ item: row.dataset.item, cantidad });
+      items.push({ item: nombreCompletoEpp(row), cantidad });
     }
   });
   const otroNombre = document.getElementById('input-epp-otro').value.trim();
@@ -4655,10 +4718,12 @@ function firmaCanvasADataURL(canvasId) {
 }
 // El archivo de la firma de EPP se sube solo (no va dentro de un PDF con
 // más contexto alrededor, a diferencia de las firmas de Charla/HCR/
-// Investigación) — así que se le agrega el nombre y RUT debajo del trazo,
-// para que quien abra el archivo directamente sepa de quién es.
-function firmaConIdentificacion(canvasOriginal, nombre, rut) {
-  const franjaTexto = 26;
+// Investigación) — así que se le agrega nombre, RUT, fecha y hora debajo
+// del trazo, para que el archivo sea auto-explicativo y quede más
+// robusto como respaldo si se abre suelto, sin tener que cruzarlo con el
+// Sheet para saber cuándo y de quién es.
+function firmaConIdentificacion(canvasOriginal, nombre, rut, fecha, hora) {
+  const franjaTexto = 40;
   const c = document.createElement('canvas');
   c.width = canvasOriginal.width;
   c.height = canvasOriginal.height + franjaTexto;
@@ -4668,7 +4733,13 @@ function firmaConIdentificacion(canvasOriginal, nombre, rut) {
   ctx.drawImage(canvasOriginal, 0, 0);
   ctx.fillStyle = '#000';
   ctx.font = '13px Arial, sans-serif';
-  ctx.fillText(`${nombre}${rut ? ' — ' + rut : ''}`, 8, canvasOriginal.height + 18);
+  ctx.fillText(`${nombre}${rut ? ' — RUT ' + rut : ''}`, 8, canvasOriginal.height + 18);
+  const fechaHora = [fecha ? ddmmyyyy(fecha) : '', hora].filter(Boolean).join(' — ');
+  if (fechaHora) {
+    ctx.font = '11px Arial, sans-serif';
+    ctx.fillStyle = '#555';
+    ctx.fillText(fechaHora, 8, canvasOriginal.height + 34);
+  }
   return c;
 }
 async function guardarEpp(ev) {
@@ -4682,28 +4753,153 @@ async function guardarEpp(ev) {
 
     const trabNombre = f.trabajador.value.split('|')[0];
     const trabRut = f.trabajador.value.split('|')[1] || '';
-    const canvasFirma = firmaConIdentificacion(recortarFirma(canvas), trabNombre, trabRut);
+    const trab = allTrabajadores.find(t => t.nombre === trabNombre);
+    const ahora = new Date();
+    const fechaRegistro = ahora.toLocaleString('es-CL');
+    const horaRegistro = ahora.toTimeString().slice(0, 5);
+    const responsable = userEmail || f.responsable.value;
+
+    const canvasFirma = firmaConIdentificacion(recortarFirma(canvas), trabNombre, trabRut, f.fecha.value, horaRegistro);
     const blob = await new Promise(res => canvasFirma.toBlob(res, 'image/png'));
     let firmaLink = '';
     if (blob) {
       const up = await uploadFileTrabajador(blob, trabNombre, 'firma', 'png');
       firmaLink = up.link;
     }
-    const fechaRegistro = new Date().toLocaleString('es-CL');
+
+    // Además de la firma suelta (de siempre), se genera el documento
+    // "Entrega de EPP" completo (formato del cliente) con el detalle de
+    // esta entrega y se guarda en la carpeta del trabajador — si algo
+    // falla generándolo, la entrega igual se guarda (no bloquea el
+    // registro por un problema al armar el PDF).
+    let documentoLink = '';
+    try {
+      const pdfBlob = await generarPdfEntregaEpp({
+        obra: trab ? trab.obra : '', trabajador: trabNombre, rut: trabRut, cargo: trab ? trab.cargo : '',
+        fecha: f.fecha.value, items: itemsEpp, firmaDataUrl: firmaCanvasADataURL('firma-canvas'),
+        responsable, fechaHoraRegistro: fechaRegistro,
+      });
+      const upDoc = await uploadFileTrabajador(pdfBlob, trabNombre, 'entrega_epp', 'pdf');
+      documentoLink = upDoc.link;
+    } catch (e) { console.error('No se pudo generar el documento de Entrega de EPP:', e); }
+
     // Todos los ítems de una misma entrega van en UNA sola fila (columna
     // "EPP Entregado" combinada, ej. "Casco (1); Guantes (2)"), igual que
     // "Asistentes" en Charlas — antes cada ítem generaba su propia fila
     // (misma fecha/trabajador/firma repetidos), y una sola entrega se veía
     // como varias entregas duplicadas.
     const itemsTexto = itemsEpp.map(it => `${it.item} (${it.cantidad})`).join('; ');
-    await appendSheet(`'${CONFIG.SHEET_EPP}'!A:I`, [[
+    await appendSheet(`'${CONFIG.SHEET_EPP}'!A:J`, [[
       allEpp.length + 1, f.fecha.value, trabNombre, trabRut, itemsTexto, '',
-      firmaLink, userEmail || f.responsable.value, fechaRegistro
+      firmaLink, responsable, fechaRegistro, documentoLink
     ]]);
     toast(`Entrega registrada ✓ (${itemsEpp.length} ítem${itemsEpp.length>1?'s':''})`, 'ok');
     closePanel('panel-form-epp');
     cargarTodo(true);
   } catch (e) { toast(e.message, 'error'); }
+}
+
+// Genera el documento "Entrega de Elementos de Protección Personal", desde
+// cero con pdf-lib, calcado del formato real del cliente (mismo
+// encabezado OBRA/NOMBRE/RUT/CARGO/FECHA, mismo párrafo de compromiso, y
+// tabla ITEM/DETALLE/CANTIDAD/FIRMA RECIBIDO). A diferencia del formato
+// original (que trae los ~19 ítems del catálogo completo, con blancos
+// para lo no entregado), acá la tabla lista SOLO lo que efectivamente se
+// entregó en `datos.items` — a pedido explícito del cliente, para no
+// alargar el documento con filas vacías. La firma (una sola, capturada
+// una vez por entrega) se dibuja repetida en la columna "FIRMA RECIBIDO"
+// de cada fila entregada, tal como se ve en el formato original.
+async function generarPdfEntregaEpp(datos) {
+  const { PDFDocument, rgb, StandardFonts } = await cargarPdfLib();
+  const pdfDoc = await PDFDocument.create();
+  const page = pdfDoc.addPage([595, 842]);
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const negro = rgb(0.1, 0.1, 0.1), gris = rgb(0.4, 0.4, 0.4), grisClaro = rgb(0.92, 0.92, 0.92), borde = rgb(0.55, 0.55, 0.55);
+  const W = 595, xIni = 50, xFin = 545, anchoTabla = xFin - xIni;
+  let y = 842 - 50;
+
+  function wrapLines(str, maxWidth, size) {
+    const palabras = (str || '').split(' ');
+    const lines = []; let current = '';
+    palabras.forEach(p => {
+      const prueba = current ? current + ' ' + p : p;
+      if (font.widthOfTextAtSize(prueba, size) > maxWidth) { if (current) lines.push(current); current = p; }
+      else current = prueba;
+    });
+    if (current) lines.push(current);
+    return lines;
+  }
+  const centrado = (texto, yy, size, f, color) => {
+    const w = f.widthOfTextAtSize(texto, size);
+    page.drawText(texto, { x: (W - w) / 2, y: yy, size, font: f, color: color || negro });
+  };
+
+  centrado('ENTREGA DE ELEMENTOS DE PROTECCIÓN PERSONAL', y, 14, fontBold, negro);
+  y -= 30;
+
+  [
+    ['OBRA', datos.obra || '—'],
+    ['NOMBRE DEL TRABAJADOR', datos.trabajador || '—'],
+    ['RUT', datos.rut || '—'],
+    ['CARGO', datos.cargo || '—'],
+    ['FECHA', datos.fecha ? ddmmyyyy(datos.fecha) : '—'],
+  ].forEach(([label, valor]) => {
+    y = dibujarFilaTabla(page, xIni, y, [
+      { w: 160, text: label, bold: true, size: 9 },
+      { w: anchoTabla - 160, text: valor, size: 9 },
+    ], font, fontBold, 18, null, negro, borde);
+  });
+
+  y -= 10;
+  const parrafo = 'El trabajador se compromete a utilizar adecuadamente durante la jornada laboral los equipos y elementos de protección personal recibidos por parte de la empresa, LUIS ANDRES SAEZ THIELEMANN, dando cumplimiento a las normas de salud ocupacional que contribuyen a su bien estar físico, psicológico y social. Además, el trabajador se compromete a mantener los elementos de Protección personal en buen estado, almacenándolos en los casilleros asignados especialmente para esta función y declara haberlos recibido en forma gratuita. A su vez declara que ha recibido información sobre el uso adecuado de los mismos.';
+  wrapLines(parrafo, anchoTabla, 9).forEach(linea => { page.drawText(linea, { x: xIni, y, size: 9, font, color: negro }); y -= 12; });
+
+  y -= 8;
+  page.drawRectangle({ x: xIni, y: y - 18, width: anchoTabla, height: 18, color: grisClaro, borderColor: borde, borderWidth: 0.6 });
+  centrado('ELEMENTOS DE PROTECCIÓN PERSONAL ENTREGADOS', y - 13, 9.5, fontBold, negro);
+  y -= 18;
+
+  const colItem = 28, colDetalle = 258, colCantidad = 60, colFirma = anchoTabla - colItem - colDetalle - colCantidad;
+  y = dibujarFilaTabla(page, xIni, y, [
+    { w: colItem, text: 'ITEM', bold: true, align: 'center', size: 8.5 },
+    { w: colDetalle, text: 'DETALLE DE ELEMENTOS ENTREGADOS', bold: true, size: 8.5 },
+    { w: colCantidad, text: 'CANTIDAD', bold: true, align: 'center', size: 8.5 },
+    { w: colFirma, text: 'FIRMA RECIBIDO', bold: true, align: 'center', size: 8.5 },
+  ], font, fontBold, 18, grisClaro, negro, borde);
+
+  let firmaImg = null;
+  if (datos.firmaDataUrl) {
+    const bytes = Uint8Array.from(atob(datos.firmaDataUrl.split(',')[1]), c => c.charCodeAt(0));
+    firmaImg = await pdfDoc.embedPng(bytes);
+  }
+
+  (datos.items || []).forEach((it, idx) => {
+    const detalleLineas = wrapLines(it.item, colDetalle - 8, 8.5);
+    const rowH = Math.max(20, detalleLineas.length * 10 + 10);
+    const filaY = y;
+    y = dibujarFilaTabla(page, xIni, y, [
+      { w: colItem, text: String(idx + 1), align: 'center', size: 8.5 },
+      { w: colDetalle, text: '', size: 8.5 },
+      { w: colCantidad, text: String(it.cantidad), align: 'center', size: 8.5 },
+      { w: colFirma, text: '', align: 'center', size: 8.5 },
+    ], font, fontBold, rowH, null, negro, borde);
+    let ty = filaY - (rowH - detalleLineas.length * 10) / 2 - 8;
+    detalleLineas.forEach(linea => { page.drawText(linea, { x: xIni + colItem + 4, y: ty, size: 8.5, font, color: negro }); ty -= 10; });
+    if (firmaImg) {
+      const dims = escalarFirmaCasillero(firmaImg, colFirma - 14, rowH - 6);
+      const xFirma = xIni + colItem + colDetalle + colCantidad + (colFirma - dims.width) / 2;
+      page.drawImage(firmaImg, { x: xFirma, y: filaY - rowH + (rowH - dims.height) / 2, width: dims.width, height: dims.height });
+    }
+  });
+
+  y -= 24;
+  page.drawLine({ start: { x: xIni, y }, end: { x: xFin, y }, thickness: 0.8, color: gris });
+  y -= 14;
+  page.drawText(`Documento generado el ${datos.fechaHoraRegistro || ''} — registrado por ${datos.responsable || '—'}.`, { x: xIni, y, size: 8, font, color: gris });
+
+  const bytes = await pdfDoc.save();
+  return new Blob([bytes], { type: 'application/pdf' });
 }
 
 // ============================================================
