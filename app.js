@@ -902,6 +902,11 @@ const ICONS = {
   capacitacion: '<svg viewBox="0 0 24 24" fill="none"><path d="M2 8l10-4 10 4-10 4L2 8Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M6 10.5V16c0 1.4 2.7 3 6 3s6-1.6 6-3v-5.5" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M21 8v6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>',
   check: '<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/><path d="M8 12.3l2.5 2.5L16 9.5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>',
 };
+// La tarjeta de Capacitación DS44 en el home usa la misma clave que su
+// color (`capacitacionds44`, ver MODULOS_COLOR) — nunca se le había
+// agregado un ícono propio a ICONS, así que la tarjeta mostraba el texto
+// "undefined" en vez de un ícono. Reusa el birrete de ICONS.capacitacion.
+ICONS.capacitacionds44 = ICONS.capacitacion;
 function ic(name, size) { return ICONS[name].replace('<svg ', `<svg style="width:${size||14}px;height:${size||14}px;vertical-align:-3px;flex-shrink:0" `); }
 
 // Color de cada módulo — se usa tanto para las tarjetas de Inicio como

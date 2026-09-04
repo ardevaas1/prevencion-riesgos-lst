@@ -998,24 +998,23 @@ a.action-btn { text-decoration: none; }
   .desktop-home .modulo-card {
     align-items: center;
     text-align: center;
-    aspect-ratio: 1 / 1;
-    /* flex-start (no center): con justify-content:center cada tarjeta
-       centraba su propio bloque de contenido, y como el título ocupa 1 o 2
-       líneas según el módulo, el ícono terminaba en una altura distinta en
-       cada tarjeta. Empacado desde arriba, el ícono queda siempre a la
-       misma altura sin importar cuánto texto tenga cada una. */
-    justify-content: flex-start;
-    padding: 24px 16px;
+    justify-content: center;
+    padding: 22px 14px;
   }
   .desktop-home .modulo-icon {
-    width: 60px; height: 60px; border-radius: 16px;
+    width: 54px; height: 54px; border-radius: 15px;
   }
-  .desktop-home .modulo-icon svg { width: 30px; height: 30px; }
+  .desktop-home .modulo-icon svg { width: 27px; height: 27px; }
   .desktop-home .modulo-info { flex: none; }
   /* Reserva el alto de 2 líneas siempre (algunos nombres de módulo son
-     cortos y ocupan 1 línea, otros 2) — así la descripción de abajo
-     también arranca a la misma altura en todas las tarjetas. */
+     cortos y ocupan 1 línea, otros 2) — así el ícono queda a la misma
+     altura en todas las tarjetas sin importar cuánto texto tenga el
+     nombre. La descripción se saca del todo en escritorio (queda solo
+     en la vista móvil, donde el layout horizontal sí tiene espacio) —
+     a pedido explícito del cliente, que sentía la grilla saturada de
+     texto con 11 módulos a la vista a la vez. */
   .desktop-home .modulo-nombre { min-height: 2.4em; display: flex; align-items: center; justify-content: center; }
+  .desktop-home .modulo-desc { display: none; }
   .desktop-home-session { max-width: 360px; margin: 36px auto 0; }
 
   /* ── Shell: ocultar todo lo móvil ── */
