@@ -971,12 +971,18 @@ a.action-btn { text-decoration: none; }
     display: flex; flex-direction: column; align-items: center; gap: 10px;
     text-align: center;
     border-radius: 0 0 28px 28px;
-    background:
-      radial-gradient(ellipse 420px 180px at 50% -40%, rgba(255,255,255,0.10), transparent 60%),
-      linear-gradient(135deg, #7a4308 0%, #9b570c 55%, #c06f0a 100%);
-    box-shadow: 0 2px 14px rgba(155,87,12,0.25);
+    position: relative; overflow: hidden;
+    background: linear-gradient(160deg, #262b33 0%, #1b1f26 100%);
+    box-shadow: 0 2px 14px rgba(0,0,0,0.2);
   }
-  .desktop-home-header .logo-badge { width: 64px; height: 64px; border-radius: 18px; }
+  .desktop-home-header::after {
+    content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 3px;
+    background: linear-gradient(90deg, var(--accent-dark), var(--accent) 50%, var(--accent-dark));
+  }
+  .desktop-home-header .logo-badge {
+    width: 64px; height: 64px; border-radius: 18px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  }
   .desktop-home-header .logo-badge img { width: 70%; height: 70%; }
   .desktop-home-title { font-size: 22px; font-weight: 700; color: #fff; }
   .desktop-home-sub { font-size: 13px; color: rgba(255,255,255,0.85); }
