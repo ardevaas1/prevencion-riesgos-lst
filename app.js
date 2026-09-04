@@ -874,6 +874,9 @@ function toast(msg, type) {
   el.classList.remove('hidden');
   clearTimeout(el._t);
   el._t = setTimeout(() => el.classList.add('hidden'), 2600);
+  // Si el guardado falló, el botón "Guardando..." (ver el listener de
+  // submit más arriba) se reactiva para que el usuario pueda reintentar.
+  if (type === 'error') reactivarBotonesGuardar();
 }
 // ── Íconos SVG minimalistas (mismo estilo de línea que la app de Flota) ──
 const ICONS = {
@@ -959,8 +962,41 @@ function setListHTML(name, html) {
 function setStat(name, value) {
   document.querySelectorAll(`[data-stat="${name}"]`).forEach(el => el.textContent = value);
 }
+
+// ── Evita guardados duplicados por doble clic ───────────────────────────
+// A pedido explícito: algunos usuarios aprietan varias veces "Guardar"
+// porque no ven feedback inmediato, y terminan creando filas duplicadas.
+// Solución genérica para TODA la app (no solo un formulario): apenas se
+// envía cualquier <form>, se desactiva su botón de submit al vuelo (con
+// texto "Guardando..." para que quede claro que el clic sí se registró) —
+// así un segundo/tercer clic mientras la llamada a Sheets está en curso
+// no dispara otro guardado. No hace falta tocar cada guardarXxx() para
+// esto: se reactiva solo (ver reactivarBotonesGuardar) si el guardado
+// falla (toast de error) o si el panel se vuelve a abrir — los casos de
+// éxito no necesitan reactivarlo porque el panel se cierra o la vista se
+// refresca. Captura en fase de "capture" para desactivar el botón ANTES
+// de que corra el onsubmit="guardarXxx(event)" del formulario.
+document.addEventListener('submit', (ev) => {
+  const form = ev.target;
+  if (!(form instanceof HTMLFormElement)) return;
+  const btn = form.querySelector('button[type="submit"]');
+  if (!btn || btn.disabled) return;
+  btn.dataset.textoOriginal = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Guardando...';
+}, true);
+function reactivarBotonesGuardar(scope) {
+  (scope || document).querySelectorAll('button[type="submit"]:disabled').forEach(btn => {
+    btn.disabled = false;
+    if (btn.dataset.textoOriginal !== undefined) { btn.textContent = btn.dataset.textoOriginal; delete btn.dataset.textoOriginal; }
+  });
+}
 function openPanel(id) {
   const el = document.getElementById(id);
+  // Red de seguridad extra contra el botón "Guardando..." que pudiera
+  // quedar pegado (ver listener de submit más arriba): cada vez que se
+  // abre un panel, sus botones de guardar quedan frescos y listos.
+  reactivarBotonesGuardar(el);
   // Fuerza la posición inicial ANTES de mostrar el panel, para que el
   // navegador tenga un punto de partida real desde el cual animar
   // (si no, la primera apertura no se desliza: aparece de golpe).
@@ -4527,8 +4563,7 @@ function renderEpp() {
         <div class="card-sub">${esc(g.fecha)}</div>
         <div class="card-sub">${esc(g.items.join(' · '))}</div>
         <div class="badge-row">
-          ${g.documento ? `<a href="${esc(g.documento)}" target="_blank" class="badge blue">${ic('documento',12)} Ver documento</a>` : ''}
-          ${g.firma ? `<a href="${esc(g.firma)}" target="_blank" class="badge blue">${ic('firma',12)} Ver firma</a>` : '<span class="badge gray">Sin firma</span>'}
+          ${g.documento ? `<a href="${esc(g.documento)}" target="_blank" class="badge blue">${ic('documento',12)} Ver documento</a>` : '<span class="badge gray">Sin documento</span>'}
         </div>
       </div>
     </div>`).join(''));
