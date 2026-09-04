@@ -1739,30 +1739,18 @@ a.action-btn { text-decoration: none; }
   width: 80px; height: 80px; border-radius: 50%;
   opacity: 0.07; pointer-events: none;
 }
-/* Paleta categórica validada (skill de dataviz interno): 11 colores
-   elegidos y probados con scripts/validate_palette.js — no a ojo — para
-   que se lean como un conjunto coherente en vez de colores sueltos que
-   no combinan entre sí (eso fue lo que falló en las dos versiones
-   anteriores: la primera con colores muy vivos tipo arcoíris, la
-   segunda apagada pero con tonos elegidos sin verificar que combinaran).
-   Se validó orden "adjacent" (el que realmente importa: qué tarjetas
-   quedan una al lado de la otra en la grilla) — ΔE de visión normal
-   22.6 en el peor par adyacente, muy por sobre el piso de 15. El único
-   color sin match validado es el gris de Capacitación DS44, a
-   propósito: es el único módulo que queda solo en su fila (nada
-   adyacente con qué confundirse), así que se dejó como un gris neutro
-   "de cierre" en vez de forzar un 12° tono en la rueda de color. */
-.modulo-card--flota::before   { background: #2a78d6; }
-.modulo-card--inv::before     { background: #eb6834; }
-.modulo-card--cont::before    { background: #4a3aa7; }
-.modulo-card--mov::before     { background: #008300; }
-.modulo-card--and::before     { background: #e34948; }
-.modulo-card--teal::before    { background: #1baf7a; }
-.modulo-card--purpura::before { background: #e87ba4; }
-.modulo-card--indigo::before  { background: #a8431f; }
-.modulo-card--rosa::before    { background: #2456a0; }
-.modulo-card--oliva::before   { background: #eda100; }
-.modulo-card--gris::before    { background: #6b7280; }
+/* Vuelto a los 5 colores originales a pedido explícito del cliente —
+   se probaron varias paletas de 11 colores (vivos, apagados, validados
+   con herramienta) para que cada módulo tuviera el suyo propio, pero
+   terminó prefiriendo los colores de siempre (se repiten entre
+   módulos). En escritorio esto ya no importa: el listado de módulos ahí
+   usa íconos en tinta sin fondo de color (ver .desktop-home .modulo-icon
+   más abajo) — el color solo se ve en la grilla de la vista móvil. */
+.modulo-card--flota::before { background: #2f6f9e; }
+.modulo-card--inv::before   { background: #d9790e; }
+.modulo-card--cont::before  { background: #93613a; }
+.modulo-card--mov::before   { background: #2f8a4d; }
+.modulo-card--and::before   { background: #9c2f2f; }
 
 .modulo-card:active { transform: scale(0.97); box-shadow: 0 4px 14px rgba(0,0,0,0.1); border-color: var(--accent); }
 .modulo-icon {
@@ -1772,17 +1760,11 @@ a.action-btn { text-decoration: none; }
   color: #fff;
 }
 .modulo-icon svg { width: 26px; height: 26px; }
-.modulo-icon--flota   { background: linear-gradient(145deg, #669ee1, #2a78d6); }
-.modulo-icon--inv     { background: linear-gradient(145deg, #f1926d, #eb6834); }
-.modulo-icon--cont    { background: linear-gradient(145deg, #7d71c0, #4a3aa7); }
-.modulo-icon--mov     { background: linear-gradient(145deg, #47a647, #008300); }
-.modulo-icon--and     { background: linear-gradient(145deg, #eb7c7b, #e34948); }
-.modulo-icon--teal    { background: linear-gradient(145deg, #5bc59f, #1baf7a); }
-.modulo-icon--purpura { background: linear-gradient(145deg, #eea0bd, #e87ba4); }
-.modulo-icon--indigo  { background: linear-gradient(145deg, #c0785e, #a8431f); }
-.modulo-icon--rosa    { background: linear-gradient(145deg, #6185bb, #2456a0); }
-.modulo-icon--oliva   { background: linear-gradient(145deg, #f2bb47, #eda100); }
-.modulo-icon--gris    { background: linear-gradient(145deg, #9499a4, #6b7280); }
+.modulo-icon--flota { background: linear-gradient(145deg, #5aa8da, #2f6f9e); }
+.modulo-icon--inv   { background: linear-gradient(145deg, #f5a623, #d9790e); }
+.modulo-icon--cont  { background: linear-gradient(145deg, #c08a5a, #93613a); }
+.modulo-icon--mov   { background: linear-gradient(145deg, #5fb878, #2f8a4d); }
+.modulo-icon--and   { background: linear-gradient(145deg, #d64545, #9c2f2f); }
 .modulo-info { flex: 1; }
 .modulo-nombre { font-size: 15px; font-weight: 700; color: var(--ink); line-height: 1.2; }
 .modulo-desc { font-size: 11.5px; color: #888; margin-top: 4px; line-height: 1.4; }
