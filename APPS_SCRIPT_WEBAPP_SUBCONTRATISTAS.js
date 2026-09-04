@@ -61,6 +61,7 @@ function doPost(e) {
   try {
     if (accion === 'verificarAcceso') return respuesta(verificarAcceso(correo));
     if (accion === 'listarDocumentos') return respuesta(listarDocumentos(correo, body.empresa));
+    if (accion === 'listarTrabajadores') return respuesta(listarTrabajadores(correo, body.empresa));
     if (accion === 'subirDocumento') return respuesta(subirDocumento(correo, body));
     return respuesta({ error: 'Acción desconocida: ' + accion });
   } catch (err) {
@@ -74,6 +75,7 @@ function respuesta(obj) {
 
 function hojaUsuarios() { return SpreadsheetApp.getActiveSpreadsheet().getSheetByName('USUARIOS'); }
 function hojaSubDocs() { return SpreadsheetApp.getActiveSpreadsheet().getSheetByName('SUBCONTRATISTAS_DOCS'); }
+function hojaTrabajadores() { return SpreadsheetApp.getActiveSpreadsheet().getSheetByName('TRABAJADORES'); }
 
 // Busca la fila de USUARIOS para ese correo y confirma que su Rol es
 // "subcontratista". Devuelve su Empresa (columna D) o null si no calza.
@@ -110,6 +112,21 @@ function listarDocumentos(correo, empresa) {
   for (let i = 1; i < datos.length; i++) {
     const fila = datos[i];
     if (fila[0] === empresa || fila[0] === '__GLOBAL__') filas.push(fila);
+  }
+  return { filas: filas };
+}
+
+// Trabajadores de esa empresa (columna E = Empresa) — se usan para armar el
+// checklist de Exámenes ocupacionales por trabajador. Devuelve las filas
+// completas (mismas columnas que TRABAJADORES) para que la app las lea con
+// el mismo mapeo que usa el resto de la app (rowToTrabajador).
+function listarTrabajadores(correo, empresa) {
+  verificarPertenece(correo, empresa);
+  const datos = hojaTrabajadores().getDataRange().getValues();
+  const filas = [];
+  for (let i = 1; i < datos.length; i++) {
+    const fila = datos[i];
+    if ((fila[4] || '').toString() === empresa) filas.push(fila);
   }
   return { filas: filas };
 }
