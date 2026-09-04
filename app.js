@@ -912,11 +912,14 @@ function ic(name, size) { return ICONS[name].replace('<svg ', `<svg style="width
 // Color de cada módulo — se usa tanto para las tarjetas de Inicio como
 // para el header del sidebar de escritorio (cambia de color según el
 // módulo activo, igual que en Flota).
+// Cada módulo tiene su propio color, sin repetir ninguno (antes solo
+// había 5 colores para 11 módulos y se repetían — a pedido del cliente,
+// que no lograba distinguir bien las tarjetas del mismo color).
 const MODULOS_COLOR = {
   inspecciones: 'flota', incidentes: 'and', procedimientos: 'cont',
-  epp: 'mov', trabajadores: 'inv', charlas: 'flota', hcr: 'and',
-  subcontratistas: 'cont', programapersonalizado: 'mov', miper: 'and',
-  capacitacionds44: 'inv',
+  epp: 'mov', trabajadores: 'inv', charlas: 'teal', hcr: 'purpura',
+  subcontratistas: 'indigo', programapersonalizado: 'rosa', miper: 'oliva',
+  capacitacionds44: 'gris',
 };
 
 function renderModulosHome() {
