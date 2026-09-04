@@ -988,32 +988,46 @@ a.action-btn { text-decoration: none; }
   .desktop-home-stats {
     display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
   }
+  /* Listado en vez de grilla de tarjetas de colores — a pedido del
+     cliente (le mostraron una referencia con un sidebar tipo lista de
+     navegación) después de que ninguna versión con colores por módulo
+     lo convenciera. Mismo lenguaje visual que ya usa el sidebar dentro
+     de un módulo (.desktop-nav-item/.dn-ic): ícono chico "en tinta"
+     (sin fondo de color) + nombre, se distinguen por el dibujo del
+     ícono y el texto, no por color — así de raíz no hay paleta que
+     armonizar entre 11 módulos. */
   .desktop-home .modulos-lista {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-    gap: 20px;
-    padding: 8px 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 6px;
   }
-  .desktop-home .modulo-card:nth-last-child(1):nth-child(odd) { grid-column: auto; }
   .desktop-home .modulo-card {
+    flex-direction: row;
     align-items: center;
-    text-align: center;
-    justify-content: center;
-    padding: 22px 14px;
+    justify-content: flex-start;
+    text-align: left;
+    padding: 13px 14px;
+    border-radius: 10px;
+    border: none;
+    box-shadow: none;
+    gap: 14px;
   }
+  .desktop-home .modulo-card::before { display: none; }
+  .desktop-home .modulo-card:hover { background: var(--neutral-soft); }
   .desktop-home .modulo-icon {
-    width: 54px; height: 54px; border-radius: 15px;
+    width: auto; height: auto; border-radius: 0;
+    background: none; box-shadow: none;
+    color: var(--ink-soft);
   }
-  .desktop-home .modulo-icon svg { width: 27px; height: 27px; }
-  .desktop-home .modulo-info { flex: none; }
-  /* Reserva el alto de 2 líneas siempre (algunos nombres de módulo son
-     cortos y ocupan 1 línea, otros 2) — así el ícono queda a la misma
-     altura en todas las tarjetas sin importar cuánto texto tenga el
-     nombre. La descripción se saca del todo en escritorio (queda solo
-     en la vista móvil, donde el layout horizontal sí tiene espacio) —
-     a pedido explícito del cliente, que sentía la grilla saturada de
-     texto con 11 módulos a la vista a la vez. */
-  .desktop-home .modulo-nombre { min-height: 2.4em; display: flex; align-items: center; justify-content: center; }
+  .desktop-home .modulo-card:hover .modulo-icon { color: var(--accent); }
+  .desktop-home .modulo-icon svg { width: 20px; height: 20px; }
+  .desktop-home .modulo-info { flex: 1; }
+  .desktop-home .modulo-nombre { min-height: 0; display: block; font-size: 14.5px; }
+  .desktop-home .modulo-card:hover .modulo-nombre { color: var(--accent); }
   .desktop-home .modulo-desc { display: none; }
   .desktop-home-session { max-width: 360px; margin: 36px auto 0; }
 
