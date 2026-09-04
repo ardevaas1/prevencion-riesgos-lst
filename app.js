@@ -117,112 +117,6 @@ const MIPER_PROTOCOLOS = [
   "Guía Técnica sobre Radiación Ultravioleta de Origen Solar",
 ];
 
-// ── Capacitación DS44 art.16 (8 horas obligatorias) ─────────────────────
-// Contenido base de los 7 módulos exigidos por la Guía Técnica aprobada por
-// la Resolución 1117 Exenta (07-ago-2026, Subsecretaría de Previsión
-// Social), que reglamenta el artículo 16 del DS 44/2023. Es contenido
-// redactado citando la ley 16.744, el DS44 y la propia Guía Técnica —
-// cumple los contenidos mínimos exigidos, pero NO es el "curso tipo"
-// oficial en SCORM de la Subsecretaría (ese hay que solicitarlo aparte en
-// previsionsocial.gob.cl/ds44 y reemplaza este contenido cuando esté
-// disponible). Cada módulo termina con una evaluación de selección
-// múltiple, sin reprobación: se puede repetir las veces que sea necesario
-// hasta responder todo bien (así lo exige la Guía Técnica, punto 1.2:
-// evaluación de carácter pedagógico, no selectivo ni excluyente). El
-// módulo "Identificación de peligros" usa datos reales de la Matriz de
-// Riesgos (IPER) de la obra del trabajador en vez de un ejemplo genérico.
-const CAPACITACION_DS44_MODULOS = [
-  {
-    titulo: 'Introducción',
-    contenido: [
-      'Este curso cumple con el artículo 16 del Decreto Supremo N° 44 de 2023, del Ministerio del Trabajo y Previsión Social, que obliga a toda entidad empleadora a capacitar a sus trabajadores en prevención de riesgos laborales, con una duración mínima de 8 horas.',
-      'La capacitación es obligatoria para todos los trabajadores de LST, sin importar su cargo, tipo de contrato o antigüedad — incluye a quienes recién ingresan y a quienes cambian de obra o de actividad.',
-      'El curso está dividido en 6 módulos de contenido, cada uno con una evaluación breve al final. No hay nota mínima que "repruebe": si no respondes bien a la primera, puedes intentarlo de nuevo las veces que necesites hasta responder correctamente — lo importante es que entiendas el contenido, no memorizarlo.',
-      'Al completar los 6 módulos se genera tu certificado, válido por 2 años desde la fecha de término. Si cambias de empleador dentro del mismo rubro, este certificado se reconoce mientras no hayan pasado esos 2 años.',
-    ],
-    preguntas: [],
-  },
-  {
-    titulo: 'Marco general de la Seguridad y Salud en el Trabajo',
-    contenido: [
-      'La Ley N° 16.744 establece el seguro social obligatorio contra accidentes del trabajo y enfermedades profesionales en Chile. Te protege desde el momento en que empiezas tu jornada hasta que termina, incluyendo el trayecto directo entre tu casa y el trabajo (accidente de trayecto).',
-      'Como trabajador, tienes derecho a: trabajar en condiciones seguras, recibir los Elementos de Protección Personal (EPP) necesarios sin costo, ser informado de los riesgos de tu puesto de trabajo (derecho a saber), y negarte a realizar una labor si tienes fundadas razones para creer que pone en riesgo tu vida o salud.',
-      'La entidad empleadora tiene la obligación de: identificar y evaluar los riesgos de cada puesto de trabajo, entregar EPP adecuados, capacitar a los trabajadores, investigar los accidentes que ocurran, y mantener condiciones de trabajo seguras.',
-      'Si sufres un accidente del trabajo o una enfermedad profesional, tienes derecho a atención médica gratuita hasta tu recuperación (prestaciones médicas), y si quedas con incapacidad para trabajar, a subsidios o indemnizaciones (prestaciones económicas) — todo esto a través del Organismo Administrador de la ley 16.744 al que esté afiliada la empresa (una mutualidad, por ejemplo).',
-      'Si tienes un accidente, debes avisar de inmediato a tu supervisor. La empresa está obligada a denunciarlo (formulario DIAT) ante el Organismo Administrador. Si no estás de acuerdo con una decisión sobre tu caso, puedes reclamar ante la Superintendencia de Seguridad Social.',
-    ],
-    preguntas: [
-      { texto: '¿Qué cubre la Ley 16.744?', opciones: ['Solo accidentes dentro de la obra', 'Accidentes del trabajo, enfermedades profesionales y el trayecto directo casa-trabajo', 'Solo enfermedades profesionales'], correcta: 1 },
-      { texto: 'Si crees que una tarea pone en riesgo tu vida o salud, ¿qué derecho tienes?', opciones: ['Ninguno, hay que hacer la tarea igual', 'Negarte a realizarla si tienes fundadas razones', 'Solo puedes reclamar después del accidente'], correcta: 1 },
-      { texto: 'Si sufres un accidente del trabajo, ¿qué debes hacer primero?', opciones: ['Esperar a que termine tu turno para avisar', 'Avisar de inmediato a tu supervisor', 'Ir directo a tu casa a descansar'], correcta: 1 },
-    ],
-  },
-  {
-    titulo: 'Identificación de peligros y evaluación de riesgos',
-    contenido: [
-      'Un peligro es cualquier fuente, situación o acto con potencial de causar daño (una superficie resbalosa, un cable eléctrico expuesto, trabajar en altura sin protección). El riesgo es la probabilidad de que ese peligro cause realmente un daño, combinada con la gravedad de ese daño.',
-      'Los riesgos laborales se clasifican en varias familias: de Seguridad (caídas, golpes, atrapamientos, cortes), de Higiene (ruido, vibraciones, exposición a sílice), Músculo-Esqueléticos (manipulación manual de carga, movimientos repetitivos) y Psicosociales (carga de trabajo, entre otros).',
-      'La Matriz de Identificación de Peligros y Evaluación de Riesgos (MIPER) es la herramienta que usa LST para identificar, de forma sistemática, los peligros de cada tarea de cada obra, evaluar su nivel de riesgo, y definir las medidas preventivas correspondientes. Cada fila de la matriz representa un peligro específico de una tarea, con su Probabilidad, Consecuencia, el VEP resultante (Probabilidad × Consecuencia) y el Nivel de Riesgo (Tolerable, Moderado, Importante o Intolerable).',
-      'Abajo puedes ver un resumen real de la Matriz de Riesgos de tu obra — así es como se ve la MIPER aplicada al trabajo que se está haciendo hoy.',
-      'Cuando se identifica un riesgo Importante o Intolerable, la prioridad de las medidas preventivas sigue este orden (prelación): 1) eliminar el peligro, 2) sustituirlo por algo menos peligroso, 3) controles de ingeniería (barreras, ventilación), 4) controles administrativos (procedimientos, señalización, capacitación), y 5) como última barrera, el Equipo de Protección Personal (EPP).',
-    ],
-    especial: 'miper',
-    preguntas: [
-      { texto: '¿Cuál es la diferencia entre peligro y riesgo?', opciones: ['Son lo mismo', 'El peligro es la fuente de daño; el riesgo es la probabilidad y gravedad de que ese daño ocurra', 'El riesgo es solo para trabajos en altura'], correcta: 1 },
-      { texto: '¿Qué significa MIPER?', opciones: ['Un tipo de EPP', 'Matriz de Identificación de Peligros y Evaluación de Riesgos', 'Un organismo fiscalizador'], correcta: 1 },
-      { texto: 'Según la prelación de medidas preventivas, ¿qué debe intentarse primero?', opciones: ['Entregar EPP', 'Eliminar el peligro', 'Poner un letrero de advertencia'], correcta: 1 },
-    ],
-  },
-  {
-    titulo: 'Riesgos laborales y efectos en la salud',
-    contenido: [
-      'Una enfermedad profesional es la causada de manera directa por el ejercicio del trabajo y que produce incapacidad o muerte — a diferencia de un accidente, no ocurre de golpe: se desarrolla por exposición repetida a un mismo factor de riesgo a lo largo del tiempo (por ejemplo, pérdida de audición por ruido, o problemas respiratorios por exposición a sílice).',
-      'Las entidades empleadoras tienen la obligación de someter a vigilancia de la salud a los trabajadores expuestos a ciertos factores de riesgo (ruido, sílice, radiación UV, trastornos músculo-esqueléticos, riesgos psicosociales) — esto incluye exámenes periódicos y seguimiento médico a cargo del Organismo Administrador.',
-      'Si notas síntomas que podrían estar relacionados con tu trabajo (dolor persistente, pérdida de audición, dificultad para respirar), avisa a tu supervisor y solicita ser evaluado — mientras antes se detecte, más fácil es evitar un daño mayor.',
-    ],
-    preguntas: [
-      { texto: '¿Qué diferencia a una enfermedad profesional de un accidente del trabajo?', opciones: ['No hay diferencia', 'La enfermedad se desarrolla por exposición repetida en el tiempo, el accidente ocurre de forma súbita', 'La enfermedad profesional no está cubierta por la ley 16.744'], correcta: 1 },
-      { texto: '¿Quién debe hacer seguimiento médico a los trabajadores expuestos a factores de riesgo como ruido o sílice?', opciones: ['El propio trabajador, por su cuenta', 'El Organismo Administrador de la ley 16.744, con vigilancia de la salud', 'Nadie, es responsabilidad personal'], correcta: 1 },
-    ],
-  },
-  {
-    titulo: 'Medidas preventivas y protección',
-    contenido: [
-      'El Equipo de Protección Personal (EPP) es la última barrera de protección, no la primera — pero cuando es necesario, debe ser el adecuado para el riesgo específico de la tarea (por ejemplo, no todo guante protege contra cortes; no todo protector auditivo tiene la misma atenuación de ruido), estar en buen estado, y usarse correctamente durante toda la tarea.',
-      'Hay trabajadores que requieren atención especial por su condición: por ejemplo, mujeres embarazadas (no pueden levantar carga ni exponerse a ciertos agentes), trabajadores nuevos o jóvenes (mayor riesgo por falta de experiencia), y personas con alguna condición de salud preexistente relevante para el puesto.',
-      'LST cuenta con protocolos de vigilancia ambiental y de la salud del Ministerio de Salud aplicables según los riesgos de cada obra (sílice, ruido, trastornos músculo-esqueléticos, riesgos psicosociales, radiación UV) — estos determinan qué exámenes y monitoreos corresponden.',
-    ],
-    preguntas: [
-      { texto: 'El EPP es...', opciones: ['La primera medida que se debe aplicar siempre', 'La última barrera de protección, después de eliminar/sustituir/controlar el riesgo', 'Opcional si el trabajador prefiere no usarlo'], correcta: 1 },
-      { texto: '¿Por qué una mujer embarazada requiere atención especial en la gestión de riesgos?', opciones: ['No la requiere, es igual que cualquier trabajador', 'Porque no puede levantar carga ni exponerse a ciertos agentes de riesgo', 'Solo por comodidad personal'], correcta: 1 },
-    ],
-  },
-  {
-    titulo: 'Gestión de emergencias y desastres',
-    contenido: [
-      'Toda entidad empleadora debe tener un Plan de Gestión de Riesgos de Emergencia, Catástrofe o Desastre — que define cómo actuar ante incendios, sismos, accidentes graves u otras situaciones críticas, y quiénes son responsables de coordinar la respuesta (Comité de Gestión de Riesgos de Desastre).',
-      'Los elementos básicos de un plan de emergencia incluyen: vías de evacuación señalizadas y despejadas, puntos de encuentro definidos, roles claros (quién da la alarma, quién coordina la evacuación, quién hace el conteo de personas), y comunicación con los servicios de emergencia externos.',
-      'Como trabajador, tienes derecho a interrumpir tu actividad y evacuar de forma segura ante una emergencia, sin que eso te traiga consecuencias — y el deber de conocer las vías de evacuación y el punto de encuentro de tu obra específica.',
-    ],
-    preguntas: [
-      { texto: '¿Qué es el punto de encuentro?', opciones: ['El lugar donde se guardan las herramientas', 'El lugar seguro definido donde los trabajadores deben reunirse tras una evacuación', 'La oficina del supervisor'], correcta: 1 },
-      { texto: 'Ante una emergencia, ¿qué derecho tiene el trabajador?', opciones: ['Ninguno, debe seguir trabajando hasta que se lo indiquen', 'Interrumpir su actividad y evacuar de forma segura, sin consecuencias', 'Solo puede evacuar si el supervisor no está presente'], correcta: 1 },
-    ],
-  },
-  {
-    titulo: 'Señalización y prevención de incendios',
-    contenido: [
-      'La señalética de seguridad usa colores y formas estandarizadas para comunicar rápido, sin necesidad de leer texto: rojo (prohibición/equipos contra incendio), amarillo (advertencia/peligro), azul (obligación, como "uso obligatorio de casco"), y verde (información de emergencia/evacuación/primeros auxilios).',
-      'El fuego necesita tres elementos para existir: combustible, oxígeno y una fuente de calor (el "triángulo del fuego"). Según el tipo de material que se quema (sólidos comunes, líquidos inflamables, gases, equipos eléctricos energizados, metales), el extintor adecuado es distinto — usar el extintor equivocado puede empeorar un incendio en vez de apagarlo.',
-      'Si detectas un amago de incendio: da la alarma, usa el extintor solo si estás capacitado y el fuego es controlable, y si no puedes controlarlo, evacúa de inmediato siguiendo el plan de emergencia de la obra — nunca arriesgues tu vida intentando apagar un fuego que ya te supera.',
-    ],
-    preguntas: [
-      { texto: '¿Qué significa una señalética de color amarillo?', opciones: ['Prohibición', 'Advertencia o peligro', 'Obligación'], correcta: 1 },
-      { texto: '¿Cuáles son los tres elementos del triángulo del fuego?', opciones: ['Agua, viento y tierra', 'Combustible, oxígeno y fuente de calor', 'Humo, ceniza y chispa'], correcta: 1 },
-      { texto: 'Si el fuego te supera y no puedes controlarlo con un extintor, ¿qué debes hacer?', opciones: ['Insistir hasta apagarlo', 'Evacuar de inmediato siguiendo el plan de emergencia', 'Esperar a que llegue el supervisor'], correcta: 1 },
-    ],
-  },
-];
 // Probabilidad × Consecuencia = VEP; el VEP determina el Nivel de Riesgo
 // (tabla "VEP" del Excel original). Con probabilidad y consecuencia acotadas
 // a {1,2,4} el VEP solo puede dar 1,2,4,8 o 16 — de ahí el corte "≤2".
@@ -426,10 +320,32 @@ const NIVELES_RIESGO = [
   { value: 'Alto',  color: 'red'   },
 ];
 const TIPOS_EVENTO_INC = ['Cuasiaccidente', 'Incidente', 'Accidente Leve', 'Accidente Grave', 'Accidente Fatal'];
+// Catálogo completo entregado por el cliente (reemplaza la lista plana que
+// había antes). Cada ítem puede tener `tipos` (detalle/variante — se elige
+// de una lista fija, ej. color del casco o tipo de guante) y/o `talla`
+// (talla o N°, se escribe a mano porque varía por trabajador). Ninguno de
+// los dos es obligatorio para entregar el ítem — se puede marcar solo el
+// ítem sin elegir tipo ni escribir talla si no corresponde detallarlo.
 const EPP_ITEMS = [
-  'Casco', 'Lentes de seguridad', 'Guantes', 'Zapatos de seguridad',
-  'Chaleco reflectante', 'Protección auditiva', 'Arnés de seguridad',
-  'Mascarilla / Respirador', 'Careta facial', 'Ropa de agua', 'Otro'
+  { nombre: 'Casco de seguridad', tipoLabel: 'Color', tipos: ['Amarillo', 'Rojo', 'Azul', 'Blanco', 'Naranjo', 'Verde', 'Gris'] },
+  { nombre: 'Protector auditivo', tipoLabel: 'Tipo', tipos: ['Tapón auditivo', 'Fono auditivo para casco', 'Fono auditivo tipo cintillo'] },
+  { nombre: 'Guantes', tipoLabel: 'Tipo', tipos: ['Guante Multiflex', 'Guante Cabritilla', 'Guante PU', 'Guante de Albañil', 'Guante Antivibración', 'Guante de Aseo', 'Guante Quirúrgico', 'Guante de Soldador', 'Guante Hycrom'] },
+  { nombre: 'Calzado de seguridad', tipoLabel: 'Tipo', tipos: ['Zapatos básicos', 'Zapatos de supervisor'], talla: true, tallaLabel: 'N°' },
+  { nombre: 'Barbiquejo' },
+  { nombre: 'Antiparras de seguridad', tipoLabel: 'Tipo', tipos: ['Lente claro', 'Lente oscuro', 'Cubre lentes claro', 'Cubre lentes oscuro', 'Antiparra con goma negra', 'Antiparra con goma blanca'] },
+  { nombre: 'Mascarilla', tipoLabel: 'Tipo', tipos: ['Mascarilla desechable 3 pliegues', 'Mascarilla KN95', 'Mascarilla doble filtro'] },
+  { nombre: 'Filtros', tipoLabel: 'Tipo', tipos: ['Rosado (polvo)', 'Amarillo (gases y vapores)'] },
+  { nombre: 'Traje de agua', tipoLabel: 'Tipo', tipos: ['PVC', 'Ejecutivo'], talla: true, tallaLabel: 'Talla' },
+  { nombre: 'Botas', tipoLabel: 'Tipo', tipos: ['Básica', 'Supervisor'] },
+  { nombre: 'Chaleco reflectante' },
+  { nombre: 'Geólogo', tipoLabel: 'Color', tipos: ['Azul', 'Rojo', 'Naranjo', 'Verde flúor'] },
+  { nombre: 'Arnés de seguridad', talla: true, tallaLabel: 'Talla' },
+  { nombre: 'Cabos de vida', tipoLabel: 'Tipo', tipos: ['Tipo Y', 'Simple'] },
+  { nombre: 'Legionario' },
+  { nombre: 'Rodilleras' },
+  { nombre: 'Careta facial' },
+  { nombre: 'Traje Tyvek' },
+  { nombre: 'Bloqueador solar factor 50+' },
 ];
 
 // ── Sugerencia automática de charla según el texto del incidente ──────
@@ -465,14 +381,14 @@ function sugerirTemaCharla(texto) {
 // (reponer EPP), de herramienta/equipo en mal estado (mantención), o si
 // existe un Procedimiento de Trabajo Seguro vigente para esa área (revisarlo).
 const REGLAS_SUGERENCIA_EPP = [
-  { item: 'Casco', palabras: ['sin casco', 'casco dañado', 'casco roto', 'no tenia casco', 'no tenía casco', 'falta casco', 'casco malo'] },
-  { item: 'Lentes de seguridad', palabras: ['sin lentes', 'lentes rayados', 'lentes rotos', 'lentes dañados', 'falta lentes'] },
+  { item: 'Casco de seguridad', palabras: ['sin casco', 'casco dañado', 'casco roto', 'no tenia casco', 'no tenía casco', 'falta casco', 'casco malo'] },
+  { item: 'Antiparras de seguridad', palabras: ['sin lentes', 'lentes rayados', 'lentes rotos', 'lentes dañados', 'falta lentes'] },
   { item: 'Guantes', palabras: ['sin guantes', 'guantes rotos', 'guantes dañados', 'falta guantes', 'guantes en mal estado'] },
-  { item: 'Zapatos de seguridad', palabras: ['sin zapatos de seguridad', 'zapatos dañados', 'zapatos rotos', 'zapatos en mal estado'] },
+  { item: 'Calzado de seguridad', palabras: ['sin zapatos de seguridad', 'zapatos dañados', 'zapatos rotos', 'zapatos en mal estado'] },
   { item: 'Chaleco reflectante', palabras: ['sin chaleco', 'chaleco roto', 'chaleco dañado'] },
-  { item: 'Protección auditiva', palabras: ['sin proteccion auditiva', 'sin protección auditiva', 'tapones dañados'] },
+  { item: 'Protector auditivo', palabras: ['sin proteccion auditiva', 'sin protección auditiva', 'tapones dañados'] },
   { item: 'Arnés de seguridad', palabras: ['sin arnes', 'sin arnés', 'arnes dañado', 'arnés dañado', 'arnes roto', 'arnés roto', 'arnes en mal estado'] },
-  { item: 'Mascarilla / Respirador', palabras: ['sin mascarilla', 'mascarilla rota', 'sin respirador', 'respirador dañado'] },
+  { item: 'Mascarilla', palabras: ['sin mascarilla', 'mascarilla rota', 'sin respirador', 'respirador dañado'] },
   { item: 'Careta facial', palabras: ['sin careta', 'careta rota', 'careta dañada'] },
 ];
 function sugerirReposicionEpp(texto) {
@@ -958,6 +874,9 @@ function toast(msg, type) {
   el.classList.remove('hidden');
   clearTimeout(el._t);
   el._t = setTimeout(() => el.classList.add('hidden'), 2600);
+  // Si el guardado falló, el botón "Guardando..." (ver el listener de
+  // submit más arriba) se reactiva para que el usuario pueda reintentar.
+  if (type === 'error') reactivarBotonesGuardar();
 }
 // ── Íconos SVG minimalistas (mismo estilo de línea que la app de Flota) ──
 const ICONS = {
@@ -1043,8 +962,41 @@ function setListHTML(name, html) {
 function setStat(name, value) {
   document.querySelectorAll(`[data-stat="${name}"]`).forEach(el => el.textContent = value);
 }
+
+// ── Evita guardados duplicados por doble clic ───────────────────────────
+// A pedido explícito: algunos usuarios aprietan varias veces "Guardar"
+// porque no ven feedback inmediato, y terminan creando filas duplicadas.
+// Solución genérica para TODA la app (no solo un formulario): apenas se
+// envía cualquier <form>, se desactiva su botón de submit al vuelo (con
+// texto "Guardando..." para que quede claro que el clic sí se registró) —
+// así un segundo/tercer clic mientras la llamada a Sheets está en curso
+// no dispara otro guardado. No hace falta tocar cada guardarXxx() para
+// esto: se reactiva solo (ver reactivarBotonesGuardar) si el guardado
+// falla (toast de error) o si el panel se vuelve a abrir — los casos de
+// éxito no necesitan reactivarlo porque el panel se cierra o la vista se
+// refresca. Captura en fase de "capture" para desactivar el botón ANTES
+// de que corra el onsubmit="guardarXxx(event)" del formulario.
+document.addEventListener('submit', (ev) => {
+  const form = ev.target;
+  if (!(form instanceof HTMLFormElement)) return;
+  const btn = form.querySelector('button[type="submit"]');
+  if (!btn || btn.disabled) return;
+  btn.dataset.textoOriginal = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Guardando...';
+}, true);
+function reactivarBotonesGuardar(scope) {
+  (scope || document).querySelectorAll('button[type="submit"]:disabled').forEach(btn => {
+    btn.disabled = false;
+    if (btn.dataset.textoOriginal !== undefined) { btn.textContent = btn.dataset.textoOriginal; delete btn.dataset.textoOriginal; }
+  });
+}
 function openPanel(id) {
   const el = document.getElementById(id);
+  // Red de seguridad extra contra el botón "Guardando..." que pudiera
+  // quedar pegado (ver listener de submit más arriba): cada vez que se
+  // abre un panel, sus botones de guardar quedan frescos y listos.
+  reactivarBotonesGuardar(el);
   // Fuerza la posición inicial ANTES de mostrar el panel, para que el
   // navegador tenga un punto de partida real desde el cual animar
   // (si no, la primera apertura no se desliza: aparece de golpe).
@@ -1227,7 +1179,7 @@ async function cargarTodo(silencioso) {
       `'${CONFIG.SHEET_INSPECCIONES}'!A2:M2000`,
       `'${CONFIG.SHEET_INCIDENTES}'!A2:V2000`,
       `'${CONFIG.SHEET_PROCEDIMIENTOS}'!A2:I2000`,
-      `'${CONFIG.SHEET_EPP}'!A2:I2000`,
+      `'${CONFIG.SHEET_EPP}'!A2:J2000`,
       `'${CONFIG.SHEET_CHARLAS}'!A2:N2000`,
       `'${CONFIG.SHEET_INVESTIGACIONES}'!A2:AT2000`,
       `'${CONFIG.SHEET_HCR}'!A2:V2000`,
@@ -1352,7 +1304,7 @@ function rowToProcedimiento(r, i) {
 }
 function rowToEpp(r, i) {
   return { fila: i+2, n: r[0]||'', fecha: r[1]||'', trabajador: r[2]||'', rut: r[3]||'', epp: r[4]||'',
-    cantidad: r[5]||'', firma: r[6]||'', responsable: r[7]||'', fechaRegistro: r[8]||'' };
+    cantidad: r[5]||'', firma: r[6]||'', responsable: r[7]||'', fechaRegistro: r[8]||'', documento: r[9]||'' };
 }
 function rowToUsuario(r, i) {
   return { fila: i+2, correo: (r[0]||'').trim().toLowerCase(), rol: (r[1]||'').trim().toLowerCase(),
@@ -1792,7 +1744,7 @@ function abrirFichaTrabajador(nombre) {
   const orden = [];
   eppDeEste.forEach(e => {
     const key = e.fecha + '|' + e.firma;
-    if (!grupos[key]) { grupos[key] = { fecha: e.fecha, firma: e.firma, items: [] }; orden.push(key); }
+    if (!grupos[key]) { grupos[key] = { fecha: e.fecha, firma: e.firma, documento: e.documento, items: [] }; orden.push(key); }
     grupos[key].items.push(...itemsDeFilaEpp(e).map(x => `${x.item} (${x.cantidad})`));
   });
   const entregasHtml = orden.length === 0
@@ -1800,7 +1752,10 @@ function abrirFichaTrabajador(nombre) {
     : orden.reverse().map(k => grupos[k]).map(g => `
         <div class="field-row">
           <span>${esc(g.fecha)}<br><span style="color:#888;font-size:12px;">${esc(g.items.join(' · '))}</span></span>
-          ${g.firma ? `<a href="${esc(g.firma)}" target="_blank" class="badge blue">${ic('firma',12)} Firma</a>` : ''}
+          <span class="badge-row" style="justify-content:flex-end;">
+            ${g.documento ? `<a href="${esc(g.documento)}" target="_blank" class="badge blue">${ic('documento',12)} Documento</a>` : ''}
+            ${g.firma ? `<a href="${esc(g.firma)}" target="_blank" class="badge blue">${ic('firma',12)} Firma</a>` : ''}
+          </span>
         </div>`).join('');
 
   const incDeEste = allIncidentes.filter(i => i.trabajador === nombre).reverse();
@@ -1912,12 +1867,18 @@ function abrirFichaTrabajador(nombre) {
       <button class="action-btn" onclick="abrirEditarAltura(${t.fila})">${t.alturaVigencia ? 'Actualizar examen' : 'Subir examen'}</button>
     </div>
 
-    ${t.obra ? `
+    ${t.obra ? (() => {
+      const recDs44 = capacitacionDs44RecordDe(t.nombre, t.obra);
+      const estadoDs44 = ds44Estado(recDs44);
+      return `
     <div class="ficha-section">
       <div class="ficha-sec-title">Capacitación DS44 (8 hrs)</div>
-      <div class="field-row"><span class="fl">Estado</span><span class="badge ${ds44Estado(capacitacionDs44RecordDe(t.nombre, t.obra)).badge}">${esc(ds44Estado(capacitacionDs44RecordDe(t.nombre, t.obra)).label)}</span></div>
-      <button class="action-btn" onclick="abrirCursoDs44('${esc(t.nombre).replace(/'/g,"\\'")}','${esc(t.obra).replace(/'/g,"\\'")}')">Ver curso</button>
-    </div>` : ''}
+      <div class="field-row"><span class="fl">Vigencia</span><span class="fv">${esc(recDs44 && recDs44.fechaVencimiento || '—')}</span></div>
+      <div class="field-row"><span class="fl">Estado</span><span class="badge ${estadoDs44.badge}">${esc(estadoDs44.label)}</span></div>
+      ${recDs44 && recDs44.certificado ? `<div class="field-row"><span class="fl">Documento</span><a href="${esc(recDs44.certificado)}" target="_blank" class="badge blue">${ic('documento',12)} Ver certificado</a></div>` : ''}
+      <button class="action-btn" onclick="abrirEditarDs44('${esc(t.nombre).replace(/'/g,"\\'")}','${esc(t.obra).replace(/'/g,"\\'")}')">${recDs44 && recDs44.fechaVencimiento ? 'Actualizar certificado' : 'Subir certificado'}</button>
+    </div>`;
+    })() : ''}
 
     ${miSupervisorPerfil ? '' : `
     <div class="ficha-section">
@@ -4556,13 +4517,22 @@ async function onAgregarCorreoSubcontratista(ev, empresa) {
 // ============================================================
 // MÓDULO: ENTREGA DE EPP (con firma)
 // ============================================================
+// Un nombre guardado "pertenece" al catálogo si es exactamente un ítem
+// base, o si viene compuesto con su tipo/talla (ver nombreCompletoEpp) —
+// en ese caso NO se agrega como fila histórica aparte, porque ya está
+// cubierto por el ítem base + su selector de tipo/talla.
+function perteneceACatalogoEpp(nombre) {
+  return EPP_ITEMS.some(it => nombre === it.nombre || nombre.startsWith(it.nombre + ' - ') || nombre.startsWith(it.nombre + ' N°') || nombre.startsWith(it.nombre + ' Talla '));
+}
 function opcionesEppDisponibles() {
-  // Catálogo base + cualquier tipo "Otro" que alguien haya escrito antes
-  // (se detecta automáticamente porque ya quedó guardado en entregas previas)
-  const historicos = [...new Set(allEpp.flatMap(e => itemsDeFilaEpp(e).map(x => x.item)).filter(Boolean))];
-  const todos = [...new Set([...EPP_ITEMS.filter(x => x !== 'Otro'), ...historicos])];
-  todos.sort((a, b) => a.localeCompare(b, 'es'));
-  return todos;
+  // Catálogo base (con sus tipos/talla) + cualquier ítem escrito en "+
+  // Escribir otro tipo de EPP" que no esté ya cubierto por el catálogo
+  // (se detecta automáticamente porque ya quedó guardado en entregas
+  // previas) — esos quedan como checkbox simple, sin tipo/talla propios.
+  const historicos = [...new Set(allEpp.flatMap(e => itemsDeFilaEpp(e).map(x => x.item)).filter(Boolean))]
+    .filter(nombre => !perteneceACatalogoEpp(nombre));
+  historicos.sort((a, b) => a.localeCompare(b, 'es'));
+  return [...EPP_ITEMS, ...historicos.map(nombre => ({ nombre }))];
 }
 
 function renderEpp() {
@@ -4581,7 +4551,7 @@ function renderEpp() {
   const orden = [];
   eppObra.forEach(e => {
     const key = e.fecha + '|' + e.trabajador + '|' + e.firma;
-    if (!grupos[key]) { grupos[key] = { fecha: e.fecha, trabajador: e.trabajador, firma: e.firma, items: [] }; orden.push(key); }
+    if (!grupos[key]) { grupos[key] = { fecha: e.fecha, trabajador: e.trabajador, firma: e.firma, documento: e.documento, items: [] }; orden.push(key); }
     grupos[key].items.push(...itemsDeFilaEpp(e).map(x => `${x.item} (${x.cantidad})`));
   });
   const items = orden.map(k => grupos[k]).reverse();
@@ -4592,7 +4562,9 @@ function renderEpp() {
         <div class="card-title">${esc(g.trabajador)}</div>
         <div class="card-sub">${esc(g.fecha)}</div>
         <div class="card-sub">${esc(g.items.join(' · '))}</div>
-        <div class="badge-row">${g.firma ? `<a href="${esc(g.firma)}" target="_blank" class="badge blue">${ic('firma',12)} Ver firma</a>` : '<span class="badge gray">Sin firma</span>'}</div>
+        <div class="badge-row">
+          ${g.documento ? `<a href="${esc(g.documento)}" target="_blank" class="badge blue">${ic('documento',12)} Ver documento</a>` : '<span class="badge gray">Sin documento</span>'}
+        </div>
       </div>
     </div>`).join(''));
 }
@@ -4601,23 +4573,49 @@ let firmaCtx = null, firmaActiva = false;
 
 function renderChecklistEpp() {
   document.getElementById('checklist-epp').innerHTML = opcionesEppDisponibles().map(item => `
-    <div class="chk-row" data-item="${esc(item)}">
+    <div class="chk-row" data-item="${esc(item.nombre)}" ${item.tallaLabel ? `data-talla-label="${esc(item.tallaLabel)}"` : ''}>
       <label class="chk-row-label">
         <span class="chk-row-checkbox-wrap">
           <input type="checkbox" class="chk-row-input" onchange="onToggleEppItem(this)">
           <span class="chk-row-checkbox"></span>
         </span>
-        <span>${esc(item)}</span>
+        <span>${esc(item.nombre)}</span>
       </label>
       <input type="number" class="epp-item-qty hidden" min="1" value="1">
+      ${item.tipos || item.talla ? `
+      <div class="epp-item-variantes hidden">
+        ${item.tipos ? `<select class="epp-item-tipo">
+          <option value="">${esc(item.tipoLabel || 'Tipo')}...</option>
+          ${item.tipos.map(t => `<option value="${esc(t)}">${esc(t)}</option>`).join('')}
+        </select>` : ''}
+        ${item.talla ? `<input class="epp-item-talla" placeholder="${esc(item.tallaLabel || 'Talla')}">` : ''}
+      </div>` : ''}
     </div>`).join('');
 }
 function onToggleEppItem(chk) {
-  chk.closest('.chk-row').querySelector('.epp-item-qty').classList.toggle('hidden', !chk.checked);
+  const row = chk.closest('.chk-row');
+  row.querySelector('.epp-item-qty').classList.toggle('hidden', !chk.checked);
+  const variantes = row.querySelector('.epp-item-variantes');
+  if (variantes) variantes.classList.toggle('hidden', !chk.checked);
 }
 function onCambioEppOtro() {
   const nombre = document.getElementById('input-epp-otro').value.trim();
   document.getElementById('grupo-epp-otro-qty').classList.toggle('hidden', !nombre);
+}
+// Compone el nombre final del ítem con su tipo/talla elegidos (ej. "Casco
+// de seguridad - Amarillo", "Calzado de seguridad - Zapatos básicos N°42")
+// — así queda todo en un solo string, igual que el resto de la app guarda
+// los ítems de EPP (sin necesitar columnas nuevas en el Sheet).
+function nombreCompletoEpp(row) {
+  let nombre = row.dataset.item;
+  const tipoSel = row.querySelector('.epp-item-tipo');
+  if (tipoSel && tipoSel.value) nombre += ' - ' + tipoSel.value;
+  const tallaInput = row.querySelector('.epp-item-talla');
+  if (tallaInput && tallaInput.value.trim()) {
+    const label = row.dataset.tallaLabel || 'Talla';
+    nombre += label === 'N°' ? ` N°${tallaInput.value.trim()}` : ` ${label} ${tallaInput.value.trim()}`;
+  }
+  return nombre;
 }
 function recolectarItemsEpp() {
   const items = [];
@@ -4625,7 +4623,7 @@ function recolectarItemsEpp() {
     const chk = row.querySelector('.chk-row-input');
     if (chk.checked) {
       const cantidad = parseInt(row.querySelector('.epp-item-qty').value, 10) || 1;
-      items.push({ item: row.dataset.item, cantidad });
+      items.push({ item: nombreCompletoEpp(row), cantidad });
     }
   });
   const otroNombre = document.getElementById('input-epp-otro').value.trim();
@@ -4755,10 +4753,12 @@ function firmaCanvasADataURL(canvasId) {
 }
 // El archivo de la firma de EPP se sube solo (no va dentro de un PDF con
 // más contexto alrededor, a diferencia de las firmas de Charla/HCR/
-// Investigación) — así que se le agrega el nombre y RUT debajo del trazo,
-// para que quien abra el archivo directamente sepa de quién es.
-function firmaConIdentificacion(canvasOriginal, nombre, rut) {
-  const franjaTexto = 26;
+// Investigación) — así que se le agrega nombre, RUT, fecha y hora debajo
+// del trazo, para que el archivo sea auto-explicativo y quede más
+// robusto como respaldo si se abre suelto, sin tener que cruzarlo con el
+// Sheet para saber cuándo y de quién es.
+function firmaConIdentificacion(canvasOriginal, nombre, rut, fecha, hora) {
+  const franjaTexto = 40;
   const c = document.createElement('canvas');
   c.width = canvasOriginal.width;
   c.height = canvasOriginal.height + franjaTexto;
@@ -4768,7 +4768,13 @@ function firmaConIdentificacion(canvasOriginal, nombre, rut) {
   ctx.drawImage(canvasOriginal, 0, 0);
   ctx.fillStyle = '#000';
   ctx.font = '13px Arial, sans-serif';
-  ctx.fillText(`${nombre}${rut ? ' — ' + rut : ''}`, 8, canvasOriginal.height + 18);
+  ctx.fillText(`${nombre}${rut ? ' — RUT ' + rut : ''}`, 8, canvasOriginal.height + 18);
+  const fechaHora = [fecha ? ddmmyyyy(fecha) : '', hora].filter(Boolean).join(' — ');
+  if (fechaHora) {
+    ctx.font = '11px Arial, sans-serif';
+    ctx.fillStyle = '#555';
+    ctx.fillText(fechaHora, 8, canvasOriginal.height + 34);
+  }
   return c;
 }
 async function guardarEpp(ev) {
@@ -4782,28 +4788,153 @@ async function guardarEpp(ev) {
 
     const trabNombre = f.trabajador.value.split('|')[0];
     const trabRut = f.trabajador.value.split('|')[1] || '';
-    const canvasFirma = firmaConIdentificacion(recortarFirma(canvas), trabNombre, trabRut);
+    const trab = allTrabajadores.find(t => t.nombre === trabNombre);
+    const ahora = new Date();
+    const fechaRegistro = ahora.toLocaleString('es-CL');
+    const horaRegistro = ahora.toTimeString().slice(0, 5);
+    const responsable = userEmail || f.responsable.value;
+
+    const canvasFirma = firmaConIdentificacion(recortarFirma(canvas), trabNombre, trabRut, f.fecha.value, horaRegistro);
     const blob = await new Promise(res => canvasFirma.toBlob(res, 'image/png'));
     let firmaLink = '';
     if (blob) {
       const up = await uploadFileTrabajador(blob, trabNombre, 'firma', 'png');
       firmaLink = up.link;
     }
-    const fechaRegistro = new Date().toLocaleString('es-CL');
+
+    // Además de la firma suelta (de siempre), se genera el documento
+    // "Entrega de EPP" completo (formato del cliente) con el detalle de
+    // esta entrega y se guarda en la carpeta del trabajador — si algo
+    // falla generándolo, la entrega igual se guarda (no bloquea el
+    // registro por un problema al armar el PDF).
+    let documentoLink = '';
+    try {
+      const pdfBlob = await generarPdfEntregaEpp({
+        obra: trab ? trab.obra : '', trabajador: trabNombre, rut: trabRut, cargo: trab ? trab.cargo : '',
+        fecha: f.fecha.value, items: itemsEpp, firmaDataUrl: firmaCanvasADataURL('firma-canvas'),
+        responsable, fechaHoraRegistro: fechaRegistro,
+      });
+      const upDoc = await uploadFileTrabajador(pdfBlob, trabNombre, 'entrega_epp', 'pdf');
+      documentoLink = upDoc.link;
+    } catch (e) { console.error('No se pudo generar el documento de Entrega de EPP:', e); }
+
     // Todos los ítems de una misma entrega van en UNA sola fila (columna
     // "EPP Entregado" combinada, ej. "Casco (1); Guantes (2)"), igual que
     // "Asistentes" en Charlas — antes cada ítem generaba su propia fila
     // (misma fecha/trabajador/firma repetidos), y una sola entrega se veía
     // como varias entregas duplicadas.
     const itemsTexto = itemsEpp.map(it => `${it.item} (${it.cantidad})`).join('; ');
-    await appendSheet(`'${CONFIG.SHEET_EPP}'!A:I`, [[
+    await appendSheet(`'${CONFIG.SHEET_EPP}'!A:J`, [[
       allEpp.length + 1, f.fecha.value, trabNombre, trabRut, itemsTexto, '',
-      firmaLink, userEmail || f.responsable.value, fechaRegistro
+      firmaLink, responsable, fechaRegistro, documentoLink
     ]]);
     toast(`Entrega registrada ✓ (${itemsEpp.length} ítem${itemsEpp.length>1?'s':''})`, 'ok');
     closePanel('panel-form-epp');
     cargarTodo(true);
   } catch (e) { toast(e.message, 'error'); }
+}
+
+// Genera el documento "Entrega de Elementos de Protección Personal", desde
+// cero con pdf-lib, calcado del formato real del cliente (mismo
+// encabezado OBRA/NOMBRE/RUT/CARGO/FECHA, mismo párrafo de compromiso, y
+// tabla ITEM/DETALLE/CANTIDAD/FIRMA RECIBIDO). A diferencia del formato
+// original (que trae los ~19 ítems del catálogo completo, con blancos
+// para lo no entregado), acá la tabla lista SOLO lo que efectivamente se
+// entregó en `datos.items` — a pedido explícito del cliente, para no
+// alargar el documento con filas vacías. La firma (una sola, capturada
+// una vez por entrega) se dibuja repetida en la columna "FIRMA RECIBIDO"
+// de cada fila entregada, tal como se ve en el formato original.
+async function generarPdfEntregaEpp(datos) {
+  const { PDFDocument, rgb, StandardFonts } = await cargarPdfLib();
+  const pdfDoc = await PDFDocument.create();
+  const page = pdfDoc.addPage([595, 842]);
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const negro = rgb(0.1, 0.1, 0.1), gris = rgb(0.4, 0.4, 0.4), grisClaro = rgb(0.92, 0.92, 0.92), borde = rgb(0.55, 0.55, 0.55);
+  const W = 595, xIni = 50, xFin = 545, anchoTabla = xFin - xIni;
+  let y = 842 - 50;
+
+  function wrapLines(str, maxWidth, size) {
+    const palabras = (str || '').split(' ');
+    const lines = []; let current = '';
+    palabras.forEach(p => {
+      const prueba = current ? current + ' ' + p : p;
+      if (font.widthOfTextAtSize(prueba, size) > maxWidth) { if (current) lines.push(current); current = p; }
+      else current = prueba;
+    });
+    if (current) lines.push(current);
+    return lines;
+  }
+  const centrado = (texto, yy, size, f, color) => {
+    const w = f.widthOfTextAtSize(texto, size);
+    page.drawText(texto, { x: (W - w) / 2, y: yy, size, font: f, color: color || negro });
+  };
+
+  centrado('ENTREGA DE ELEMENTOS DE PROTECCIÓN PERSONAL', y, 14, fontBold, negro);
+  y -= 30;
+
+  [
+    ['OBRA', datos.obra || '—'],
+    ['NOMBRE DEL TRABAJADOR', datos.trabajador || '—'],
+    ['RUT', datos.rut || '—'],
+    ['CARGO', datos.cargo || '—'],
+    ['FECHA', datos.fecha ? ddmmyyyy(datos.fecha) : '—'],
+  ].forEach(([label, valor]) => {
+    y = dibujarFilaTabla(page, xIni, y, [
+      { w: 160, text: label, bold: true, size: 9 },
+      { w: anchoTabla - 160, text: valor, size: 9 },
+    ], font, fontBold, 18, null, negro, borde);
+  });
+
+  y -= 10;
+  const parrafo = 'El trabajador se compromete a utilizar adecuadamente durante la jornada laboral los equipos y elementos de protección personal recibidos por parte de la empresa, LUIS ANDRES SAEZ THIELEMANN, dando cumplimiento a las normas de salud ocupacional que contribuyen a su bien estar físico, psicológico y social. Además, el trabajador se compromete a mantener los elementos de Protección personal en buen estado, almacenándolos en los casilleros asignados especialmente para esta función y declara haberlos recibido en forma gratuita. A su vez declara que ha recibido información sobre el uso adecuado de los mismos.';
+  wrapLines(parrafo, anchoTabla, 9).forEach(linea => { page.drawText(linea, { x: xIni, y, size: 9, font, color: negro }); y -= 12; });
+
+  y -= 8;
+  page.drawRectangle({ x: xIni, y: y - 18, width: anchoTabla, height: 18, color: grisClaro, borderColor: borde, borderWidth: 0.6 });
+  centrado('ELEMENTOS DE PROTECCIÓN PERSONAL ENTREGADOS', y - 13, 9.5, fontBold, negro);
+  y -= 18;
+
+  const colItem = 28, colDetalle = 258, colCantidad = 60, colFirma = anchoTabla - colItem - colDetalle - colCantidad;
+  y = dibujarFilaTabla(page, xIni, y, [
+    { w: colItem, text: 'ITEM', bold: true, align: 'center', size: 8.5 },
+    { w: colDetalle, text: 'DETALLE DE ELEMENTOS ENTREGADOS', bold: true, size: 8.5 },
+    { w: colCantidad, text: 'CANTIDAD', bold: true, align: 'center', size: 8.5 },
+    { w: colFirma, text: 'FIRMA RECIBIDO', bold: true, align: 'center', size: 8.5 },
+  ], font, fontBold, 18, grisClaro, negro, borde);
+
+  let firmaImg = null;
+  if (datos.firmaDataUrl) {
+    const bytes = Uint8Array.from(atob(datos.firmaDataUrl.split(',')[1]), c => c.charCodeAt(0));
+    firmaImg = await pdfDoc.embedPng(bytes);
+  }
+
+  (datos.items || []).forEach((it, idx) => {
+    const detalleLineas = wrapLines(it.item, colDetalle - 8, 8.5);
+    const rowH = Math.max(20, detalleLineas.length * 10 + 10);
+    const filaY = y;
+    y = dibujarFilaTabla(page, xIni, y, [
+      { w: colItem, text: String(idx + 1), align: 'center', size: 8.5 },
+      { w: colDetalle, text: '', size: 8.5 },
+      { w: colCantidad, text: String(it.cantidad), align: 'center', size: 8.5 },
+      { w: colFirma, text: '', align: 'center', size: 8.5 },
+    ], font, fontBold, rowH, null, negro, borde);
+    let ty = filaY - (rowH - detalleLineas.length * 10) / 2 - 8;
+    detalleLineas.forEach(linea => { page.drawText(linea, { x: xIni + colItem + 4, y: ty, size: 8.5, font, color: negro }); ty -= 10; });
+    if (firmaImg) {
+      const dims = escalarFirmaCasillero(firmaImg, colFirma - 14, rowH - 6);
+      const xFirma = xIni + colItem + colDetalle + colCantidad + (colFirma - dims.width) / 2;
+      page.drawImage(firmaImg, { x: xFirma, y: filaY - rowH + (rowH - dims.height) / 2, width: dims.width, height: dims.height });
+    }
+  });
+
+  y -= 24;
+  page.drawLine({ start: { x: xIni, y }, end: { x: xFin, y }, thickness: 0.8, color: gris });
+  y -= 14;
+  page.drawText(`Documento generado el ${datos.fechaHoraRegistro || ''} — registrado por ${datos.responsable || '—'}.`, { x: xIni, y, size: 8, font, color: gris });
+
+  const bytes = await pdfDoc.save();
+  return new Blob([bytes], { type: 'application/pdf' });
 }
 
 // ============================================================
@@ -8378,13 +8509,10 @@ async function generarExcelMiper(datos) {
 // ============================================================
 // MÓDULO: Capacitación DS44 art.16 (8 hrs obligatorias)
 // ============================================================
-// Un trabajador (elegido por el supervisor logueado, que le pasa el
-// celular/tablet en terreno) hace los 6 módulos de contenido + evaluación
-// de forma autoservicio, y el prevencionista de LST registra aparte la
-// sesión sincrónica/presencial (obligatoria si el curso se dicta
-// directamente, según la Guía Técnica). Al completar ambas cosas se genera
-// el certificado y el vencimiento a 2 años, mismo patrón que Examen de
-// Altura en la ficha del trabajador.
+// La capacitación se dicta aparte (a cargo de un experto en prevención de
+// riesgos de LST) — acá solo se registra el resultado: fecha de vigencia +
+// el certificado subido. Mismo patrón simple que Examen de Altura en la
+// ficha del trabajador (ver abrirEditarAltura/guardarAltura).
 let obraCapDs44Sel = 'todas';
 function obraCapDs44Efectiva() {
   const obraGlobal = obraFiltroActivo();
@@ -8396,29 +8524,12 @@ function onCambioObraCapDs44(v) { obraCapDs44Sel = v; renderCapacitacionDs44(); 
 function capacitacionDs44RecordDe(trabajador, obra) {
   return allCapacitacionDs44.find(r => r.trabajador === trabajador && r.obra === obra) || null;
 }
-// Los primeros 6 módulos (índice 0 = Introducción, sin evaluación, cuentan
-// como completos apenas se ven) tienen evaluación; el total de módulos con
-// evaluación son los que tienen preguntas.
-function ds44ModulosOk(rec) {
-  if (!rec) return 0;
-  return CAPACITACION_DS44_MODULOS.filter((mod, idx) => {
-    const m = rec.modulosCompletados.find(x => x.modulo === idx);
-    return m && (mod.preguntas.length === 0 || m.resultado === true);
-  }).length;
-}
 function ds44Estado(rec) {
-  const total = CAPACITACION_DS44_MODULOS.length;
-  if (!rec) return { label: 'Sin iniciar', badge: 'gray' };
-  const ok = ds44ModulosOk(rec);
-  if (rec.fechaCompletado) {
-    const vencido = rec.fechaVencimiento && new Date(rec.fechaVencimiento) < new Date(hoyISO());
-    return vencido
-      ? { label: `Vencido (venció ${ddmmyyyy(rec.fechaVencimiento)})`, badge: 'red' }
-      : { label: `Vigente hasta ${ddmmyyyy(rec.fechaVencimiento)}`, badge: 'green' };
-  }
-  if (ok < total) return { label: `En curso (${ok}/${total} módulos)`, badge: 'amber' };
-  if (!rec.fechaSincronico) return { label: 'Módulos listos — falta sesión presencial', badge: 'amber' };
-  return { label: 'En curso', badge: 'amber' };
+  if (!rec || !rec.fechaVencimiento) return { label: 'Sin registrar', badge: 'gray' };
+  const vencido = rec.fechaVencimiento < hoyISO();
+  return vencido
+    ? { label: `Vencido (venció ${ddmmyyyy(rec.fechaVencimiento)})`, badge: 'red' }
+    : { label: `Vigente hasta ${ddmmyyyy(rec.fechaVencimiento)}`, badge: 'green' };
 }
 
 function renderCapacitacionDs44() {
@@ -8445,7 +8556,7 @@ function renderCapacitacionDs44() {
       <div class="card-icon modulo-icon--inv">${ic('capacitacion',18)}</div>
       <div class="card-body">
         <div class="card-title">Capacitación DS44 art.16 — 8 horas obligatorias</div>
-        <div class="card-sub">Vigencia 2 años. Elige un trabajador para tomar o continuar su curso.</div>
+        <div class="card-sub">Vigencia 2 años. Elige un trabajador para subir o actualizar su certificado.</div>
       </div>
     </div>
     ${trabajadores.length === 0 ? emptyState('Sin trabajadores activos', 'No hay trabajadores activos en esta obra') :
@@ -8453,7 +8564,7 @@ function renderCapacitacionDs44() {
         const rec = capacitacionDs44RecordDe(t.nombre, obraEfectiva);
         const estado = ds44Estado(rec);
         return `
-      <div class="card card--default" onclick="abrirCursoDs44('${esc(t.nombre)}')">
+      <div class="card card--default" onclick="abrirEditarDs44('${esc(t.nombre)}','${esc(obraEfectiva)}')">
         <div class="card-body">
           <div class="card-title">${esc(t.nombre)}</div>
           <div class="card-sub">${esc(t.cargo || '')}</div>
@@ -8463,113 +8574,6 @@ function renderCapacitacionDs44() {
       </div>`;
       }).join('')}
   `);
-}
-
-function abrirCursoDs44(trabajador, obraParam) {
-  const obra = obraParam || obraCapDs44Efectiva();
-  const rec = capacitacionDs44RecordDe(trabajador, obra);
-  const estado = ds44Estado(rec);
-  document.getElementById('ds44-curso-body').innerHTML = `
-    <div class="card card--default">
-      <div class="card-body">
-        <div class="card-title">${esc(trabajador)}</div>
-        <div class="badge-row"><span class="badge ${estado.badge}">${estado.label}</span></div>
-      </div>
-    </div>
-    <div class="sec-label" style="margin-top:14px;">Módulos (autoservicio)</div>
-    ${CAPACITACION_DS44_MODULOS.map((mod, idx) => {
-      const m = rec && rec.modulosCompletados.find(x => x.modulo === idx);
-      const ok = m && (mod.preguntas.length === 0 || m.resultado === true);
-      return `
-      <div class="card card--default" onclick="abrirModuloDs44('${esc(trabajador)}','${esc(obra)}', ${idx})">
-        <div class="card-icon modulo-icon--inv">${ok ? ic('check',18) : ic('capacitacion',18)}</div>
-        <div class="card-body">
-          <div class="card-title">${idx+1}. ${esc(mod.titulo)}</div>
-          <div class="card-sub">${ok ? 'Completado' : mod.preguntas.length ? `${mod.preguntas.length} preguntas` : 'Solo lectura'}</div>
-        </div>
-        <div class="card-arrow">›</div>
-      </div>`;
-    }).join('')}
-    <div class="sec-label" style="margin-top:14px;">Sesión sincrónica/presencial</div>
-    <div class="card-sub" style="margin-bottom:8px;">La parte práctica la debe dar un experto en prevención de riesgos de LST — este botón solo registra que ocurrió.</div>
-    ${rec && rec.fechaSincronico
-      ? `<div class="card card--default"><div class="card-body"><div class="card-title">Registrada</div><div class="card-sub">${esc(rec.facilitadorSincronico)} — ${ddmmyyyy(rec.fechaSincronico)}</div></div></div>`
-      : `<button class="action-btn" onclick="abrirRegistrarSincronicoDs44('${esc(trabajador)}','${esc(obra)}')">${ic('capacitacion',14)} Registrar sesión sincrónica/presencial</button>`}
-    ${rec && rec.certificado ? `
-    <div class="sec-label" style="margin-top:14px;">Certificado</div>
-    <a class="card card--default" href="${esc(rec.certificado)}" target="_blank" rel="noopener">
-      <div class="card-icon modulo-icon--inv">${ic('documento',18)}</div>
-      <div class="card-body"><div class="card-title">Ver certificado</div><div class="card-sub">Vigente hasta ${ddmmyyyy(rec.fechaVencimiento)}</div></div>
-    </a>` : ''}
-  `;
-  openPanel('panel-ds44-curso');
-}
-
-function abrirModuloDs44(trabajador, obra, idx) {
-  const mod = CAPACITACION_DS44_MODULOS[idx];
-  const contenidoHtml = mod.contenido.map(p => `<p style="margin:0 0 10px;line-height:1.5;">${esc(p)}</p>`).join('');
-  const miperHtml = mod.especial === 'miper' ? resumenMiperParaCapacitacion(obra) : '';
-  const sinQuiz = mod.preguntas.length === 0;
-  document.getElementById('ds44-modulo-body').innerHTML = `
-    <div class="sec-label">${idx+1}. ${esc(mod.titulo)}</div>
-    ${contenidoHtml}
-    ${miperHtml}
-    ${sinQuiz
-      ? `<button class="btn-add" type="button" onclick="guardarModuloDs44('${esc(trabajador)}','${esc(obra)}',${idx},null)">Entendido, continuar</button>`
-      : `<div class="sec-label" style="margin-top:14px;">Evaluación</div>
-         <div class="card-sub" style="margin-bottom:10px;">Si te equivocas en algo, te dejamos intentarlo de nuevo — no hay nota mínima que reprobar.</div>
-         <form id="form-ds44-quiz" onsubmit="return false;">
-           ${mod.preguntas.map((p, pi) => `
-           <div class="form-group" data-pregunta="${pi}">
-             <label>${esc(p.texto)}</label>
-             ${p.opciones.map((op, oi) => `
-             <label style="display:flex;gap:8px;align-items:flex-start;margin:6px 0;font-size:13.5px;line-height:1.4;">
-               <input type="radio" name="p${pi}" value="${oi}" style="margin-top:3px;flex-shrink:0;">
-               <span style="flex:1;min-width:0;">${esc(op)}</span>
-             </label>`).join('')}
-             <div class="card-sub ds44-resultado-pregunta hidden" data-resultado="${pi}"></div>
-           </div>`).join('')}
-         </form>
-         <button class="btn-add" type="button" onclick="enviarQuizDs44('${esc(trabajador)}','${esc(obra)}',${idx})">Revisar respuestas</button>`}
-  `;
-  openPanel('panel-ds44-modulo');
-}
-
-// Muestra un resumen real (no un ejemplo genérico) de la Matriz de Riesgos
-// de la obra del trabajador, para el módulo de Identificación de Peligros.
-function resumenMiperParaCapacitacion(obra) {
-  const filas = allMiperMatriz.filter(f => f.obra === obra);
-  if (filas.length === 0) {
-    return `<div class="card card--default"><div class="card-body"><div class="card-sub">Todavía no hay filas cargadas en la Matriz de Riesgos de esta obra — cuando se carguen, este módulo mostrará ejemplos reales.</div></div></div>`;
-  }
-  const conteo = { Tolerable: 0, Moderado: 0, Importante: 0, Intolerable: 0 };
-  filas.forEach(f => { if (conteo[f.nivelRiesgo] !== undefined) conteo[f.nivelRiesgo]++; });
-  const muestra = filas.slice(-3);
-  return `
-    <div class="card card--default">
-      <div class="card-body">
-        <div class="card-title">MIPER real de tu obra (${esc(obra)})</div>
-        <div class="badge-row">${MIPER_VEP.map(v => `<span class="badge ${v.color}">${conteo[v.nombre]||0} ${v.nombre}</span>`).join('')}</div>
-        ${muestra.map(f => `<div class="card-sub" style="margin-top:6px;">${esc(f.proceso)} — ${esc(f.tarea)}: <strong>${esc(f.riesgo)}</strong> (${esc(f.nivelRiesgo)})</div>`).join('')}
-      </div>
-    </div>`;
-}
-
-function enviarQuizDs44(trabajador, obra, idx) {
-  const mod = CAPACITACION_DS44_MODULOS[idx];
-  const form = document.getElementById('form-ds44-quiz');
-  let todasOk = true;
-  mod.preguntas.forEach((p, pi) => {
-    const sel = form.querySelector(`input[name="p${pi}"]:checked`);
-    const resultadoEl = form.querySelector(`[data-resultado="${pi}"]`);
-    if (!sel) { todasOk = false; resultadoEl.textContent = 'Elige una opción.'; resultadoEl.classList.remove('hidden'); return; }
-    const ok = Number(sel.value) === p.correcta;
-    if (!ok) todasOk = false;
-    resultadoEl.textContent = ok ? '✓ Correcto' : '✗ Esa no es — vuelve a intentarlo';
-    resultadoEl.style.color = ok ? '#1f6b39' : '#c0392b';
-    resultadoEl.classList.remove('hidden');
-  });
-  if (todasOk) guardarModuloDs44(trabajador, obra, idx, true);
 }
 
 async function obtenerOCrearCapacitacionDs44(trabajador, obra) {
@@ -8595,114 +8599,36 @@ async function actualizarCeldaDs44(fila, col, valor) {
   await fetch(url, { method: 'PUT', headers: { 'Content-Type': 'application/json', ...authHeader() },
     body: JSON.stringify({ values: [[valor]] }) });
 }
-async function guardarModuloDs44(trabajador, obra, idx, resultado) {
-  try {
-    const rec = await obtenerOCrearCapacitacionDs44(trabajador, obra);
-    const existente = rec.modulosCompletados.find(m => m.modulo === idx);
-    const ahora = new Date().toLocaleString('es-CL');
-    if (existente) { existente.fecha = ahora; existente.resultado = resultado; existente.intentos = (existente.intentos || 0) + 1; }
-    else rec.modulosCompletados.push({ modulo: idx, fecha: ahora, resultado, intentos: 1 });
-    await actualizarCeldaDs44(rec.fila, 'F', JSON.stringify(rec.modulosCompletados));
-    toast('Módulo guardado ✓', 'ok');
-    await verificarCompletarCursoDs44(rec);
-    closePanel('panel-ds44-modulo');
-    abrirCursoDs44(trabajador, obra);
-    renderCapacitacionDs44();
-  } catch (e) { toast(e.message, 'error'); }
-}
 
-function abrirRegistrarSincronicoDs44(trabajador, obra) {
-  document.getElementById('ds44-sincronico-body').innerHTML = `
-    <form id="form-ds44-sincronico" onsubmit="guardarSincronicoDs44(event,'${esc(trabajador)}','${esc(obra)}')">
-      <div class="card-sub" style="margin-bottom:12px;">Registra que ${esc(trabajador)} recibió la parte sincrónica/presencial del curso, dada por un experto en prevención de riesgos.</div>
-      <div class="form-group"><label>Facilitador (nombre)</label><input name="facilitador" required placeholder="Ej: Diego Herrera — Prevención de Riesgos"></div>
-      <div class="form-group"><label>Fecha</label><input type="date" name="fecha" required value="${hoyISO()}"></div>
-      <button class="btn-add" type="submit">Guardar</button>
-    </form>`;
-  openPanel('panel-ds44-sincronico');
+function abrirEditarDs44(trabajador, obra) {
+  const rec = capacitacionDs44RecordDe(trabajador, obra);
+  const f = document.getElementById('form-editar-ds44');
+  f.reset();
+  f.trabajador.value = trabajador;
+  f.obra.value = obra;
+  f.vigencia.value = rec ? rec.fechaVencimiento || '' : '';
+  openPanel('panel-editar-ds44');
 }
-async function guardarSincronicoDs44(ev, trabajador, obra) {
+async function guardarCertificadoDs44(ev) {
   ev.preventDefault();
   const f = ev.target;
+  const trabajador = f.trabajador.value;
+  const obra = f.obra.value;
   try {
     const rec = await obtenerOCrearCapacitacionDs44(trabajador, obra);
-    rec.facilitadorSincronico = f.facilitador.value.trim();
-    rec.fechaSincronico = f.fecha.value;
-    await actualizarCeldaDs44(rec.fila, 'I', rec.facilitadorSincronico);
-    await actualizarCeldaDs44(rec.fila, 'J', rec.fechaSincronico);
-    toast('Sesión registrada ✓', 'ok');
-    await verificarCompletarCursoDs44(rec);
-    closePanel('panel-ds44-sincronico');
-    abrirCursoDs44(trabajador, obra);
+    const archivoFile = f.archivo.files[0];
+    if (archivoFile) {
+      const up = await uploadFileTrabajador(archivoFile, trabajador, 'certificado_ds44');
+      rec.certificado = up.link;
+      await actualizarCeldaDs44(rec.fila, 'K', rec.certificado);
+    }
+    rec.fechaVencimiento = f.vigencia.value;
+    await actualizarCeldaDs44(rec.fila, 'H', rec.fechaVencimiento);
+    toast('Certificado DS44 actualizado ✓', 'ok');
+    closePanel('panel-editar-ds44');
+    await cargarTodo(true);
+    if (!document.getElementById('panel-ficha-trabajador').classList.contains('hidden')) abrirFichaTrabajador(trabajador);
     renderCapacitacionDs44();
   } catch (e) { toast(e.message, 'error'); }
 }
 
-async function verificarCompletarCursoDs44(rec) {
-  if (rec.fechaCompletado) return;
-  const total = CAPACITACION_DS44_MODULOS.length;
-  if (ds44ModulosOk(rec) < total || !rec.fechaSincronico) return;
-  const hoy = new Date();
-  const fechaCompletado = hoyISO();
-  const venc = new Date(hoy); venc.setFullYear(venc.getFullYear() + 2);
-  const fechaVencimiento = venc.toISOString().slice(0, 10);
-  rec.fechaCompletado = fechaCompletado;
-  rec.fechaVencimiento = fechaVencimiento;
-  await actualizarCeldaDs44(rec.fila, 'G', fechaCompletado);
-  await actualizarCeldaDs44(rec.fila, 'H', fechaVencimiento);
-  try {
-    const blob = await generarCertificadoDs44(rec);
-    const folderId = await getModuloFolder('Capacitacion DS44');
-    const up = await subirBytesADrive(blob, folderId, `Certificado_DS44_${rec.trabajador}`.replace(/\s+/g, '_') + '.pdf');
-    rec.certificado = up.link;
-    await actualizarCeldaDs44(rec.fila, 'K', up.link);
-  } catch (e) { console.error(e); }
-  toast('¡Curso DS44 completado! Certificado generado ✓', 'ok');
-}
-
-async function generarCertificadoDs44(rec) {
-  const { PDFDocument, rgb, StandardFonts } = await cargarPdfLib();
-  const pdfDoc = await PDFDocument.create();
-  const page = pdfDoc.addPage([595, 842]); // A4 vertical
-  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-  const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-  const negro = rgb(0.15, 0.15, 0.15), gris = rgb(0.4, 0.4, 0.4), azul = rgb(0.08, 0.4, 0.75);
-  const W = 595, cx = W / 2;
-  try {
-    const logoBytes = await fetch('logo.png').then(r => r.arrayBuffer());
-    const logoImg = await pdfDoc.embedJpg(logoBytes);
-    const logoDim = logoImg.scale(50 / logoImg.height);
-    page.drawImage(logoImg, { x: cx - logoDim.width / 2, y: 760, width: logoDim.width, height: logoDim.height });
-  } catch (e) { /* sin logo, el certificado se genera igual */ }
-  const centrado = (texto, y, size, f, color) => {
-    const w = f.widthOfTextAtSize(texto, size);
-    page.drawText(texto, { x: cx - w / 2, y, size, font: f, color: color || negro });
-  };
-  centrado('CERTIFICADO DE CAPACITACIÓN', 690, 20, fontBold, negro);
-  centrado('Prevención de Riesgos Laborales — Artículo 16, D.S. N° 44 de 2023', 668, 11, font, gris);
-  centrado('Se certifica que', 620, 12, font, gris);
-  centrado(rec.trabajador, 592, 22, fontBold, azul);
-  if (rec.rut) centrado(`RUT ${rec.rut}`, 570, 11, font, gris);
-  const parrafo = `completó la capacitación obligatoria de 8 horas en prevención de riesgos laborales, cubriendo los contenidos mínimos exigidos por el artículo 16 del Decreto Supremo N° 44 de 2023 y la Guía Técnica aprobada por la Resolución 1.117 Exenta de la Subsecretaría de Previsión Social.`;
-  let y = 535;
-  const maxWidth = 440;
-  {
-    let linea = '';
-    for (const palabra of parrafo.split(' ')) {
-      const prueba = linea ? linea + ' ' + palabra : palabra;
-      if (font.widthOfTextAtSize(prueba, 11) > maxWidth) { centrado(linea, y, 11, font, negro); y -= 16; linea = palabra; }
-      else linea = prueba;
-    }
-    if (linea) { centrado(linea, y, 11, font, negro); y -= 16; }
-  }
-  y -= 20;
-  centrado(`Obra: ${rec.obra}`, y, 11, fontBold, negro); y -= 18;
-  centrado(`Fecha de término: ${ddmmyyyy(rec.fechaCompletado)}`, y, 11, font, negro); y -= 18;
-  centrado(`Facilitador sesión práctica: ${rec.facilitadorSincronico || '—'}`, y, 11, font, negro); y -= 18;
-  centrado(`Vigencia: 2 años — hasta el ${ddmmyyyy(rec.fechaVencimiento)}`, y, 11, fontBold, azul); y -= 30;
-  page.drawLine({ start: { x: 100, y: 130 }, end: { x: W - 100, y: 130 }, thickness: 0.8, color: gris });
-  centrado('Constructora LST — Prevención de Riesgos', 112, 10, font, gris);
-  centrado(`Emitido el ${ddmmyyyy(hoyISO())}`, 96, 9, font, gris);
-  const bytes = await pdfDoc.save();
-  return new Blob([bytes], { type: 'application/pdf' });
-}

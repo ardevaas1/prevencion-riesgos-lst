@@ -1001,58 +1001,42 @@ pestaña por pestaña antes de programar nada.
 ## Módulo Capacitación DS44 art.16 (8 hrs)
 
 Curso obligatorio de 8 horas exigido por el artículo 16 del Decreto Supremo
-N° 44 de 2023 (Resolución Exenta N° 1117/2026, "Guía Técnica" que reglamenta
-el curso). A diferencia del resto de la app (que registra/trazabiliza
-documentos ya generados fuera de la app), este módulo **dicta el curso
-dentro de la app**: el trabajador hace los módulos de contenido + evaluación
-en modo autoservicio desde su celular, y el prevencionista de LST registra
-aparte la sesión sincrónica/presencial obligatoria.
+N° 44 de 2023. La capacitación se dicta aparte (a cargo de un experto en
+prevención de riesgos de LST) — la app **no** dicta el curso ni evalúa al
+trabajador. Solo registra el resultado por trabajador: fecha de vigencia +
+certificado subido, **mismo patrón exacto que Examen de Altura** en la
+ficha del trabajador (`abrirEditarAltura`/`guardarAltura`).
 
-- **Estructura (`CAPACITACION_DS44_MODULOS` en `app.js`):** 7 módulos fijos
-  en el código (Introducción sin evaluación + 6 módulos de contenido con
-  evaluación, según el índice de la Guía Técnica: marco legal, identificación
-  de peligros, riesgos y salud, medidas preventivas, emergencias, y
-  señalización/incendios). El contenido de estos 6 módulos fue redactado
-  citando la ley/DS44/Guía Técnica — **no es el "curso tipo" SCORM oficial**
-  de la Subsecretaría de Previsión Social: la Guía Técnica exige un trámite
-  formal (solicitud + aceptación de términos en previsionsocial.gob.cl/ds44)
-  para obtenerlo, que solo LST puede completar. La idea es sustituir este
-  contenido por el oficial una vez LST lo solicite.
-- **Módulo real de MIPER (`especial: 'miper'` en el módulo "Identificación de
-  peligros"):** en vez de un ejemplo genérico, `resumenMiperParaCapacitacion`
-  muestra un resumen real (conteo por Nivel de Riesgo + últimas 3 filas) de
-  la Matriz de Riesgos (`MIPER_MATRIZ`) de la obra del trabajador — a pedido
-  explícito del cliente, para usar la matriz real de la obra como ejemplo
-  práctico en vez de contenido genérico.
-- **Evaluación no excluyente:** la Guía Técnica exige que la evaluación sea
-  "de carácter pedagógico, no selectivo ni excluyente" — no hay nota mínima
-  que reprueba. Si el trabajador responde mal, ve el error inline (✗ + "vuelve
-  a intentarlo") y puede reintentar las veces que necesite; el panel nunca lo
-  saca ni bloquea el avance por una respuesta incorrecta.
-- **Sesión sincrónica/presencial:** la Guía Técnica exige que la parte
-  sincrónica del curso (cuando se dicta directamente, no con el curso tipo
-  completo) la dé un facilitador experto en prevención de riesgos — LST usa
-  su propio prevencionista para esto. La app no dicta esa parte: solo
-  registra que ocurrió (`abrirRegistrarSincronicoDs44`/`guardarSincronicoDs44`
-  — nombre del facilitador + fecha).
-- **Modelo de datos (`CAPACITACION_DS44`):** patrón nuevo en esta app —
-  "encontrar-o-crear" (`obtenerOCrearCapacitacionDs44`): la primera vez que
-  un trabajador abre su curso se hace un único `appendSheet`, y de ahí en
-  adelante todo avance (módulo completado, sesión sincrónica, certificado)
-  es un `PUT` de una sola celda sobre esa misma fila — la fila nunca se
-  vuelve a agregar. `Modulos Completados` guarda un JSON
-  `[{modulo, fecha, resultado, intentos}]`.
-- **Certificado y vigencia:** al completar los 7 módulos (evaluación
-  correcta) + la sesión sincrónica, `verificarCompletarCursoDs44` genera un
-  PDF con pdf-lib (`generarCertificadoDs44`), lo sube a Drive y guarda la
-  fecha de completado + vencimiento a 2 años (portabilidad entre empleadores
-  del mismo rubro dentro de ese plazo, según la Guía Técnica) — mismo patrón
-  de vigencia que Examen de Altura.
-- **Integración con la ficha del trabajador:** nueva sección "Capacitación
-  DS44 (8 hrs)" en la ficha (mismo patrón que Contrato/Examen de Altura) con
-  badge de estado y botón "Ver curso" que abre `abrirCursoDs44(trabajador,
-  obra)` pasando la obra real del trabajador de forma explícita (no la obra
-  activa del filtro global, que puede no coincidir).
+- **Historia:** la primera versión de este módulo sí dictaba el curso
+  dentro de la app (7 módulos de contenido con evaluación de selección
+  múltiple, más registro de la sesión sincrónica/presencial). A pedido
+  explícito del cliente se sacó esa parte por completo — quedó solo la
+  opción de subir el certificado, igual que Examen de Altura — porque en la
+  práctica la capacitación ya se dicta presencialmente y lo único que hace
+  falta trazar es el certificado y su vigencia.
+- **Flujo actual:** por trabajador, se define "Vigente hasta" (fecha) y se
+  sube el documento del certificado (opcional, igual que Examen de Altura —
+  se puede guardar solo la fecha y subir el archivo después).
+  `abrirEditarDs44(trabajador, obra)` abre el formulario (`panel-editar-ds44`)
+  y `guardarCertificadoDs44` sube el archivo a la carpeta del trabajador en
+  Drive (`uploadFileTrabajador`, prefijo `certificado_ds44`) y actualiza las
+  columnas `H` (vigencia) y `K` (certificado) de `CAPACITACION_DS44`.
+- **Modelo de datos (`CAPACITACION_DS44`):** patrón "encontrar-o-crear"
+  (`obtenerOCrearCapacitacionDs44`): la primera vez que se registra algo
+  para un trabajador se hace un único `appendSheet`, y de ahí en adelante
+  cada actualización es un `PUT` de una sola celda sobre esa misma fila — la
+  fila nunca se vuelve a agregar. Las columnas de la versión anterior
+  (`Modulos Completados`, `Fecha Completado`, `Facilitador`/`Fecha
+  Sincrónico`) siguen existiendo en el Sheet por compatibilidad con filas
+  viejas, pero ya no se usan ni se escriben — solo `Fecha Vencimiento` y
+  `Certificado` importan ahora.
+- **Estado (`ds44Estado`):** igual que Examen de Altura — "Sin registrar"
+  (gris) si no hay fecha de vigencia, "Vencido" (rojo) si la fecha ya pasó,
+  "Vigente hasta [fecha]" (verde) si no.
+- **Integración con la ficha del trabajador:** sección "Capacitación DS44 (8
+  hrs)" en la ficha (mismo patrón visual que Contrato/Examen de Altura):
+  Vigencia + badge de Estado + link "Ver certificado" (si hay documento) +
+  botón "Subir certificado"/"Actualizar certificado".
 - **Sin FAB propio:** el módulo no tiene botón "+" de acción rápida — se
   entra siempre eligiendo un trabajador (desde la lista del módulo o desde
   su ficha), nunca creando un registro suelto.
@@ -1064,36 +1048,43 @@ aparte la sesión sincrónica/presencial obligatoria.
   con esos 4 datos como contexto: Peligro/Riesgo/Probabilidad/Consecuencia
   para esa tarea puntual, eligiendo el Riesgo del catálogo YA VIGENTE
   (`MIPER_CATALOGO_RIESGOS` + custom) — nunca inventa un riesgo nuevo, solo
-  el texto concreto del Peligro y la evaluación. Botón "Sugerir con IA"
-  (`sugerirRiesgosIaMiper` en `app.js`) en el formulario de agregar fila,
-  visible solo si `CONFIG.MIPER_IA_WEBAPP_URL` está configurado — si no,
-  el módulo sigue 100% manual como siempre. Reusa el mismo mecanismo de
-  prellenado (`agregarBloquePeligroMiper(prefill)`) que ya usaba el
-  buscador del banco histórico, así que las sugerencias quedan en los
-  mismos bloques editables de siempre — el supervisor las revisa, ajusta o
-  borra antes de tocar "Guardar en la matriz". Nada se autoguarda: es
-  prellenado, no autocompletado silencioso.
+  el texto concreto del Peligro y la evaluación. Botón "Sugerencia
+  automática" (`sugerirRiesgosIaMiper` en `app.js`) en el formulario de
+  agregar fila, visible solo si `CONFIG.MIPER_IA_WEBAPP_URL` está
+  configurado — si no, el módulo sigue 100% manual como siempre. Reusa el
+  mismo mecanismo de prellenado (`agregarBloquePeligroMiper(prefill)`) que
+  ya usaba el buscador del banco histórico, así que las sugerencias quedan
+  en los mismos bloques editables de siempre — el supervisor las revisa,
+  ajusta o borra antes de tocar "Guardar en la matriz". Nada se
+  autoguarda: es prellenado, no autocompletado silencioso.
   Backend: `APPS_SCRIPT_WEBAPP_MIPER_IA.js` (Web App de Apps Script, mismo
   patrón que Subcontratistas — necesaria porque una API key de LLM no se
   puede exponer en código que corre en el navegador). Recibe Proceso/
   Puesto/Tarea/Equipos + el catálogo completo (sin las medidas preventivas,
-  para no inflar el prompt) y llama a la API de Claude pidiendo un array
-  JSON `[{codigo, peligro, probabilidad, consecuencia}]`; filtra cualquier
+  para no inflar el prompt) y llama a la API de Gemini (Google, modelo
+  `gemini-3.5-flash-lite`, **tier gratis** — se eligió sobre Claude/Anthropic
+  a pedido explícito del cliente por costo; el volumen esperado de este
+  botón es bajo y el límite gratis de Gemini para ese modelo, ~15
+  solicitudes/minuto y ~1.500/día, alcanza de sobra) pidiendo un array JSON
+  `[{codigo, peligro, probabilidad, consecuencia}]`; filtra cualquier
   código que la IA haya devuelto y que no esté realmente en el catálogo
   recibido, antes de devolver la respuesta. Requiere que el cliente
-  consiga su propia API key de Anthropic (console.anthropic.com) y la
-  guarde como propiedad del script — instrucciones completas en el
-  encabezado de ese archivo. Mismo detalle de CORS que
+  consiga su propia API key gratis en aistudio.google.com/apikey (sin
+  tarjeta de crédito) y la guarde como propiedad del script — instrucciones
+  completas en el encabezado de ese archivo. Ojo: en el tier gratis de
+  Gemini, Google puede usar los datos enviados (descripciones de tareas de
+  obra, no datos personales) para mejorar sus modelos — se documentó esa
+  salvedad para el cliente antes de implementar. Mismo detalle de CORS que
   `llamarWebAppSubcontratista`: `Content-Type: text/plain` al llamar (no
   `application/json`), porque Apps Script no responde al preflight OPTIONS
   que el navegador manda para JSON.
   Probado end-to-end con Playwright (interacción real: elegir tarea,
-  escribir equipos, click en "Sugerir con IA" con la Web App mockeada):
-  confirma que el contexto mandado es exactamente lo que el supervisor
-  escribió a mano, que un código inventado por la IA se filtra antes de
-  llegar al formulario, que el prellenado dispara el mismo detalle de
-  riesgo (definición/medidas) que la selección manual, y que el supervisor
-  puede seguir editando el texto sugerido antes de guardar.
+  escribir equipos, click en "Sugerencia automática" con la Web App
+  mockeada): confirma que el contexto mandado es exactamente lo que el
+  supervisor escribió a mano, que un código inventado por la IA se filtra
+  antes de llegar al formulario, que el prellenado dispara el mismo
+  detalle de riesgo (definición/medidas) que la selección manual, y que el
+  supervisor puede seguir editando el texto sugerido antes de guardar.
 
 ## Asignación de supervisor y modo restringido de supervisor
 

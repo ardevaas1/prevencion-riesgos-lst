@@ -47,8 +47,9 @@ const CONFIG = {
   SUBCONTRATISTAS_WEBAPP_URL: 'https://script.google.com/macros/s/AKfycbweJpxQTzVhSce2dvJsQnxclMVRDMFBLGvd9IL7_UY-LSLJFgFc1x2VvEyl7e7Rr8Xb/exec',
 
   // URL de la Web App de Apps Script para sugerencias con IA en la Matriz
-  // de Riesgos (ver APPS_SCRIPT_WEBAPP_MIPER_IA.js) — deja vacío ('') si no
-  // la vas a usar: el botón "Sugerir con IA" simplemente no aparece y el
-  // resto del módulo MIPER sigue funcionando 100% manual, como siempre.
+  // de Riesgos (ver APPS_SCRIPT_WEBAPP_MIPER_IA.js, usa el tier gratis de
+  // Gemini) — deja vacío ('') si no la vas a usar: el botón "Sugerencia
+  // automática" simplemente no aparece y el resto del módulo MIPER sigue
+  // funcionando 100% manual, como siempre.
   MIPER_IA_WEBAPP_URL: 'https://script.google.com/macros/s/AKfycbzfmF5VyA0qLCvagViCb9l3N_d89UgHObTqnFyCSKEkA4IQ6xL6kMRtCrb9eaX7vJQ7Sw/exec',
 };
