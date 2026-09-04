@@ -972,9 +972,9 @@ a.action-btn { text-decoration: none; }
     text-align: center;
     border-radius: 0 0 28px 28px;
     background:
-      radial-gradient(ellipse 420px 180px at 50% -40%, rgba(255,255,255,0.18), transparent 60%),
-      linear-gradient(135deg, #c06f0a 0%, var(--accent) 55%, #ffb462 100%);
-    box-shadow: 0 2px 14px rgba(229,141,23,0.25);
+      radial-gradient(ellipse 420px 180px at 50% -40%, rgba(255,255,255,0.10), transparent 60%),
+      linear-gradient(135deg, #7a4308 0%, #9b570c 55%, #c06f0a 100%);
+    box-shadow: 0 2px 14px rgba(155,87,12,0.25);
   }
   .desktop-home-header .logo-badge { width: 64px; height: 64px; border-radius: 18px; }
   .desktop-home-header .logo-badge img { width: 70%; height: 70%; }
@@ -1000,7 +1000,7 @@ a.action-btn { text-decoration: none; }
   }
   .desktop-home-main { flex: 1; min-width: 0; }
   .desktop-home-stats {
-    display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
   }
   /* Listado en vez de grilla de tarjetas de colores — a pedido del
      cliente (le mostraron una referencia con un sidebar tipo lista de
