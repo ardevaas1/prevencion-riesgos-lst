@@ -1622,25 +1622,120 @@ function calcularEstadisticasSeguridad(obraSel, offsetAnios = 0) {
     indiceGravedad: horasHombre > 0 ? (diasPerdidos / horasHombre) * 1000000 : 0,
   };
 }
-// Tarjeta de índice con gráfico de barras comparando el mismo período del
-// año anterior contra el año actual (en vez de solo mostrar el número).
-function graficoIndice(nombre, color, valorActual, valorPrev, anioActual, formato) {
-  const max = Math.max(valorActual, valorPrev, 0.0001);
-  const hActual = Math.max(6, Math.round((valorActual / max) * 100));
-  const hPrev = Math.max(6, Math.round((valorPrev / max) * 100));
+// ── Serie mensual (para las curvas Índice Frecuencia/Gravedad) ─────────
+// Mismo criterio que calcularEstadisticasSeguridad, pero mes a mes en vez
+// de un solo acumulado — así se puede dibujar una curva real (año actual
+// vs año anterior) en vez de solo 2 barras con el total.
+const MESES_ABREV = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+function calcularSerieMensual(obraSel, anio, hastaMes) {
+  const hoyReal = new Date();
+  const trabajadoresObra = allTrabajadores.filter(t => obraSel === 'todas' || t.obra === obraSel);
+  const incidentesObra = allIncidentes.filter(i => (obraSel === 'todas' || i.obra === obraSel) && esAccidenteConTiempoPerdido(i));
+  const meses = [];
+  for (let m = 0; m <= hastaMes; m++) {
+    const inicioMes = new Date(anio, m, 1);
+    const finMesCalendario = new Date(anio, m + 1, 0);
+    const finMes = finMesCalendario < hoyReal ? finMesCalendario : hoyReal;
+    let horasHombre = 0;
+    if (finMes >= inicioMes) {
+      trabajadoresObra.forEach(t => {
+        if (!t.contratoInicio) return;
+        const ini = new Date(t.contratoInicio + 'T00:00:00');
+        const fin = t.contratoTermino ? new Date(t.contratoTermino + 'T00:00:00') : hoyReal;
+        const desde = ini > inicioMes ? ini : inicioMes;
+        const hasta = fin < finMes ? fin : finMes;
+        if (hasta >= desde) horasHombre += (Math.floor((hasta - desde) / 86400000) + 1) * HORAS_JORNADA_DIARIA;
+      });
+    }
+    const inicioMesStr = fechaISO(inicioMes), finMesStr = fechaISO(finMesCalendario);
+    const incidentesMes = incidentesObra.filter(i => i.fecha >= inicioMesStr && i.fecha <= finMesStr);
+    const diasPerdidos = incidentesMes.reduce((s, i) => s + (i.diasPerdidos || 0), 0);
+    meses.push({
+      mes: m, horasHombre, nAccidentes: incidentesMes.length, diasPerdidos,
+      indiceFrecuencia: horasHombre > 0 ? (incidentesMes.length / horasHombre) * 1000000 : 0,
+      indiceGravedad: horasHombre > 0 ? (diasPerdidos / horasHombre) * 1000000 : 0,
+    });
+  }
+  return meses;
+}
+const INDICE_COLOR_HEX = { blue: '#1565c0', amber: '#e65100', red: '#c62828' };
+// Aro de progreso tipo gauge para la Tasa de Accidentabilidad — maxEsperado
+// es solo el tope visual del aro (no un 100% literal: la tasa normalmente
+// es un número chico, así que un aro que se llena recién al 100% se vería
+// casi siempre vacío).
+function svgGaugeIndice(percent, color, maxEsperado) {
+  const R = 50, C = 2 * Math.PI * R;
+  const frac = Math.max(0, Math.min(1, percent / maxEsperado));
+  const hex = INDICE_COLOR_HEX[color] || '#1565c0';
   return `
-    <div class="indice-card">
+    <svg viewBox="0 0 130 130" class="indice-gauge">
+      <circle cx="65" cy="65" r="${R}" fill="none" stroke="var(--bg)" stroke-width="12"></circle>
+      <circle cx="65" cy="65" r="${R}" fill="none" stroke="${hex}" stroke-width="12" stroke-linecap="round"
+        stroke-dasharray="${(frac*C).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 65 65)"></circle>
+    </svg>`;
+}
+// Curva mensual (año actual sólido + año anterior punteado, con área bajo
+// la curva del año actual) para Índice Frecuencia/Gravedad — reemplaza el
+// gráfico de 2 barras por algo más parecido a un gráfico real, con eje de
+// meses.
+function svgSerieIndice(serieActual, seriePrev, key, color) {
+  const W = 300, H = 110, padL = 6, padR = 6, padT = 10, padB = 8;
+  const n = serieActual.length;
+  const valoresA = serieActual.map(m => m[key]);
+  const valoresP = seriePrev.map(m => m[key]);
+  const max = Math.max(...valoresA, ...valoresP, 0.0001);
+  const x = i => n <= 1 ? padL : padL + (i / (n - 1)) * (W - padL - padR);
+  const y = v => H - padB - (v / max) * (H - padT - padB);
+  const hex = INDICE_COLOR_HEX[color] || '#1565c0';
+  const pathFor = vals => vals.map((v, i) => `${i === 0 ? 'M' : 'L'} ${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(' ');
+  const areaFor = vals => `${pathFor(vals)} L ${x(vals.length - 1).toFixed(1)} ${H - padB} L ${x(0).toFixed(1)} ${H - padB} Z`;
+  const gradId = 'gradIndice' + key + Math.round(Math.random() * 1e6);
+  const ultimoX = x(n - 1), ultimoY = y(valoresA[n - 1]);
+  return `
+    <svg viewBox="0 0 ${W} ${H}" class="indice-svg" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="${hex}" stop-opacity="0.3"></stop>
+          <stop offset="100%" stop-color="${hex}" stop-opacity="0"></stop>
+        </linearGradient>
+      </defs>
+      <path d="${pathFor(valoresP)}" fill="none" stroke="#b7b5b0" stroke-width="2" stroke-dasharray="4 3" stroke-linecap="round" stroke-linejoin="round"></path>
+      <path d="${areaFor(valoresA)}" fill="url(#${gradId})"></path>
+      <path d="${pathFor(valoresA)}" fill="none" stroke="${hex}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path>
+      <circle cx="${ultimoX.toFixed(1)}" cy="${ultimoY.toFixed(1)}" r="4" fill="${hex}" stroke="#fff" stroke-width="1.5"></circle>
+    </svg>
+    <div class="indice-eje-x">${serieActual.map(m => `<span>${MESES_ABREV[m.mes]}</span>`).join('')}</div>`;
+}
+// Tarjeta con aro de progreso (Tasa de Accidentabilidad).
+function tarjetaGauge(nombre, color, valorActual, valorPrev, anioActual, formato, maxEsperado) {
+  return `
+    <div class="indice-card indice-card--gauge">
       <div class="indice-nombre">${nombre}</div>
-      <div class="indice-valor ${color}">${formato(valorActual)}</div>
-      <div class="indice-chart">
-        <div class="indice-bar-col">
-          <div class="indice-bar-track"><div class="indice-bar ${color}" style="height:${hPrev}%"></div></div>
-          <span class="indice-bar-y">${anioActual - 1}</span>
+      <div class="indice-gauge-wrap">
+        ${svgGaugeIndice(valorActual, color, maxEsperado)}
+        <div class="indice-gauge-centro">
+          <div class="indice-gauge-valor ${color}">${formato(valorActual)}</div>
         </div>
-        <div class="indice-bar-col">
-          <div class="indice-bar-track"><div class="indice-bar ${color} indice-bar--actual" style="height:${hActual}%"></div></div>
-          <span class="indice-bar-y">${anioActual}</span>
-        </div>
+      </div>
+      <div class="indice-comparacion">
+        <span class="indice-chip">${anioActual - 1}: ${formato(valorPrev)}</span>
+        <span class="indice-chip indice-chip--actual ${color}">${anioActual}: ${formato(valorActual)}</span>
+      </div>
+    </div>`;
+}
+// Tarjeta con curva mensual (Índice Frecuencia/Gravedad). El número grande
+// es el índice ACUMULADO del año (mismo criterio DS40/Mutualidad de
+// siempre, calcularEstadisticasSeguridad) — no el de un solo mes, que
+// puede dar 0 por muestra chica aunque la curva no esté realmente en cero.
+function tarjetaSerie(nombre, color, serieActual, seriePrev, key, anioActual, formato, valorAcumulado) {
+  return `
+    <div class="indice-card indice-card--serie">
+      <div class="indice-nombre">${nombre}</div>
+      <div class="indice-valor-grande ${color}">${formato(valorAcumulado)}</div>
+      <div class="indice-serie-wrap">${svgSerieIndice(serieActual, seriePrev, key, color)}</div>
+      <div class="indice-leyenda">
+        <span class="indice-leyenda-item"><span class="indice-dot ${color}"></span>${anioActual}</span>
+        <span class="indice-leyenda-item"><span class="indice-dot indice-dot--prev"></span>${anioActual - 1}</span>
       </div>
     </div>`;
 }
@@ -1654,6 +1749,9 @@ function renderEstadisticasSeguridad() {
   if (obraDashboardSel !== 'todas' && !obras.includes(obraDashboardSel)) obraDashboardSel = 'todas';
   const st = calcularEstadisticasSeguridad(obraDashboardSel, 0);
   const stPrev = calcularEstadisticasSeguridad(obraDashboardSel, 1);
+  const hoy = new Date();
+  const serieActual = calcularSerieMensual(obraDashboardSel, st.anio, hoy.getMonth());
+  const seriePrev = calcularSerieMensual(obraDashboardSel, st.anio - 1, hoy.getMonth());
 
   setListHTML('stats-seguridad', `
     ${obraGlobal ? '' : `
@@ -1664,9 +1762,9 @@ function renderEstadisticasSeguridad() {
       </select>
     </div>`}
     <div class="indices-grid">
-      ${graficoIndice('Tasa Accidentabilidad', 'blue', st.tasaAccidentabilidad, stPrev.tasaAccidentabilidad, st.anio, v => v.toFixed(1)+'%')}
-      ${graficoIndice('Índice Frecuencia', 'amber', st.indiceFrecuencia, stPrev.indiceFrecuencia, st.anio, v => Math.round(v))}
-      ${graficoIndice('Índice Gravedad', 'red', st.indiceGravedad, stPrev.indiceGravedad, st.anio, v => Math.round(v))}
+      ${tarjetaGauge('Tasa Accidentabilidad', 'blue', st.tasaAccidentabilidad, stPrev.tasaAccidentabilidad, st.anio, v => v.toFixed(1)+'%', 10)}
+      ${tarjetaSerie('Índice Frecuencia', 'amber', serieActual, seriePrev, 'indiceFrecuencia', st.anio, v => Math.round(v), st.indiceFrecuencia)}
+      ${tarjetaSerie('Índice Gravedad', 'red', serieActual, seriePrev, 'indiceGravedad', st.anio, v => Math.round(v), st.indiceGravedad)}
     </div>
     <div class="stats-caption">Acumulado ${st.anio} vs. mismo período ${st.anio-1} · ${st.nAccidentes} accidente(s) con tiempo perdido · ${Math.round(st.horasHombre).toLocaleString('es-CL')} HH trabajadas (estimadas)</div>
     ${st.sinContrato > 0 ? `<div class="stats-aviso">${st.sinContrato} trabajador(es) sin fecha de contrato registrada — sus horas no se cuentan en los índices.</div>` : ''}

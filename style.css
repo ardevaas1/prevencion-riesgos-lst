@@ -288,26 +288,51 @@ body.is-offline #app { padding-top: 30px; }
   flex: 1; padding: 9px 12px; border: 1.5px solid var(--line); border-radius: 10px;
   font-size: 13.5px; font-weight: 600; color: var(--ink); background: #fff; font-family: inherit;
 }
-/* Índices como gráfico de barras: año anterior (tenue) vs. año actual (sólido) */
-.indices-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; }
+/* Índices: aro de progreso para Tasa Accidentabilidad + curva mensual
+   (año actual vs año anterior) para Frecuencia/Gravedad — reemplaza el
+   gráfico simple de 2 barras, a pedido del cliente (los quería más
+   grandes y más interesantes de ver, tomando como referencia un
+   dashboard con gauge circular + curvas suaves). */
+/* Una columna en móvil (las curvas con 9 meses en el eje necesitan ancho
+   para no superponerse) — 3 columnas solo en escritorio, ver
+   .desktop-home .indices-grid más abajo. */
+.indices-grid { display: grid; grid-template-columns: 1fr; gap: 12px; margin-bottom: 10px; }
 .indice-card {
-  background: #fff; border-radius: 12px; border: 1px solid var(--line);
-  padding: 10px 6px 8px; text-align: center; display: flex; flex-direction: column; align-items: center;
+  background: #fff; border-radius: 16px; border: 1px solid var(--line);
+  padding: 16px 12px 14px; text-align: center; display: flex; flex-direction: column; align-items: center;
 }
-.indice-nombre { font-size: 9.5px; color: #888; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; line-height: 1.2; height: 22px; display: flex; align-items: center; }
-.indice-valor { font-size: 19px; font-weight: 700; line-height: 1; margin-bottom: 8px; }
-.indice-valor.blue  { color: #1565c0; }
-.indice-valor.amber { color: #e65100; }
-.indice-valor.red   { color: #c62828; }
-.indice-chart { display: flex; justify-content: center; align-items: flex-end; gap: 10px; }
-.indice-bar-col { display: flex; flex-direction: column; align-items: center; gap: 4px; }
-.indice-bar-track { width: 18px; height: 46px; display: flex; align-items: flex-end; background: var(--bg); border-radius: 5px; overflow: hidden; }
-.indice-bar { width: 100%; border-radius: 5px 5px 0 0; opacity: 0.32; transition: height 0.4s ease; }
-.indice-bar--actual { opacity: 1; }
-.indice-bar.blue  { background: #1565c0; }
-.indice-bar.amber { background: #e65100; }
-.indice-bar.red   { background: #c62828; }
-.indice-bar-y { font-size: 9px; color: #999; font-weight: 600; }
+.indice-nombre { font-size: 10.5px; color: #888; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; line-height: 1.2; margin-bottom: 6px; }
+.indice-valor-grande { font-size: 26px; font-weight: 800; line-height: 1; margin-bottom: 4px; }
+.indice-valor-grande.blue  { color: #1565c0; }
+.indice-valor-grande.amber { color: #e65100; }
+.indice-valor-grande.red   { color: #c62828; }
+
+/* Aro de progreso (gauge) */
+.indice-gauge-wrap { position: relative; width: 100%; max-width: 130px; margin: 2px auto 8px; }
+.indice-gauge { width: 100%; height: auto; display: block; }
+.indice-gauge-centro { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+.indice-gauge-valor { font-size: 24px; font-weight: 800; }
+.indice-gauge-valor.blue  { color: #1565c0; }
+.indice-gauge-valor.amber { color: #e65100; }
+.indice-gauge-valor.red   { color: #c62828; }
+.indice-comparacion { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; margin-top: 2px; }
+.indice-chip { font-size: 10px; font-weight: 600; color: #999; background: var(--bg); border-radius: 20px; padding: 3px 9px; }
+.indice-chip--actual.blue  { color: #1565c0; background: #e3f0fc; }
+.indice-chip--actual.amber { color: #e65100; background: #fdeee1; }
+.indice-chip--actual.red   { color: #c62828; background: #fbe4e4; }
+
+/* Curva mensual (línea + área) */
+.indice-serie-wrap { width: 100%; }
+.indice-svg { width: 100%; height: 90px; display: block; }
+.indice-eje-x { display: flex; justify-content: space-between; margin-top: 2px; }
+.indice-eje-x span { font-size: 8.5px; color: #aaa; font-weight: 600; }
+.indice-leyenda { display: flex; gap: 12px; justify-content: center; margin-top: 8px; }
+.indice-leyenda-item { display: flex; align-items: center; gap: 5px; font-size: 10.5px; color: #888; font-weight: 600; }
+.indice-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.indice-dot.blue  { background: #1565c0; }
+.indice-dot.amber { background: #e65100; }
+.indice-dot.red   { background: #c62828; }
+.indice-dot--prev { background: #b7b5b0; }
 .stats-caption { font-size: 11.5px; color: #888; line-height: 1.4; }
 .stats-aviso {
   font-size: 12px; color: #92400e; background: #fff8e1; border: 1px solid #ffe082;
@@ -1002,6 +1027,18 @@ a.action-btn { text-decoration: none; }
   .desktop-home-stats {
     display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;
   }
+  .desktop-home .indices-grid { grid-template-columns: repeat(3, 1fr); }
+  /* Más aire para los índices en escritorio, aprovechando el ancho que
+     dejó libre el menú lateral. */
+  .desktop-home .indice-card { padding: 22px 18px 18px; border-radius: 20px; }
+  .desktop-home .indice-nombre { font-size: 12px; margin-bottom: 10px; }
+  .desktop-home .indice-valor-grande { font-size: 34px; }
+  .desktop-home .indice-gauge-wrap { max-width: 168px; }
+  .desktop-home .indice-gauge-valor { font-size: 30px; }
+  .desktop-home .indice-svg { height: 130px; }
+  .desktop-home .indice-eje-x span { font-size: 10px; }
+  .desktop-home .indice-chip { font-size: 11.5px; padding: 4px 11px; }
+  .desktop-home .indice-leyenda-item { font-size: 12px; }
   /* Listado en vez de grilla de tarjetas de colores — a pedido del
      cliente (le mostraron una referencia con un sidebar tipo lista de
      navegación) después de que ninguna versión con colores por módulo
