@@ -44,7 +44,7 @@ const CONFIG = {
   // despliegas y pegas la URL acá, esas cuentas ya no necesitan ese acceso
   // (la app cae automáticamente a este camino solo cuando detecta que la
   // cuenta no tiene permiso directo sobre el Sheet).
-  SUBCONTRATISTAS_WEBAPP_URL: 'https://script.google.com/macros/s/AKfycbweJpxQTzVhSce2dvJsQnxclMVRDMFBLGvd9IL7_UY-LSLJFgFc1x2VvEyl7e7Rr8Xb/exec',
+  SUBCONTRATISTAS_WEBAPP_URL: 'https://script.google.com/macros/s/AKfycbzTJGZ7foL2ruysG4sN9bHyNrIVejpADOj8qOZFTC7FAW-AJzpnGLuPy6wxH6nszyI8/exec',
 
   // URL de la Web App de Apps Script para sugerencias con IA en la Matriz
   // de Riesgos (ver APPS_SCRIPT_WEBAPP_MIPER_IA.js, usa el tier gratis de
