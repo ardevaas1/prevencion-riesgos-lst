@@ -981,12 +981,26 @@ a.action-btn { text-decoration: none; }
   .desktop-home-title { font-size: 22px; font-weight: 700; color: #fff; }
   .desktop-home-sub { font-size: 13px; color: rgba(255,255,255,0.85); }
   .obra-bar--ancho { max-width: 1180px; margin: 0 auto; width: 100%; padding: 12px 24px; box-sizing: border-box; }
+  /* Body del home en dos columnas: menú de módulos fijo a la izquierda +
+     contenido (stats/gráficos/sesión) a la derecha — a pedido del
+     cliente, tomando como referencia un sidebar de navegación típico.
+     El menú NO es el mismo elemento que #desktop-sidebar (el que se ve
+     al entrar a un módulo) — ese sigue mostrando solo "Volver a
+     Inicio" a propósito (el cliente pidió explícitamente que no se
+     pueda saltar de un módulo a otro sin pasar por Inicio). Este es un
+     menú aparte que solo existe en la pantalla de Inicio. */
   .desktop-home-body {
     flex: 1; max-width: 1180px; margin: 0 auto; width: 100%;
     padding: 32px 24px 60px;
+    display: flex; align-items: flex-start; gap: 24px;
   }
+  .desktop-home-menu {
+    width: 250px; flex-shrink: 0;
+    position: sticky; top: 32px;
+  }
+  .desktop-home-main { flex: 1; min-width: 0; }
   .desktop-home-stats {
-    display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;
   }
   /* Listado en vez de grilla de tarjetas de colores — a pedido del
      cliente (le mostraron una referencia con un sidebar tipo lista de
@@ -1029,7 +1043,7 @@ a.action-btn { text-decoration: none; }
   .desktop-home .modulo-nombre { min-height: 0; display: block; font-size: 14.5px; }
   .desktop-home .modulo-card:hover .modulo-nombre { color: var(--accent); }
   .desktop-home .modulo-desc { display: none; }
-  .desktop-home-session { max-width: 360px; margin: 36px auto 0; }
+  .desktop-home-session { margin-top: 36px; }
 
   /* ── Shell: ocultar todo lo móvil ── */
   #main  { display: none !important; }
