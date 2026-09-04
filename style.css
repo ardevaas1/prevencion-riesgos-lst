@@ -1711,17 +1711,23 @@ a.action-btn { text-decoration: none; }
   width: 80px; height: 80px; border-radius: 50%;
   opacity: 0.07; pointer-events: none;
 }
-.modulo-card--flota::before   { background: #2f6f9e; }
-.modulo-card--inv::before     { background: #d9790e; }
-.modulo-card--cont::before    { background: #93613a; }
-.modulo-card--mov::before     { background: #2f8a4d; }
-.modulo-card--and::before     { background: #9c2f2f; }
-.modulo-card--teal::before    { background: #1f8f93; }
-.modulo-card--purpura::before { background: #6b3fa0; }
-.modulo-card--indigo::before  { background: #3d4f9e; }
-.modulo-card--rosa::before    { background: #b03d6f; }
-.modulo-card--oliva::before   { background: #7a8a1f; }
-.modulo-card--gris::before    { background: #4c5a70; }
+/* Paleta apagada/suave a propósito — la primera versión (colores vivos
+   tipo arcoíris) resolvía que no se repitieran, pero el cliente sintió
+   la grilla "muy colorida". Se bajó la saturación de los 11 colores
+   (incluidos los 5 originales, para que no quedaran unos vivos y otros
+   apagados) — siguen siendo 11 colores distintos, sin repetir ninguno,
+   pero mucho más tenues/corporativos. */
+.modulo-card--flota::before   { background: #4d6f90; }
+.modulo-card--inv::before     { background: #a1793a; }
+.modulo-card--cont::before    { background: #8a6f4f; }
+.modulo-card--mov::before     { background: #557d5a; }
+.modulo-card--and::before     { background: #96534a; }
+.modulo-card--teal::before    { background: #4c7876; }
+.modulo-card--purpura::before { background: #6c5985; }
+.modulo-card--indigo::before  { background: #5c6389; }
+.modulo-card--rosa::before    { background: #955e73; }
+.modulo-card--oliva::before   { background: #7d7c4c; }
+.modulo-card--gris::before    { background: #6b6258; }
 
 .modulo-card:active { transform: scale(0.97); box-shadow: 0 4px 14px rgba(0,0,0,0.1); border-color: var(--accent); }
 .modulo-icon {
@@ -1731,23 +1737,17 @@ a.action-btn { text-decoration: none; }
   color: #fff;
 }
 .modulo-icon svg { width: 26px; height: 26px; }
-.modulo-icon--flota { background: linear-gradient(145deg, #5aa8da, #2f6f9e); }
-.modulo-icon--inv   { background: linear-gradient(145deg, #f5a623, #d9790e); }
-.modulo-icon--cont  { background: linear-gradient(145deg, #c08a5a, #93613a); }
-.modulo-icon--mov   { background: linear-gradient(145deg, #5fb878, #2f8a4d); }
-.modulo-icon--and   { background: linear-gradient(145deg, #d64545, #9c2f2f); }
-/* 6 colores nuevos, agregados porque solo había 5 (flota/inv/cont/mov/and)
-   para 11 módulos — se repetían 2-3 veces cada uno, y encima quedaban
-   repetidos justo en la misma columna de la grilla (la tarjeta de arriba
-   y la de abajo del mismo color), que era lo que el cliente no podía
-   distinguir bien. Ahora cada uno de los 11 módulos tiene su propio
-   color, sin repetir ninguno (ver MODULOS_COLOR en app.js). */
-.modulo-icon--teal    { background: linear-gradient(145deg, #4fc3c7, #1f8f93); }
-.modulo-icon--purpura { background: linear-gradient(145deg, #a385e0, #6b3fa0); }
-.modulo-icon--indigo  { background: linear-gradient(145deg, #6b7fd8, #3d4f9e); }
-.modulo-icon--rosa    { background: linear-gradient(145deg, #e8739e, #b03d6f); }
-.modulo-icon--oliva   { background: linear-gradient(145deg, #b8c94a, #7a8a1f); }
-.modulo-icon--gris    { background: linear-gradient(145deg, #8593a8, #4c5a70); }
+.modulo-icon--flota   { background: linear-gradient(145deg, #7fa0c2, #4d6f90); }
+.modulo-icon--inv     { background: linear-gradient(145deg, #c9a35f, #a1793a); }
+.modulo-icon--cont    { background: linear-gradient(145deg, #b39774, #8a6f4f); }
+.modulo-icon--mov     { background: linear-gradient(145deg, #82a888, #557d5a); }
+.modulo-icon--and     { background: linear-gradient(145deg, #c1786f, #96534a); }
+.modulo-icon--teal    { background: linear-gradient(145deg, #74a6a3, #4c7876); }
+.modulo-icon--purpura { background: linear-gradient(145deg, #9585ab, #6c5985); }
+.modulo-icon--indigo  { background: linear-gradient(145deg, #8a90b8, #5c6389); }
+.modulo-icon--rosa    { background: linear-gradient(145deg, #bd8ea0, #955e73); }
+.modulo-icon--oliva   { background: linear-gradient(145deg, #a7a675, #7d7c4c); }
+.modulo-icon--gris    { background: linear-gradient(145deg, #9a9186, #6b6258); }
 .modulo-info { flex: 1; }
 .modulo-nombre { font-size: 15px; font-weight: 700; color: var(--ink); line-height: 1.2; }
 .modulo-desc { font-size: 11.5px; color: #888; margin-top: 4px; line-height: 1.4; }
