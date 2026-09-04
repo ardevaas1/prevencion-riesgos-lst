@@ -305,8 +305,14 @@ function formatoDeActividad(actividad) {
 // Mensual" se repite mes a mes (mismo ítem, distinto Período "AAAA-MM").
 // "Control de Herramientas" no tiene checklist: es una carpeta libre.
 const SUBCONT_CARPETA_EMPRESA = [
-  'Reglamento', 'Certificados mutualidad', 'Miper', 'Procedimientos',
-  'Certificados EPP', 'Exámenes ocupacionales',
+  'Reglamento', 'Política SSO', 'Programa trabajo preventivo',
+  'Certificados mutualidad', 'Miper', 'Procedimientos',
+  'Procedimientos de trabajo seguro riesgos críticos',
+  'Procedimientos de trabajo seguro actividades específicas a realizar',
+  'Protocolo Ley Karin', 'Procedimiento investigación Ley Karin',
+  'Cronograma de implementación protocolos Minsal',
+  'Plan de gestión del riesgo y desastres', 'Recepción del reglamento especial',
+  'Certificados EPP', 'Carnet prevencionista',
 ];
 const SUBCONT_CONTROL_MENSUAL = [
   'Capacitaciones específicas', 'Charlas diarias', 'Recambio EPP', 'Inspecciones',
@@ -1139,6 +1145,11 @@ async function cargarTodo(silencioso) {
       miEmpresaSubcontratista = chequeo.empresa;
       const { filas } = await llamarWebAppSubcontratista('listarDocumentos', { empresa: miEmpresaSubcontratista });
       allSubDocs = filas.map((r,i) => rowToSubDoc(r,i));
+      // Trabajadores de su propia empresa (para el checklist de Exámenes
+      // ocupacionales por trabajador) — el proxy ya filtra server-side, así
+      // que esta cuenta nunca recibe datos de otras empresas.
+      const { filas: filasTrab } = await llamarWebAppSubcontratista('listarTrabajadores', { empresa: miEmpresaSubcontratista });
+      allTrabajadores = filasTrab.map((r,i) => rowToTrabajador(r,i));
       if (!silencioso) splash(100, '¡Listo!'); else toast('Datos actualizados ✓', 'ok');
       return;
     }
@@ -1173,12 +1184,17 @@ async function cargarTodo(silencioso) {
     if (!silencioso) splash(40, 'Cargando información...');
 
     if (miEmpresaSubcontratista) {
-      const [subs, docs] = await fetchSheetsBatch([
+      const [subs, docs, trab] = await fetchSheetsBatch([
         `'${CONFIG.SHEET_SUBCONTRATISTAS}'!A2:B2000`,
         `'${CONFIG.SHEET_SUBCONTRATISTAS_DOCS}'!A2:H2000`,
+        `'${CONFIG.SHEET_TRABAJADORES}'!A2:AC2000`,
       ]);
       allSubcontratistas = subs.map((r,i) => rowToSubcontratista(r,i));
       allSubDocs = docs.map((r,i) => rowToSubDoc(r,i));
+      // Solo los de su propia empresa — el resto de la nómina no se le
+      // muestra a una cuenta subcontratista restringida (ver comentario más
+      // arriba), aunque técnicamente tenga acceso de Editor al Sheet.
+      allTrabajadores = trab.map((r,i) => rowToTrabajador(r,i)).filter(t => t.empresa === miEmpresaSubcontratista);
       if (!silencioso) splash(100, '¡Listo!');
       else toast('Datos actualizados ✓', 'ok');
       return;
@@ -4358,6 +4374,31 @@ function filaChecklistSubcontratista(empresa, categoria, item, periodo) {
       </div>
     </div>`;
 }
+// Examen ocupacional por trabajador — mismo checklist que
+// filaChecklistSubcontratista, pero el "item" es el RUT del trabajador (más
+// estable que el nombre si dos trabajadores se llaman igual) y la fila
+// muestra su nombre. Reusa la categoría 'examenes' del mismo Sheet de
+// documentos, sin necesidad de una hoja aparte.
+function claveExamenTrabajador(t) { return t.rut || t.nombre; }
+function filaExamenTrabajador(empresa, t) {
+  const clave = claveExamenTrabajador(t);
+  const doc = ultimoDocSubcontratista(docsSubcontratista(empresa, 'examenes', clave, null));
+  return `
+    <div class="subcont-row">
+      ${iconoEstadoDoc(!!doc)}
+      <div class="subcont-row-body">
+        <div class="subcont-row-nombre">${esc(t.nombre)}</div>
+        <div class="subcont-row-fecha">${doc ? 'Subido ' + esc((doc.fecha||'').split(',')[0] || doc.fecha) : 'Pendiente'}${t.rut ? ' · ' + esc(t.rut) : ''}</div>
+      </div>
+      <div class="subcont-row-actions">
+        ${doc ? `<a class="badge blue" href="${esc(doc.link)}" target="_blank">${ic('documento',12)} Ver</a>` : ''}
+        <label class="doc-file-label${doc ? ' selected' : ''}" style="width:auto;padding:6px 12px;font-size:12px;">
+          ${doc ? 'Reemplazar' : '+ Subir'}
+          <input type="file" style="display:none" onchange="onSubirDocSubcontratista(this,'${esc(empresa)}','examenes','${esc(clave)}','')">
+        </label>
+      </div>
+    </div>`;
+}
 function filaGlobalSubcontratista(item, doc, esRestringido) {
   return `
     <div class="subcont-row">
@@ -4402,6 +4443,8 @@ function renderSubcontratistaDetalleHTML(empresa, esRestringido) {
   const herramientas = docsSubcontratista(empresa, 'herramientas').slice().reverse();
   const subidosEmpresa = contarSubidosSubcontratista(empresa, 'empresa', SUBCONT_CARPETA_EMPRESA, null);
   const subidosMensual = contarSubidosSubcontratista(empresa, 'mensual', SUBCONT_CONTROL_MENSUAL, mesControlSubcontratista);
+  const trabajadoresEmpresa = allTrabajadores.filter(t => t.empresa === empresa && t.estado === 'Activo');
+  const subidosExamenes = contarSubidosSubcontratista(empresa, 'examenes', trabajadoresEmpresa.map(claveExamenTrabajador), null);
 
   return `
     <div class="subcont-section">
@@ -4425,6 +4468,16 @@ function renderSubcontratistaDetalleHTML(empresa, esRestringido) {
         ${progresoBadgeSubcontratista(subidosEmpresa, SUBCONT_CARPETA_EMPRESA.length)}
       </div>
       ${SUBCONT_CARPETA_EMPRESA.map(item => filaChecklistSubcontratista(empresa, 'empresa', item, null)).join('')}
+    </div>
+
+    <div class="subcont-section">
+      <div class="subcont-section-head">
+        <div class="subcont-section-title">Exámenes ocupacionales</div>
+        ${trabajadoresEmpresa.length ? progresoBadgeSubcontratista(subidosExamenes, trabajadoresEmpresa.length) : ''}
+      </div>
+      ${trabajadoresEmpresa.length
+        ? trabajadoresEmpresa.map(t => filaExamenTrabajador(empresa, t)).join('')
+        : '<div class="empty-sub" style="padding:8px 0;">Sin trabajadores asociados a esta empresa todavía</div>'}
     </div>
 
     <div class="subcont-section">
