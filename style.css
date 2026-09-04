@@ -207,7 +207,11 @@ body.is-offline #app { padding-top: 30px; }
   position: absolute; inset: 0; z-index: 0;
   opacity: 0; transition: opacity 0.35s ease;
 }
-.header--pr   { background: radial-gradient(ellipse 320px 140px at 30% -40%, rgba(255,255,255,0.16), transparent 60%), linear-gradient(135deg, #c06f0a 0%, var(--accent) 55%, #ffb462 100%); }
+.header--pr   { background: linear-gradient(160deg, #262b33 0%, #1b1f26 100%); }
+.header--pr::after {
+  content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 3px;
+  background: linear-gradient(90deg, var(--accent-dark), var(--accent) 50%, var(--accent-dark));
+}
 .header--inv  { background: radial-gradient(ellipse 320px 140px at 30% -40%, rgba(255,255,255,0.16), transparent 60%), linear-gradient(135deg, #b15c0c 0%, #f5a623 55%, #ffc864 100%); }
 .header--cont { background: radial-gradient(ellipse 320px 140px at 30% -40%, rgba(255,255,255,0.16), transparent 60%), linear-gradient(135deg, #6b462a 0%, #c08a5a 55%, #d9ad84 100%); }
 .header--mov  { background: radial-gradient(ellipse 320px 140px at 30% -40%, rgba(255,255,255,0.16), transparent 60%), linear-gradient(135deg, #1f6b39 0%, #2f8a4d 55%, #6fcf8b 100%); }
@@ -1008,47 +1012,20 @@ a.action-btn { text-decoration: none; }
   .desktop-home-stats {
     display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
   }
-  /* Listado en vez de grilla de tarjetas de colores — a pedido del
-     cliente (le mostraron una referencia con un sidebar tipo lista de
-     navegación) después de que ninguna versión con colores por módulo
-     lo convenciera. Mismo lenguaje visual que ya usa el sidebar dentro
-     de un módulo (.desktop-nav-item/.dn-ic): ícono chico "en tinta"
-     (sin fondo de color) + nombre, se distinguen por el dibujo del
-     ícono y el texto, no por color — así de raíz no hay paleta que
-     armonizar entre 11 módulos. */
+  /* Mismo listado que .modulos-lista en móvil (ver más abajo), solo con
+     el padding más compacto que necesita el menú fijo del sidebar. */
   .desktop-home .modulos-lista {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    background: #fff;
-    border: 1px solid var(--line);
-    border-radius: 16px;
+    margin: 0;
     padding: 6px;
   }
   .desktop-home .modulo-card {
-    flex-direction: row;
-    align-items: center;
-    justify-content: flex-start;
-    text-align: left;
     padding: 13px 14px;
-    border-radius: 10px;
-    border: none;
-    box-shadow: none;
-    gap: 14px;
   }
-  .desktop-home .modulo-card::before { display: none; }
   .desktop-home .modulo-card:hover { background: var(--neutral-soft); }
-  .desktop-home .modulo-icon {
-    width: auto; height: auto; border-radius: 0;
-    background: none; box-shadow: none;
-    color: var(--ink-soft);
-  }
-  .desktop-home .modulo-card:hover .modulo-icon { color: var(--accent); }
   .desktop-home .modulo-icon svg { width: 20px; height: 20px; }
-  .desktop-home .modulo-info { flex: 1; }
-  .desktop-home .modulo-nombre { min-height: 0; display: block; font-size: 14.5px; }
+  .desktop-home .modulo-nombre { font-size: 14.5px; }
+  .desktop-home .modulo-card:hover .modulo-icon { color: var(--accent); }
   .desktop-home .modulo-card:hover .modulo-nombre { color: var(--accent); }
-  .desktop-home .modulo-desc { display: none; }
   .desktop-home-session { margin-top: 36px; }
 
   /* ── Shell: ocultar todo lo móvil ── */
@@ -1717,64 +1694,47 @@ a.action-btn { text-decoration: none; }
 .modulos-logo { height: 42px; width: auto; object-fit: contain; }
 .modulos-title { font-size: 19px; font-weight: 700; color: #fff; }
 .modulos-sub { font-size: 12px; color: rgba(255,255,255,0.85); }
-/* ══ HOME — grid 2×2 ══ */
+/* ══ HOME — listado (mismo lenguaje visual que el menú de Inicio en
+   escritorio: ícono chico "en tinta", sin fondo de color, se distinguen
+   por el dibujo del ícono y el nombre — no por color. Antes esto era una
+   grilla 2×2 de tarjetas de colores, pero quedaba muy distinto de la
+   versión de escritorio; a pedido del cliente se unificó todo al mismo
+   estilo. ══ */
 .modulos-lista {
-  padding: 22px 16px 16px;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
-/* Cuando el número de módulos es impar, el último queda solo en su fila;
-   se le da el ancho completo para que la grilla se vea simétrica en vez
-   de dejar un hueco vacío al lado. Funciona automáticamente sin importar
-   cuántos módulos se agreguen a futuro. */
-.modulo-card:nth-last-child(1):nth-child(odd) {
-  grid-column: 1 / -1;
+  padding: 14px 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  margin: 0 16px;
 }
 .modulo-card {
-  background: #fff; border-radius: 20px; border: 1px solid var(--line);
-  padding: 20px 16px 18px;
-  display: flex; flex-direction: column; align-items: flex-start; gap: 14px;
+  background: transparent; border-radius: 12px; border: none;
+  padding: 14px 8px;
+  display: flex; flex-direction: row; align-items: center; justify-content: flex-start;
+  text-align: left;
+  gap: 14px;
   cursor: pointer;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.05);
-  position: relative; overflow: hidden;
+  box-shadow: none;
+  position: relative;
 }
-/* Acento de color en la esquina superior derecha como "brillo" del gradiente */
-.modulo-card::before {
-  content: ''; position: absolute; top: -24px; right: -24px;
-  width: 80px; height: 80px; border-radius: 50%;
-  opacity: 0.07; pointer-events: none;
-}
-/* Vuelto a los 5 colores originales a pedido explícito del cliente —
-   se probaron varias paletas de 11 colores (vivos, apagados, validados
-   con herramienta) para que cada módulo tuviera el suyo propio, pero
-   terminó prefiriendo los colores de siempre (se repiten entre
-   módulos). En escritorio esto ya no importa: el listado de módulos ahí
-   usa íconos en tinta sin fondo de color (ver .desktop-home .modulo-icon
-   más abajo) — el color solo se ve en la grilla de la vista móvil. */
-.modulo-card--flota::before { background: #2f6f9e; }
-.modulo-card--inv::before   { background: #d9790e; }
-.modulo-card--cont::before  { background: #93613a; }
-.modulo-card--mov::before   { background: #2f8a4d; }
-.modulo-card--and::before   { background: #9c2f2f; }
-
-.modulo-card:active { transform: scale(0.97); box-shadow: 0 4px 14px rgba(0,0,0,0.1); border-color: var(--accent); }
+.modulo-card:active { transform: scale(0.98); background: var(--neutral-soft); }
 .modulo-icon {
-  width: 48px; height: 48px; border-radius: 14px;
+  width: auto; height: auto; border-radius: 0;
   display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-  color: #fff;
+  box-shadow: none;
+  color: var(--ink-soft);
+  flex-shrink: 0;
 }
-.modulo-icon svg { width: 26px; height: 26px; }
-.modulo-icon--flota { background: linear-gradient(145deg, #5aa8da, #2f6f9e); }
-.modulo-icon--inv   { background: linear-gradient(145deg, #f5a623, #d9790e); }
-.modulo-icon--cont  { background: linear-gradient(145deg, #c08a5a, #93613a); }
-.modulo-icon--mov   { background: linear-gradient(145deg, #5fb878, #2f8a4d); }
-.modulo-icon--and   { background: linear-gradient(145deg, #d64545, #9c2f2f); }
+.modulo-card:active .modulo-icon { color: var(--accent); }
+.modulo-icon svg { width: 22px; height: 22px; }
 .modulo-info { flex: 1; }
 .modulo-nombre { font-size: 15px; font-weight: 700; color: var(--ink); line-height: 1.2; }
-.modulo-desc { font-size: 11.5px; color: #888; margin-top: 4px; line-height: 1.4; }
-.modulo-arrow { display: none; } /* ya no hay flecha en layout vertical */
+.modulo-card:active .modulo-nombre { color: var(--accent); }
+.modulo-desc { display: none; }
+.modulo-arrow { display: none; }
 
 /* ══ FOOTER de modulos-home: usuario + acciones ══ */
 .modulos-footer {
