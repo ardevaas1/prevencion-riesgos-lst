@@ -583,6 +583,23 @@ body.is-offline #app { padding-top: 30px; }
 .subcont-row-fecha { font-size: 11px; color: #999; margin-top: 1px; }
 .subcont-row-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 
+/* ── Documentación trabajadores: un bloque colapsable por trabajador (18
+   documentos × todos los trabajadores de la empresa sería una lista eterna
+   si estuviera todo abierto de una) — se expande solo el que se toca. ── */
+.subcont-doctrab { border-bottom: 1px solid #f0f0f0; }
+.subcont-doctrab:last-child { border-bottom: none; }
+.subcont-doctrab-head {
+  display: flex; align-items: center; gap: 10px; padding: 10px 0; cursor: pointer;
+}
+.subcont-doctrab-chevron {
+  flex-shrink: 0; color: var(--ink-soft); display: flex;
+  transition: transform 0.15s;
+}
+.subcont-doctrab.abierto .subcont-doctrab-chevron { transform: rotate(90deg); color: var(--accent); }
+.subcont-doctrab-body { display: none; padding: 0 0 10px 24px; }
+.subcont-doctrab.abierto .subcont-doctrab-body { display: block; }
+.subcont-doctrab-body .subcont-row { padding: 8px 0; }
+
 /* ── Programa Personalizado: grilla de días del mes ── */
 .marcar-dias-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-top: 6px; }
 .marcar-dia {

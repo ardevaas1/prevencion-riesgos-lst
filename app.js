@@ -319,6 +319,31 @@ const SUBCONT_CONTROL_MENSUAL = [
   'AST', 'Cronograma', 'Certificados', 'Exámenes ocupacionales',
   'Informe Mensual', 'Listado de trabajadores',
 ];
+// Checklist de "Documentación trabajadores" — uno por cada trabajador de la
+// empresa (no una sola carpeta compartida). Mismo Sheet de documentos que el
+// resto del módulo: la categoría queda "doctrab_<rut o nombre>" (así el
+// "item" adentro de cada trabajador es el nombre del documento, igual que en
+// SUBCONT_CARPETA_EMPRESA) — no hace falta ninguna columna nueva.
+const DOCS_TRABAJADOR = [
+  'Exámenes ocupacionales (altura física sobre 1,8 m o espacios confinados, según corresponda)',
+  'Registro difusión Plan de gestión del riesgo y desastre',
+  'Difusión Política SSO',
+  'Registro entrega de EPP',
+  'Registro de capacitación uso, mantención y almacenamiento de EPP',
+  'IRL — Actividades a desarrollar',
+  'Recepción de Reglamento Interno',
+  'Difusión Miper',
+  'Difusión Procedimientos de trabajo seguro — riesgos críticos',
+  'Difusión Procedimientos de trabajo seguro — actividad específica a realizar',
+  'Difusión Procedimiento de investigación de acoso sexual laboral y violencia en el trabajo',
+  'Capacitación uso y manejo de extintores',
+  'Registro recambio de EPP',
+  'Difusión de actualización Miper',
+  'Certificado curso Orientación en Prevención de Riesgos (DS44 — 8 hrs)',
+  'Registro de difusión Protocolos Minsal',
+  'Informativo Canal de denuncias Ley Karin',
+  'Re-instrucciones (según se soliciten)',
+];
 
 const NIVELES_RIESGO = [
   { value: 'Bajo',  color: 'green' },
@@ -4374,28 +4399,32 @@ function filaChecklistSubcontratista(empresa, categoria, item, periodo) {
       </div>
     </div>`;
 }
-// Examen ocupacional por trabajador — mismo checklist que
-// filaChecklistSubcontratista, pero el "item" es el RUT del trabajador (más
-// estable que el nombre si dos trabajadores se llaman igual) y la fila
-// muestra su nombre. Reusa la categoría 'examenes' del mismo Sheet de
-// documentos, sin necesidad de una hoja aparte.
-function claveExamenTrabajador(t) { return t.rut || t.nombre; }
-function filaExamenTrabajador(empresa, t) {
-  const clave = claveExamenTrabajador(t);
-  const doc = ultimoDocSubcontratista(docsSubcontratista(empresa, 'examenes', clave, null));
+// Documentación por trabajador — a diferencia de "Carpeta de empresa" (un
+// checklist compartido por toda la empresa), acá cada trabajador tiene SU
+// PROPIO checklist de DOCS_TRABAJADOR. Se guarda en el mismo Sheet de
+// documentos de siempre: la "categoría" queda "doctrab_<rut o nombre>"
+// (identifica al trabajador) y el "item" es el nombre del documento —así
+// se puede reusar filaChecklistSubcontratista/contarSubidosSubcontratista
+// tal cual, sin tocar el Sheet ni la Web App. Se muestra colapsado por
+// trabajador (18 documentos × todos los trabajadores de la empresa sería
+// una lista eterna si estuviera todo abierto de entrada).
+function claveDocTrabajador(t) { return t.rut || t.nombre; }
+function categoriaDocTrabajador(t) { return 'doctrab_' + claveDocTrabajador(t); }
+function bloqueDocTrabajador(empresa, t) {
+  const categoria = categoriaDocTrabajador(t);
+  const subidos = contarSubidosSubcontratista(empresa, categoria, DOCS_TRABAJADOR, null);
   return `
-    <div class="subcont-row">
-      ${iconoEstadoDoc(!!doc)}
-      <div class="subcont-row-body">
-        <div class="subcont-row-nombre">${esc(t.nombre)}</div>
-        <div class="subcont-row-fecha">${doc ? 'Subido ' + esc((doc.fecha||'').split(',')[0] || doc.fecha) : 'Pendiente'}${t.rut ? ' · ' + esc(t.rut) : ''}</div>
+    <div class="subcont-doctrab">
+      <div class="subcont-doctrab-head" onclick="this.parentElement.classList.toggle('abierto')">
+        <div class="subcont-doctrab-chevron"><svg viewBox="0 0 24 24" fill="none" style="width:14px;height:14px"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div class="subcont-row-body">
+          <div class="subcont-row-nombre">${esc(t.nombre)}</div>
+          <div class="subcont-row-fecha">${t.rut ? esc(t.rut) : ''}</div>
+        </div>
+        ${progresoBadgeSubcontratista(subidos, DOCS_TRABAJADOR.length)}
       </div>
-      <div class="subcont-row-actions">
-        ${doc ? `<a class="badge blue" href="${esc(doc.link)}" target="_blank">${ic('documento',12)} Ver</a>` : ''}
-        <label class="doc-file-label${doc ? ' selected' : ''}" style="width:auto;padding:6px 12px;font-size:12px;">
-          ${doc ? 'Reemplazar' : '+ Subir'}
-          <input type="file" style="display:none" onchange="onSubirDocSubcontratista(this,'${esc(empresa)}','examenes','${esc(clave)}','')">
-        </label>
+      <div class="subcont-doctrab-body">
+        ${DOCS_TRABAJADOR.map(item => filaChecklistSubcontratista(empresa, categoria, item, null)).join('')}
       </div>
     </div>`;
 }
@@ -4444,7 +4473,9 @@ function renderSubcontratistaDetalleHTML(empresa, esRestringido) {
   const subidosEmpresa = contarSubidosSubcontratista(empresa, 'empresa', SUBCONT_CARPETA_EMPRESA, null);
   const subidosMensual = contarSubidosSubcontratista(empresa, 'mensual', SUBCONT_CONTROL_MENSUAL, mesControlSubcontratista);
   const trabajadoresEmpresa = allTrabajadores.filter(t => t.empresa === empresa && t.estado === 'Activo');
-  const subidosExamenes = contarSubidosSubcontratista(empresa, 'examenes', trabajadoresEmpresa.map(claveExamenTrabajador), null);
+  const totalDocsTrabajador = trabajadoresEmpresa.length * DOCS_TRABAJADOR.length;
+  const subidosDocsTrabajador = trabajadoresEmpresa.reduce((acc, t) =>
+    acc + contarSubidosSubcontratista(empresa, categoriaDocTrabajador(t), DOCS_TRABAJADOR, null), 0);
 
   return `
     <div class="subcont-section">
@@ -4472,11 +4503,11 @@ function renderSubcontratistaDetalleHTML(empresa, esRestringido) {
 
     <div class="subcont-section">
       <div class="subcont-section-head">
-        <div class="subcont-section-title">Exámenes ocupacionales</div>
-        ${trabajadoresEmpresa.length ? progresoBadgeSubcontratista(subidosExamenes, trabajadoresEmpresa.length) : ''}
+        <div class="subcont-section-title">Documentación trabajadores</div>
+        ${trabajadoresEmpresa.length ? progresoBadgeSubcontratista(subidosDocsTrabajador, totalDocsTrabajador) : ''}
       </div>
       ${trabajadoresEmpresa.length
-        ? trabajadoresEmpresa.map(t => filaExamenTrabajador(empresa, t)).join('')
+        ? trabajadoresEmpresa.map(t => bloqueDocTrabajador(empresa, t)).join('')
         : '<div class="empty-sub" style="padding:8px 0;">Sin trabajadores asociados a esta empresa todavía</div>'}
     </div>
 
