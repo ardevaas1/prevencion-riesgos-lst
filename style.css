@@ -995,6 +995,7 @@ a.action-btn { text-decoration: none; }
     display: flex; flex-direction: column;
     height: 100vh; width: 100%; overflow-y: auto;
     background: var(--bg);
+    animation: pageFade 0.3s ease;
   }
   .desktop-home-header {
     flex-shrink: 0;
@@ -1085,6 +1086,13 @@ a.action-btn { text-decoration: none; }
   .desktop-sidebar.dt-oculto,
   .desktop-main.dt-oculto,
   .desktop-detail.dt-oculto { display: none !important; }
+  /* Al entrar a un módulo desde Inicio (o volver), el par sidebar+panel
+     central aparece de golpe si no fuera por esto — mismo pageFade que ya
+     usa el contenido de cada página, aplicado acá al par completo para que
+     la apertura de CUALQUIER módulo se sienta con transición, no solo el
+     contenido de adentro. */
+  .desktop-sidebar:not(.dt-oculto) { animation: pageFade 0.3s ease; }
+  .desktop-main:not(.dt-oculto) { animation: pageFade 0.3s ease; }
 
   .desktop-sidebar-header {
     display: flex;
