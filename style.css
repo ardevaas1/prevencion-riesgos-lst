@@ -596,8 +596,18 @@ body.is-offline #app { padding-top: 30px; }
   transition: transform 0.15s;
 }
 .subcont-doctrab.abierto .subcont-doctrab-chevron { transform: rotate(90deg); color: var(--accent); }
-.subcont-doctrab-body { display: none; padding: 0 0 10px 24px; }
-.subcont-doctrab.abierto .subcont-doctrab-body { display: block; }
+/* Truco de grid para animar hasta "altura automática" — display:none/block
+   no se puede animar directo, y max-height con un valor fijo se ve cortado
+   o con un salto si el contenido mide distinto (18 documentos no siempre
+   ocupan lo mismo). grid-template-rows sí anima de 0fr a 1fr sin conocer
+   la altura de antemano. */
+.subcont-doctrab-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.25s ease;
+}
+.subcont-doctrab.abierto .subcont-doctrab-body { grid-template-rows: 1fr; }
+.subcont-doctrab-inner { overflow: hidden; padding: 0 0 10px 24px; }
 .subcont-doctrab-body .subcont-row { padding: 8px 0; }
 
 /* ── Programa Personalizado: grilla de días del mes ── */

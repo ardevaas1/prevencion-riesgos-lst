@@ -4424,7 +4424,9 @@ function bloqueDocTrabajador(empresa, t) {
         ${progresoBadgeSubcontratista(subidos, DOCS_TRABAJADOR.length)}
       </div>
       <div class="subcont-doctrab-body">
-        ${DOCS_TRABAJADOR.map(item => filaChecklistSubcontratista(empresa, categoria, item, null)).join('')}
+        <div class="subcont-doctrab-inner">
+          ${DOCS_TRABAJADOR.map(item => filaChecklistSubcontratista(empresa, categoria, item, null)).join('')}
+        </div>
       </div>
     </div>`;
 }
