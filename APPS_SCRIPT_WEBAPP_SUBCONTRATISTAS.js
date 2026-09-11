@@ -20,7 +20,9 @@
 // 2. Crea un archivo nuevo (ícono "+" al lado de "Archivos") y pega este
 //    código completo ahí.
 // 3. Reemplaza RAIZ_DRIVE_ID más abajo por el mismo ID que tienes en
-//    config.js → DRIVE_ROOT_FOLDER.
+//    config.js → DRIVE_ROOT_FOLDER. Opcional: completa también APP_URL con
+//    la URL pública de la app, para que el correo de bienvenida a un
+//    contacto nuevo (ver notificarContacto) incluya el link directo.
 // 4. Arriba a la derecha, botón "Implementar" → "Nueva implementación".
 //    - Tipo: "Aplicación web".
 //    - Ejecutar como: "Yo" (tu cuenta).
@@ -48,6 +50,11 @@
 // ============================================================
 
 const RAIZ_DRIVE_ID = 'PON_AQUI_EL_MISMO_ID_DE_config.js_DRIVE_ROOT_FOLDER';
+// URL pública donde está publicada la app (ej: "https://tuusuario.github.io")
+// — se usa solo para armar el link del correo de bienvenida (ver
+// notificarContacto). Si la dejas vacía, el correo se manda igual, solo que
+// sin el link directo.
+const APP_URL = '';
 
 function doPost(e) {
   let body;
@@ -63,6 +70,7 @@ function doPost(e) {
     if (accion === 'listarDocumentos') return respuesta(listarDocumentos(correo, body.empresa));
     if (accion === 'listarTrabajadores') return respuesta(listarTrabajadores(correo, body.empresa));
     if (accion === 'subirDocumento') return respuesta(subirDocumento(correo, body));
+    if (accion === 'notificarContacto') return respuesta(notificarContacto(body.correoDestino, body.empresa));
     return respuesta({ error: 'Acción desconocida: ' + accion });
   } catch (err) {
     return respuesta({ error: String(err.message || err) });
@@ -144,6 +152,33 @@ function correosSubcontratistaDeEmpresa(empresa) {
     if (rol === 'subcontratista' && filaEmpresa === empresa) correos.push((fila[0] || '').toString().trim().toLowerCase());
   }
   return correos;
+}
+
+// Correo de bienvenida cuando el admin agrega un contacto nuevo (ver
+// guardarSubcontratista/onAgregarCorreoSubcontratista en app.js). Solo
+// manda si ese correo+empresa ya están realmente en USUARIOS — así este
+// endpoint no sirve para mandar correo a cualquier dirección arbitraria.
+function notificarContacto(correoDestino, empresa) {
+  const correo = (correoDestino || '').toString().trim().toLowerCase();
+  if (!correo || !empresa) throw new Error('Falta el correo o la empresa');
+  const datos = hojaUsuarios().getDataRange().getValues();
+  const existe = datos.some(function (fila, i) {
+    if (i === 0) return false;
+    return (fila[0] || '').toString().trim().toLowerCase() === correo &&
+      (fila[1] || '').toString().trim().toLowerCase() === 'subcontratista' &&
+      (fila[3] || '').toString() === empresa;
+  });
+  if (!existe) throw new Error('Ese correo no está registrado para esa empresa');
+
+  const asunto = 'Ahora tienes acceso a la app de Prevención de Riesgos — ' + empresa;
+  const cuerpo = 'Hola,\n\n' +
+    'Te agregamos como contacto autorizado de "' + empresa + '" en la app de Prevención de Riesgos de Constructora LST.\n\n' +
+    (APP_URL ? 'Puedes entrar a la app aquí: ' + APP_URL + '\n\n' : '') +
+    'Ingresa con tu cuenta de Google (' + correo + '), usando el botón "Iniciar sesión con Google".\n\n' +
+    'Ahí vas a poder ver y subir la documentación pendiente de tu empresa.\n\n' +
+    'Saludos,\nConstructora LST';
+  MailApp.sendEmail(correo, asunto, cuerpo);
+  return { enviado: true };
 }
 
 function obtenerOCrearCarpetaDrive(nombre, padre) {

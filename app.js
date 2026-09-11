@@ -4479,6 +4479,7 @@ async function guardarSubcontratista(ev) {
     await appendSheet(`'${CONFIG.SHEET_SUBCONTRATISTAS}'!A:B`, [[empresa, new Date().toLocaleString('es-CL')]]);
     if (correos.length) {
       await appendSheet(`'${CONFIG.SHEET_USUARIOS}'!A:D`, correos.map(c => [c.toLowerCase(), 'subcontratista', '', empresa]));
+      correos.forEach(c => notificarNuevoContacto(c.toLowerCase(), empresa));
     }
     toast('Subcontratista agregado ✓', 'ok');
     closePanel('panel-form-subcontratista');
@@ -4771,12 +4772,22 @@ function onCambioMesSubcontratista(valor, empresa, esRestringido) {
   mesControlSubcontratista = valor;
   if (esRestringido) mostrarModoSubcontratista(empresa); else abrirDetalleSubcontratista(empresa);
 }
+// Le avisa por correo a un contacto recién agregado que ya tiene acceso —
+// best-effort: si falla (o no hay Web App configurada) no bloquea el alta,
+// el contacto ya quedó guardado igual. Ver notificarContacto en
+// APPS_SCRIPT_WEBAPP_SUBCONTRATISTAS.js.
+async function notificarNuevoContacto(correo, empresa) {
+  if (!CONFIG.SUBCONTRATISTAS_WEBAPP_URL) return;
+  try { await llamarWebAppSubcontratista('notificarContacto', { correoDestino: correo, empresa }); }
+  catch (e) { console.warn('No se pudo notificar a ' + correo, e); }
+}
 async function onAgregarCorreoSubcontratista(ev, empresa) {
   if (bloquearSiViewer()) return;
   ev.preventDefault();
   const correo = ev.target.correo.value.trim().toLowerCase();
   try {
     await appendSheet(`'${CONFIG.SHEET_USUARIOS}'!A:D`, [[correo, 'subcontratista', '', empresa]]);
+    notificarNuevoContacto(correo, empresa);
     toast('Correo agregado ✓', 'ok');
     await cargarTodo(true);
     abrirDetalleSubcontratista(empresa);
