@@ -659,9 +659,19 @@ function cargarMiperBanco() {
   }
   return miperBancoPromise;
 }
+// Si dos operaciones piden token casi al mismo tiempo con el token vencido
+// (típico al subir varios documentos seguidos: cada subida llama
+// ensureToken por su cuenta), un segundo llamado ANTES de que el primero
+// termine pisaba tokenClient.callback del primero — Google solo guarda un
+// callback a la vez, así que la promesa del primer llamado nunca se
+// resolvía y esa subida quedaba pegada para siempre. Ahora, si ya hay un
+// refresh en curso, todos los llamados esperan esa MISMA promesa en vez de
+// pedir uno nuevo cada uno.
+let ensureTokenPromise = null;
 async function ensureToken() {
   if (tokenValido()) return;
-  return new Promise((resolve, reject) => {
+  if (ensureTokenPromise) return ensureTokenPromise;
+  ensureTokenPromise = new Promise((resolve, reject) => {
     if (!tokenClient) { reject(new Error('Sesión no iniciada')); return; }
     const prevCb = tokenClient.callback;
     tokenClient.callback = (resp) => {
@@ -672,7 +682,8 @@ async function ensureToken() {
     };
     const savedEmail = localStorage.getItem(EMAIL_KEY) || '';
     tokenClient.requestAccessToken({ prompt: '', login_hint: savedEmail });
-  });
+  }).finally(() => { ensureTokenPromise = null; });
+  return ensureTokenPromise;
 }
 function authHeader() { return { Authorization: 'Bearer ' + accessToken }; }
 
@@ -786,30 +797,40 @@ async function limpiarFormatoFilaNueva(updatedRange) {
 }
 
 // ── Drive API — carpetas y subida de archivos ──────────────────
+// Guarda la PROMESA (no el id ya resuelto) apenas se pide una carpeta —
+// así, si dos subidas piden la misma carpeta nueva casi al mismo tiempo
+// (ej. las dos primeras subidas de una empresa recién creada), la segunda
+// espera el mismo resultado en vez de buscar/crear la carpeta por su
+// cuenta, lo que antes podía terminar en dos carpetas duplicadas con el
+// mismo nombre.
 let driveFolderCache = {};
 
-async function findOrCreateFolder(name, parentId) {
-  await ensureToken();
+function findOrCreateFolder(name, parentId) {
   const key = parentId + '/' + name;
   if (driveFolderCache[key]) return driveFolderCache[key];
-  const q = encodeURIComponent(`'${parentId}' in parents and name='${name}' and mimeType='application/vnd.google-apps.folder' and trashed=false`);
-  const searchRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)`, { headers: authHeader() });
-  if (!searchRes.ok) throw new Error(friendlyErr(searchRes.status, await searchRes.text()));
-  const data = await searchRes.json();
-  if (data.files && data.files.length > 0) { driveFolderCache[key] = data.files[0].id; return data.files[0].id; }
+  const promesa = (async () => {
+    await ensureToken();
+    const q = encodeURIComponent(`'${parentId}' in parents and name='${name}' and mimeType='application/vnd.google-apps.folder' and trashed=false`);
+    const searchRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)`, { headers: authHeader() });
+    if (!searchRes.ok) throw new Error(friendlyErr(searchRes.status, await searchRes.text()));
+    const data = await searchRes.json();
+    if (data.files && data.files.length > 0) return data.files[0].id;
 
-  const boundary = 'lstpr_' + Date.now();
-  const metadata = JSON.stringify({ name, mimeType: 'application/vnd.google-apps.folder', parents: [parentId] });
-  const body = `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${metadata}\r\n--${boundary}--`;
-  const createRes = await fetch(`${DRIVE_UP}/files?uploadType=multipart`, {
-    method: 'POST',
-    headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'multipart/related; boundary=' + boundary },
-    body,
-  });
-  if (!createRes.ok) throw new Error(friendlyErr(createRes.status, await createRes.text()));
-  const folder = await createRes.json();
-  driveFolderCache[key] = folder.id;
-  return folder.id;
+    const boundary = 'lstpr_' + Date.now();
+    const metadata = JSON.stringify({ name, mimeType: 'application/vnd.google-apps.folder', parents: [parentId] });
+    const body = `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${metadata}\r\n--${boundary}--`;
+    const createRes = await fetch(`${DRIVE_UP}/files?uploadType=multipart`, {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'multipart/related; boundary=' + boundary },
+      body,
+    });
+    if (!createRes.ok) throw new Error(friendlyErr(createRes.status, await createRes.text()));
+    const folder = await createRes.json();
+    return folder.id;
+  })();
+  driveFolderCache[key] = promesa;
+  promesa.catch(() => { delete driveFolderCache[key]; });
+  return promesa;
 }
 
 async function getModuloFolder(nombreModulo) {
@@ -892,13 +913,53 @@ async function uploadFileTrabajador(fileOrBlob, nombreTrabajador, prefixName, ex
 // Drive que usa el resto de la app (así lo pidió el cliente); el
 // aislamiento entre empresas es a nivel de la interfaz y de a quién se le
 // entrega el correo/USUARIOS, igual que ya funciona hoy el resto de la app.
-async function getSubcontratistaFolder(empresa) {
+// Adentro, una subcarpeta por cada documento del checklist (ej. "Política
+// SSO", "Miper", "Exámenes ocupacionales...") — antes todo quedaba suelto
+// directo en la carpeta de la empresa, mezclado, y era difícil separar
+// después. `subcarpeta` es opcional (Control de herramientas, que no tiene
+// un ítem fijo, sube directo a la carpeta de la empresa).
+async function getSubcontratistaFolder(empresa, subcarpeta) {
   const raiz = await getModuloFolder('Subcontratistas');
-  return findOrCreateFolder(empresa, raiz);
+  const carpetaEmpresa = await findOrCreateFolder(empresa, raiz);
+  if (!subcarpeta) return carpetaEmpresa;
+  return findOrCreateFolder(subcarpeta, carpetaEmpresa);
 }
-async function uploadFileSubcontratista(fileOrBlob, empresa, prefixName, ext) {
-  const folderId = await getSubcontratistaFolder(empresa);
-  return uploadFileToFolder(fileOrBlob, folderId, prefixName, ext);
+async function uploadFileSubcontratista(fileOrBlob, empresa, prefixName, subcarpeta) {
+  const folderId = await getSubcontratistaFolder(empresa, subcarpeta);
+  const up = await uploadFileToFolder(fileOrBlob, folderId, prefixName);
+  // Best-effort: si por lo que sea falla compartir no se aborta la subida
+  // (el archivo ya quedó subido y el admin igual lo puede ver) — ver
+  // compartirArchivoConEmpresa más abajo.
+  compartirArchivoConEmpresa(up.id, empresa).catch(() => {});
+  return up;
+}
+// Comparte un archivo recién subido en Subcontratistas — SOLO lectura —
+// con las cuentas de esa empresa dadas de alta como subcontratista. Antes
+// el "Ver" de un documento era un link de Drive que solo abría si la
+// cuenta tenía permiso sobre TODA la carpeta (lo cual, si era permiso de
+// Editor, también le permitía borrar el archivo directo desde Drive —
+// ver onEliminarDocSubcontratista); compartiendo el archivo puntual como
+// lector alcanza para abrirlo sin necesitar (ni poder abusar de) acceso a
+// la carpeta entera. El Reglamento global (__GLOBAL__) se comparte con
+// TODAS las cuentas subcontratista, de cualquier empresa.
+async function compartirArchivoConEmpresa(fileId, empresa) {
+  const correos = [...new Set(
+    (empresa === '__GLOBAL__'
+      ? allUsuarios.filter(u => u.rol === 'subcontratista')
+      : allUsuarios.filter(u => u.empresa === empresa && u.rol === 'subcontratista')
+    ).map(u => u.correo).filter(Boolean)
+  )];
+  if (!correos.length) return;
+  await ensureToken();
+  for (const correo of correos) {
+    try {
+      await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions?sendNotificationEmail=false`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeader() },
+        body: JSON.stringify({ type: 'user', role: 'reader', emailAddress: correo }),
+      });
+    } catch (e) { console.warn('No se pudo compartir el archivo con ' + correo, e); }
+  }
 }
 
 // Llama a la Web App de Apps Script (ver APPS_SCRIPT_WEBAPP_SUBCONTRATISTAS.js)
@@ -4655,11 +4716,12 @@ async function onSubirDocSubcontratista(inputEl, empresa, categoria, item, perio
       toast('Subiendo archivo...');
       await llamarWebAppSubcontratista('subirDocumento', {
         empresa, categoria, item: item || '', periodo: periodo || '',
+        subcarpeta: item || 'Herramientas',
         nombreArchivo: `${prefix}_${fecha}_${hora}.${extension}`,
         mimeType: file.type || 'application/octet-stream', contenidoBase64: b64,
       });
     } else {
-      const up = await uploadFileSubcontratista(file, empresa, prefix);
+      const up = await uploadFileSubcontratista(file, empresa, prefix, item || 'Herramientas');
       await appendSheet(`'${CONFIG.SHEET_SUBCONTRATISTAS_DOCS}'!A:H`, [[
         empresa, categoria, item || '', periodo || '', up.name, up.link,
         new Date().toLocaleString('es-CL'), userEmail || ''
@@ -4675,7 +4737,7 @@ async function onSubirDocGlobalSubcontratista(inputEl, item) {
   const file = inputEl.files[0];
   if (!file) return;
   try {
-    const up = await uploadFileSubcontratista(file, '__GLOBAL__', item.replace(/\s+/g, '-'));
+    const up = await uploadFileSubcontratista(file, '__GLOBAL__', item.replace(/\s+/g, '-'), item);
     await appendSheet(`'${CONFIG.SHEET_SUBCONTRATISTAS_DOCS}'!A:H`, [[
       '__GLOBAL__', 'global', item, '', up.name, up.link,
       new Date().toLocaleString('es-CL'), userEmail || ''
