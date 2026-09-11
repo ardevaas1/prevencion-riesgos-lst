@@ -131,6 +131,21 @@ function listarTrabajadores(correo, empresa) {
   return { filas: filas };
 }
 
+// Todos los correos dados de alta como "subcontratista" de una empresa —
+// se usa para compartir cada documento recién subido con quien corresponda
+// (ver subirDocumento).
+function correosSubcontratistaDeEmpresa(empresa) {
+  const datos = hojaUsuarios().getDataRange().getValues();
+  const correos = [];
+  for (let i = 1; i < datos.length; i++) {
+    const fila = datos[i];
+    const rol = (fila[1] || '').toString().trim().toLowerCase();
+    const filaEmpresa = (fila[3] || '').toString();
+    if (rol === 'subcontratista' && filaEmpresa === empresa) correos.push((fila[0] || '').toString().trim().toLowerCase());
+  }
+  return correos;
+}
+
 function obtenerOCrearCarpetaDrive(nombre, padre) {
   const iter = padre.getFoldersByName(nombre);
   if (iter.hasNext()) return iter.next();
@@ -145,11 +160,23 @@ function subirDocumento(correo, body) {
   const raiz = DriveApp.getFolderById(RAIZ_DRIVE_ID);
   const carpetaSub = obtenerOCrearCarpetaDrive('Subcontratistas', raiz);
   const carpetaEmpresa = obtenerOCrearCarpetaDrive(empresa, carpetaSub);
+  // Subcarpeta por documento (mismo criterio que el resto de la app — ver
+  // uploadFileSubcontratista en app.js): así no queda todo suelto mezclado
+  // en la carpeta de la empresa.
+  const carpetaDestino = body.subcarpeta ? obtenerOCrearCarpetaDrive(body.subcarpeta, carpetaEmpresa) : carpetaEmpresa;
 
   const bytes = Utilities.base64Decode(body.contenidoBase64);
   const blob = Utilities.newBlob(bytes, body.mimeType || 'application/octet-stream', body.nombreArchivo);
-  const archivo = carpetaEmpresa.createFile(blob);
+  const archivo = carpetaDestino.createFile(blob);
   const link = 'https://drive.google.com/file/d/' + archivo.getId() + '/view';
+
+  // Comparte el archivo puntual (solo lectura) con las cuentas de esta
+  // empresa — sin esto, una cuenta subcontratista sin acceso directo al
+  // Drive (que es justo el caso de quien pasa por este proxy) no podría
+  // abrir su propio "Ver" del documento que acaba de subir.
+  correosSubcontratistaDeEmpresa(empresa).forEach(function (correoDestino) {
+    try { archivo.addViewer(correoDestino); } catch (e) { /* best-effort */ }
+  });
 
   hojaSubDocs().appendRow([
     empresa, body.categoria || '', body.item || '', body.periodo || '',
