@@ -451,7 +451,23 @@ function sugerirPlanAccion(descripcion, causas) {
 }
 
 let userEmail = null;
-let userRole  = null; // admin | prevencionista | viewer
+// admin (acceso completo, es el default si la cuenta no tiene fila en
+// USUARIOS o tiene un Rol distinto de los otros dos) | viewer (solo lectura
+// en toda la app — no ve ningún botón de agregar/editar/subir/borrar) |
+// subcontratista (cuenta externa restringida a su propia empresa, ver
+// miEmpresaSubcontratista).
+let userRole  = null;
+// Solo-lectura para todo lo que no sea navegar/ver — ni agregar, editar,
+// subir ni borrar nada. Se usa en dos lugares: para decidir qué botones
+// mostrar (ver toggle de esViewer() en el render de cada pantalla) y como
+// última barrera dentro de cada función que efectivamente escribe datos
+// (bloquearSiViewer), por si algún botón quedara visible por error.
+function esViewer() { return userRole === 'viewer'; }
+function bloquearSiViewer() {
+  if (!esViewer()) return false;
+  toast('Tu cuenta es de solo lectura', 'error');
+  return true;
+}
 
 // Si el correo logueado aparece en USUARIOS con Rol="subcontratista", queda
 // aquí el nombre de SU empresa (no null) — eso activa el modo restringido:
@@ -707,6 +723,26 @@ async function appendSheet(range, values) {
   return data;
 }
 
+// Borra una fila completa de una hoja (usado por Subcontratistas para
+// eliminar un documento — ver onEliminarDocSubcontratista). Nada más en la
+// app borra filas hoy: todo lo demás es agregar filas nuevas o editar una
+// celda existente, así que esto queda genérico por si otro módulo necesita
+// lo mismo más adelante.
+async function eliminarFilaSheet(nombreHoja, fila) {
+  await ensureToken();
+  const ids = await obtenerSheetIds();
+  const sheetId = ids[nombreHoja];
+  if (sheetId == null) throw new Error('No se encontró la hoja ' + nombreHoja);
+  const res = await fetch(`${SHEETS_BASE}/${CONFIG.SHEET_ID}:batchUpdate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeader() },
+    body: JSON.stringify({
+      requests: [{ deleteDimension: { range: { sheetId, dimension: 'ROWS', startIndex: fila - 1, endIndex: fila } } }],
+    }),
+  });
+  if (!res.ok) throw new Error(friendlyErr(res.status, await res.text()));
+}
+
 // Mapa nombre-de-hoja → sheetId numérico (la API de formato lo pide por
 // ID, no por nombre) — se pide una sola vez y se reutiliza.
 let sheetIdsCache = null;
@@ -827,6 +863,20 @@ async function uploadFileToFolder(fileOrBlob, folderId, prefixName, ext) {
   const extension = ext || (fileOrBlob.name ? fileOrBlob.name.split('.').pop() : 'jpg');
   const fileName = `${prefixName}_${fecha}_${hora}.${extension}`;
   return subirBytesADrive(fileOrBlob, folderId, fileName);
+}
+// Manda un archivo a la papelera de Drive a partir del link guardado en el
+// Sheet (".../file/d/ID/view") — se usa recién movido, no borrado
+// permanente, para poder recuperarlo desde Drive si alguien se equivoca al
+// eliminar (ver onEliminarDocSubcontratista).
+async function trashArchivoDrive(link) {
+  const m = /\/d\/([a-zA-Z0-9_-]+)/.exec(link || '');
+  if (!m) return;
+  await ensureToken();
+  await fetch(`https://www.googleapis.com/drive/v3/files/${m[1]}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...authHeader() },
+    body: JSON.stringify({ trashed: true }),
+  });
 }
 // Sube un archivo a una subcarpeta del módulo (Root/{nombreModulo}/)
 async function uploadFile(fileOrBlob, nombreModulo, prefixName, ext) {
@@ -1168,6 +1218,7 @@ async function cargarTodo(silencioso) {
       const chequeo = await llamarWebAppSubcontratista('verificarAcceso', {});
       if (!chequeo.subcontratista) throw new Error('Esta cuenta ya no tiene acceso.');
       miEmpresaSubcontratista = chequeo.empresa;
+      userRole = 'subcontratista';
       const { filas } = await llamarWebAppSubcontratista('listarDocumentos', { empresa: miEmpresaSubcontratista });
       allSubDocs = filas.map((r,i) => rowToSubDoc(r,i));
       // Trabajadores de su propia empresa (para el checklist de Exámenes
@@ -1197,6 +1248,7 @@ async function cargarTodo(silencioso) {
       if (!chequeo.subcontratista) throw errAccesoDirecto;
       subcontratistaUsaProxy = true;
       miEmpresaSubcontratista = chequeo.empresa;
+      userRole = 'subcontratista';
       const { filas } = await llamarWebAppSubcontratista('listarDocumentos', { empresa: miEmpresaSubcontratista });
       allSubDocs = filas.map((r,i) => rowToSubDoc(r,i));
       if (!silencioso) splash(100, '¡Listo!'); else toast('Datos actualizados ✓', 'ok');
@@ -1205,6 +1257,12 @@ async function cargarTodo(silencioso) {
     allUsuarios = usuarios.map((r,i) => rowToUsuario(r,i));
     const cuenta = allUsuarios.find(u => u.correo === (userEmail||'').toLowerCase());
     miEmpresaSubcontratista = (cuenta && cuenta.rol === 'subcontratista') ? cuenta.empresa : null;
+    // Sin fila en USUARIOS (la mayoría del personal interno hoy) o con un rol
+    // que no sea 'viewer' → admin de toda la vida, acceso completo. Solo una
+    // fila explícita con rol 'viewer' pasa a modo solo-lectura — así ninguna
+    // cuenta que ya usa la app pierde acceso por accidente.
+    userRole = (cuenta && cuenta.rol === 'subcontratista') ? 'subcontratista'
+      : (cuenta && cuenta.rol === 'viewer') ? 'viewer' : 'admin';
 
     if (!silencioso) splash(40, 'Cargando información...');
 
@@ -1955,6 +2013,7 @@ function abrirEditarContrato(fila) {
   openPanel('panel-editar-contrato');
 }
 async function guardarContrato(ev) {
+  if (bloquearSiViewer()) return;
   ev.preventDefault();
   const f = ev.target;
   const fila = f.fila.value;
@@ -1987,6 +2046,7 @@ function abrirEditarAltura(fila) {
   openPanel('panel-editar-altura');
 }
 async function guardarAltura(ev) {
+  if (bloquearSiViewer()) return;
   ev.preventDefault();
   const f = ev.target;
   const fila = f.fila.value;
@@ -2028,6 +2088,7 @@ function abrirEditarDatosPersonales(fila) {
   openPanel('panel-editar-personales');
 }
 async function guardarDatosPersonales(ev) {
+  if (bloquearSiViewer()) return;
   ev.preventDefault();
   const f = ev.target;
   const fila = f.fila.value;
@@ -2070,6 +2131,7 @@ function abrirFormTrabajador() {
   openPanel('panel-form-trabajador');
 }
 async function guardarTrabajador(ev) {
+  if (bloquearSiViewer()) return;
   ev.preventDefault();
   const f = ev.target;
   try {
@@ -2129,6 +2191,7 @@ function abrirEditarSupervisor(fila) {
   openPanel('panel-editar-supervisor');
 }
 async function guardarSupervisor(ev) {
+  if (bloquearSiViewer()) return;
   ev.preventDefault();
   const f = ev.target;
   const fila = f.fila.value;
@@ -2165,6 +2228,7 @@ function abrirAsignarSupervisor(fila) {
   openPanel('panel-asignar-supervisor');
 }
 async function guardarAsignarSupervisor(ev) {
+  if (bloquearSiViewer()) return;
   ev.preventDefault();
   const f = ev.target;
   const fila = f.fila.value;
@@ -2203,6 +2267,7 @@ function abrirEditarEquipoSupervisor(fila) {
   openPanel('panel-editar-equipo-supervisor');
 }
 async function guardarEquipoSupervisor() {
+  if (bloquearSiViewer()) return;
   const fila = document.getElementById('form-equipo-supervisor').fila.value;
   const t = allTrabajadores.find(x => String(x.fila) === String(fila));
   if (!t) return;
@@ -2255,6 +2320,7 @@ function renderInspecciones() {
   }).join(''));
 }
 async function marcarInspeccionCerrada(fila) {
+  if (bloquearSiViewer()) return;
   try {
     await ensureToken();
     const url = `${SHEETS_BASE}/${CONFIG.SHEET_ID}/values/${encodeURIComponent(`'${CONFIG.SHEET_INSPECCIONES}'!K${fila}`)}?valueInputOption=USER_ENTERED`;
@@ -2275,6 +2341,7 @@ function abrirFormInspeccion() {
   openPanel('panel-form-inspeccion');
 }
 async function guardarInspeccion(ev) {
+  if (bloquearSiViewer()) return;
   ev.preventDefault();
   const f = ev.target;
   try {
@@ -2432,6 +2499,7 @@ function abrirNuevaCharla() {
   setTimeout(() => initFirmaPad('firma-canvas-relator'), 80);
 }
 function guardarDatosCharla(ev) {
+  if (bloquearSiViewer()) return;
   ev.preventDefault();
   const f = ev.target;
   if (firmaEstaVacia('firma-canvas-relator')) { toast('Falta la firma del relator', 'error'); return; }
@@ -2480,6 +2548,7 @@ function avanzarAsistente() {
   }
 }
 function confirmarFirmaAsistente() {
+  if (bloquearSiViewer()) return;
   if (firmaEstaVacia('firma-canvas-asistente')) { toast('Falta la firma', 'error'); return; }
   charlaEnProceso.asistentes[charlaEnProceso.asistenteActual].firma = firmaCanvasADataURL('firma-canvas-asistente');
   avanzarAsistente();
@@ -2927,6 +2996,7 @@ function abrirFormIncidente() {
   openPanel('panel-form-incidente');
 }
 async function guardarIncidente(ev) {
+  if (bloquearSiViewer()) return;
   ev.preventDefault();
   const f = ev.target;
   try {
@@ -3015,6 +3085,7 @@ function abrirCerrarIncidente(fila) {
   openPanel('panel-cerrar-incidente');
 }
 async function guardarCierreIncidente(ev) {
+  if (bloquearSiViewer()) return;
   ev.preventDefault();
   const f = ev.target;
   const fila = f.fila.value;
@@ -3204,6 +3275,7 @@ function abrirFormDiat() {
   if (elClasificacion) elClasificacion.checked = true;
 }
 async function guardarDiat(ev) {
+  if (bloquearSiViewer()) return;
   ev.preventDefault();
   const f = ev.target;
   try {
@@ -3278,6 +3350,7 @@ async function guardarDiat(ev) {
 // Actualiza la fila del Incidente: marca la atención médica como resuelta y
 // habilita recién ahí la Investigación (columnas Q:V de INCIDENTES).
 async function guardarResultadoAtencionMedica(estado, pdfLink) {
+  if (bloquearSiViewer()) return;
   await ensureToken();
   const fila = atencionMedicaFilaIncidente;
   const url = `${SHEETS_BASE}/${CONFIG.SHEET_ID}/values/${encodeURIComponent(`'${CONFIG.SHEET_INCIDENTES}'!Q${fila}:V${fila}`)}?valueInputOption=USER_ENTERED`;
@@ -3432,6 +3505,7 @@ function abrirFormDeclaracion() {
   openPanel('panel-form-declaracion');
 }
 async function guardarDeclaracion(ev) {
+  if (bloquearSiViewer()) return;
   ev.preventDefault();
   const f = ev.target;
   try {
@@ -3626,6 +3700,7 @@ function abrirInvestigacion(filaIncidente) {
   setTimeout(() => initFirmaPad('firma-canvas-investigador'), 80);
 }
 async function guardarInvestigacion(ev) {
+  if (bloquearSiViewer()) return;
   ev.preventDefault();
   const f = ev.target;
   if (firmaEstaVacia('firma-canvas-investigador')) { toast('Falta la firma de quien investiga', 'error'); return; }
@@ -4021,6 +4096,7 @@ function seleccionadosHcrRadio(prefix, n) {
   return out;
 }
 function guardarDatosHcr(ev) {
+  if (bloquearSiViewer()) return;
   ev.preventDefault();
   const f = ev.target;
   if (firmaEstaVacia('firma-canvas-hcr-supervisor')) { toast('Falta la firma del supervisor', 'error'); return; }
@@ -4068,6 +4144,7 @@ function avanzarTrabajadorHcr() {
   }
 }
 function confirmarFirmaTrabajadorHcr() {
+  if (bloquearSiViewer()) return;
   if (firmaEstaVacia('firma-canvas-trabajador-hcr')) { toast('Falta la firma', 'error'); return; }
   hcrEnProceso.asistentes[hcrEnProceso.asistenteActual].firma = firmaCanvasADataURL('firma-canvas-trabajador-hcr');
   avanzarTrabajadorHcr();
@@ -4271,6 +4348,7 @@ function abrirFormProcedimiento() {
   openPanel('panel-form-procedimiento');
 }
 async function guardarProcedimiento(ev) {
+  if (bloquearSiViewer()) return;
   ev.preventDefault();
   const f = ev.target;
   try {
@@ -4327,6 +4405,7 @@ function abrirFormSubcontratista() {
   openPanel('panel-form-subcontratista');
 }
 async function guardarSubcontratista(ev) {
+  if (bloquearSiViewer()) return;
   ev.preventDefault();
   const f = ev.target;
   try {
@@ -4381,6 +4460,13 @@ function iconoEstadoDoc(subido) {
     ? '<svg viewBox="0 0 24 24" fill="none" style="width:14px;height:14px"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>'
     : '<svg viewBox="0 0 24 24" fill="none" style="width:8px;height:8px"><circle cx="12" cy="12" r="8" fill="currentColor"/></svg>'}</div>`;
 }
+// El botón "Eliminar" de un documento SOLO lo ve un admin (userRole ===
+// 'admin') — ni un viewer ni una cuenta subcontratista lo ven nunca, así el
+// subcontratista puede subir/reemplazar lo suyo pero nunca borrar nada.
+function botonEliminarDocSubcontratista(doc, empresa) {
+  if (!doc || userRole !== 'admin') return '';
+  return `<button type="button" class="badge red" style="border:none;cursor:pointer;" onclick="onEliminarDocSubcontratista(${doc.fila},'${esc(empresa)}')">Eliminar</button>`;
+}
 function filaChecklistSubcontratista(empresa, categoria, item, periodo) {
   const doc = ultimoDocSubcontratista(docsSubcontratista(empresa, categoria, item, periodo));
   return `
@@ -4392,10 +4478,11 @@ function filaChecklistSubcontratista(empresa, categoria, item, periodo) {
       </div>
       <div class="subcont-row-actions">
         ${doc ? `<a class="badge blue" href="${esc(doc.link)}" target="_blank">${ic('documento',12)} Ver</a>` : ''}
-        <label class="doc-file-label${doc ? ' selected' : ''}" style="width:auto;padding:6px 12px;font-size:12px;">
+        ${botonEliminarDocSubcontratista(doc, empresa)}
+        ${!esViewer() ? `<label class="doc-file-label${doc ? ' selected' : ''}" style="width:auto;padding:6px 12px;font-size:12px;">
           ${doc ? 'Reemplazar' : '+ Subir'}
           <input type="file" style="display:none" onchange="onSubirDocSubcontratista(this,'${esc(empresa)}','${categoria}','${esc(item)}','${periodo||''}')">
-        </label>
+        </label>` : ''}
       </div>
     </div>`;
 }
@@ -4430,7 +4517,7 @@ function bloqueDocTrabajador(empresa, t) {
       </div>
     </div>`;
 }
-function filaGlobalSubcontratista(item, doc, esRestringido) {
+function filaGlobalSubcontratista(item, doc, esRestringido, empresaEnPantalla) {
   return `
     <div class="subcont-row">
       ${iconoEstadoDoc(!!doc)}
@@ -4440,7 +4527,8 @@ function filaGlobalSubcontratista(item, doc, esRestringido) {
       </div>
       <div class="subcont-row-actions">
         ${doc ? `<a class="badge blue" href="${esc(doc.link)}" target="_blank">${ic('documento',12)} Ver</a>` : ''}
-        ${!esRestringido ? `<label class="doc-file-label${doc ? ' selected' : ''}" style="width:auto;padding:6px 12px;font-size:12px;">${doc ? 'Reemplazar' : '+ Subir'}<input type="file" style="display:none" onchange="onSubirDocGlobalSubcontratista(this,'${esc(item)}')"></label>` : ''}
+        ${botonEliminarDocSubcontratista(doc, empresaEnPantalla)}
+        ${!esRestringido && !esViewer() ? `<label class="doc-file-label${doc ? ' selected' : ''}" style="width:auto;padding:6px 12px;font-size:12px;">${doc ? 'Reemplazar' : '+ Subir'}<input type="file" style="display:none" onchange="onSubirDocGlobalSubcontratista(this,'${esc(item)}')"></label>` : ''}
       </div>
     </div>`;
 }
@@ -4482,7 +4570,7 @@ function renderSubcontratistaDetalleHTML(empresa, esRestringido) {
   return `
     <div class="subcont-section">
       <div class="subcont-section-head"><div class="subcont-section-title">Documentos generales</div></div>
-      ${filaGlobalSubcontratista('Reglamento de Subcontratista', reglamento, esRestringido)}
+      ${filaGlobalSubcontratista('Reglamento de Subcontratista', reglamento, esRestringido, empresa)}
       <div class="subcont-row" style="display:block;">
         <div class="subcont-row-nombre">Programa personalizado</div>
         <div class="form-group" style="margin:8px 0 0;">
@@ -4528,24 +4616,25 @@ function renderSubcontratistaDetalleHTML(empresa, esRestringido) {
     <div class="subcont-section">
       <div class="subcont-section-head"><div class="subcont-section-title">Control de herramientas y extensiones eléctricas</div></div>
       ${herramientas.length ? herramientas.map(d => `
-        <div class="doc-row"><a class="badge blue" href="${esc(d.link)}" target="_blank">${ic('documento',12)} ${esc(d.archivo)}</a><span style="font-size:11px;color:#888;">${esc((d.fecha||'').split(',')[0] || d.fecha)}</span></div>
+        <div class="doc-row"><a class="badge blue" href="${esc(d.link)}" target="_blank">${ic('documento',12)} ${esc(d.archivo)}</a><span style="font-size:11px;color:#888;">${esc((d.fecha||'').split(',')[0] || d.fecha)}</span>${botonEliminarDocSubcontratista(d, empresa)}</div>
       `).join('') : '<div class="empty-sub" style="padding:8px 0;">Sin archivos subidos</div>'}
-      <label class="upload-label" style="margin-top:10px;">+ Subir archivo<input type="file" style="display:none" onchange="onSubirDocSubcontratista(this,'${esc(empresa)}','herramientas','','')"></label>
+      ${!esViewer() ? `<label class="upload-label" style="margin-top:10px;">+ Subir archivo<input type="file" style="display:none" onchange="onSubirDocSubcontratista(this,'${esc(empresa)}','herramientas','','')"></label>` : ''}
     </div>
 
     ${!esRestringido ? `
     <div class="subcont-section">
       <div class="subcont-section-head"><div class="subcont-section-title">Correos autorizados</div></div>
       ${correos.map(c => `<div class="doc-row"><span>${esc(c.correo)}</span></div>`).join('') || '<div class="empty-sub">Sin correos asignados todavía</div>'}
-      <form onsubmit="onAgregarCorreoSubcontratista(event,'${esc(empresa)}')" style="display:flex;gap:8px;margin-top:10px;">
+      ${!esViewer() ? `<form onsubmit="onAgregarCorreoSubcontratista(event,'${esc(empresa)}')" style="display:flex;gap:8px;margin-top:10px;">
         <input name="correo" type="email" placeholder="correo@empresa.com" required style="flex:1;padding:10px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit;">
         <button class="btn-add" type="submit" style="width:auto;padding:10px 16px;">+ Agregar</button>
-      </form>
+      </form>` : ''}
     </div>` : ''}
   `;
 }
 
 async function onSubirDocSubcontratista(inputEl, empresa, categoria, item, periodo) {
+  if (bloquearSiViewer()) return;
   const file = inputEl.files[0];
   if (!file) return;
   try {
@@ -4582,6 +4671,7 @@ async function onSubirDocSubcontratista(inputEl, empresa, categoria, item, perio
   } catch (e) { toast(e.message, 'error'); }
 }
 async function onSubirDocGlobalSubcontratista(inputEl, item) {
+  if (bloquearSiViewer()) return;
   const file = inputEl.files[0];
   if (!file) return;
   try {
@@ -4595,11 +4685,32 @@ async function onSubirDocGlobalSubcontratista(inputEl, item) {
     if (empresaSubcontratistaActual) abrirDetalleSubcontratista(empresaSubcontratistaActual);
   } catch (e) { toast(e.message, 'error'); }
 }
+// Borra un documento subido en Subcontratistas — a propósito NO tiene
+// equivalente en la Web App de Apps Script (llamarWebAppSubcontratista):
+// solo lo puede usar un admin, y un admin siempre tiene acceso directo al
+// Sheet, nunca pasa por el proxy de cuentas restringidas.
+async function onEliminarDocSubcontratista(fila, empresa) {
+  if (userRole !== 'admin') { toast('Solo un administrador puede eliminar documentos', 'error'); return; }
+  const doc = allSubDocs.find(d => d.fila === fila);
+  if (!confirm('¿Eliminar este documento? No se puede deshacer.')) return;
+  try {
+    await eliminarFilaSheet(CONFIG.SHEET_SUBCONTRATISTAS_DOCS, fila);
+    // Best-effort: si por lo que sea no se puede mover a la papelera de
+    // Drive (permiso, archivo ya borrado a mano, etc.) no importa — lo que
+    // de verdad saca el documento de la app es la fila del Sheet, ya
+    // borrada arriba.
+    if (doc && doc.link) trashArchivoDrive(doc.link).catch(() => {});
+    toast('Documento eliminado ✓', 'ok');
+    await cargarTodo(true);
+    if (empresa) abrirDetalleSubcontratista(empresa);
+  } catch (e) { toast(e.message, 'error'); }
+}
 function onCambioMesSubcontratista(valor, empresa, esRestringido) {
   mesControlSubcontratista = valor;
   if (esRestringido) mostrarModoSubcontratista(empresa); else abrirDetalleSubcontratista(empresa);
 }
 async function onAgregarCorreoSubcontratista(ev, empresa) {
+  if (bloquearSiViewer()) return;
   ev.preventDefault();
   const correo = ev.target.correo.value.trim().toLowerCase();
   try {
@@ -4874,6 +4985,7 @@ function firmaConIdentificacion(canvasOriginal, nombre, rut, fecha, hora) {
   return c;
 }
 async function guardarEpp(ev) {
+  if (bloquearSiViewer()) return;
   ev.preventDefault();
   const f = ev.target;
   const canvas = document.getElementById('firma-canvas');
@@ -5375,6 +5487,7 @@ function onCambioSupervisorPrograma(selEl) {
   f.cargo.value = t ? t.cargo : '';
 }
 async function guardarActividadPrograma(ev) {
+  if (bloquearSiViewer()) return;
   ev.preventDefault();
   const f = ev.target;
   try {
@@ -5482,6 +5595,7 @@ function abrirMarcarDias(fila) {
   openPanel('panel-marcar-dias');
 }
 async function guardarMarcarDias() {
+  if (bloquearSiViewer()) return;
   try {
     const dias = [...document.querySelectorAll('#marcar-dias-grid input:checked')].map(i => i.value);
     await ensureToken();
@@ -5626,6 +5740,7 @@ function abrirLlenarFormatoPrograma(dia) {
   openPanel('panel-llenar-formato-programa');
 }
 async function guardarFormatoPrograma() {
+  if (bloquearSiViewer()) return;
   if (!llenarFormatoCtx) return;
   const { filaActividad, dia, formato, motor } = llenarFormatoCtx;
   const a = allProgramaPersonalizado.find(x => x.fila === filaActividad);
@@ -6854,6 +6969,7 @@ async function generarPdfChecklistOrdenAseo(a, datos) {
   return up.link;
 }
 async function guardarChecklistMensual() {
+  if (bloquearSiViewer()) return;
   if (!checklistMensualCtx) return;
   const { fila } = checklistMensualCtx;
   const a = allProgramaPersonalizado.find(x => x.fila === fila);
@@ -7780,6 +7896,7 @@ function valorProcesoOTareaMiperTarea(el, otroId) {
   return el.value.trim();
 }
 async function guardarMiperTarea(ev) {
+  if (bloquearSiViewer()) return;
   ev.preventDefault();
   const f = ev.target;
   try {
@@ -7926,6 +8043,7 @@ function bloquePeligroHtmlMiper(idx, prefill) {
   </div>`;
 }
 function agregarBloquePeligroMiper(prefill) {
+  if (bloquearSiViewer()) return;
   const cont = document.getElementById('miper-bloques-peligro');
   const idx = miperBloqueContador++;
   cont.insertAdjacentHTML('beforeend', bloquePeligroHtmlMiper(idx, prefill));
@@ -7938,6 +8056,7 @@ function agregarBloquePeligroMiper(prefill) {
   return bloque;
 }
 function quitarBloquePeligroMiper(idx) {
+  if (bloquearSiViewer()) return;
   const cont = document.getElementById('miper-bloques-peligro');
   if (cont.children.length <= 1) { toast('Debe quedar al menos un peligro/riesgo', 'error'); return; }
   const el = cont.querySelector(`[data-idx="${idx}"]`);
@@ -7980,6 +8099,7 @@ function actualizarVepMiperFilaBloque(selEl) {
   el.innerHTML = `<div class="card-body"><div class="card-title">VEP = ${r.vep} <span class="badge ${r.color}">${r.nivel}</span></div><div class="card-sub">${esc(r.accion)}</div></div>`;
 }
 async function guardarMiperFila(ev) {
+  if (bloquearSiViewer()) return;
   ev.preventDefault();
   const f = ev.target;
   try {
@@ -8706,6 +8826,7 @@ function abrirEditarDs44(trabajador, obra) {
   openPanel('panel-editar-ds44');
 }
 async function guardarCertificadoDs44(ev) {
+  if (bloquearSiViewer()) return;
   ev.preventDefault();
   const f = ev.target;
   const trabajador = f.trabajador.value;
