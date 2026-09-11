@@ -497,14 +497,14 @@ const TOKEN_KEY   = 'lst_pr_token';
 const EXPIRY_KEY  = 'lst_pr_expiry';
 const EMAIL_KEY   = 'lst_pr_email';
 const HADLOGIN_KEY = 'lst_pr_had_login'; // se mantiene aunque el token expire; solo se borra al Cerrar sesión
-// Sesión de un subcontratista que entró con RUT+PIN en vez de Google (ver
+// Sesión de un subcontratista que entró con RUT en vez de Google (ver
 // "Login de subcontratista" más abajo) — no hay token de Google ni de
 // Drive/Sheets acá, TODO pasa por el proxy (subcontratistaUsaProxy), así
 // que lo único que hace falta recordar entre visitas es a qué correo
 // corresponde ese RUT (el proxy vuelve a validar el acceso en cada
 // cargarTodo, igual que ya hace para una sesión de Google).
 const RUT_SESION_KEY = 'lst_pr_rut_sesion';
-// Nombre del contacto que entró con RUT+PIN (columna Nombre de USUARIOS,
+// Nombre del contacto que entró con RUT (columna Nombre de USUARIOS,
 // si la cargaron) — se muestra en vez del correo en su pantalla, ver
 // mostrarModoSubcontratista.
 let miNombreSubcontratista = null;
@@ -597,31 +597,34 @@ function mostrarLogin(hint, conectando) {
   document.getElementById('login-screen').classList.remove('hidden');
 }
 
-// ── Login de subcontratista con RUT+PIN ─────────────────────────
+// ── Login de subcontratista con RUT ─────────────────────────────
 // Alternativa al botón de Google, solo para cuentas subcontratistas (ver
-// loginRutPin en APPS_SCRIPT_WEBAPP_SUBCONTRATISTAS.js — requiere
+// loginRut en APPS_SCRIPT_WEBAPP_SUBCONTRATISTAS.js — requiere
 // SUBCONTRATISTAS_WEBAPP_URL configurado en config.js, igual que el resto
 // del modo subcontratista sin acceso directo). No hay token de Google acá:
 // una vez adentro, todo pasa por el proxy, igual que ya pasa hoy con una
 // cuenta subcontratista sin acceso directo al Sheet.
-function mostrarLoginRutPin() {
+// Ojo: es solo RUT, sin contraseña — identifica la cuenta pero no la
+// autentica de verdad (el RUT no es secreto). A propósito, para no
+// complicar el acceso: aceptable para documentación de obra, no para nada
+// más sensible (ver misma nota en loginRut).
+function mostrarLoginRut() {
   document.getElementById('login-google').classList.add('hidden');
-  document.getElementById('login-rutpin').classList.remove('hidden');
+  document.getElementById('login-rut').classList.remove('hidden');
 }
-function ocultarLoginRutPin() {
-  document.getElementById('login-rutpin').classList.add('hidden');
+function ocultarLoginRut() {
+  document.getElementById('login-rut').classList.add('hidden');
   document.getElementById('login-google').classList.remove('hidden');
 }
-async function onLoginRutPin(ev) {
+async function onLoginRut(ev) {
   ev.preventDefault();
   if (!CONFIG.SUBCONTRATISTAS_WEBAPP_URL) { toast('Esta app todavía no tiene configurado el login con RUT', 'error'); return; }
   const f = ev.target;
   const rut = f.rut.value.trim();
-  const pin = f.pin.value.trim();
   const btn = f.querySelector('button[type="submit"]');
   btn.disabled = true;
   try {
-    const datos = await llamarWebAppSubcontratista('loginRutPin', { rut, pin });
+    const datos = await llamarWebAppSubcontratista('loginRut', { rut });
     userEmail = datos.correo;
     miNombreSubcontratista = datos.nombre || null;
     subcontratistaUsaProxy = true;
@@ -634,9 +637,9 @@ async function onLoginRutPin(ev) {
 }
 
 function signOut() {
-  const eraSesionRutPin = !!localStorage.getItem(RUT_SESION_KEY);
-  const mensaje = eraSesionRutPin
-    ? '¿Cerrar sesión? Vas a tener que ingresar tu RUT y PIN de nuevo para volver a entrar.'
+  const eraSesionRut = !!localStorage.getItem(RUT_SESION_KEY);
+  const mensaje = eraSesionRut
+    ? '¿Cerrar sesión? Vas a tener que ingresar tu RUT de nuevo para volver a entrar.'
     : '¿Cerrar sesión? Vas a tener que elegir tu cuenta de Google de nuevo para volver a entrar.';
   if (!confirm(mensaje)) return;
   if (accessToken && typeof google !== 'undefined' && google.accounts?.oauth2) {
@@ -654,7 +657,7 @@ function signOut() {
   document.getElementById('desktop-sidebar').classList.add('dt-oculto');
   document.getElementById('desktop-main').classList.add('dt-oculto');
   document.getElementById('subcontratista-root').classList.add('hidden');
-  ocultarLoginRutPin();
+  ocultarLoginRut();
   mostrarLogin('Usa tu cuenta corporativa autorizada', false);
 }
 
@@ -1351,7 +1354,7 @@ async function cargarTodo(silencioso) {
     // que esa cuenta de todas formas nunca va a ver en la interfaz).
     let usuarios;
     try {
-      usuarios = await fetchSheet(`'${CONFIG.SHEET_USUARIOS}'!A2:F2000`);
+      usuarios = await fetchSheet(`'${CONFIG.SHEET_USUARIOS}'!A2:E2000`);
     } catch (errAccesoDirecto) {
       // Sin acceso directo al Sheet: si hay una Web App configurada
       // (ver config.js SUBCONTRATISTAS_WEBAPP_URL), puede que esta cuenta
@@ -1531,7 +1534,7 @@ function rowToEpp(r, i) {
 }
 function rowToUsuario(r, i) {
   return { fila: i+2, correo: (r[0]||'').trim().toLowerCase(), rol: (r[1]||'').trim().toLowerCase(),
-    nombre: r[2]||'', empresa: r[3]||'', rut: r[4]||'', pin: r[5]||'' };
+    nombre: r[2]||'', empresa: r[3]||'', rut: r[4]||'' };
 }
 function rowToSubcontratista(r, i) {
   return { fila: i+2, empresa: r[0]||'', fechaAlta: r[1]||'' };
@@ -4532,6 +4535,7 @@ async function guardarSubcontratista(ev) {
     await appendSheet(`'${CONFIG.SHEET_SUBCONTRATISTAS}'!A:B`, [[empresa, new Date().toLocaleString('es-CL')]]);
     if (correos.length) {
       await appendSheet(`'${CONFIG.SHEET_USUARIOS}'!A:D`, correos.map(c => [c.toLowerCase(), 'subcontratista', '', empresa]));
+      correos.forEach(c => notificarNuevoContacto(c.toLowerCase(), empresa));
     }
     toast('Subcontratista agregado ✓', 'ok');
     closePanel('panel-form-subcontratista');
@@ -4551,8 +4555,8 @@ function abrirDetalleSubcontratista(empresa) {
 // Pantalla fija de la cuenta subcontratista — sin panel, sin "Volver"
 // (no hay a dónde volver: esta ES toda su app).
 function mostrarModoSubcontratista(empresa) {
-  // Si entró con RUT+PIN mostramos su nombre en vez del correo (que puede
-  // ni conocer) — ver onLoginRutPin/miNombreSubcontratista.
+  // Si entró con RUT mostramos su nombre en vez del correo (que puede ni
+  // conocer) — ver onLoginRut/miNombreSubcontratista.
   const identidad = miNombreSubcontratista || userEmail || '';
   document.getElementById('subcontratista-root').classList.remove('hidden');
   document.getElementById('subcontratista-root-empresa').textContent = empresa;
@@ -4741,13 +4745,10 @@ function renderSubcontratistaDetalleHTML(empresa, esRestringido) {
     ${!esRestringido ? `
     <div class="subcont-section">
       <div class="subcont-section-head"><div class="subcont-section-title">Correos autorizados</div></div>
-      ${correos.map(c => `<div class="doc-row"><span>${esc(c.correo)}</span>${c.rut ? `<span style="font-size:11px;color:#888;">${esc(c.rut)} · PIN ${esc(c.pin)}</span>` : ''}</div>`).join('') || '<div class="empty-sub">Sin correos asignados todavía</div>'}
+      ${correos.map(c => `<div class="doc-row"><span>${esc(c.correo)}</span>${c.rut ? `<span style="font-size:11px;color:#888;">${esc(c.rut)}</span>` : ''}</div>`).join('') || '<div class="empty-sub">Sin correos asignados todavía</div>'}
       ${!esViewer() ? `<form onsubmit="onAgregarCorreoSubcontratista(event,'${esc(empresa)}')" style="display:flex;flex-direction:column;gap:8px;margin-top:10px;">
         <input name="correo" type="email" placeholder="correo@empresa.com" required style="padding:10px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit;">
-        <div style="display:flex;gap:8px;">
-          <input name="rut" type="text" placeholder="RUT (opcional — para entrar con RUT+PIN)" style="flex:1;min-width:0;padding:10px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit;">
-          <input name="pin" type="text" placeholder="PIN" style="width:90px;padding:10px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit;">
-        </div>
+        <input name="rut" type="text" placeholder="RUT (opcional — para entrar con RUT en vez de Google)" style="padding:10px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit;">
         <button class="btn-add" type="submit" style="width:auto;padding:10px 16px;align-self:flex-start;">+ Agregar</button>
       </form>` : ''}
     </div>` : ''}
@@ -4831,19 +4832,24 @@ function onCambioMesSubcontratista(valor, empresa, esRestringido) {
   mesControlSubcontratista = valor;
   if (esRestringido) mostrarModoSubcontratista(empresa); else abrirDetalleSubcontratista(empresa);
 }
+// Le avisa por correo a un contacto recién agregado que ya tiene acceso —
+// best-effort: si falla (o no hay Web App configurada) no bloquea el alta,
+// el contacto ya quedó guardado igual. Ver notificarContacto en
+// APPS_SCRIPT_WEBAPP_SUBCONTRATISTAS.js.
+async function notificarNuevoContacto(correo, empresa) {
+  if (!CONFIG.SUBCONTRATISTAS_WEBAPP_URL) return;
+  try { await llamarWebAppSubcontratista('notificarContacto', { correoDestino: correo, empresa }); }
+  catch (e) { console.warn('No se pudo notificar a ' + correo, e); }
+}
 async function onAgregarCorreoSubcontratista(ev, empresa) {
   if (bloquearSiViewer()) return;
   ev.preventDefault();
   const f = ev.target;
   const correo = f.correo.value.trim().toLowerCase();
   const rut = f.rut.value.trim();
-  const pin = f.pin.value.trim();
-  // RUT y PIN son opcionales, pero solo tienen sentido juntos (activan el
-  // login con RUT+PIN — ver onLoginRutPin) — a medias quedaría un RUT sin
-  // forma de usarse, o un PIN que no protege nada.
-  if ((rut && !pin) || (!rut && pin)) { toast('Completa el RUT y el PIN juntos, o ninguno de los dos', 'error'); return; }
   try {
-    await appendSheet(`'${CONFIG.SHEET_USUARIOS}'!A:F`, [[correo, 'subcontratista', '', empresa, rut, pin]]);
+    await appendSheet(`'${CONFIG.SHEET_USUARIOS}'!A:E`, [[correo, 'subcontratista', '', empresa, rut]]);
+    notificarNuevoContacto(correo, empresa);
     toast('Correo agregado ✓', 'ok');
     await cargarTodo(true);
     abrirDetalleSubcontratista(empresa);
@@ -7650,7 +7656,7 @@ async function arrancarApp() {
 window.addEventListener('DOMContentLoaded', () => {
   initOAuth();
 
-  // Caso 0: sesión de subcontratista con RUT+PIN guardada — no hay token
+  // Caso 0: sesión de subcontratista con RUT guardada — no hay token
   // de Google que revisar, se va directo (cargarTodo() revalida el acceso
   // contra el proxy en cada carga, igual que una sesión de Google).
   const rutSesion = localStorage.getItem(RUT_SESION_KEY);

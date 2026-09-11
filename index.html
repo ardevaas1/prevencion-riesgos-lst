@@ -101,14 +101,13 @@
       <button class="login-btn" id="login-btn" onclick="signIn()">Iniciar sesión con Google</button>
       <div class="login-spinner hidden" id="login-spinner"><div class="login-spinner-ring"></div></div>
       <div class="login-hint" id="login-hint">Usa tu cuenta corporativa autorizada</div>
-      <div class="login-rutpin-toggle"><a href="#" onclick="mostrarLoginRutPin();return false;">¿Eres subcontratista? Ingresa con tu RUT</a></div>
+      <div class="login-rut-toggle"><a href="#" onclick="mostrarLoginRut();return false;">¿Eres subcontratista? Ingresa con tu RUT</a></div>
     </div>
 
-    <form id="login-rutpin" class="hidden" onsubmit="onLoginRutPin(event)">
-      <input name="rut" type="text" class="login-rutpin-input" placeholder="RUT" required autocomplete="username">
-      <input name="pin" type="password" class="login-rutpin-input" placeholder="PIN" required autocomplete="current-password" inputmode="numeric">
+    <form id="login-rut" class="hidden" onsubmit="onLoginRut(event)">
+      <input name="rut" type="text" class="login-rut-input" placeholder="RUT" required autocomplete="username">
       <button class="login-btn" type="submit">Ingresar</button>
-      <div class="login-rutpin-toggle"><a href="#" onclick="ocultarLoginRutPin();return false;">‹ Volver</a></div>
+      <div class="login-rut-toggle"><a href="#" onclick="ocultarLoginRut();return false;">‹ Volver</a></div>
     </form>
   </div>
 </div>
