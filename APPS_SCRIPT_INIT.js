@@ -90,8 +90,12 @@ function inicializarPlanilla() {
     'N°', 'Fecha', 'Trabajador', 'RUT', 'EPP Entregado', 'Cantidad', 'Firma', 'Responsable Entrega', 'Fecha Registro'
   ]);
 
+  // RUT y PIN son opcionales: solo hacen falta para un subcontratista que
+  // va a entrar con "RUT + PIN" en vez de su cuenta de Google (ver Login de
+  // subcontratista en APPS_SCRIPT_WEBAPP_SUBCONTRATISTAS.js). Si ya tenías
+  // esta hoja creada de antes, agregale estas dos columnas a mano.
   crearHoja(ss, 'USUARIOS', [
-    'Email', 'Rol', 'Nombre', 'Empresa'
+    'Email', 'Rol', 'Nombre', 'Empresa', 'RUT', 'PIN'
   ]);
 
   // Empresas subcontratistas dadas de alta (módulo "Subcontratistas") —

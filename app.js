@@ -497,6 +497,17 @@ const TOKEN_KEY   = 'lst_pr_token';
 const EXPIRY_KEY  = 'lst_pr_expiry';
 const EMAIL_KEY   = 'lst_pr_email';
 const HADLOGIN_KEY = 'lst_pr_had_login'; // se mantiene aunque el token expire; solo se borra al Cerrar sesión
+// Sesión de un subcontratista que entró con RUT+PIN en vez de Google (ver
+// "Login de subcontratista" más abajo) — no hay token de Google ni de
+// Drive/Sheets acá, TODO pasa por el proxy (subcontratistaUsaProxy), así
+// que lo único que hace falta recordar entre visitas es a qué correo
+// corresponde ese RUT (el proxy vuelve a validar el acceso en cada
+// cargarTodo, igual que ya hace para una sesión de Google).
+const RUT_SESION_KEY = 'lst_pr_rut_sesion';
+// Nombre del contacto que entró con RUT+PIN (columna Nombre de USUARIOS,
+// si la cargaron) — se muestra en vez del correo en su pantalla, ver
+// mostrarModoSubcontratista.
+let miNombreSubcontratista = null;
 
 function saveToken(token, expiresIn) {
   accessToken = token;
@@ -586,8 +597,48 @@ function mostrarLogin(hint, conectando) {
   document.getElementById('login-screen').classList.remove('hidden');
 }
 
+// ── Login de subcontratista con RUT+PIN ─────────────────────────
+// Alternativa al botón de Google, solo para cuentas subcontratistas (ver
+// loginRutPin en APPS_SCRIPT_WEBAPP_SUBCONTRATISTAS.js — requiere
+// SUBCONTRATISTAS_WEBAPP_URL configurado en config.js, igual que el resto
+// del modo subcontratista sin acceso directo). No hay token de Google acá:
+// una vez adentro, todo pasa por el proxy, igual que ya pasa hoy con una
+// cuenta subcontratista sin acceso directo al Sheet.
+function mostrarLoginRutPin() {
+  document.getElementById('login-google').classList.add('hidden');
+  document.getElementById('login-rutpin').classList.remove('hidden');
+}
+function ocultarLoginRutPin() {
+  document.getElementById('login-rutpin').classList.add('hidden');
+  document.getElementById('login-google').classList.remove('hidden');
+}
+async function onLoginRutPin(ev) {
+  ev.preventDefault();
+  if (!CONFIG.SUBCONTRATISTAS_WEBAPP_URL) { toast('Esta app todavía no tiene configurado el login con RUT', 'error'); return; }
+  const f = ev.target;
+  const rut = f.rut.value.trim();
+  const pin = f.pin.value.trim();
+  const btn = f.querySelector('button[type="submit"]');
+  btn.disabled = true;
+  try {
+    const datos = await llamarWebAppSubcontratista('loginRutPin', { rut, pin });
+    userEmail = datos.correo;
+    miNombreSubcontratista = datos.nombre || null;
+    subcontratistaUsaProxy = true;
+    localStorage.setItem(RUT_SESION_KEY, JSON.stringify({ correo: datos.correo, nombre: datos.nombre || '' }));
+    arrancarApp();
+  } catch (e) {
+    toast(e.message, 'error');
+    btn.disabled = false;
+  }
+}
+
 function signOut() {
-  if (!confirm('¿Cerrar sesión? Vas a tener que elegir tu cuenta de Google de nuevo para volver a entrar.')) return;
+  const eraSesionRutPin = !!localStorage.getItem(RUT_SESION_KEY);
+  const mensaje = eraSesionRutPin
+    ? '¿Cerrar sesión? Vas a tener que ingresar tu RUT y PIN de nuevo para volver a entrar.'
+    : '¿Cerrar sesión? Vas a tener que elegir tu cuenta de Google de nuevo para volver a entrar.';
+  if (!confirm(mensaje)) return;
   if (accessToken && typeof google !== 'undefined' && google.accounts?.oauth2) {
     google.accounts.oauth2.revoke(accessToken, () => {});
   }
@@ -595,13 +646,15 @@ function signOut() {
   localStorage.removeItem(HADLOGIN_KEY);
   localStorage.removeItem(EMAIL_KEY);
   localStorage.removeItem(OBRA_ACTIVA_KEY);
-  userEmail = null; userRole = null; miEmpresaSubcontratista = null; subcontratistaUsaProxy = false;
+  localStorage.removeItem(RUT_SESION_KEY);
+  userEmail = null; userRole = null; miEmpresaSubcontratista = null; subcontratistaUsaProxy = false; miNombreSubcontratista = null;
   obraActiva = null;
   document.getElementById('main').classList.add('hidden');
   document.getElementById('desktop-home').classList.add('dt-oculto');
   document.getElementById('desktop-sidebar').classList.add('dt-oculto');
   document.getElementById('desktop-main').classList.add('dt-oculto');
   document.getElementById('subcontratista-root').classList.add('hidden');
+  ocultarLoginRutPin();
   mostrarLogin('Usa tu cuenta corporativa autorizada', false);
 }
 
@@ -1298,7 +1351,7 @@ async function cargarTodo(silencioso) {
     // que esa cuenta de todas formas nunca va a ver en la interfaz).
     let usuarios;
     try {
-      usuarios = await fetchSheet(`'${CONFIG.SHEET_USUARIOS}'!A2:D2000`);
+      usuarios = await fetchSheet(`'${CONFIG.SHEET_USUARIOS}'!A2:F2000`);
     } catch (errAccesoDirecto) {
       // Sin acceso directo al Sheet: si hay una Web App configurada
       // (ver config.js SUBCONTRATISTAS_WEBAPP_URL), puede que esta cuenta
@@ -1478,7 +1531,7 @@ function rowToEpp(r, i) {
 }
 function rowToUsuario(r, i) {
   return { fila: i+2, correo: (r[0]||'').trim().toLowerCase(), rol: (r[1]||'').trim().toLowerCase(),
-    nombre: r[2]||'', empresa: r[3]||'' };
+    nombre: r[2]||'', empresa: r[3]||'', rut: r[4]||'', pin: r[5]||'' };
 }
 function rowToSubcontratista(r, i) {
   return { fila: i+2, empresa: r[0]||'', fechaAlta: r[1]||'' };
@@ -4498,10 +4551,13 @@ function abrirDetalleSubcontratista(empresa) {
 // Pantalla fija de la cuenta subcontratista — sin panel, sin "Volver"
 // (no hay a dónde volver: esta ES toda su app).
 function mostrarModoSubcontratista(empresa) {
+  // Si entró con RUT+PIN mostramos su nombre en vez del correo (que puede
+  // ni conocer) — ver onLoginRutPin/miNombreSubcontratista.
+  const identidad = miNombreSubcontratista || userEmail || '';
   document.getElementById('subcontratista-root').classList.remove('hidden');
   document.getElementById('subcontratista-root-empresa').textContent = empresa;
-  document.getElementById('subcontratista-root-email').textContent = userEmail || '';
-  document.getElementById('subcontratista-root-email-2').textContent = userEmail || '';
+  document.getElementById('subcontratista-root-email').textContent = identidad;
+  document.getElementById('subcontratista-root-email-2').textContent = identidad;
   document.getElementById('subcontratista-root-body').innerHTML = renderSubcontratistaDetalleHTML(empresa, true);
 }
 
@@ -4685,10 +4741,14 @@ function renderSubcontratistaDetalleHTML(empresa, esRestringido) {
     ${!esRestringido ? `
     <div class="subcont-section">
       <div class="subcont-section-head"><div class="subcont-section-title">Correos autorizados</div></div>
-      ${correos.map(c => `<div class="doc-row"><span>${esc(c.correo)}</span></div>`).join('') || '<div class="empty-sub">Sin correos asignados todavía</div>'}
-      ${!esViewer() ? `<form onsubmit="onAgregarCorreoSubcontratista(event,'${esc(empresa)}')" style="display:flex;gap:8px;margin-top:10px;">
-        <input name="correo" type="email" placeholder="correo@empresa.com" required style="flex:1;padding:10px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit;">
-        <button class="btn-add" type="submit" style="width:auto;padding:10px 16px;">+ Agregar</button>
+      ${correos.map(c => `<div class="doc-row"><span>${esc(c.correo)}</span>${c.rut ? `<span style="font-size:11px;color:#888;">${esc(c.rut)} · PIN ${esc(c.pin)}</span>` : ''}</div>`).join('') || '<div class="empty-sub">Sin correos asignados todavía</div>'}
+      ${!esViewer() ? `<form onsubmit="onAgregarCorreoSubcontratista(event,'${esc(empresa)}')" style="display:flex;flex-direction:column;gap:8px;margin-top:10px;">
+        <input name="correo" type="email" placeholder="correo@empresa.com" required style="padding:10px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit;">
+        <div style="display:flex;gap:8px;">
+          <input name="rut" type="text" placeholder="RUT (opcional — para entrar con RUT+PIN)" style="flex:1;min-width:0;padding:10px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit;">
+          <input name="pin" type="text" placeholder="PIN" style="width:90px;padding:10px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit;">
+        </div>
+        <button class="btn-add" type="submit" style="width:auto;padding:10px 16px;align-self:flex-start;">+ Agregar</button>
       </form>` : ''}
     </div>` : ''}
   `;
@@ -4774,9 +4834,16 @@ function onCambioMesSubcontratista(valor, empresa, esRestringido) {
 async function onAgregarCorreoSubcontratista(ev, empresa) {
   if (bloquearSiViewer()) return;
   ev.preventDefault();
-  const correo = ev.target.correo.value.trim().toLowerCase();
+  const f = ev.target;
+  const correo = f.correo.value.trim().toLowerCase();
+  const rut = f.rut.value.trim();
+  const pin = f.pin.value.trim();
+  // RUT y PIN son opcionales, pero solo tienen sentido juntos (activan el
+  // login con RUT+PIN — ver onLoginRutPin) — a medias quedaría un RUT sin
+  // forma de usarse, o un PIN que no protege nada.
+  if ((rut && !pin) || (!rut && pin)) { toast('Completa el RUT y el PIN juntos, o ninguno de los dos', 'error'); return; }
   try {
-    await appendSheet(`'${CONFIG.SHEET_USUARIOS}'!A:D`, [[correo, 'subcontratista', '', empresa]]);
+    await appendSheet(`'${CONFIG.SHEET_USUARIOS}'!A:F`, [[correo, 'subcontratista', '', empresa, rut, pin]]);
     toast('Correo agregado ✓', 'ok');
     await cargarTodo(true);
     abrirDetalleSubcontratista(empresa);
@@ -7582,6 +7649,23 @@ async function arrancarApp() {
 }
 window.addEventListener('DOMContentLoaded', () => {
   initOAuth();
+
+  // Caso 0: sesión de subcontratista con RUT+PIN guardada — no hay token
+  // de Google que revisar, se va directo (cargarTodo() revalida el acceso
+  // contra el proxy en cada carga, igual que una sesión de Google).
+  const rutSesion = localStorage.getItem(RUT_SESION_KEY);
+  if (rutSesion) {
+    try {
+      const { correo, nombre } = JSON.parse(rutSesion);
+      if (correo) {
+        userEmail = correo;
+        miNombreSubcontratista = nombre || null;
+        subcontratistaUsaProxy = true;
+        arrancarApp();
+        return;
+      }
+    } catch (e) { localStorage.removeItem(RUT_SESION_KEY); }
+  }
 
   // Caso 1: token todavía válido → directo a la app, sin mostrar login
   if (loadStoredToken()) { arrancarApp(); return; }
