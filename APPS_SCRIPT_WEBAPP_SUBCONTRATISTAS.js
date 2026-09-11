@@ -55,15 +55,6 @@ function doPost(e) {
   catch (err) { return respuesta({ error: 'Cuerpo de la petición inválido' }); }
 
   const accion = body.accion;
-
-  // Login con RUT+PIN (ver "Login de subcontratista" más abajo) — a
-  // diferencia de todo lo demás, todavía no hay un correo (es justo lo que
-  // este llamado va a averiguar), así que se resuelve antes de exigirlo.
-  if (accion === 'loginRutPin') {
-    try { return respuesta(loginRutPin(body.rut, body.pin)); }
-    catch (err) { return respuesta({ error: String(err.message || err) }); }
-  }
-
   const correo = (body.correo || '').toString().trim().toLowerCase();
   if (!correo) return respuesta({ error: 'Falta el correo' });
 
@@ -99,48 +90,6 @@ function buscarUsuarioSubcontratista(correo) {
     }
   }
   return null;
-}
-
-// "12.345.678-9" / "12345678-9" / "123456789" → "12345678-9" (sin puntos,
-// con guion, dígito verificador en mayúscula) — para poder comparar RUTs
-// escritos de cualquier forma.
-function normalizarRut(rut) {
-  const limpio = (rut || '').toString().replace(/[.\s]/g, '').toUpperCase();
-  if (limpio.indexOf('-') !== -1) return limpio;
-  if (limpio.length < 2) return limpio;
-  return limpio.slice(0, -1) + '-' + limpio.slice(-1);
-}
-
-// Login de subcontratista con RUT+PIN (columnas E y F de USUARIOS) — una
-// alternativa al correo de Google para cuentas subcontratistas: ver
-// "Login de subcontratista" en app.js. Devuelve el correo asociado a esa
-// fila para que, de ahí en más, la sesión funcione exactamente igual que
-// si hubiera entrado con ese correo (mismo verificarAcceso/listarDocumentos/
-// etc., sin tocar nada de esa parte).
-function loginRutPin(rut, pin) {
-  const rutNorm = normalizarRut(rut);
-  const pinNorm = (pin || '').toString().trim();
-  if (!rutNorm || !pinNorm) throw new Error('Falta el RUT o el PIN');
-  const datos = hojaUsuarios().getDataRange().getValues();
-  for (let i = 1; i < datos.length; i++) {
-    const fila = datos[i];
-    const filaRol = (fila[1] || '').toString().trim().toLowerCase();
-    if (filaRol !== 'subcontratista') continue;
-    const filaRut = normalizarRut(fila[4]);
-    if (!filaRut || filaRut !== rutNorm) continue;
-    const filaPin = (fila[5] || '').toString().trim();
-    if (!filaPin || filaPin !== pinNorm) break; // el RUT es único: si no calza el PIN, no sigue buscando
-    return {
-      correo: (fila[0] || '').toString().trim().toLowerCase(),
-      empresa: (fila[3] || '').toString(),
-      nombre: (fila[2] || '').toString(),
-    };
-  }
-  // Frena un poco cualquier intento de probar PIN a la fuerza — no es una
-  // protección fuerte (ver nota de seguridad arriba del archivo), pero
-  // hace que adivinar a fuerza bruta sea mucho más lento.
-  Utilities.sleep(1200);
-  throw new Error('RUT o PIN incorrecto');
 }
 
 function verificarAcceso(correo) {

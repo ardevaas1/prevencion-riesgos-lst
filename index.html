@@ -96,20 +96,9 @@
     <div class="entry-logo-wrap"><img src="logo-white.png" alt="LST" class="login-logo"></div>
     <div class="login-title">Prevención de Riesgos</div>
     <div class="login-sub">Constructora LST</div>
-
-    <div id="login-google">
-      <button class="login-btn" id="login-btn" onclick="signIn()">Iniciar sesión con Google</button>
-      <div class="login-spinner hidden" id="login-spinner"><div class="login-spinner-ring"></div></div>
-      <div class="login-hint" id="login-hint">Usa tu cuenta corporativa autorizada</div>
-      <div class="login-rutpin-toggle"><a href="#" onclick="mostrarLoginRutPin();return false;">¿Eres subcontratista? Ingresa con tu RUT</a></div>
-    </div>
-
-    <form id="login-rutpin" class="hidden" onsubmit="onLoginRutPin(event)">
-      <input name="rut" type="text" class="login-rutpin-input" placeholder="RUT" required autocomplete="username">
-      <input name="pin" type="password" class="login-rutpin-input" placeholder="PIN" required autocomplete="current-password" inputmode="numeric">
-      <button class="login-btn" type="submit">Ingresar</button>
-      <div class="login-rutpin-toggle"><a href="#" onclick="ocultarLoginRutPin();return false;">‹ Volver</a></div>
-    </form>
+    <button class="login-btn" id="login-btn" onclick="signIn()">Iniciar sesión con Google</button>
+    <div class="login-spinner hidden" id="login-spinner"><div class="login-spinner-ring"></div></div>
+    <div class="login-hint" id="login-hint">Usa tu cuenta corporativa autorizada</div>
   </div>
 </div>
 
