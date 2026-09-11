@@ -20,9 +20,7 @@
 // 2. Crea un archivo nuevo (ícono "+" al lado de "Archivos") y pega este
 //    código completo ahí.
 // 3. Reemplaza RAIZ_DRIVE_ID más abajo por el mismo ID que tienes en
-//    config.js → DRIVE_ROOT_FOLDER. Opcional: completa también APP_URL con
-//    la URL pública de la app, para que el correo de bienvenida a un
-//    contacto nuevo (ver notificarContacto) incluya el link directo.
+//    config.js → DRIVE_ROOT_FOLDER.
 // 4. Arriba a la derecha, botón "Implementar" → "Nueva implementación".
 //    - Tipo: "Aplicación web".
 //    - Ejecutar como: "Yo" (tu cuenta).
@@ -50,11 +48,6 @@
 // ============================================================
 
 const RAIZ_DRIVE_ID = 'PON_AQUI_EL_MISMO_ID_DE_config.js_DRIVE_ROOT_FOLDER';
-// URL pública donde está publicada la app (ej: "https://tuusuario.github.io")
-// — se usa solo para armar el link del correo de bienvenida (ver
-// notificarContacto). Si la dejas vacía, el correo se manda igual, solo que
-// sin el link directo.
-const APP_URL = '';
 
 function doPost(e) {
   let body;
@@ -62,15 +55,6 @@ function doPost(e) {
   catch (err) { return respuesta({ error: 'Cuerpo de la petición inválido' }); }
 
   const accion = body.accion;
-
-  // Login con RUT (ver "Login de subcontratista" más abajo) — a diferencia
-  // de todo lo demás, todavía no hay un correo (es justo lo que este
-  // llamado va a averiguar), así que se resuelve antes de exigirlo.
-  if (accion === 'loginRut') {
-    try { return respuesta(loginRut(body.rut)); }
-    catch (err) { return respuesta({ error: String(err.message || err) }); }
-  }
-
   const correo = (body.correo || '').toString().trim().toLowerCase();
   if (!correo) return respuesta({ error: 'Falta el correo' });
 
@@ -79,7 +63,6 @@ function doPost(e) {
     if (accion === 'listarDocumentos') return respuesta(listarDocumentos(correo, body.empresa));
     if (accion === 'listarTrabajadores') return respuesta(listarTrabajadores(correo, body.empresa));
     if (accion === 'subirDocumento') return respuesta(subirDocumento(correo, body));
-    if (accion === 'notificarContacto') return respuesta(notificarContacto(body.correoDestino, body.empresa));
     return respuesta({ error: 'Acción desconocida: ' + accion });
   } catch (err) {
     return respuesta({ error: String(err.message || err) });
@@ -107,83 +90,6 @@ function buscarUsuarioSubcontratista(correo) {
     }
   }
   return null;
-}
-
-// "12.345.678-9" / "12345678-9" / "123456789" → "12345678-9" (sin puntos,
-// con guion, dígito verificador en mayúscula) — para poder comparar RUTs
-// escritos de cualquier forma.
-function normalizarRut(rut) {
-  const limpio = (rut || '').toString().replace(/[.\s]/g, '').toUpperCase();
-  if (limpio.indexOf('-') !== -1) return limpio;
-  if (limpio.length < 2) return limpio;
-  return limpio.slice(0, -1) + '-' + limpio.slice(-1);
-}
-
-// Login de subcontratista con RUT (columna E de USUARIOS) — una
-// alternativa al correo de Google para cuentas subcontratistas: ver
-// "Login de subcontratista" en app.js. Devuelve el correo asociado a esa
-// fila para que, de ahí en más, la sesión funcione exactamente igual que
-// si hubiera entrado con ese correo (mismo verificarAcceso/listarDocumentos/
-// etc., sin tocar nada de esa parte).
-//
-// Ojo: el RUT no es un dato secreto (mucha gente lo conoce o lo puede
-// pedir), así que esto identifica a la cuenta pero no la autentica de
-// verdad — a propósito, para no complicar el acceso con una contraseña. Es
-// aceptable para ver/subir documentación de obra; no lo uses para nada más
-// sensible.
-function loginRut(rut) {
-  const rutNorm = normalizarRut(rut);
-  if (!rutNorm) throw new Error('Falta el RUT');
-  const datos = hojaUsuarios().getDataRange().getValues();
-  for (let i = 1; i < datos.length; i++) {
-    const fila = datos[i];
-    const filaRol = (fila[1] || '').toString().trim().toLowerCase();
-    if (filaRol !== 'subcontratista') continue;
-    const filaRut = normalizarRut(fila[4]);
-    if (!filaRut || filaRut !== rutNorm) continue;
-    return {
-      correo: (fila[0] || '').toString().trim().toLowerCase(),
-      empresa: (fila[3] || '').toString(),
-      nombre: (fila[2] || '').toString(),
-    };
-  }
-  Utilities.sleep(600);
-  throw new Error('RUT no encontrado');
-}
-
-// Correo de bienvenida cuando el admin agrega un contacto nuevo (ver
-// guardarSubcontratista/onAgregarCorreoSubcontratista en app.js). Solo
-// manda si ese correo+empresa ya están realmente en USUARIOS — así este
-// endpoint no sirve para mandar correo a cualquier dirección arbitraria.
-function notificarContacto(correoDestino, empresa) {
-  const correo = (correoDestino || '').toString().trim().toLowerCase();
-  if (!correo || !empresa) throw new Error('Falta el correo o la empresa');
-  const datos = hojaUsuarios().getDataRange().getValues();
-  let filaEncontrada = null;
-  for (let i = 1; i < datos.length; i++) {
-    const fila = datos[i];
-    if ((fila[0] || '').toString().trim().toLowerCase() === correo &&
-        (fila[1] || '').toString().trim().toLowerCase() === 'subcontratista' &&
-        (fila[3] || '').toString() === empresa) {
-      filaEncontrada = fila;
-      break;
-    }
-  }
-  if (!filaEncontrada) throw new Error('Ese correo no está registrado para esa empresa');
-  const rut = (filaEncontrada[4] || '').toString().trim();
-
-  const comoEntrar = rut
-    ? 'En la pantalla de inicio, elige la opción "¿Eres subcontratista? Ingresa con tu RUT" y escribe: ' + rut + '\n\n'
-    : 'Puedes entrar con tu cuenta de Google (' + correo + '), usando el botón "Iniciar sesión con Google".\n\n';
-  const asunto = 'Ahora tienes acceso a la app de Prevención de Riesgos — ' + empresa;
-  const cuerpo = 'Hola,\n\n' +
-    'Te agregamos como contacto autorizado de "' + empresa + '" en la app de Prevención de Riesgos de Constructora LST.\n\n' +
-    (APP_URL ? 'Puedes entrar a la app aquí: ' + APP_URL + '\n\n' : '') +
-    comoEntrar +
-    'Ahí vas a poder ver y subir la documentación pendiente de tu empresa.\n\n' +
-    'Saludos,\nConstructora LST';
-  MailApp.sendEmail(correo, asunto, cuerpo);
-  return { enviado: true };
 }
 
 function verificarAcceso(correo) {
