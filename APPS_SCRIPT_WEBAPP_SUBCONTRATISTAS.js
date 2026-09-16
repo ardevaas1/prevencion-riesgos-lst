@@ -49,7 +49,7 @@
 // token de Google Identity Services).
 // ============================================================
 
-const RAIZ_DRIVE_ID = 'PON_AQUI_EL_MISMO_ID_DE_config.js_DRIVE_ROOT_FOLDER';
+const RAIZ_DRIVE_ID = '1evnqIfGtNCO_hQq9rwgBWMZgk647zMIe'; // mismo ID que DRIVE_ROOT_FOLDER en config.js
 // URL pública donde está publicada la app (ej: "https://tuusuario.github.io")
 // — se usa solo para armar el link del correo de bienvenida (ver
 // notificarContacto). Si la dejas vacía, el correo se manda igual, solo que
