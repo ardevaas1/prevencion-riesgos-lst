@@ -1425,15 +1425,29 @@ function horaActual() { return new Date().toTimeString().slice(0,5); }
 function formatearRutInput(el) {
   let limpio = el.value.replace(/[^0-9kK]/g, '').toUpperCase();
   if (limpio.length > 9) limpio = limpio.slice(0, 9);
-  if (limpio.length <= 1) { el.value = limpio; return; }
-  const cuerpo = limpio.slice(0, -1);
-  const dv = limpio.slice(-1);
-  let cuerpoFormateado = '';
-  for (let i = 0; i < cuerpo.length; i++) {
-    if (i > 0 && (cuerpo.length - i) % 3 === 0) cuerpoFormateado += '.';
-    cuerpoFormateado += cuerpo[i];
+  let formateado;
+  if (limpio.length <= 1) {
+    formateado = limpio;
+  } else {
+    const cuerpo = limpio.slice(0, -1);
+    const dv = limpio.slice(-1);
+    let cuerpoFormateado = '';
+    for (let i = 0; i < cuerpo.length; i++) {
+      if (i > 0 && (cuerpo.length - i) % 3 === 0) cuerpoFormateado += '.';
+      cuerpoFormateado += cuerpo[i];
+    }
+    formateado = cuerpoFormateado + '-' + dv;
   }
-  el.value = cuerpoFormateado + '-' + dv;
+  // En celulares (sobre todo Android con predicción de texto activa),
+  // reescribir el value en CADA tecleo pisa el estado interno del teclado
+  // y hace que letras se salten, se dupliquen o el cursor salte al medio
+  // del texto — quedaba "ilegible" mientras se escribía. Esto evita tocar
+  // el campo si el valor no cambia realmente, y mantiene el cursor al
+  // final cuando la persona estaba escribiendo ahí (el caso normal).
+  if (el.value === formateado) return;
+  const cursorAlFinal = el.selectionEnd === el.value.length;
+  el.value = formateado;
+  if (cursorAlFinal) el.setSelectionRange(formateado.length, formateado.length);
 }
 
 // Edad y antigüedad calculadas al vuelo a partir de los datos estáticos del
