@@ -849,6 +849,17 @@ a.action-btn { text-decoration: none; }
 }
 .upload-label.selected .upload-label-text::before { content: '✓ '; }
 
+/* Arrastrar y soltar (ver app.js) — solo en escritorio, mismo quiebre que
+   el resto de la UI de escritorio. En mobile el label se ve igual que
+   siempre, sin el aviso ni el resaltado de "sobre la zona de destino". */
+@media (min-width: 900px) {
+  .upload-label:not(.selected)::after { content: ' — o arrástralo aquí'; opacity: .65; font-weight: 500; }
+  .upload-label.dragover {
+    border-style: solid; background: var(--accent-soft);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+}
+
 /* ── Doc upload cards ── */
 .doc-upload-card {
   background: #f8f9fa; border: 1px solid var(--line);
