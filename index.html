@@ -815,17 +815,20 @@
   </div>
 </div>
 
-<!-- ===== PANEL: Charla en curso — esperando firmas de asistentes ===== -->
-<div class="panel hidden" id="panel-charla-en-curso">
-  <div class="panel-bar"><div class="pnl-back" onclick="closePanel('panel-charla-en-curso')">‹ Volver</div><div class="pnl-title">Esperando firmas</div><div></div></div>
+<!-- ===== PANEL: Documento en curso — esperando firmas de trabajadores.
+     Genérico: lo usan Charlas, HCR, Entrega de EPP, etc. (ver
+     TIPOS_DOCUMENTO_PENDIENTE / FINALIZADORES_DOCUMENTO_PENDIENTE en
+     app.js) ===== -->
+<div class="panel hidden" id="panel-documento-en-curso">
+  <div class="panel-bar"><div class="pnl-back" onclick="closePanel('panel-documento-en-curso')">‹ Volver</div><div class="pnl-title" id="documento-en-curso-tipo">Esperando firmas</div><div></div></div>
   <div class="panel-body">
-    <div class="ficha-hero-name" style="font-size:19px;" id="charla-en-curso-titulo"></div>
-    <div class="card-sub" id="charla-en-curso-sub" style="margin-bottom:6px;"></div>
-    <div class="badge-row" style="margin-bottom:14px;"><span class="badge amber" id="charla-en-curso-progreso"></span></div>
-    <p class="card-sub" style="margin-bottom:14px;">Cada asistente puede entrar desde su celular con su RUT y firmar por su cuenta. Para quien no tenga cómo, usa "Firmar aquí" para firmar desde este dispositivo.</p>
-    <button class="action-btn" type="button" onclick="actualizarProgresoCharla()">↻ Actualizar</button>
-    <div id="charla-en-curso-lista" style="margin-top:10px;"></div>
-    <button class="btn-add hidden" type="button" id="btn-finalizar-charla-en-curso" onclick="finalizarCharlaEnCurso(charlaEnCursoAbiertaId)" style="margin-top:14px;">Finalizar y generar documento</button>
+    <div class="ficha-hero-name" style="font-size:19px;" id="documento-en-curso-titulo"></div>
+    <div class="card-sub" id="documento-en-curso-sub" style="margin-bottom:6px;"></div>
+    <div class="badge-row" style="margin-bottom:14px;"><span class="badge amber" id="documento-en-curso-progreso"></span></div>
+    <p class="card-sub" style="margin-bottom:14px;">Cada trabajador puede entrar desde su celular con su RUT y firmar por su cuenta. Para quien no tenga cómo, usa "Firmar aquí" para firmar desde este dispositivo.</p>
+    <button class="action-btn" type="button" onclick="actualizarProgresoDocumento()">↻ Actualizar</button>
+    <div id="documento-en-curso-lista" style="margin-top:10px;"></div>
+    <button class="btn-add hidden" type="button" id="btn-finalizar-documento-en-curso" onclick="finalizarDocumentoEnCurso(documentoEnCursoAbiertoId)" style="margin-top:14px;">Finalizar y generar documento</button>
   </div>
 </div>
 

@@ -1468,7 +1468,7 @@ let allIncidentes = [];
 let allProcedimientos = [];
 let allEpp = [];
 let allCharlas = [];
-let allCharlasPendientes = [];
+let allDocumentosPendientes = [];
 let allInvestigaciones = [];
 let allHcr = [];
 let allDiat = [];
@@ -1575,14 +1575,14 @@ async function cargarTodo(silencioso) {
       return;
     }
 
-    const [trab, insp, inc, proc, epp, charlas, charlasPend, invest, hcr, diat, subs, docs, prog, miperLev, miperMat, miperRiesgos, miperDocs, miperProg, capDs44] = await fetchSheetsBatch([
+    const [trab, insp, inc, proc, epp, charlas, docsPend, invest, hcr, diat, subs, docs, prog, miperLev, miperMat, miperRiesgos, miperDocs, miperProg, capDs44] = await fetchSheetsBatch([
       `'${CONFIG.SHEET_TRABAJADORES}'!A2:AC2000`,
       `'${CONFIG.SHEET_INSPECCIONES}'!A2:M2000`,
       `'${CONFIG.SHEET_INCIDENTES}'!A2:V2000`,
       `'${CONFIG.SHEET_PROCEDIMIENTOS}'!A2:I2000`,
       `'${CONFIG.SHEET_EPP}'!A2:J2000`,
       `'${CONFIG.SHEET_CHARLAS}'!A2:N2000`,
-      `'${CONFIG.SHEET_CHARLAS_PENDIENTES}'!A2:J4000`,
+      `'${CONFIG.SHEET_DOCUMENTOS_PENDIENTES}'!A2:K4000`,
       `'${CONFIG.SHEET_INVESTIGACIONES}'!A2:AT2000`,
       `'${CONFIG.SHEET_HCR}'!A2:V2000`,
       `'${CONFIG.SHEET_DIAT}'!A2:BA2000`,
@@ -1604,7 +1604,7 @@ async function cargarTodo(silencioso) {
     allProcedimientos = proc.map((r,i) => rowToProcedimiento(r,i));
     allEpp = epp.map((r,i) => rowToEpp(r,i));
     allCharlas = charlas.map((r,i) => rowToCharla(r,i));
-    allCharlasPendientes = charlasPend.map((r,i) => rowToCharlaPendiente(r,i));
+    allDocumentosPendientes = docsPend.map((r,i) => rowToDocumentoPendiente(r,i));
     allInvestigaciones = invest.map((r,i) => ({ fila: i+2, n: r[0]||'' }));
     allHcr = hcr.map((r,i) => ({ fila: i+2, n: r[0]||'', fecha: r[1]||'', obra: r[2]||'', actividad: r[3]||'', area: r[4]||'', supervisor: r[15]||'', pdf: r[19]||'' }));
     allDiat = diat.map((r,i) => ({ fila: i+2, n: r[0]||'' }));
@@ -1808,14 +1808,16 @@ function rowToCharla(r, i) {
     fechaRealizada: r[5]||'', responsable: r[6]||'', relator: r[7]||'', obra: r[8]||'', hora: r[9]||'',
     riesgos: r[10]||'', medidas: r[11]||'', asistentes: r[12]||'', pdf: r[13]||'' };
 }
-// Una fila = un asistente de una Charla "en curso" esperando su firma (ver
-// CHARLAS_PENDIENTES en APPS_SCRIPT_INIT.js) — varias filas comparten el
-// mismo idCharla. firmado/firma quedan vacíos hasta que esa persona firma,
-// desde su celular (RUT) o desde el dispositivo del admin (ver
-// abrirFirmarAquiPendiente en app.js).
-function rowToCharlaPendiente(r, i) {
-  return { fila: i+2, idCharla: (r[0]||'').toString(), obra: r[1]||'', fecha: r[2]||'', tema: r[3]||'',
-    relator: r[4]||'', rut: r[5]||'', nombre: r[6]||'', firmado: r[7]||'', firma: r[8]||'', fechaFirma: r[9]||'' };
+// Una fila = un trabajador de un documento "en curso" esperando su firma
+// (ver DOCUMENTOS_PENDIENTES en APPS_SCRIPT_INIT.js) — genérico para
+// Charlas, HCR, Entrega de EPP, etc. (ver tipo). Varias filas comparten el
+// mismo idDocumento. firmado/firma quedan vacíos hasta que esa persona
+// firma, desde su celular (RUT) o desde el dispositivo de quien está a
+// cargo (ver abrirFirmarAquiPendiente en app.js).
+function rowToDocumentoPendiente(r, i) {
+  return { fila: i+2, idDocumento: (r[0]||'').toString(), tipo: r[1]||'', obra: r[2]||'', fecha: r[3]||'',
+    titulo: r[4]||'', responsable: r[5]||'', rut: r[6]||'', nombre: r[7]||'',
+    firmado: r[8]||'', firma: r[9]||'', fechaFirma: r[10]||'' };
 }
 // ============================================================
 // DASHBOARD
@@ -2681,21 +2683,164 @@ function mostrarAlertaCharla(tema, area) {
 }
 
 // ============================================================
-// MÓDULO: CHARLAS (alertas generadas por inspecciones)
+// DOCUMENTOS PENDIENTES DE FIRMA REMOTA (RUT) — genérico
+// ------------------------------------------------------------
+// Mecanismo compartido por varios módulos (Charlas, HCR, Entrega de EPP...)
+// para que un grupo de trabajadores pueda firmar un documento desde su
+// propio celular con su RUT, en paralelo, mientras quien está a cargo
+// (relator/supervisor/quien entrega) puede firmar en el momento por quien
+// no tenga cómo (ver abrirFirmarAquiPendiente). Cada módulo arma sus
+// propios datos (checklist de trabajadores, firmas de jefatura, campos
+// específicos) y llama a crearDocumentoEnCurso; cuando ya firmaron todos,
+// se llama al finalizador de ese tipo (ver FINALIZADORES_DOCUMENTO_PENDIENTE)
+// para generar el documento final — cada módulo registra el suyo.
 // ============================================================
-// Agrupa CHARLAS_PENDIENTES por idCharla — cada grupo es una charla "en
-// curso" esperando que terminen de firmar sus asistentes (ver
-// guardarDatosCharla/abrirProgresoCharla).
-function charlasEnCursoAgrupadas() {
+const TIPOS_DOCUMENTO_PENDIENTE = { charla: 'Charla', hcr: 'HCR', epp: 'Entrega de EPP' };
+const FINALIZADORES_DOCUMENTO_PENDIENTE = {};
+
+function documentosEnCursoAgrupados(tipo) {
   const obraSel = obraFiltroActivo();
   const porId = {};
-  allCharlasPendientes.forEach(p => {
+  allDocumentosPendientes.filter(p => p.tipo === tipo).forEach(p => {
     if (obraSel && p.obra !== obraSel) return;
-    if (!porId[p.idCharla]) porId[p.idCharla] = { idCharla: p.idCharla, obra: p.obra, fecha: p.fecha, tema: p.tema, relator: p.relator, asistentes: [] };
-    porId[p.idCharla].asistentes.push(p);
+    if (!porId[p.idDocumento]) porId[p.idDocumento] = { idDocumento: p.idDocumento, tipo, obra: p.obra, fecha: p.fecha, titulo: p.titulo, responsable: p.responsable, asistentes: [] };
+    porId[p.idDocumento].asistentes.push(p);
   });
   return Object.values(porId);
 }
+// Tarjeta "esperando firmas", reutilizable en la lista de cada módulo.
+function tarjetaDocumentoEnCursoHTML(g, icono, claseIcono) {
+  const firmados = g.asistentes.filter(a => (a.firmado||'').toLowerCase().startsWith('s')).length;
+  return `
+    <div class="card card--default" onclick="abrirProgresoDocumento('${esc(g.idDocumento)}')">
+      <div class="card-icon ${claseIcono}">${ic(icono,18)}</div>
+      <div class="card-body">
+        <div class="card-title">${esc(g.titulo)}</div>
+        <div class="card-sub">${esc(g.obra)} · ${esc(g.fecha)}${g.responsable ? ' · ' + esc(g.responsable) : ''}</div>
+        <div class="badge-row"><span class="badge amber">Esperando firmas — ${firmados} de ${g.asistentes.length}</span></div>
+      </div>
+      <div class="card-arrow">›</div>
+    </div>`;
+}
+// Crea el documento "en curso": una fila por trabajador en
+// DOCUMENTOS_PENDIENTES (todas con el mismo idDocumento) y guarda
+// `datosParaFinalizar` completo en localStorage — ese objeto tiene todos
+// los campos que necesita el finalizador de ese tipo (firmas de jefatura,
+// checklists, etc.), que no caben en la hoja genérica; hace falta este
+// mismo dispositivo/navegador para poder finalizar el documento después.
+// Devuelve el idDocumento creado.
+async function crearDocumentoEnCurso(tipo, { obra, fecha, titulo, responsable, asistentes, datosParaFinalizar }) {
+  const idDocumento = tipo + Date.now();
+  localStorage.setItem('documentoEnCurso_' + idDocumento, JSON.stringify(datosParaFinalizar));
+  await appendSheet(`'${CONFIG.SHEET_DOCUMENTOS_PENDIENTES}'!A:K`, asistentes.map(a => [
+    idDocumento, tipo, obra, fecha, titulo, responsable || '', a.rut, a.nombre, '', '', '',
+  ]));
+  return idDocumento;
+}
+
+let documentoEnCursoAbiertoId = null;
+let asistenteFirmandoAqui = null;
+function abrirProgresoDocumento(idDocumento) {
+  documentoEnCursoAbiertoId = idDocumento;
+  renderProgresoDocumento();
+  openPanel('panel-documento-en-curso');
+}
+function renderProgresoDocumento() {
+  const filas = allDocumentosPendientes.filter(p => p.idDocumento === documentoEnCursoAbiertoId);
+  if (filas.length === 0) { closePanel('panel-documento-en-curso'); return; }
+  const firmados = filas.filter(f => (f.firmado||'').toLowerCase().startsWith('s'));
+  document.getElementById('documento-en-curso-tipo').textContent = TIPOS_DOCUMENTO_PENDIENTE[filas[0].tipo] || '';
+  document.getElementById('documento-en-curso-titulo').textContent = filas[0].titulo;
+  document.getElementById('documento-en-curso-sub').textContent = `${filas[0].obra} · ${filas[0].fecha}${filas[0].responsable ? ' · ' + filas[0].responsable : ''}`;
+  document.getElementById('documento-en-curso-progreso').textContent = `${firmados.length} de ${filas.length} firmaron`;
+  document.getElementById('documento-en-curso-lista').innerHTML = filas.map(f => {
+    const firmado = (f.firmado||'').toLowerCase().startsWith('s');
+    return `<div class="chk-row">
+      <span>${esc(f.nombre)} <span style="color:#888;">· ${esc(f.rut)}</span></span>
+      ${firmado
+        ? '<span class="badge green">Firmado</span>'
+        : `<span style="display:flex;gap:6px;">
+             <button class="action-btn" type="button" onclick="abrirFirmarAquiPendiente('${esc(f.rut)}')">Firmar aquí</button>
+             <button class="action-btn" type="button" onclick="quitarTrabajadorPendiente('${esc(f.rut)}')">Quitar</button>
+           </span>`}
+    </div>`;
+  }).join('');
+  document.getElementById('btn-finalizar-documento-en-curso').classList.toggle('hidden', firmados.length !== filas.length);
+}
+async function actualizarProgresoDocumento() {
+  await cargarTodo(true);
+  renderProgresoDocumento();
+}
+// Alguien no queda como firmante después de todo (se anotó por error, se
+// fue antes, etc.) — se saca de la lista en vez de dejarlo pendiente para
+// siempre, porque el documento no se puede finalizar hasta que TODOS los
+// que quedan hayan firmado.
+async function quitarTrabajadorPendiente(rut) {
+  if (bloquearSiViewer()) return;
+  if (!confirm('¿Quitar a esta persona? No va a quedar registrada como firmante.')) return;
+  const f = allDocumentosPendientes.find(p => p.idDocumento === documentoEnCursoAbiertoId && p.rut === rut);
+  if (!f) return;
+  try {
+    await eliminarFilaSheet(CONFIG.SHEET_DOCUMENTOS_PENDIENTES, f.fila);
+    await actualizarProgresoDocumento();
+  } catch (e) { toast(e.message, 'error'); }
+}
+// Firma en el momento, desde el dispositivo de quien está a cargo — para
+// quien no tenga cómo entrar a la app desde su propio celular con su RUT.
+function abrirFirmarAquiPendiente(rut) {
+  const f = allDocumentosPendientes.find(p => p.idDocumento === documentoEnCursoAbiertoId && p.rut === rut);
+  if (!f) return;
+  asistenteFirmandoAqui = f;
+  document.getElementById('firmar-asistente-progreso').textContent = 'Firma en este dispositivo';
+  document.getElementById('firmar-asistente-nombre').textContent = f.nombre;
+  document.getElementById('firmar-asistente-rut').textContent = f.rut;
+  openPanel('panel-firmar-asistente');
+  setTimeout(() => initFirmaPad('firma-canvas-asistente'), 80);
+}
+async function confirmarFirmaAsistente() {
+  if (bloquearSiViewer()) return;
+  if (firmaEstaVacia('firma-canvas-asistente')) { toast('Falta la firma', 'error'); return; }
+  try {
+    await ensureToken();
+    const firma = firmaCanvasADataURL('firma-canvas-asistente');
+    const url = `${SHEETS_BASE}/${CONFIG.SHEET_ID}/values/${encodeURIComponent(`'${CONFIG.SHEET_DOCUMENTOS_PENDIENTES}'!I${asistenteFirmandoAqui.fila}:K${asistenteFirmandoAqui.fila}`)}?valueInputOption=USER_ENTERED`;
+    await fetch(url, { method:'PUT', headers:{ 'Content-Type':'application/json', ...authHeader() },
+      body: JSON.stringify({ values: [['Sí', firma, new Date().toLocaleString('es-CL')]] }) });
+    closePanel('panel-firmar-asistente');
+    toast('Firma registrada ✓', 'ok');
+    await actualizarProgresoDocumento();
+  } catch (e) { toast(e.message, 'error'); }
+}
+function cancelarFirmaAsistentes() { closePanel('panel-firmar-asistente'); }
+// Ya firmaron todos: llama al finalizador registrado para ese tipo (ver
+// FINALIZADORES_DOCUMENTO_PENDIENTE) y limpia el registro "en curso".
+async function finalizarDocumentoEnCurso(idDocumento) {
+  const filas = allDocumentosPendientes.filter(p => p.idDocumento === idDocumento);
+  if (filas.length === 0) return;
+  const finalizador = FINALIZADORES_DOCUMENTO_PENDIENTE[filas[0].tipo];
+  if (!finalizador) { toast('No se sabe cómo finalizar este tipo de documento', 'error'); return; }
+  let meta = null;
+  try { meta = JSON.parse(localStorage.getItem('documentoEnCurso_' + idDocumento) || 'null'); } catch (e) {}
+  if (!meta) {
+    toast('Este documento se inició desde otro dispositivo — ábrelo ahí para finalizarlo.', 'error');
+    return;
+  }
+  await finalizador(meta, filas);
+  await limpiarDocumentoPendiente(idDocumento, filas);
+  closePanel('panel-documento-en-curso');
+  await cargarTodo(true);
+}
+async function limpiarDocumentoPendiente(idDocumento, filas) {
+  try {
+    const filasOrdenadas = filas.map(f => f.fila).sort((a, b) => b - a);
+    for (const fila of filasOrdenadas) { await eliminarFilaSheet(CONFIG.SHEET_DOCUMENTOS_PENDIENTES, fila); }
+    localStorage.removeItem('documentoEnCurso_' + idDocumento);
+  } catch (e) { console.warn('No se pudo limpiar DOCUMENTOS_PENDIENTES', e); }
+}
+
+// ============================================================
+// MÓDULO: CHARLAS (alertas generadas por inspecciones)
+// ============================================================
 function renderCharlas() {
   const obraSel = obraFiltroActivo();
   let items = obraSel ? allCharlas.filter(c => c.obra === obraSel) : [...allCharlas];
@@ -2704,20 +2849,8 @@ function renderCharlas() {
   // él mismo dicta (Relator).
   if (miSupervisorPerfil) items = items.filter(c => c.relator === miSupervisorPerfil.nombre);
   items = items.reverse();
-  const enCurso = charlasEnCursoAgrupadas();
-  const htmlEnCurso = enCurso.map(g => {
-    const firmados = g.asistentes.filter(a => (a.firmado||'').toLowerCase().startsWith('s')).length;
-    return `
-    <div class="card card--default" onclick="abrirProgresoCharla('${esc(g.idCharla)}')">
-      <div class="card-icon modulo-icon--flota">${ic('charlas',18)}</div>
-      <div class="card-body">
-        <div class="card-title">${esc(g.tema)}</div>
-        <div class="card-sub">${esc(g.obra)} · ${esc(g.fecha)} · Relator: ${esc(g.relator)}</div>
-        <div class="badge-row"><span class="badge amber">Esperando firmas — ${firmados} de ${g.asistentes.length}</span></div>
-      </div>
-      <div class="card-arrow">›</div>
-    </div>`;
-  }).join('');
+  const enCurso = documentosEnCursoAgrupados('charla');
+  const htmlEnCurso = enCurso.map(g => tarjetaDocumentoEnCursoHTML(g, 'charlas', 'modulo-icon--flota')).join('');
   if (items.length === 0 && enCurso.length === 0) { setListHTML('charlas', emptyState('Sin charlas registradas', 'Toca "+" para registrar una charla')); return; }
   setListHTML('charlas', htmlEnCurso + items.map(c => `
     <div class="card card--default">
@@ -2829,14 +2962,14 @@ function abrirNuevaCharla() {
   setTimeout(() => initFirmaPad('firma-canvas-relator'), 80);
 }
 // A partir de acá la firma de los asistentes ya NO se pide una por una en
-// el momento (ver charlasEnCursoAgrupadas más arriba): se crea la charla
-// "en curso" con la lista de asistentes elegida, y cada quien la firma en
-// paralelo desde su propio celular con su RUT (ver login-rut-screen /
-// mostrarPendientesRut) — o, para quien no tenga cómo, el admin la firma
-// por ella/él desde este mismo dispositivo (ver abrirFirmarAquiPendiente
-// más abajo). guardarDatosCharla solo junta los datos y crea esa charla en
-// curso; quien la finaliza (genera el PDF) es finalizarCharlaEnCurso,
-// cuando ya firmaron todos.
+// el momento (ver documentosEnCursoAgrupados más arriba): se crea la
+// charla "en curso" con la lista de asistentes elegida, y cada quien la
+// firma en paralelo desde su propio celular con su RUT (ver
+// login-rut-screen / mostrarPendientesRut) — o, para quien no tenga cómo,
+// el admin la firma por ella/él desde este mismo dispositivo (ver
+// abrirFirmarAquiPendiente). guardarDatosCharla solo junta los datos y
+// crea el documento en curso (tipo "charla"); quien la finaliza (genera el
+// PDF) es FINALIZADORES_DOCUMENTO_PENDIENTE.charla, registrado más abajo.
 async function guardarDatosCharla(ev) {
   if (bloquearSiViewer()) return;
   ev.preventDefault();
@@ -2873,125 +3006,23 @@ async function guardarDatosCharla(ev) {
   }
 
   try {
-    const idCharla = 'ch' + Date.now();
-    charlaEnProceso.idCharla = idCharla;
-    // Se guarda completo en localStorage (no solo el id) porque
-    // CHARLAS_PENDIENTES no tiene espacio para todos estos campos (firma
-    // del relator, riesgos, medidas, etc.) — hace falta este mismo
-    // dispositivo/navegador para poder finalizar esta charla después (ver
-    // finalizarCharlaEnCurso). Si se abre desde otro dispositivo se puede
-    // seguir juntando firmas, pero para finalizarla hay que volver a este.
-    localStorage.setItem('charlaEnCurso_' + idCharla, JSON.stringify(charlaEnProceso));
-    await appendSheet(`'${CONFIG.SHEET_CHARLAS_PENDIENTES}'!A:J`, asistentes.map(a => [
-      idCharla, charlaEnProceso.obra, charlaEnProceso.fecha, charlaEnProceso.tema, charlaEnProceso.relator,
-      a.rut, a.nombre, '', '', '',
-    ]));
+    const idDocumento = await crearDocumentoEnCurso('charla', {
+      obra: charlaEnProceso.obra, fecha: charlaEnProceso.fecha, titulo: charlaEnProceso.tema,
+      responsable: charlaEnProceso.relator, asistentes, datosParaFinalizar: charlaEnProceso,
+    });
     toast('Charla creada — esperando firmas ✓', 'ok');
     await cargarTodo(true);
-    charlaEnCursoAbiertaId = idCharla;
-    renderProgresoCharla();
-    setTimeout(() => openPanel('panel-charla-en-curso'), 260);
+    documentoEnCursoAbiertoId = idDocumento;
+    renderProgresoDocumento();
+    setTimeout(() => openPanel('panel-documento-en-curso'), 260);
   } catch (e) { toast(e.message, 'error'); }
 }
-
-// ── Progreso de una charla en curso ─────────────────────────────────────
-let charlaEnCursoAbiertaId = null;
-let asistenteFirmandoAqui = null;
-function abrirProgresoCharla(idCharla) {
-  charlaEnCursoAbiertaId = idCharla;
-  renderProgresoCharla();
-  openPanel('panel-charla-en-curso');
-}
-function renderProgresoCharla() {
-  const filas = allCharlasPendientes.filter(p => p.idCharla === charlaEnCursoAbiertaId);
-  if (filas.length === 0) { closePanel('panel-charla-en-curso'); return; }
-  const firmados = filas.filter(f => (f.firmado||'').toLowerCase().startsWith('s'));
-  document.getElementById('charla-en-curso-titulo').textContent = filas[0].tema;
-  document.getElementById('charla-en-curso-sub').textContent = `${filas[0].obra} · ${filas[0].fecha} · Relator: ${filas[0].relator}`;
-  document.getElementById('charla-en-curso-progreso').textContent = `${firmados.length} de ${filas.length} firmaron`;
-  document.getElementById('charla-en-curso-lista').innerHTML = filas.map(f => {
-    const firmado = (f.firmado||'').toLowerCase().startsWith('s');
-    return `<div class="chk-row">
-      <span>${esc(f.nombre)} <span style="color:#888;">· ${esc(f.rut)}</span></span>
-      ${firmado
-        ? '<span class="badge green">Firmado</span>'
-        : `<span style="display:flex;gap:6px;">
-             <button class="action-btn" type="button" onclick="abrirFirmarAquiPendiente('${esc(f.rut)}')">Firmar aquí</button>
-             <button class="action-btn" type="button" onclick="quitarAsistentePendiente('${esc(f.rut)}')">Quitar</button>
-           </span>`}
-    </div>`;
-  }).join('');
-  document.getElementById('btn-finalizar-charla-en-curso').classList.toggle('hidden', firmados.length !== filas.length);
-}
-async function actualizarProgresoCharla() {
-  await cargarTodo(true);
-  renderProgresoCharla();
-}
-// Alguien no queda como asistente después de todo (se anotó por error, se
-// fue antes de la charla, etc.) — se saca de la lista en vez de dejarlo
-// pendiente para siempre, porque la charla no se puede finalizar hasta que
-// TODOS los que quedan hayan firmado.
-async function quitarAsistentePendiente(rut) {
-  if (bloquearSiViewer()) return;
-  if (!confirm('¿Quitar a esta persona de la charla? No va a quedar registrada como asistente.')) return;
-  const f = allCharlasPendientes.find(p => p.idCharla === charlaEnCursoAbiertaId && p.rut === rut);
-  if (!f) return;
-  try {
-    await eliminarFilaSheet(CONFIG.SHEET_CHARLAS_PENDIENTES, f.fila);
-    await actualizarProgresoCharla();
-  } catch (e) { toast(e.message, 'error'); }
-}
-// Firma en el momento, desde el dispositivo de quien dicta la charla — para
-// quien no tenga cómo entrar a la app desde su propio celular con su RUT.
-function abrirFirmarAquiPendiente(rut) {
-  const f = allCharlasPendientes.find(p => p.idCharla === charlaEnCursoAbiertaId && p.rut === rut);
-  if (!f) return;
-  asistenteFirmandoAqui = f;
-  document.getElementById('firmar-asistente-progreso').textContent = 'Firma en este dispositivo';
-  document.getElementById('firmar-asistente-nombre').textContent = f.nombre;
-  document.getElementById('firmar-asistente-rut').textContent = f.rut;
-  openPanel('panel-firmar-asistente');
-  setTimeout(() => initFirmaPad('firma-canvas-asistente'), 80);
-}
-async function confirmarFirmaAsistente() {
-  if (bloquearSiViewer()) return;
-  if (firmaEstaVacia('firma-canvas-asistente')) { toast('Falta la firma', 'error'); return; }
-  try {
-    await ensureToken();
-    const firma = firmaCanvasADataURL('firma-canvas-asistente');
-    const url = `${SHEETS_BASE}/${CONFIG.SHEET_ID}/values/${encodeURIComponent(`'${CONFIG.SHEET_CHARLAS_PENDIENTES}'!H${asistenteFirmandoAqui.fila}:J${asistenteFirmandoAqui.fila}`)}?valueInputOption=USER_ENTERED`;
-    await fetch(url, { method:'PUT', headers:{ 'Content-Type':'application/json', ...authHeader() },
-      body: JSON.stringify({ values: [['Sí', firma, new Date().toLocaleString('es-CL')]] }) });
-    closePanel('panel-firmar-asistente');
-    toast('Firma registrada ✓', 'ok');
-    await actualizarProgresoCharla();
-  } catch (e) { toast(e.message, 'error'); }
-}
-function cancelarFirmaAsistentes() { closePanel('panel-firmar-asistente'); }
-// Ya firmaron todos los asistentes: genera el PDF/Excel con esas firmas
-// (mismo generador de siempre — finalizarCharla no cambió) y limpia las
-// filas de CHARLAS_PENDIENTES de esta charla.
-async function finalizarCharlaEnCurso(idCharla) {
-  let meta = null;
-  try { meta = JSON.parse(localStorage.getItem('charlaEnCurso_' + idCharla) || 'null'); } catch (e) {}
-  if (!meta) {
-    toast('Esta charla se inició desde otro dispositivo — ábrela ahí para finalizarla.', 'error');
-    return;
-  }
-  const filas = allCharlasPendientes.filter(p => p.idCharla === idCharla);
+// Genera el PDF/Excel con esas firmas (mismo generador de siempre —
+// finalizarCharla no cambió) cuando ya firmaron todos los asistentes.
+FINALIZADORES_DOCUMENTO_PENDIENTE.charla = async function (meta, filas) {
   charlaEnProceso = { ...meta, asistentes: filas.map(f => ({ nombre: f.nombre, rut: f.rut, firma: f.firma })) };
   await finalizarCharla();
-  await limpiarCharlaPendiente(idCharla, filas);
-  closePanel('panel-charla-en-curso');
-  await cargarTodo(true);
-}
-async function limpiarCharlaPendiente(idCharla, filas) {
-  try {
-    const filasOrdenadas = filas.map(f => f.fila).sort((a, b) => b - a);
-    for (const fila of filasOrdenadas) { await eliminarFilaSheet(CONFIG.SHEET_CHARLAS_PENDIENTES, fila); }
-    localStorage.removeItem('charlaEnCurso_' + idCharla);
-  } catch (e) { console.warn('No se pudo limpiar CHARLAS_PENDIENTES', e); }
-}
+};
 async function finalizarCharla() {
   try {
     toast('Generando documento...');
