@@ -1142,6 +1142,40 @@ document.addEventListener('reset', (ev) => {
   });
 });
 
+// ── Arrastrar y soltar archivos — solo en la versión de escritorio ─────
+// A pedido explícito: en mobile no aplica (no existe "arrastrar un archivo
+// desde el sistema operativo" en un teléfono), así que esto se limita al
+// mismo quiebre de ancho que el resto de la UI de escritorio (ver
+// @media (min-width: 900px) en style.css). Un solo listener delegado en
+// document cubre los 8 botones "Subir archivo"/"Tomar o subir foto" de la
+// app, presentes o futuros, sin tener que engancharlo uno por uno.
+function esVistaEscritorio() { return window.matchMedia('(min-width: 900px)').matches; }
+['dragenter', 'dragover', 'dragleave', 'drop'].forEach(evento => {
+  document.addEventListener(evento, (ev) => {
+    const label = ev.target.closest && ev.target.closest('.upload-label');
+    if (!label || !esVistaEscritorio()) return;
+    ev.preventDefault();
+    if (evento === 'dragenter' || evento === 'dragover') {
+      label.classList.add('dragover');
+    } else if (evento === 'dragleave') {
+      // dragleave también dispara al pasar por encima de los hijos del
+      // label (el ícono, el texto) — sin este chequeo, el resaltado
+      // parpadeaba en vez de mantenerse fijo mientras se arrastra encima.
+      if (!label.contains(ev.relatedTarget)) label.classList.remove('dragover');
+    } else if (evento === 'drop') {
+      label.classList.remove('dragover');
+      const input = label.querySelector('input[type="file"]');
+      const archivo = ev.dataTransfer.files[0];
+      if (input && archivo) {
+        const dt = new DataTransfer();
+        dt.items.add(archivo);
+        input.files = dt.files;
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    }
+  });
+});
+
 // ── Evita guardados duplicados por doble clic ───────────────────────────
 // A pedido explícito: algunos usuarios aprietan varias veces "Guardar"
 // porque no ven feedback inmediato, y terminan creando filas duplicadas.
