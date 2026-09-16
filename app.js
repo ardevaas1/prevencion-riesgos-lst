@@ -4521,8 +4521,10 @@ function renderHcr() {
   let items = obraSel ? allHcr.filter(h => h.obra === obraSel) : [...allHcr];
   if (miSupervisorPerfil) items = items.filter(h => h.supervisor === miSupervisorPerfil.nombre);
   items = items.reverse();
-  if (items.length === 0) { setListHTML('hcr', emptyState('Sin HCR registradas', 'Toca "+" para registrar una')); return; }
-  setListHTML('hcr', items.map(h => `
+  const enCurso = documentosEnCursoAgrupados('hcr');
+  const htmlEnCurso = enCurso.map(g => tarjetaDocumentoEnCursoHTML(g, 'hcr', 'modulo-icon--and')).join('');
+  if (items.length === 0 && enCurso.length === 0) { setListHTML('hcr', emptyState('Sin HCR registradas', 'Toca "+" para registrar una')); return; }
+  setListHTML('hcr', htmlEnCurso + items.map(h => `
     <div class="card card--default">
       <div class="card-icon modulo-icon--and">${ic('hcr',18)}</div>
       <div class="card-body">
@@ -4573,14 +4575,19 @@ function seleccionadosHcrRadio(prefix, n) {
   }
   return out;
 }
-function guardarDatosHcr(ev) {
+// A partir de acá la firma de los trabajadores ya NO se pide una por una
+// en el momento — se crea el HCR "en curso" (mismo mecanismo genérico que
+// Charlas, ver crearDocumentoEnCurso) y cada quien lo firma desde su
+// celular con su RUT o, si no tiene cómo, desde este dispositivo (ver
+// abrirFirmarAquiPendiente).
+async function guardarDatosHcr(ev) {
   if (bloquearSiViewer()) return;
   ev.preventDefault();
   const f = ev.target;
   if (firmaEstaVacia('firma-canvas-hcr-supervisor')) { toast('Falta la firma del supervisor', 'error'); return; }
   const asistentes = [...document.querySelectorAll('#checklist-trabajadores-hcr .chk-row')]
     .filter(row => row.querySelector('.chk-row-input').checked)
-    .map(row => ({ nombre: row.dataset.nombre, rut: row.dataset.rut, firma: null }));
+    .map(row => ({ nombre: row.dataset.nombre, rut: row.dataset.rut }));
 
   hcrEnProceso = {
     obra: valorObra(f.obra, 'input-hcr-obra-otra'),
@@ -4598,41 +4605,31 @@ function guardarDatosHcr(ev) {
     firmaSupervisor: firmaCanvasADataURL('firma-canvas-hcr-supervisor'),
     firmaJefeObra: firmaCanvasADataURL('firma-canvas-hcr-jefeobra'),
     firmaPrevencion: firmaCanvasADataURL('firma-canvas-hcr-prevencion'),
-    asistentes, asistenteActual: 0,
   };
   closePanel('panel-form-hcr');
-  if (asistentes.length === 0) { finalizarHcr(); return; }
-  setTimeout(() => { openPanel('panel-firmar-trabajador-hcr'); mostrarFirmaTrabajadorHcrActual(); }, 260);
-}
-function mostrarFirmaTrabajadorHcrActual() {
-  const { asistentes, asistenteActual } = hcrEnProceso;
-  const a = asistentes[asistenteActual];
-  document.getElementById('firmar-trabajador-hcr-progreso').textContent = `Firma ${asistenteActual + 1} de ${asistentes.length}`;
-  document.getElementById('firmar-trabajador-hcr-nombre').textContent = a.nombre;
-  document.getElementById('firmar-trabajador-hcr-rut').textContent = a.rut;
-  setTimeout(() => initFirmaPad('firma-canvas-trabajador-hcr'), 80);
-}
-function avanzarTrabajadorHcr() {
-  hcrEnProceso.asistenteActual++;
-  if (hcrEnProceso.asistenteActual >= hcrEnProceso.asistentes.length) {
-    closePanel('panel-firmar-trabajador-hcr');
+
+  if (asistentes.length === 0) {
+    hcrEnProceso.asistentes = [];
     setTimeout(finalizarHcr, 260);
-  } else {
-    mostrarFirmaTrabajadorHcrActual();
+    return;
   }
+
+  try {
+    const idDocumento = await crearDocumentoEnCurso('hcr', {
+      obra: hcrEnProceso.obra, fecha: hcrEnProceso.fecha, titulo: hcrEnProceso.actividad,
+      responsable: hcrEnProceso.supervisorNombre, asistentes, datosParaFinalizar: hcrEnProceso,
+    });
+    toast('HCR creada — esperando firmas ✓', 'ok');
+    await cargarTodo(true);
+    documentoEnCursoAbiertoId = idDocumento;
+    renderProgresoDocumento();
+    setTimeout(() => openPanel('panel-documento-en-curso'), 260);
+  } catch (e) { toast(e.message, 'error'); }
 }
-function confirmarFirmaTrabajadorHcr() {
-  if (bloquearSiViewer()) return;
-  if (firmaEstaVacia('firma-canvas-trabajador-hcr')) { toast('Falta la firma', 'error'); return; }
-  hcrEnProceso.asistentes[hcrEnProceso.asistenteActual].firma = firmaCanvasADataURL('firma-canvas-trabajador-hcr');
-  avanzarTrabajadorHcr();
-}
-function saltarFirmaTrabajadorHcr() { avanzarTrabajadorHcr(); }
-function cancelarFirmaTrabajadoresHcr() {
-  closePanel('panel-firmar-trabajador-hcr');
-  hcrEnProceso = null;
-  toast('Registro de HCR cancelado', 'error');
-}
+FINALIZADORES_DOCUMENTO_PENDIENTE.hcr = async function (meta, filas) {
+  hcrEnProceso = { ...meta, asistentes: filas.map(f => ({ nombre: f.nombre, rut: f.rut, firma: f.firma })) };
+  await finalizarHcr();
+};
 async function finalizarHcr() {
   try {
     toast('Generando documento...');
