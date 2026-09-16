@@ -99,6 +99,51 @@
     <button class="login-btn" id="login-btn" onclick="signIn()">Iniciar sesión con Google</button>
     <div class="login-spinner hidden" id="login-spinner"><div class="login-spinner-ring"></div></div>
     <div class="login-hint" id="login-hint">Usa tu cuenta corporativa autorizada</div>
+    <div class="login-rut-link" onclick="abrirLoginRut()">¿Eres trabajador? Entra solo con tu RUT ›</div>
+  </div>
+</div>
+
+<!-- LOGIN POR RUT: para trabajadores sin cuenta de Google — ver
+     abrirLoginRut/onLoginRut en app.js. Entrada mínima (sin contraseña):
+     solo sirve para ver y firmar las Charlas pendientes propias, nada más
+     de la app (ver #rut-pendientes-screen). -->
+<div id="rut-login-screen" class="login-screen hidden">
+  <div class="login-box">
+    <div class="entry-logo-wrap"><img src="logo-white.png" alt="LST" class="login-logo"></div>
+    <div class="login-title">Ingresa con tu RUT</div>
+    <div class="login-sub">Solo para ver y firmar tus charlas pendientes</div>
+    <form id="form-login-rut" onsubmit="onLoginRut(event)">
+      <input type="text" name="rut" class="login-rut-input" placeholder="12.345.678-9" required autocomplete="off">
+      <button class="login-btn" type="submit">Continuar</button>
+    </form>
+    <div class="login-spinner hidden" id="login-rut-spinner"><div class="login-spinner-ring"></div></div>
+    <div class="login-hint" id="login-rut-hint">&nbsp;</div>
+    <div class="login-rut-link" onclick="cerrarLoginRut()">‹ Volver</div>
+  </div>
+</div>
+
+<!-- MIS DOCUMENTOS PENDIENTES: única pantalla que ve un trabajador logueado
+     por RUT — sin sidebar, sin módulos, sin acceso al resto de la app. -->
+<div id="rut-pendientes-screen" class="login-screen hidden">
+  <div class="login-box login-box--ancho">
+    <div class="entry-logo-wrap"><img src="logo-white.png" alt="LST" class="login-logo"></div>
+    <div class="login-title" id="rut-pendientes-saludo">Hola</div>
+    <div class="login-sub">Tus documentos pendientes por firmar</div>
+    <div id="rut-pendientes-lista" class="rut-pendientes-lista"></div>
+    <div class="login-rut-link" onclick="cerrarSesionRut()">Salir</div>
+  </div>
+</div>
+
+<!-- PANEL: firmar una charla pendiente (trabajador logueado por RUT) -->
+<div class="panel hidden" id="panel-firmar-pendiente">
+  <div class="panel-bar"><div class="pnl-back" onclick="closePanel('panel-firmar-pendiente')">‹ Volver</div><div class="pnl-title">Firmar charla</div><div></div></div>
+  <div class="panel-body">
+    <div class="card-sub" id="firmar-pendiente-info" style="margin-bottom:14px;"></div>
+    <div class="form-group"><label>Tu firma</label>
+      <div class="firma-box"><canvas id="firma-canvas-pendiente"></canvas></div>
+      <div class="firma-actions"><button type="button" onclick="limpiarFirmaId('firma-canvas-pendiente')">Borrar firma</button></div>
+    </div>
+    <button class="btn-add" type="button" onclick="onFirmarPendiente()">Firmar y enviar</button>
   </div>
 </div>
 
@@ -766,6 +811,20 @@
   </div>
 </div>
 
+<!-- ===== PANEL: Charla en curso — esperando firmas de asistentes ===== -->
+<div class="panel hidden" id="panel-charla-en-curso">
+  <div class="panel-bar"><div class="pnl-back" onclick="closePanel('panel-charla-en-curso')">‹ Volver</div><div class="pnl-title">Esperando firmas</div><div></div></div>
+  <div class="panel-body">
+    <div class="ficha-hero-name" style="font-size:19px;" id="charla-en-curso-titulo"></div>
+    <div class="card-sub" id="charla-en-curso-sub" style="margin-bottom:6px;"></div>
+    <div class="badge-row" style="margin-bottom:14px;"><span class="badge amber" id="charla-en-curso-progreso"></span></div>
+    <p class="card-sub" style="margin-bottom:14px;">Cada asistente puede entrar desde su celular con su RUT y firmar por su cuenta. Para quien no tenga cómo, usa "Firmar aquí" para firmar desde este dispositivo.</p>
+    <button class="action-btn" type="button" onclick="actualizarProgresoCharla()">↻ Actualizar</button>
+    <div id="charla-en-curso-lista" style="margin-top:10px;"></div>
+    <button class="btn-add hidden" type="button" id="btn-finalizar-charla-en-curso" onclick="finalizarCharlaEnCurso(charlaEnCursoAbiertaId)" style="margin-top:14px;">Finalizar y generar documento</button>
+  </div>
+</div>
+
 <!-- ===== PANEL: Firma de asistentes (uno por uno) ===== -->
 <div class="panel hidden" id="panel-firmar-asistente">
   <div class="panel-bar"><div class="pnl-back" onclick="cancelarFirmaAsistentes()">‹ Cancelar</div><div class="pnl-title" id="firmar-asistente-progreso">Firma</div><div></div></div>
@@ -776,8 +835,7 @@
     </div>
     <div class="firma-box"><canvas id="firma-canvas-asistente"></canvas></div>
     <div class="firma-actions"><button type="button" onclick="limpiarFirma()">Borrar firma</button></div>
-    <button class="btn-add" type="button" onclick="confirmarFirmaAsistente()">Firmar y continuar</button>
-    <button class="action-btn" type="button" onclick="saltarFirmaAsistente()" style="margin-top:8px;">Saltar (sin firma)</button>
+    <button class="btn-add" type="button" onclick="confirmarFirmaAsistente()">Firmar</button>
   </div>
 </div>
 
