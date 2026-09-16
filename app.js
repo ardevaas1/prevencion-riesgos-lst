@@ -5237,7 +5237,6 @@ function renderEpp() {
   const eppObra = obraSel
     ? allEpp.filter(e => { const t = allTrabajadores.find(x => x.nombre === e.trabajador); return t && t.obra === obraSel; })
     : allEpp;
-  if (eppObra.length === 0) { setListHTML('epp', emptyState('Sin entregas registradas', '')); return; }
   // Cada fila ya es una entrega completa (todos sus ítems juntos); se
   // mantiene el agrupado por fecha+trabajador+firma solo por compatibilidad
   // con filas antiguas, de antes de combinar los ítems en una sola fila.
@@ -5249,7 +5248,10 @@ function renderEpp() {
     grupos[key].items.push(...itemsDeFilaEpp(e).map(x => `${x.item} (${x.cantidad})`));
   });
   const items = orden.map(k => grupos[k]).reverse();
-  setListHTML('epp', items.map(g => `
+  const enCurso = documentosEnCursoAgrupados('epp');
+  const htmlEnCurso = enCurso.map(g => tarjetaDocumentoEnCursoHTML(g, 'epp', 'modulo-icon--mov')).join('');
+  if (eppObra.length === 0 && enCurso.length === 0) { setListHTML('epp', emptyState('Sin entregas registradas', '')); return; }
+  setListHTML('epp', htmlEnCurso + items.map(g => `
     <div class="card card--default">
       <div class="card-icon modulo-icon--mov">${ic('epp',18)}</div>
       <div class="card-body">
@@ -5353,7 +5355,6 @@ function abrirFormEpp(prefillItem, prefillTrabajador) {
     }
   }
   openPanel('panel-form-epp');
-  setTimeout(() => initFirmaPad('firma-canvas'), 80);
 }
 // canvasId: distintos paneles con firma (EPP, relator de charla, asistente de
 // charla) tienen su propio <canvas> — solo uno está visible a la vez, así que
@@ -5471,11 +5472,15 @@ function firmaConIdentificacion(canvasOriginal, nombre, rut, fecha, hora) {
   }
   return c;
 }
+// El trabajador ya no firma ahí mismo en el formulario: se crea la entrega
+// "en curso" (un solo trabajador pendiente, mismo mecanismo genérico que
+// Charlas/HCR) y firma después desde su celular con su RUT, o desde este
+// dispositivo con "Firmar aquí" si no tiene cómo — ver finalizarEpp más
+// abajo, que hace lo que antes hacía guardarEpp después de la firma.
 async function guardarEpp(ev) {
   if (bloquearSiViewer()) return;
   ev.preventDefault();
   const f = ev.target;
-  const canvas = document.getElementById('firma-canvas');
   try {
     if (!f.trabajador.value) { toast('Selecciona un trabajador', 'error'); return; }
     const itemsEpp = recolectarItemsEpp();
@@ -5488,8 +5493,42 @@ async function guardarEpp(ev) {
     const fechaRegistro = ahora.toLocaleString('es-CL');
     const horaRegistro = ahora.toTimeString().slice(0, 5);
     const responsable = userEmail || f.responsable.value;
+    const itemsTexto = itemsEpp.map(it => `${it.item} (${it.cantidad})`).join('; ');
 
-    const canvasFirma = firmaConIdentificacion(recortarFirma(canvas), trabNombre, trabRut, f.fecha.value, horaRegistro);
+    closePanel('panel-form-epp');
+    const idDocumento = await crearDocumentoEnCurso('epp', {
+      obra: trab ? trab.obra : '', fecha: f.fecha.value, titulo: itemsTexto,
+      responsable, asistentes: [{ nombre: trabNombre, rut: trabRut }],
+      datosParaFinalizar: {
+        obra: trab ? trab.obra : '', fecha: f.fecha.value, trabNombre, trabRut,
+        cargo: trab ? trab.cargo : '', itemsEpp, responsable, fechaRegistro, horaRegistro,
+      },
+    });
+    toast('Entrega creada — esperando firma ✓', 'ok');
+    await cargarTodo(true);
+    documentoEnCursoAbiertoId = idDocumento;
+    renderProgresoDocumento();
+    setTimeout(() => openPanel('panel-documento-en-curso'), 260);
+  } catch (e) { toast(e.message, 'error'); }
+}
+function cargarImagenDesdeDataUrl(dataUrl) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = dataUrl;
+  });
+}
+FINALIZADORES_DOCUMENTO_PENDIENTE.epp = async function (meta, filas) {
+  await finalizarEpp({ ...meta, firma: filas[0].firma });
+};
+async function finalizarEpp(datos) {
+  try {
+    toast('Generando documento...');
+    const { obra, fecha, trabNombre, trabRut, cargo, itemsEpp, responsable, fechaRegistro, horaRegistro, firma } = datos;
+
+    const imgFirma = await cargarImagenDesdeDataUrl(firma);
+    const canvasFirma = firmaConIdentificacion(imgFirma, trabNombre, trabRut, fecha, horaRegistro);
     const blob = await new Promise(res => canvasFirma.toBlob(res, 'image/png'));
     let firmaLink = '';
     if (blob) {
@@ -5505,8 +5544,8 @@ async function guardarEpp(ev) {
     let documentoLink = '';
     try {
       const pdfBlob = await generarPdfEntregaEpp({
-        obra: trab ? trab.obra : '', trabajador: trabNombre, rut: trabRut, cargo: trab ? trab.cargo : '',
-        fecha: f.fecha.value, items: itemsEpp, firmaDataUrl: firmaCanvasADataURL('firma-canvas'),
+        obra, trabajador: trabNombre, rut: trabRut, cargo,
+        fecha, items: itemsEpp, firmaDataUrl: firma,
         responsable, fechaHoraRegistro: fechaRegistro,
       });
       const upDoc = await uploadFileTrabajador(pdfBlob, trabNombre, 'entrega_epp', 'pdf');
@@ -5520,12 +5559,10 @@ async function guardarEpp(ev) {
     // como varias entregas duplicadas.
     const itemsTexto = itemsEpp.map(it => `${it.item} (${it.cantidad})`).join('; ');
     await appendSheet(`'${CONFIG.SHEET_EPP}'!A:J`, [[
-      allEpp.length + 1, f.fecha.value, trabNombre, trabRut, itemsTexto, '',
+      allEpp.length + 1, fecha, trabNombre, trabRut, itemsTexto, '',
       firmaLink, responsable, fechaRegistro, documentoLink
     ]]);
     toast(`Entrega registrada ✓ (${itemsEpp.length} ítem${itemsEpp.length>1?'s':''})`, 'ok');
-    closePanel('panel-form-epp');
-    cargarTodo(true);
   } catch (e) { toast(e.message, 'error'); }
 }
 
