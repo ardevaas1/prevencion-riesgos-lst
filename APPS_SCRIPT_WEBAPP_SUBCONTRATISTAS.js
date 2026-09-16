@@ -69,7 +69,7 @@ function doPost(e) {
     // antes de exigir "correo" porque estas no lo usan para nada.
     if (accion === 'verificarTrabajadorPorRut') return respuesta(verificarTrabajadorPorRut(body.rut));
     if (accion === 'misPendientesFirmar') return respuesta(misPendientesFirmar(body.rut));
-    if (accion === 'firmarPendiente') return respuesta(firmarPendiente(body.idCharla, body.rut, body.firmaBase64));
+    if (accion === 'firmarPendiente') return respuesta(firmarPendiente(body.idDocumento, body.rut, body.firmaBase64));
 
     const correo = (body.correo || '').toString().trim().toLowerCase();
     if (!correo) return respuesta({ error: 'Falta el correo' });
