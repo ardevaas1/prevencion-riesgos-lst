@@ -166,18 +166,20 @@ function inicializarPlanilla() {
     'Fecha Sincronico', 'Certificado', 'Fecha Registro', 'Registrado Por'
   ]);
 
-  // Charlas "en curso" esperando firma de sus asistentes — una fila por
-  // asistente asignado a una charla que todavía no termina de firmarse.
-  // IdCharla agrupa las filas de una misma charla (todas comparten el mismo
-  // valor). Se usa para que cada trabajador pueda firmar desde su propio
-  // celular con su RUT (ver APPS_SCRIPT_WEBAPP_SUBCONTRATISTAS.js →
-  // misPendientesFirmar/firmarPendiente) sin necesitar login de Google; una
-  // vez que todos los asistentes de un IdCharla quedan con Firmado="Sí", la
-  // app genera el PDF final y mueve el registro a la hoja CHARLAS de
-  // siempre, y estas filas se pueden borrar.
-  crearHoja(ss, 'CHARLAS_PENDIENTES', [
-    'IdCharla', 'Obra', 'Fecha', 'Tema', 'Relator', 'Rut Trabajador', 'Nombre Trabajador',
-    'Firmado', 'Firma', 'Fecha Firma'
+  // Documentos "en curso" esperando firma de trabajadores — una fila por
+  // trabajador asignado a un documento (Charla, HCR, Entrega de EPP, etc.)
+  // que todavía no termina de firmarse. Genérica para varios módulos: Tipo
+  // dice cuál ("charla", "hcr", "epp", ...) e IdDocumento agrupa las filas
+  // de un mismo documento (todas comparten el mismo valor). Se usa para que
+  // cada trabajador pueda firmar desde su propio celular con su RUT (ver
+  // APPS_SCRIPT_WEBAPP_SUBCONTRATISTAS.js → misPendientesFirmar/
+  // firmarPendiente) sin necesitar login de Google; una vez que todos los
+  // trabajadores de un IdDocumento quedan con Firmado="Sí", la app genera
+  // el documento final y lo guarda en la hoja de siempre de ese módulo, y
+  // estas filas se pueden borrar.
+  crearHoja(ss, 'DOCUMENTOS_PENDIENTES', [
+    'IdDocumento', 'Tipo', 'Obra', 'Fecha', 'Titulo', 'Responsable',
+    'Rut Trabajador', 'Nombre Trabajador', 'Firmado', 'Firma', 'Fecha Firma'
   ]);
 
   // Elimina la hoja "Hoja 1" / "Sheet1" default si quedó vacía
