@@ -1420,6 +1420,21 @@ function escalarFirmaCasillero(img, w, h) {
 function fmtFecha(d) { return new Date(d).toLocaleDateString('es-CL'); }
 function hoyISO() { return new Date().toISOString().slice(0,10); }
 function horaActual() { return new Date().toTimeString().slice(0,5); }
+// Formatea un RUT mientras se escribe: "123456789" → "12.345.678-9" — se
+// usa en cualquier <input> de RUT con oninput="formatearRutInput(this)".
+function formatearRutInput(el) {
+  let limpio = el.value.replace(/[^0-9kK]/g, '').toUpperCase();
+  if (limpio.length > 9) limpio = limpio.slice(0, 9);
+  if (limpio.length <= 1) { el.value = limpio; return; }
+  const cuerpo = limpio.slice(0, -1);
+  const dv = limpio.slice(-1);
+  let cuerpoFormateado = '';
+  for (let i = 0; i < cuerpo.length; i++) {
+    if (i > 0 && (cuerpo.length - i) % 3 === 0) cuerpoFormateado += '.';
+    cuerpoFormateado += cuerpo[i];
+  }
+  el.value = cuerpoFormateado + '-' + dv;
+}
 
 // Edad y antigüedad calculadas al vuelo a partir de los datos estáticos del
 // trabajador (fecha de nacimiento / fecha de ingreso), en vez de pedirlas de
