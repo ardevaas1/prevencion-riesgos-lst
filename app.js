@@ -610,11 +610,25 @@ function signOut() {
 // que entra así SOLO puede ver y firmar sus Charlas pendientes (ver
 // APPS_SCRIPT_WEBAPP_SUBCONTRATISTAS.js → misPendientesFirmar/
 // firmarPendiente) — nunca ve el dashboard, los módulos ni nada del resto
-// de la app. La "sesión" es solo el RUT guardado en sessionStorage (se
-// pierde al cerrar la pestaña/navegador) — a propósito no hay contraseña
-// ni token, es el mismo nivel de fricción mínimo que pidió el cliente.
+// de la app. A propósito no hay contraseña ni token, es el mismo nivel de
+// fricción mínimo que pidió el cliente.
+//
+// Dos formas de llegar acá:
+// 1. Desde la pantalla de login (nadie inició sesión con Google todavía) —
+//    ver abrirLoginRut(). La sesión se guarda en sessionStorage (se pierde
+//    al cerrar la pestaña) para que un refresh de la página no la borre.
+// 2. Desde DENTRO de la app, con una cuenta de Google ya conectada (ver
+//    abrirLoginRutDesdeApp) — pasa cuando alguien le presta su celular/
+//    tablet a un trabajador para que firme sin tener que cerrar sesión de
+//    Google. Acá NO se toca sessionStorage (rutFlowDesdeApp=true): la
+//    sesión de RUT queda solo en memoria y, al salir, se vuelve a mostrar
+//    la app tal cual estaba, en vez de ir a la pantalla de login.
 const RUT_SESION_KEY = 'rutTrabajadorSesion';
 const RUT_SESION_NOMBRE_KEY = 'rutTrabajadorNombre';
+let rutSesionActual = null;
+let rutNombreActual = null;
+let rutFlowDesdeApp = false;
+let estadoAppAntesDeRut = null;
 let rutPendientesActuales = [];
 let pendienteFirmandoId = null;
 
@@ -622,8 +636,39 @@ function abrirLoginRut() {
   document.getElementById('login-screen').classList.add('hidden');
   document.getElementById('rut-login-screen').classList.remove('hidden');
 }
+// Botón "Un trabajador va a firmar (RUT)" dentro de la app ya logueada
+// (menú de Sesión, junto a "Cerrar sesión") — oculta la app sin cerrar la
+// sesión de Google, y la deja lista para restaurar tal cual al terminar.
+function abrirLoginRutDesdeApp() {
+  rutFlowDesdeApp = true;
+  estadoAppAntesDeRut = {
+    main: !document.getElementById('main').classList.contains('hidden'),
+    desktopHome: !document.getElementById('desktop-home').classList.contains('dt-oculto'),
+    desktopSidebar: !document.getElementById('desktop-sidebar').classList.contains('dt-oculto'),
+    desktopMain: !document.getElementById('desktop-main').classList.contains('dt-oculto'),
+    subcontratistaRoot: !document.getElementById('subcontratista-root').classList.contains('hidden'),
+  };
+  document.getElementById('main').classList.add('hidden');
+  document.getElementById('desktop-home').classList.add('dt-oculto');
+  document.getElementById('desktop-sidebar').classList.add('dt-oculto');
+  document.getElementById('desktop-main').classList.add('dt-oculto');
+  document.getElementById('subcontratista-root').classList.add('hidden');
+  document.getElementById('rut-login-screen').classList.remove('hidden');
+}
+function restaurarAppTrasRut() {
+  if (estadoAppAntesDeRut) {
+    document.getElementById('main').classList.toggle('hidden', !estadoAppAntesDeRut.main);
+    document.getElementById('desktop-home').classList.toggle('dt-oculto', !estadoAppAntesDeRut.desktopHome);
+    document.getElementById('desktop-sidebar').classList.toggle('dt-oculto', !estadoAppAntesDeRut.desktopSidebar);
+    document.getElementById('desktop-main').classList.toggle('dt-oculto', !estadoAppAntesDeRut.desktopMain);
+    document.getElementById('subcontratista-root').classList.toggle('hidden', !estadoAppAntesDeRut.subcontratistaRoot);
+  }
+  rutFlowDesdeApp = false;
+  estadoAppAntesDeRut = null;
+}
 function cerrarLoginRut() {
   document.getElementById('rut-login-screen').classList.add('hidden');
+  if (rutFlowDesdeApp) { restaurarAppTrasRut(); return; }
   document.getElementById('login-screen').classList.remove('hidden');
 }
 async function onLoginRut(ev) {
@@ -640,8 +685,12 @@ async function onLoginRut(ev) {
       hint.textContent = 'No encontramos ese RUT. Revisa que esté bien escrito.';
       return;
     }
-    sessionStorage.setItem(RUT_SESION_KEY, rut);
-    sessionStorage.setItem(RUT_SESION_NOMBRE_KEY, resp.nombre);
+    rutSesionActual = rut;
+    rutNombreActual = resp.nombre;
+    if (!rutFlowDesdeApp) {
+      sessionStorage.setItem(RUT_SESION_KEY, rut);
+      sessionStorage.setItem(RUT_SESION_NOMBRE_KEY, resp.nombre);
+    }
     await mostrarPendientesRut();
   } catch (e) {
     hint.textContent = e.message;
@@ -653,20 +702,22 @@ async function onLoginRut(ev) {
 function cerrarSesionRut() {
   sessionStorage.removeItem(RUT_SESION_KEY);
   sessionStorage.removeItem(RUT_SESION_NOMBRE_KEY);
+  rutSesionActual = null;
+  rutNombreActual = null;
   document.getElementById('rut-pendientes-screen').classList.add('hidden');
+  if (rutFlowDesdeApp) { restaurarAppTrasRut(); return; }
   document.getElementById('login-screen').classList.remove('hidden');
 }
 async function mostrarPendientesRut() {
-  const rut = sessionStorage.getItem(RUT_SESION_KEY);
-  const nombre = sessionStorage.getItem(RUT_SESION_NOMBRE_KEY) || '';
   document.getElementById('login-screen').classList.add('hidden');
   document.getElementById('rut-login-screen').classList.add('hidden');
+  const nombre = rutNombreActual || '';
   document.getElementById('rut-pendientes-saludo').textContent = 'Hola, ' + (nombre.split(' ')[0] || nombre);
   document.getElementById('rut-pendientes-screen').classList.remove('hidden');
   await cargarPendientesRut();
 }
 async function cargarPendientesRut() {
-  const rut = sessionStorage.getItem(RUT_SESION_KEY);
+  const rut = rutSesionActual;
   const lista = document.getElementById('rut-pendientes-lista');
   lista.innerHTML = '<div class="rut-pendientes-vacio">Cargando...</div>';
   try {
@@ -697,7 +748,7 @@ function abrirFirmarPendiente(idCharla) {
 }
 async function onFirmarPendiente() {
   if (firmaEstaVacia('firma-canvas-pendiente')) { toast('Falta la firma', 'error'); return; }
-  const rut = sessionStorage.getItem(RUT_SESION_KEY);
+  const rut = rutSesionActual;
   try {
     await llamarWebAppSubcontratista('firmarPendiente', {
       idCharla: pendienteFirmandoId, rut, firmaBase64: firmaCanvasADataURL('firma-canvas-pendiente'),
@@ -7899,8 +7950,17 @@ async function arrancarApp() {
 }
 window.addEventListener('DOMContentLoaded', () => {
   // Sesión de trabajador por RUT (ver mostrarPendientesRut) — no usa Google
-  // para nada, así que va antes y aparte de todo lo demás.
-  if (sessionStorage.getItem(RUT_SESION_KEY)) { mostrarPendientesRut(); return; }
+  // para nada, así que va antes y aparte de todo lo demás. Solo aplica a la
+  // entrada "normal" (sessionStorage): la entrada desde dentro de la app ya
+  // logueada (ver abrirLoginRutDesdeApp) nunca escribe sessionStorage, así
+  // que un refresh de la página no la deja pegada ahí — vuelve al login de
+  // Google normal, como corresponde.
+  if (sessionStorage.getItem(RUT_SESION_KEY)) {
+    rutSesionActual = sessionStorage.getItem(RUT_SESION_KEY);
+    rutNombreActual = sessionStorage.getItem(RUT_SESION_NOMBRE_KEY);
+    mostrarPendientesRut();
+    return;
+  }
 
   initOAuth();
 
