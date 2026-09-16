@@ -62,10 +62,18 @@ function doPost(e) {
   catch (err) { return respuesta({ error: 'Cuerpo de la petición inválido' }); }
 
   const accion = body.accion;
-  const correo = (body.correo || '').toString().trim().toLowerCase();
-  if (!correo) return respuesta({ error: 'Falta el correo' });
 
   try {
+    // Acciones para trabajadores que entran solo con su RUT (sin cuenta de
+    // Google ni fila en USUARIOS) — ver "Firmar Charlas" más abajo. Van
+    // antes de exigir "correo" porque estas no lo usan para nada.
+    if (accion === 'verificarTrabajadorPorRut') return respuesta(verificarTrabajadorPorRut(body.rut));
+    if (accion === 'misPendientesFirmar') return respuesta(misPendientesFirmar(body.rut));
+    if (accion === 'firmarPendiente') return respuesta(firmarPendiente(body.idCharla, body.rut, body.firmaBase64));
+
+    const correo = (body.correo || '').toString().trim().toLowerCase();
+    if (!correo) return respuesta({ error: 'Falta el correo' });
+
     if (accion === 'verificarAcceso') return respuesta(verificarAcceso(correo));
     if (accion === 'listarDocumentos') return respuesta(listarDocumentos(correo, body.empresa));
     if (accion === 'listarTrabajadores') return respuesta(listarTrabajadores(correo, body.empresa));
@@ -219,4 +227,95 @@ function subirDocumento(correo, body) {
   ]);
 
   return { nombre: archivo.getName(), link: link };
+}
+
+// ============================================================
+// FIRMAR CHARLAS — trabajadores que entran solo con su RUT
+// ------------------------------------------------------------
+// Un trabajador no tiene cuenta de Google ni fila en USUARIOS, así que no
+// puede pasar por verificarPertenece como los subcontratistas — acá basta
+// con que el RUT que escribe exista en TRABAJADORES. No es un login
+// realmente seguro (cualquiera que sepa el RUT de alguien podría entrar a
+// firmar por esa persona) pero es el mismo nivel de fricción que pedía el
+// cliente: sin contraseña, solo el RUT, para que sea rápido de usar en el
+// momento de la charla desde el celular de cada uno.
+// ============================================================
+
+function hojaCharlasPendientes() { return SpreadsheetApp.getActiveSpreadsheet().getSheetByName('CHARLAS_PENDIENTES'); }
+
+// Deja el RUT solo con dígitos y el dígito verificador (sin puntos, guión
+// ni espacios) para poder comparar dos RUT escritos de forma distinta.
+function normalizarRut(rut) {
+  return (rut || '').toString().toUpperCase().replace(/[^0-9K]/g, '');
+}
+
+function verificarTrabajadorPorRut(rutEntrada) {
+  const rut = normalizarRut(rutEntrada);
+  if (!rut) throw new Error('Falta el RUT');
+  const datos = hojaTrabajadores().getDataRange().getValues();
+  for (let i = 1; i < datos.length; i++) {
+    const fila = datos[i];
+    if (normalizarRut(fila[2]) === rut) return { encontrado: true, nombre: (fila[1] || '').toString() };
+  }
+  return { encontrado: false };
+}
+
+// Todas las charlas en curso donde este RUT figura como asistente y todavía
+// no firmó — de a una fila por charla (IdCharla), aunque haya más de una
+// fila coincidente no debería pasar (un trabajador aparece una sola vez por
+// charla).
+function misPendientesFirmar(rutEntrada) {
+  const rut = normalizarRut(rutEntrada);
+  if (!rut) throw new Error('Falta el RUT');
+  const datos = hojaCharlasPendientes().getDataRange().getValues();
+  const vistos = {};
+  const pendientes = [];
+  for (let i = 1; i < datos.length; i++) {
+    const fila = datos[i];
+    const firmado = (fila[7] || '').toString().trim().toLowerCase();
+    if (normalizarRut(fila[5]) === rut && firmado !== 'sí' && firmado !== 'si') {
+      const idCharla = (fila[0] || '').toString();
+      if (vistos[idCharla]) continue;
+      vistos[idCharla] = true;
+      pendientes.push({
+        idCharla: idCharla, obra: (fila[1] || '').toString(), fecha: (fila[2] || '').toString(),
+        tema: (fila[3] || '').toString(), relator: (fila[4] || '').toString(),
+      });
+    }
+  }
+  return { pendientes: pendientes };
+}
+
+// Marca esa fila puntual de CHARLAS_PENDIENTES como firmada, guardando la
+// firma tal cual (dataURL "data:image/png;base64,...") en la misma celda —
+// no como archivo aparte en Drive — porque el generador de PDF de la Charla
+// (generarYSubirPdfCharla/generarPdfCharlaSobrePlantilla en app.js) necesita
+// esa firma en ese mismo formato para incrustarla en el documento final,
+// igual que cuando se firma en persona en el dispositivo del admin. Una
+// firma recortada (ver recortarFirma en app.js) pesa unos pocos KB en
+// base64, muy por debajo del límite de 50.000 caracteres por celda de
+// Sheets. Quien llama (la app) es responsable de revisar después si con
+// esta firma ya quedaron todos los asistentes de esa charla completos, para
+// generar el PDF final — este endpoint solo registra UNA firma a la vez.
+function firmarPendiente(idCharla, rutEntrada, firmaBase64) {
+  const rut = normalizarRut(rutEntrada);
+  if (!idCharla || !rut) throw new Error('Falta la charla o el RUT');
+  if (!firmaBase64) throw new Error('Falta la firma');
+
+  const sh = hojaCharlasPendientes();
+  const datos = sh.getDataRange().getValues();
+  let filaEncontrada = -1;
+  for (let i = 1; i < datos.length; i++) {
+    const fila = datos[i];
+    if ((fila[0] || '').toString() === idCharla.toString() && normalizarRut(fila[5]) === rut) {
+      filaEncontrada = i + 1; // fila real en el Sheet (encabezado = fila 1)
+      break;
+    }
+  }
+  if (filaEncontrada === -1) throw new Error('No se encontró una firma pendiente para ese RUT en esa charla');
+  const firmadoActual = (sh.getRange(filaEncontrada, 8).getValue() || '').toString().trim().toLowerCase();
+  if (firmadoActual === 'sí' || firmadoActual === 'si') throw new Error('Esa charla ya estaba firmada');
+
+  sh.getRange(filaEncontrada, 8, 1, 3).setValues([['Sí', firmaBase64.toString(), new Date().toLocaleString('es-CL')]]);
+  return { ok: true };
 }

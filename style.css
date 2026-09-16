@@ -919,6 +919,36 @@ a.action-btn { text-decoration: none; }
 }
 .login-btn:active { transform: scale(0.97); box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
 .login-hint { font-size: 12px; color: #475569; margin-top: 16px; }
+.login-rut-link {
+  font-size: 12.5px; color: #94a3b8; margin-top: 18px; cursor: pointer;
+  text-decoration: underline; text-underline-offset: 2px;
+}
+.login-rut-link:hover { color: #cbd5e1; }
+#form-login-rut { width: 100%; display: flex; flex-direction: column; gap: 12px; }
+.login-rut-input {
+  width: 100%; padding: 13px 14px; border-radius: 10px; box-sizing: border-box;
+  border: 1.5px solid #334155; background: #0f172a; color: #f1f5f9;
+  font-size: 15px; text-align: center; letter-spacing: 0.3px;
+}
+.login-rut-input:focus { outline: none; border-color: var(--accent); }
+.login-box--ancho { max-width: 440px; }
+.rut-pendientes-lista { width: 100%; text-align: left; margin-top: 6px; }
+.rut-pendiente-card {
+  background: #111c30; border: 1px solid #253449; border-radius: 12px;
+  padding: 14px; margin-bottom: 10px;
+}
+.rut-pendiente-tema { font-size: 14.5px; font-weight: 700; color: #f1f5f9; margin-bottom: 3px; }
+.rut-pendiente-sub { font-size: 12.5px; color: #94a3b8; margin-bottom: 10px; }
+.rut-pendiente-btn {
+  background: var(--accent); color: #fff; border: none; border-radius: 8px;
+  padding: 9px 14px; font-size: 13px; font-weight: 600; cursor: pointer; width: 100%;
+}
+.rut-pendientes-vacio { font-size: 13.5px; color: #94a3b8; padding: 20px 0; text-align: center; }
+/* Este panel vive fuera de #main (se usa también sin haber iniciado sesión
+   con Google), así que necesita quedar por encima de las pantallas de
+   login/pendientes (z-index 998) — el resto de los paneles no lo necesita
+   porque #main ya está por debajo de todo eso. */
+#panel-firmar-pendiente { z-index: 999; }
 
 /* ── Selector de Obra activa (pantalla "¿En qué obra estás?") ──
    A propósito NO reutiliza el look oscuro de .login-screen/.splash: esta

@@ -166,6 +166,20 @@ function inicializarPlanilla() {
     'Fecha Sincronico', 'Certificado', 'Fecha Registro', 'Registrado Por'
   ]);
 
+  // Charlas "en curso" esperando firma de sus asistentes — una fila por
+  // asistente asignado a una charla que todavía no termina de firmarse.
+  // IdCharla agrupa las filas de una misma charla (todas comparten el mismo
+  // valor). Se usa para que cada trabajador pueda firmar desde su propio
+  // celular con su RUT (ver APPS_SCRIPT_WEBAPP_SUBCONTRATISTAS.js →
+  // misPendientesFirmar/firmarPendiente) sin necesitar login de Google; una
+  // vez que todos los asistentes de un IdCharla quedan con Firmado="Sí", la
+  // app genera el PDF final y mueve el registro a la hoja CHARLAS de
+  // siempre, y estas filas se pueden borrar.
+  crearHoja(ss, 'CHARLAS_PENDIENTES', [
+    'IdCharla', 'Obra', 'Fecha', 'Tema', 'Relator', 'Rut Trabajador', 'Nombre Trabajador',
+    'Firmado', 'Firma', 'Fecha Firma'
+  ]);
+
   // Elimina la hoja "Hoja 1" / "Sheet1" default si quedó vacía
   const porDefecto = ss.getSheetByName('Hoja 1') || ss.getSheetByName('Sheet1');
   if (porDefecto && porDefecto.getLastRow() === 0 && ss.getSheets().length > 1) {
