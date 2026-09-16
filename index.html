@@ -410,7 +410,7 @@
       <div class="form-group"><label>Supervisor asignado (opcional)</label><select name="supervisorAsignado" id="sel-supervisor-trabajador"><option value="">— Sin asignar —</option></select></div>
       <div class="form-group">
         <label>Foto (opcional)</label>
-        <label class="upload-label" onclick="event.currentTarget.classList.add('selected')"><svg viewBox="0 0 24 24" fill="none" class="inline-ic"><path d="M4 8a1 1 0 0 1 1-1h2l1.2-2h7.6L17 7h2a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.4" stroke="currentColor" stroke-width="1.7"/></svg> Tomar / subir foto<input type="file" name="foto" accept="image/*" capture="environment" style="display:none"></label>
+        <label class="upload-label"><svg viewBox="0 0 24 24" fill="none" class="inline-ic"><path d="M4 8a1 1 0 0 1 1-1h2l1.2-2h7.6L17 7h2a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.4" stroke="currentColor" stroke-width="1.7"/></svg> <span class="upload-label-text">Tomar / subir foto</span><input type="file" name="foto" accept="image/*" capture="environment" style="display:none" onchange="marcarArchivoElegido(this)"></label>
       </div>
       <div class="form-group"><label>Correo (opcional)</label><input type="email" name="correo" placeholder="Para notificaciones automáticas"></div>
       <div class="chk-row">
@@ -496,7 +496,7 @@
       <div class="form-group"><label>Acción correctiva sugerida</label><textarea name="accion"></textarea></div>
       <div class="form-group">
         <label>Foto de registro</label>
-        <label class="upload-label" onclick="event.currentTarget.classList.add('selected')"><svg viewBox="0 0 24 24" fill="none" class="inline-ic"><path d="M4 8a1 1 0 0 1 1-1h2l1.2-2h7.6L17 7h2a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.4" stroke="currentColor" stroke-width="1.7"/></svg> Tomar / subir foto<input type="file" name="foto" accept="image/*" capture="environment" style="display:none"></label>
+        <label class="upload-label"><svg viewBox="0 0 24 24" fill="none" class="inline-ic"><path d="M4 8a1 1 0 0 1 1-1h2l1.2-2h7.6L17 7h2a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.4" stroke="currentColor" stroke-width="1.7"/></svg> <span class="upload-label-text">Tomar / subir foto</span><input type="file" name="foto" accept="image/*" capture="environment" style="display:none" onchange="marcarArchivoElegido(this)"></label>
       </div>
       <button class="btn-add" type="submit">Guardar inspección</button>
     </form>
@@ -557,7 +557,7 @@
       <div class="form-group"><label>Acciones correctivas</label><textarea name="accion"></textarea></div>
       <div class="form-group">
         <label>Foto de registro</label>
-        <label class="upload-label" onclick="event.currentTarget.classList.add('selected')"><svg viewBox="0 0 24 24" fill="none" class="inline-ic"><path d="M4 8a1 1 0 0 1 1-1h2l1.2-2h7.6L17 7h2a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.4" stroke="currentColor" stroke-width="1.7"/></svg> Tomar / subir foto<input type="file" name="foto" accept="image/*" capture="environment" style="display:none"></label>
+        <label class="upload-label"><svg viewBox="0 0 24 24" fill="none" class="inline-ic"><path d="M4 8a1 1 0 0 1 1-1h2l1.2-2h7.6L17 7h2a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.4" stroke="currentColor" stroke-width="1.7"/></svg> <span class="upload-label-text">Tomar / subir foto</span><input type="file" name="foto" accept="image/*" capture="environment" style="display:none" onchange="marcarArchivoElegido(this)"></label>
       </div>
       <button class="btn-add" type="submit">Guardar registro</button>
     </form>
@@ -578,7 +578,7 @@
       <input type="hidden" name="fila">
       <div class="form-group">
         <label>Respaldo del cierre (opcional)</label>
-        <label class="upload-label" onclick="event.currentTarget.classList.add('selected')"><svg viewBox="0 0 24 24" fill="none" class="inline-ic"><path d="M7 3h7l4 4v14H7Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M14 3v4h4" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg> Subir archivo<input type="file" name="respaldo" accept="application/pdf,image/*" style="display:none"></label>
+        <label class="upload-label"><svg viewBox="0 0 24 24" fill="none" class="inline-ic"><path d="M7 3h7l4 4v14H7Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M14 3v4h4" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg> <span class="upload-label-text">Subir archivo</span><input type="file" name="respaldo" accept="application/pdf,image/*" style="display:none" onchange="marcarArchivoElegido(this)"></label>
       </div>
       <button class="btn-add" type="submit">Cerrar caso</button>
     </form>
@@ -597,7 +597,7 @@
       <div class="form-group"><label>Fecha de emisión</label><input type="date" name="fechaEmision"></div>
       <div class="form-group">
         <label>Documento (PDF)</label>
-        <label class="upload-label" onclick="event.currentTarget.classList.add('selected')"><svg viewBox="0 0 24 24" fill="none" class="inline-ic"><path d="M7 3h7l4 4v14H7Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M14 3v4h4" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg> Subir archivo<input type="file" name="archivo" accept="application/pdf,image/*" style="display:none"></label>
+        <label class="upload-label"><svg viewBox="0 0 24 24" fill="none" class="inline-ic"><path d="M7 3h7l4 4v14H7Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M14 3v4h4" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg> <span class="upload-label-text">Subir archivo</span><input type="file" name="archivo" accept="application/pdf,image/*" style="display:none" onchange="marcarArchivoElegido(this)"></label>
       </div>
       <button class="btn-add" type="submit">Guardar procedimiento</button>
     </form>
@@ -1153,7 +1153,7 @@
       <div class="form-group"><label>Fecha de término (vacío = indefinido)</label><input type="date" name="termino"></div>
       <div class="form-group">
         <label>Documento del contrato (opcional)</label>
-        <label class="upload-label" onclick="event.currentTarget.classList.add('selected')"><svg viewBox="0 0 24 24" fill="none" class="inline-ic"><path d="M7 3h7l4 4v14H7Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M14 3v4h4" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg> Subir archivo<input type="file" name="archivo" accept="application/pdf,image/*" style="display:none"></label>
+        <label class="upload-label"><svg viewBox="0 0 24 24" fill="none" class="inline-ic"><path d="M7 3h7l4 4v14H7Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M14 3v4h4" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg> <span class="upload-label-text">Subir archivo</span><input type="file" name="archivo" accept="application/pdf,image/*" style="display:none" onchange="marcarArchivoElegido(this)"></label>
       </div>
       <button class="btn-add" type="submit">Guardar contrato</button>
     </form>
@@ -1169,7 +1169,7 @@
       <div class="form-group"><label>Vigente hasta</label><input type="date" name="vigencia" required></div>
       <div class="form-group">
         <label>Documento del examen (opcional)</label>
-        <label class="upload-label" onclick="event.currentTarget.classList.add('selected')"><svg viewBox="0 0 24 24" fill="none" class="inline-ic"><path d="M7 3h7l4 4v14H7Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M14 3v4h4" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg> Subir archivo<input type="file" name="archivo" accept="application/pdf,image/*" style="display:none"></label>
+        <label class="upload-label"><svg viewBox="0 0 24 24" fill="none" class="inline-ic"><path d="M7 3h7l4 4v14H7Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M14 3v4h4" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg> <span class="upload-label-text">Subir archivo</span><input type="file" name="archivo" accept="application/pdf,image/*" style="display:none" onchange="marcarArchivoElegido(this)"></label>
       </div>
       <button class="btn-add" type="submit">Guardar examen</button>
     </form>
@@ -1257,7 +1257,7 @@
       <div class="form-group"><label>Vigente hasta</label><input type="date" name="vigencia" required></div>
       <div class="form-group">
         <label>Certificado (opcional)</label>
-        <label class="upload-label" onclick="event.currentTarget.classList.add('selected')"><svg viewBox="0 0 24 24" fill="none" class="inline-ic"><path d="M7 3h7l4 4v14H7Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M14 3v4h4" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg> Subir archivo<input type="file" name="archivo" accept="application/pdf,image/*" style="display:none"></label>
+        <label class="upload-label"><svg viewBox="0 0 24 24" fill="none" class="inline-ic"><path d="M7 3h7l4 4v14H7Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M14 3v4h4" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg> <span class="upload-label-text">Subir archivo</span><input type="file" name="archivo" accept="application/pdf,image/*" style="display:none" onchange="marcarArchivoElegido(this)"></label>
       </div>
       <button class="btn-add" type="submit">Guardar certificado</button>
     </form>
