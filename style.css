@@ -840,6 +840,14 @@ a.action-btn { text-decoration: none; }
   text-align: center; cursor: pointer; margin-top: 10px;
 }
 .upload-label:active { background: var(--accent-soft); }
+.upload-label-text { overflow-wrap: anywhere; }
+/* Confirma visualmente que el archivo sí quedó elegido (ver
+   marcarArchivoElegido en app.js) — antes no había ninguna diferencia entre
+   "sin elegir" y "elegido", así que parecía que la subida no funcionaba. */
+.upload-label.selected {
+  border-style: solid; background: var(--accent-soft);
+}
+.upload-label.selected .upload-label-text::before { content: '✓ '; }
 
 /* ── Doc upload cards ── */
 .doc-upload-card {

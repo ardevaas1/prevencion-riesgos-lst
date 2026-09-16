@@ -1115,6 +1115,33 @@ function setStat(name, value) {
   document.querySelectorAll(`[data-stat="${name}"]`).forEach(el => el.textContent = value);
 }
 
+// Los botones de "Subir archivo"/"Tomar / subir foto" son un <label> que
+// envuelve un <input type="file"> oculto — antes no daban ninguna señal
+// visual de que el archivo sí quedó elegido (el <input> lo tiene, pero se ve
+// exactamente igual que antes de tocarlo), así que parecía que la app "no
+// cargaba" el archivo. Esto muestra el nombre elegido y resalta el botón.
+function marcarArchivoElegido(inputEl) {
+  const label = inputEl.closest('.upload-label');
+  if (!label) return;
+  const textoEl = label.querySelector('.upload-label-text');
+  if (textoEl && textoEl.dataset.textoOriginal === undefined) textoEl.dataset.textoOriginal = textoEl.textContent;
+  const archivo = inputEl.files && inputEl.files[0];
+  label.classList.toggle('selected', !!archivo);
+  if (textoEl) textoEl.textContent = archivo ? archivo.name : textoEl.dataset.textoOriginal;
+}
+// form.reset() (se usa al abrir de nuevo varios paneles, ej. abrirEditarAltura)
+// vacía el <input type="file"> pero no toca el <label> a mano — sin esto, al
+// reabrir un panel quedaba mostrando el nombre del archivo de la vez
+// anterior aunque el input ya estuviera vacío.
+document.addEventListener('reset', (ev) => {
+  if (!(ev.target instanceof HTMLFormElement)) return;
+  ev.target.querySelectorAll('.upload-label.selected').forEach(label => {
+    label.classList.remove('selected');
+    const textoEl = label.querySelector('.upload-label-text');
+    if (textoEl && textoEl.dataset.textoOriginal !== undefined) textoEl.textContent = textoEl.dataset.textoOriginal;
+  });
+});
+
 // ── Evita guardados duplicados por doble clic ───────────────────────────
 // A pedido explícito: algunos usuarios aprietan varias veces "Guardar"
 // porque no ven feedback inmediato, y terminan creando filas duplicadas.
