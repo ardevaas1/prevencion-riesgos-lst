@@ -634,12 +634,19 @@ let pendienteFirmandoId = null;
 
 function abrirLoginRut() {
   document.getElementById('login-screen').classList.add('hidden');
+  // El botón "Continuar" es type="submit" — el listener genérico anti-doble-
+  // clic (ver más arriba) lo deja "Guardando..." y deshabilitado después de
+  // cada intento, y como esta pantalla no se abre con openPanel() nadie lo
+  // reactivaba: al querer entrar con OTRO RUT después, el botón quedaba
+  // pegado. Se reactiva acá, cada vez que se vuelve a mostrar esta pantalla.
+  reactivarBotonesGuardar(document.getElementById('rut-login-screen'));
   document.getElementById('rut-login-screen').classList.remove('hidden');
 }
-// Botón "Un trabajador va a firmar (RUT)" dentro de la app ya logueada
-// (menú de Sesión, junto a "Cerrar sesión") — oculta la app sin cerrar la
-// sesión de Google, y la deja lista para restaurar tal cual al terminar.
+// Botón "Firmar documentos" dentro de la app ya logueada (menú de Sesión,
+// junto a "Cerrar sesión") — oculta la app sin cerrar la sesión de Google,
+// y la deja lista para restaurar tal cual al terminar.
 function abrirLoginRutDesdeApp() {
+  reactivarBotonesGuardar(document.getElementById('rut-login-screen'));
   rutFlowDesdeApp = true;
   estadoAppAntesDeRut = {
     main: !document.getElementById('main').classList.contains('hidden'),
@@ -729,34 +736,47 @@ async function cargarPendientesRut() {
     }
     lista.innerHTML = pendientes.map(p => `
       <div class="rut-pendiente-card">
-        <div class="rut-pendiente-tema">${esc(p.tema)}</div>
-        <div class="rut-pendiente-sub">${esc(p.obra)}${p.fecha ? ' · ' + esc(p.fecha) : ''}${p.relator ? ' · Relator: ' + esc(p.relator) : ''}</div>
-        <button type="button" class="rut-pendiente-btn" onclick="abrirFirmarPendiente('${esc(p.idCharla)}')">Firmar</button>
+        <div class="rut-pendiente-tema">${TIPOS_DOCUMENTO_PENDIENTE[p.tipo] ? esc(TIPOS_DOCUMENTO_PENDIENTE[p.tipo]) + ': ' : ''}${esc(p.titulo)}</div>
+        <div class="rut-pendiente-sub">${esc(p.obra)}${p.fecha ? ' · ' + esc(p.fecha) : ''}${p.responsable ? ' · ' + esc(p.responsable) : ''}</div>
+        <button type="button" class="rut-pendiente-btn" onclick="abrirFirmarPendiente('${esc(p.idDocumento)}')">Firmar</button>
       </div>`).join('');
   } catch (e) {
     lista.innerHTML = `<div class="rut-pendientes-vacio">${esc(e.message)}</div>`;
   }
 }
-function abrirFirmarPendiente(idCharla) {
-  const p = rutPendientesActuales.find(x => x.idCharla === idCharla);
+function abrirFirmarPendiente(idDocumento) {
+  const p = rutPendientesActuales.find(x => x.idDocumento === idDocumento);
   if (!p) return;
-  pendienteFirmandoId = idCharla;
+  pendienteFirmandoId = idDocumento;
   document.getElementById('firmar-pendiente-info').innerHTML =
-    `<strong>${esc(p.tema)}</strong><br>${esc(p.obra)}${p.fecha ? ' · ' + esc(p.fecha) : ''}`;
+    `<strong>${esc(p.titulo)}</strong><br>${esc(p.obra)}${p.fecha ? ' · ' + esc(p.fecha) : ''}`;
   openPanel('panel-firmar-pendiente');
   setTimeout(() => initFirmaPad('firma-canvas-pendiente'), 80);
+}
+// Marca un botón suelto (type="button", no pasa por el listener genérico
+// anti-doble-clic de los submit — ver más arriba) como "cargando" mientras
+// dura una operación async, para que quede claro que el clic sí se
+// registró en vez de no mostrar nada. Devuelve una función para
+// restaurarlo (llamarla siempre, éxito o error).
+function marcarBotonCargando(btn, textoCargando) {
+  const original = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = textoCargando;
+  return () => { btn.disabled = false; btn.textContent = original; };
 }
 async function onFirmarPendiente() {
   if (firmaEstaVacia('firma-canvas-pendiente')) { toast('Falta la firma', 'error'); return; }
   const rut = rutSesionActual;
+  const restaurar = marcarBotonCargando(document.querySelector('#panel-firmar-pendiente .btn-add'), 'Enviando...');
   try {
     await llamarWebAppSubcontratista('firmarPendiente', {
-      idCharla: pendienteFirmandoId, rut, firmaBase64: firmaCanvasADataURL('firma-canvas-pendiente'),
+      idDocumento: pendienteFirmandoId, rut, firmaBase64: firmaCanvasADataURL('firma-canvas-pendiente'),
     });
     toast('Firma enviada ✓', 'ok');
     closePanel('panel-firmar-pendiente');
     await cargarPendientesRut();
   } catch (e) { toast(e.message, 'error'); }
+  finally { restaurar(); }
 }
 
 // pdf-lib.min.js (≈525KB) solo hace falta al generar un PDF (Charla, DIAT,
@@ -2814,6 +2834,7 @@ function abrirFirmarAquiPendiente(rut) {
 async function confirmarFirmaAsistente() {
   if (bloquearSiViewer()) return;
   if (firmaEstaVacia('firma-canvas-asistente')) { toast('Falta la firma', 'error'); return; }
+  const restaurar = marcarBotonCargando(document.querySelector('#panel-firmar-asistente .btn-add'), 'Enviando...');
   try {
     await ensureToken();
     const firma = firmaCanvasADataURL('firma-canvas-asistente');
@@ -2824,6 +2845,7 @@ async function confirmarFirmaAsistente() {
     toast('Firma registrada ✓', 'ok');
     await actualizarProgresoDocumento();
   } catch (e) { toast(e.message, 'error'); }
+  finally { restaurar(); }
 }
 function cancelarFirmaAsistentes() { closePanel('panel-firmar-asistente'); }
 // Ya firmaron todos: llama al finalizador registrado para ese tipo (ver
