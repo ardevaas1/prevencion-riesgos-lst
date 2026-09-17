@@ -589,6 +589,13 @@ function mostrarLogin(hint, conectando) {
 
 function signOut() {
   if (!confirm('¿Cerrar sesión? Vas a tener que elegir tu cuenta de Google de nuevo para volver a entrar.')) return;
+  forzarCierreSesion('Usa tu cuenta corporativa autorizada');
+}
+// Cierra la sesión sin pedir confirmación — se usa cuando la cuenta logueada
+// no (o ya no) está autorizada para usar la app (ver "cuenta no encontrada
+// en USUARIOS" en cargarTodo), a diferencia de signOut() que es la persona
+// misma eligiendo salir. Deja la pantalla de login visible con el motivo.
+function forzarCierreSesion(mensaje) {
   if (accessToken && typeof google !== 'undefined' && google.accounts?.oauth2) {
     google.accounts.oauth2.revoke(accessToken, () => {});
   }
@@ -603,7 +610,8 @@ function signOut() {
   document.getElementById('desktop-sidebar').classList.add('dt-oculto');
   document.getElementById('desktop-main').classList.add('dt-oculto');
   document.getElementById('subcontratista-root').classList.add('hidden');
-  mostrarLogin('Usa tu cuenta corporativa autorizada', false);
+  document.getElementById('splash').classList.add('hidden');
+  mostrarLogin(mensaje, false);
 }
 
 // ── Login por RUT (trabajadores, sin cuenta de Google) ─────────────────
@@ -1556,7 +1564,10 @@ async function cargarTodo(silencioso) {
     // intento fallido cada vez — se va derecho por la Web App.
     if (subcontratistaUsaProxy) {
       const chequeo = await llamarWebAppSubcontratista('verificarAcceso', {});
-      if (!chequeo.subcontratista) throw new Error('Esta cuenta ya no tiene acceso.');
+      if (!chequeo.subcontratista) {
+        forzarCierreSesion('Tu cuenta (' + userEmail + ') ya no está autorizada para usar esta aplicación.');
+        return;
+      }
       miEmpresaSubcontratista = chequeo.empresa;
       userRole = 'subcontratista';
       const { filas } = await llamarWebAppSubcontratista('listarDocumentos', { empresa: miEmpresaSubcontratista });
@@ -1596,14 +1607,22 @@ async function cargarTodo(silencioso) {
     }
     allUsuarios = usuarios.map((r,i) => rowToUsuario(r,i));
     const cuenta = allUsuarios.find(u => u.correo === (userEmail||'').toLowerCase());
-    miEmpresaSubcontratista = (cuenta && cuenta.rol === 'subcontratista') ? cuenta.empresa : null;
-    // Por defecto toda cuenta es 'viewer' (solo lectura) — solo pasa a admin
-    // (acceso completo) si tiene una fila explícita en USUARIOS con
-    // Rol="admin". Así el acceso completo es siempre una decisión a
-    // propósito (agregar la fila), no algo que se hereda por no estar en la
-    // lista.
-    userRole = (cuenta && cuenta.rol === 'subcontratista') ? 'subcontratista'
-      : (cuenta && cuenta.rol === 'admin') ? 'admin' : 'viewer';
+    // Sin fila en USUARIOS → ni siquiera entra (viewer de solo-lectura ya no
+    // basta: hay que estar dado de alta a propósito, aunque sea con
+    // cualquier Rol). Esto también aplica a un supervisor (Trabajadores.Es
+    // Supervisor) que no tenga su propia fila acá — el filtro por obra no
+    // reemplaza estar en la lista de USUARIOS.
+    if (!cuenta) {
+      forzarCierreSesion('Tu cuenta (' + userEmail + ') no está autorizada para usar esta aplicación. Pide que te agreguen en la hoja USUARIOS.');
+      return;
+    }
+    miEmpresaSubcontratista = (cuenta.rol === 'subcontratista') ? cuenta.empresa : null;
+    // Estando en la lista, el Rol decide el nivel de acceso: 'admin' da
+    // acceso completo, cualquier otro valor (incluido vacío) cae a 'viewer'
+    // (solo lectura) — el acceso completo es siempre una decisión a
+    // propósito (poner Rol="admin"), no algo que se herede por defecto.
+    userRole = (cuenta.rol === 'subcontratista') ? 'subcontratista'
+      : (cuenta.rol === 'admin') ? 'admin' : 'viewer';
 
     if (!silencioso) splash(40, 'Cargando información...');
 
@@ -8037,6 +8056,11 @@ async function arrancarApp() {
   actualizarContadorPlantillasCharla();
 
   await cargarTodo();
+
+  // cargarTodo() ya se encarga de forzar el cierre de sesión y mostrar el
+  // login si la cuenta no está autorizada (ver forzarCierreSesion) — en ese
+  // caso userEmail queda en null y acá no hay que revelar la app.
+  if (!userEmail) return;
 
   const splashEl = document.getElementById('splash');
 
