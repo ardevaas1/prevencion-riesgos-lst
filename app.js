@@ -595,7 +595,12 @@ function signOut() {
 // no (o ya no) está autorizada para usar la app (ver "cuenta no encontrada
 // en USUARIOS" en cargarTodo), a diferencia de signOut() que es la persona
 // misma eligiendo salir. Deja la pantalla de login visible con el motivo.
-function forzarCierreSesion(mensaje) {
+// noAutorizada=true oculta el botón "Iniciar sesión con Google" (esa cuenta
+// ya inició sesión, mostrarlo de nuevo es confuso) y en su lugar deja un
+// botón "Cerrar sesión" que solo reconoce el aviso y recién ahí vuelve a
+// habilitar el login normal (ver reconocerCierreForzado) — "Firmar
+// documentos" sigue disponible en todo momento, es un flujo aparte.
+function forzarCierreSesion(mensaje, noAutorizada) {
   if (accessToken && typeof google !== 'undefined' && google.accounts?.oauth2) {
     google.accounts.oauth2.revoke(accessToken, () => {});
   }
@@ -612,6 +617,17 @@ function forzarCierreSesion(mensaje) {
   document.getElementById('subcontratista-root').classList.add('hidden');
   document.getElementById('splash').classList.add('hidden');
   mostrarLogin(mensaje, false);
+  document.getElementById('login-btn').classList.toggle('hidden', !!noAutorizada);
+  document.getElementById('login-btn-cerrar-sesion').classList.toggle('hidden', !noAutorizada);
+}
+// Botón "Cerrar sesión" que reemplaza a "Iniciar sesión con Google" tras un
+// cierre forzado por cuenta no autorizada (ver forzarCierreSesion) — solo
+// reconoce el aviso y deja la pantalla de login lista para intentar de
+// nuevo (con otra cuenta de Google, si corresponde).
+function reconocerCierreForzado() {
+  document.getElementById('login-btn-cerrar-sesion').classList.add('hidden');
+  document.getElementById('login-btn').classList.remove('hidden');
+  mostrarLogin('Usa tu cuenta corporativa autorizada', false);
 }
 
 // ── Login por RUT (trabajadores, sin cuenta de Google) ─────────────────
@@ -1565,7 +1581,7 @@ async function cargarTodo(silencioso) {
     if (subcontratistaUsaProxy) {
       const chequeo = await llamarWebAppSubcontratista('verificarAcceso', {});
       if (!chequeo.subcontratista) {
-        forzarCierreSesion('Tu cuenta (' + userEmail + ') ya no está autorizada para usar esta aplicación.');
+        forzarCierreSesion('Tu cuenta (' + userEmail + ') ya no está autorizada para usar esta aplicación.', true);
         return;
       }
       miEmpresaSubcontratista = chequeo.empresa;
@@ -1617,7 +1633,7 @@ async function cargarTodo(silencioso) {
     // filtro por obra no reemplaza estar en la lista de USUARIOS.
     const ROLES_VALIDOS = ['admin', 'viewer', 'subcontratista'];
     if (!cuenta || !ROLES_VALIDOS.includes(cuenta.rol)) {
-      forzarCierreSesion('Tu cuenta (' + userEmail + ') no está autorizada para usar esta aplicación. Pide que te agreguen en la hoja USUARIOS con un Rol válido (admin, viewer o subcontratista).');
+      forzarCierreSesion('Tu cuenta (' + userEmail + ') no está autorizada para usar esta aplicación.', true);
       return;
     }
     miEmpresaSubcontratista = (cuenta.rol === 'subcontratista') ? cuenta.empresa : null;
