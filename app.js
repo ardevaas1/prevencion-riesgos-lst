@@ -1607,22 +1607,21 @@ async function cargarTodo(silencioso) {
     }
     allUsuarios = usuarios.map((r,i) => rowToUsuario(r,i));
     const cuenta = allUsuarios.find(u => u.correo === (userEmail||'').toLowerCase());
-    // Sin fila en USUARIOS → ni siquiera entra (viewer de solo-lectura ya no
-    // basta: hay que estar dado de alta a propósito, aunque sea con
-    // cualquier Rol). Esto también aplica a un supervisor (Trabajadores.Es
-    // Supervisor) que no tenga su propia fila acá — el filtro por obra no
-    // reemplaza estar en la lista de USUARIOS.
-    if (!cuenta) {
-      forzarCierreSesion('Tu cuenta (' + userEmail + ') no está autorizada para usar esta aplicación. Pide que te agreguen en la hoja USUARIOS.');
+    // Sin fila en USUARIOS, o con una fila cuyo Rol no es ninguno de los tres
+    // reconocidos (admin/viewer/subcontratista) → ni siquiera entra. Un Rol
+    // vacío o mal escrito NO cae a viewer por defecto: se trata igual que no
+    // estar en la lista, porque el acceso (a cualquier nivel, incluido solo
+    // lectura) siempre tiene que ser una decisión a propósito, nunca algo que
+    // se herede por estar la fila ahí sin completar. Esto también aplica a un
+    // supervisor (Trabajadores.Es Supervisor) sin su propia fila acá — el
+    // filtro por obra no reemplaza estar en la lista de USUARIOS.
+    const ROLES_VALIDOS = ['admin', 'viewer', 'subcontratista'];
+    if (!cuenta || !ROLES_VALIDOS.includes(cuenta.rol)) {
+      forzarCierreSesion('Tu cuenta (' + userEmail + ') no está autorizada para usar esta aplicación. Pide que te agreguen en la hoja USUARIOS con un Rol válido (admin, viewer o subcontratista).');
       return;
     }
     miEmpresaSubcontratista = (cuenta.rol === 'subcontratista') ? cuenta.empresa : null;
-    // Estando en la lista, el Rol decide el nivel de acceso: 'admin' da
-    // acceso completo, cualquier otro valor (incluido vacío) cae a 'viewer'
-    // (solo lectura) — el acceso completo es siempre una decisión a
-    // propósito (poner Rol="admin"), no algo que se herede por defecto.
-    userRole = (cuenta.rol === 'subcontratista') ? 'subcontratista'
-      : (cuenta.rol === 'admin') ? 'admin' : 'viewer';
+    userRole = cuenta.rol;
 
     if (!silencioso) splash(40, 'Cargando información...');
 
