@@ -1017,6 +1017,13 @@ async function getTrabajadorFolder(nombreTrabajador) {
   const raiz = await getModuloFolder('Trabajadores');
   return findOrCreateFolder(nombreTrabajador, raiz);
 }
+// Carpeta de un trabajador dentro de OTRO módulo cualquiera (Root/{modulo}/{nombre}/)
+// — ej. Root/Entrega de EPP/{nombre}/, para módulos que quieren su propia
+// carpeta de primer nivel en vez de compartir Root/Trabajadores/.
+async function getCarpetaTrabajadorEnModulo(nombreModulo, nombreTrabajador) {
+  const raiz = await getModuloFolder(nombreModulo);
+  return findOrCreateFolder(nombreTrabajador, raiz);
+}
 
 // Sube un archivo (File o Blob) a una carpeta de Drive ya resuelta, con el
 // nombre exacto indicado. Devuelve {id, name, link}
@@ -1081,6 +1088,12 @@ async function uploadFile(fileOrBlob, nombreModulo, prefixName, ext) {
 // Sube un archivo a la carpeta personal del trabajador (Root/Trabajadores/{nombre}/)
 async function uploadFileTrabajador(fileOrBlob, nombreTrabajador, prefixName, ext) {
   const folderId = await getTrabajadorFolder(nombreTrabajador);
+  return uploadFileToFolder(fileOrBlob, folderId, prefixName, ext);
+}
+// Sube un archivo a la carpeta de un trabajador dentro de OTRO módulo
+// (Root/{modulo}/{nombre}/) — ver getCarpetaTrabajadorEnModulo.
+async function uploadFileTrabajadorEnModulo(fileOrBlob, nombreModulo, nombreTrabajador, prefixName, ext) {
+  const folderId = await getCarpetaTrabajadorEnModulo(nombreModulo, nombreTrabajador);
   return uploadFileToFolder(fileOrBlob, folderId, prefixName, ext);
 }
 // Carpeta de cada subcontratista (Root/Subcontratistas/{empresa}/) — mismo
@@ -5554,15 +5567,17 @@ async function finalizarEpp(datos) {
     const blob = await new Promise(res => canvasFirma.toBlob(res, 'image/png'));
     let firmaLink = '';
     if (blob) {
-      const up = await uploadFileTrabajador(blob, trabNombre, 'firma', 'png');
+      const up = await uploadFileTrabajadorEnModulo(blob, 'Entrega de EPP', trabNombre, 'firma', 'png');
       firmaLink = up.link;
     }
 
     // Además de la firma suelta (de siempre), se genera el documento
     // "Entrega de EPP" completo (formato del cliente) con el detalle de
-    // esta entrega y se guarda en la carpeta del trabajador — si algo
-    // falla generándolo, la entrega igual se guarda (no bloquea el
-    // registro por un problema al armar el PDF).
+    // esta entrega y se guarda en Root/Entrega de EPP/{trabajador}/ — carpeta
+    // aparte (no la de Trabajadores/, compartida con foto/contrato/examen)
+    // para que las entregas de EPP queden fáciles de ubicar por trabajador,
+    // sin mezclarse con el resto de sus documentos. Si algo falla generando
+    // el PDF, la entrega igual se guarda (no bloquea el registro).
     let documentoLink = '';
     try {
       const pdfBlob = await generarPdfEntregaEpp({
@@ -5570,7 +5585,7 @@ async function finalizarEpp(datos) {
         fecha, items: itemsEpp, firmaDataUrl: firma,
         responsable, fechaHoraRegistro: fechaRegistro,
       });
-      const upDoc = await uploadFileTrabajador(pdfBlob, trabNombre, 'entrega_epp', 'pdf');
+      const upDoc = await uploadFileTrabajadorEnModulo(pdfBlob, 'Entrega de EPP', trabNombre, 'entrega_epp', 'pdf');
       documentoLink = upDoc.link;
     } catch (e) { console.error('No se pudo generar el documento de Entrega de EPP:', e); }
 
