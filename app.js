@@ -451,9 +451,10 @@ function sugerirPlanAccion(descripcion, causas) {
 }
 
 let userEmail = null;
-// admin (acceso completo, es el default si la cuenta no tiene fila en
-// USUARIOS o tiene un Rol distinto de los otros dos) | viewer (solo lectura
-// en toda la app — no ve ningún botón de agregar/editar/subir/borrar) |
+// admin (acceso completo — solo cuentas con una fila explícita Rol="admin"
+// en USUARIOS) | viewer (solo lectura en toda la app — no ve ningún botón de
+// agregar/editar/subir/borrar; es el default: cualquier cuenta sin fila en
+// USUARIOS, o con un Rol que no sea "admin" ni "subcontratista", cae acá) |
 // subcontratista (cuenta externa restringida a su propia empresa, ver
 // miEmpresaSubcontratista).
 let userRole  = null;
@@ -1596,12 +1597,13 @@ async function cargarTodo(silencioso) {
     allUsuarios = usuarios.map((r,i) => rowToUsuario(r,i));
     const cuenta = allUsuarios.find(u => u.correo === (userEmail||'').toLowerCase());
     miEmpresaSubcontratista = (cuenta && cuenta.rol === 'subcontratista') ? cuenta.empresa : null;
-    // Sin fila en USUARIOS (la mayoría del personal interno hoy) o con un rol
-    // que no sea 'viewer' → admin de toda la vida, acceso completo. Solo una
-    // fila explícita con rol 'viewer' pasa a modo solo-lectura — así ninguna
-    // cuenta que ya usa la app pierde acceso por accidente.
+    // Por defecto toda cuenta es 'viewer' (solo lectura) — solo pasa a admin
+    // (acceso completo) si tiene una fila explícita en USUARIOS con
+    // Rol="admin". Así el acceso completo es siempre una decisión a
+    // propósito (agregar la fila), no algo que se hereda por no estar en la
+    // lista.
     userRole = (cuenta && cuenta.rol === 'subcontratista') ? 'subcontratista'
-      : (cuenta && cuenta.rol === 'viewer') ? 'viewer' : 'admin';
+      : (cuenta && cuenta.rol === 'admin') ? 'admin' : 'viewer';
 
     if (!silencioso) splash(40, 'Cargando información...');
 
