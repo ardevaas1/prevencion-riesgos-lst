@@ -1617,7 +1617,7 @@ async function cargarTodo(silencioso) {
     // filtro por obra no reemplaza estar en la lista de USUARIOS.
     const ROLES_VALIDOS = ['admin', 'viewer', 'subcontratista'];
     if (!cuenta || !ROLES_VALIDOS.includes(cuenta.rol)) {
-      forzarCierreSesion('Tu cuenta (' + userEmail + ') no está autorizada para usar esta aplicación. Pide que te agreguen en la hoja USUARIOS con un Rol válido (admin, viewer o subcontratista).');
+      forzarCierreSesion('Tu cuenta (' + userEmail + ') no está autorizada para usar esta aplicación.');
       return;
     }
     miEmpresaSubcontratista = (cuenta.rol === 'subcontratista') ? cuenta.empresa : null;
