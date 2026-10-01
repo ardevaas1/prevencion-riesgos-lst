@@ -116,59 +116,12 @@ function inicializarPlanilla() {
     'Datos Checklist Mensual'
   ]);
 
-  // Matriz IPER (DS44) — Anexo 1: levantamiento de procesos/tareas por obra.
-  crearHoja(ss, 'MIPER_LEVANTAMIENTO', [
-    'N°', 'Obra', 'Proceso', 'Puesto', 'Tarea', 'Rutinaria', 'Lugar',
-    'N Personas', 'Sexo', 'Observaciones', 'Fecha Registro', 'Registrado Por'
-  ]);
-
-  // Matriz IPER — filas de la matriz (una fila = un peligro/riesgo evaluado
-  // para una tarea). VEP y Nivel de Riesgo los calcula la app sola. PTS
-  // (Procedimientos de Trabajo Seguro aplicables) se escribe una vez por
-  // envío del formulario y queda repetido en cada fila de ese mismo grupo
-  // Proceso/Puesto/Tarea/Equipos — igual que Equipos.
-  crearHoja(ss, 'MIPER_MATRIZ', [
-    'N°', 'Obra', 'Proceso', 'Puesto', 'Tarea', 'Equipos', 'Peligro', 'Riesgo',
-    'Codigo Riesgo', 'Familia Riesgo', 'Probabilidad', 'Consecuencia', 'VEP',
-    'Nivel Riesgo', 'Medidas Codigo', 'Anexo', 'Fecha Registro', 'Registrado Por', 'PTS'
-  ]);
-
-  // Matriz IPER — riesgos agregados a mano por los supervisores que no
-  // estaban en el catálogo fijo de la app (Anexos 2-5 del DS44); quedan
-  // disponibles para elegir en cualquier obra de ahí en adelante.
-  crearHoja(ss, 'MIPER_RIESGOS_CUSTOM', [
-    'N°', 'Familia', 'Riesgo', 'Definicion', 'Codigo', 'Medidas',
-    'Fecha Registro', 'Registrado Por'
-  ]);
-
-  // Matriz IPER — un registro por versión/documento generado de la matriz
-  // de una obra (encabezado, firmas, protocolos marcados y el PDF/Excel).
-  crearHoja(ss, 'MIPER_DOCUMENTOS', [
-    'N°', 'Obra', 'Entidad Empleadora', 'Sucursal', 'Responsable Levantamiento',
-    'Fecha', 'Revision', 'Proxima Revision', 'Protocolos',
-    'Nombre Elaboro', 'Nombre Reviso', 'Nombre Aprobo',
-    'PDF', 'Excel', 'Fecha Registro', 'Registrado Por', 'Comite Paritario'
-  ]);
-
-  // Matriz IPER — datos de la empresa (Entidad Empleadora + firmantes
-  // Elaboró/Revisó/Aprobó, cada uno con su firma guardada como imagen) que
-  // se configuran una sola vez y se reutilizan solos en cada Matriz IPER
-  // nueva. Si se guarda más de una vez, la app usa siempre la fila más
-  // reciente como la vigente — igual que el resto de los "últimos datos"
-  // de la app (ver docsPrevios en generarDocumentoMiper).
-  crearHoja(ss, 'MIPER_DATOS_EMPRESA', [
-    'N°', 'Entidad Empleadora', 'Nombre Elaboro', 'Firma Elaboro',
-    'Nombre Reviso', 'Firma Reviso', 'Nombre Aprobo', 'Firma Aprobo',
-    'Comite Paritario', 'Fecha Registro', 'Registrado Por'
-  ]);
-
-  // Matriz IPER — partidas del Programa Edificio real de cada obra
-  // (importado desde el Excel de programación de la obra), usadas para que
-  // el Levantamiento (Anexo 1) elija Proceso/Tarea de una lista real en vez
-  // de texto libre.
-  crearHoja(ss, 'MIPER_PROGRAMA', [
-    'N°', 'Obra', 'Item', 'Proceso', 'Tarea', 'Unidad',
-    'Fecha Registro', 'Registrado Por'
+  // Matriz IPER (DS44) — la matriz se arma en una app externa aparte; acá
+  // solo se sube el Excel ya terminado. Una fila por obra: subir una matriz
+  // nueva para una obra que ya tenía una ACTUALIZA esa misma fila (no
+  // agrega una fila nueva) — ver guardarArchivoMatrizIper en app.js.
+  crearHoja(ss, 'MIPER_ARCHIVO', [
+    'N°', 'Obra', 'Archivo', 'Nombre Archivo', 'Fecha Subida', 'Subido Por'
   ]);
 
   // Capacitación DS44 art.16 (8 hrs obligatorias) — un registro por

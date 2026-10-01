@@ -1269,39 +1269,11 @@
 </div>
 
 <!-- ===== PANELES: Matriz de Riesgos (IPER, DS44) ===== -->
-<div class="panel hidden" id="panel-miper-tarea">
-  <div class="panel-bar"><div class="pnl-back" onclick="closePanel('panel-miper-tarea')">‹ Volver</div><div class="pnl-title">Agregar tarea</div><div></div></div>
-  <div class="panel-body" id="miper-tarea-body"></div>
-</div>
-
-<div class="panel hidden" id="panel-miper-fila">
-  <div class="panel-bar"><div class="pnl-back" onclick="closePanel('panel-miper-fila')">‹ Volver</div><div class="pnl-title">Agregar riesgo</div><div></div></div>
-  <div class="panel-body" id="miper-fila-body"></div>
-</div>
-
-<div class="panel hidden" id="panel-miper-banco">
-  <div class="panel-bar"><div class="pnl-back" onclick="closePanel('panel-miper-banco')">‹ Volver</div><div class="pnl-title">Banco histórico</div><div></div></div>
-  <div class="panel-body" id="miper-banco-body"></div>
-</div>
-
-<div class="panel hidden" id="panel-miper-documento">
-  <div class="panel-bar"><div class="pnl-back" onclick="closePanel('panel-miper-documento')">‹ Volver</div><div class="pnl-title">Generar documento</div><div></div></div>
-  <div class="panel-body" id="miper-documento-body"></div>
-</div>
-
-<div class="panel hidden" id="panel-miper-datos-empresa">
-  <div class="panel-bar"><div class="pnl-back" onclick="closePanel('panel-miper-datos-empresa')">‹ Volver</div><div class="pnl-title">Datos de empresa</div><div></div></div>
-  <div class="panel-body" id="miper-datos-empresa-body"></div>
-</div>
-
-<div class="panel hidden" id="panel-miper-proceso-tareas">
-  <div class="panel-bar"><div class="pnl-back" onclick="closePanel('panel-miper-proceso-tareas')">‹ Volver</div><div class="pnl-title">Agregar proceso y tareas</div><div></div></div>
-  <div class="panel-body" id="miper-proceso-tareas-body"></div>
-</div>
-
-<div class="panel hidden" id="panel-miper-programa">
-  <div class="panel-bar"><div class="pnl-back" onclick="closePanel('panel-miper-programa')">‹ Volver</div><div class="pnl-title">Importar Programa Edificio</div><div></div></div>
-  <div class="panel-body" id="miper-programa-body"></div>
+<!-- La matriz se arma en una app externa — acá solo se sube el Excel ya
+     terminado (ver guardarArchivoMatrizIper en app.js). -->
+<div class="panel hidden" id="panel-miper-archivo">
+  <div class="panel-bar"><div class="pnl-back" onclick="closePanel('panel-miper-archivo')">‹ Volver</div><div class="pnl-title">Subir matriz IPER</div><div></div></div>
+  <div class="panel-body" id="miper-archivo-body"></div>
 </div>
 
 <!-- ===== PANEL: Certificado Capacitación DS44 art.16 (subir/actualizar) ===== -->
@@ -1416,7 +1388,7 @@
       procedimientos: abrirFormProcedimiento, epp: abrirFormEpp, trabajadores: abrirFormTrabajador,
       charlas: abrirNuevaCharla, hcr: abrirNuevoHcr, subcontratistas: abrirFormSubcontratista,
       programapersonalizado: () => abrirFormActividadPrograma(),
-      miper: () => abrirMenuAgregarMiper(),
+      miper: () => abrirFormMiperArchivo(),
     };
     const fab = document.getElementById('fab-add');
     const dtFab = document.getElementById('dt-fab-add');
