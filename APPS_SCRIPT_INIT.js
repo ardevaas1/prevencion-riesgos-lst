@@ -150,6 +150,18 @@ function inicializarPlanilla() {
     'PDF', 'Excel', 'Fecha Registro', 'Registrado Por', 'Comite Paritario'
   ]);
 
+  // Matriz IPER — datos de la empresa (Entidad Empleadora + firmantes
+  // Elaboró/Revisó/Aprobó, cada uno con su firma guardada como imagen) que
+  // se configuran una sola vez y se reutilizan solos en cada Matriz IPER
+  // nueva. Si se guarda más de una vez, la app usa siempre la fila más
+  // reciente como la vigente — igual que el resto de los "últimos datos"
+  // de la app (ver docsPrevios en generarDocumentoMiper).
+  crearHoja(ss, 'MIPER_DATOS_EMPRESA', [
+    'N°', 'Entidad Empleadora', 'Nombre Elaboro', 'Firma Elaboro',
+    'Nombre Reviso', 'Firma Reviso', 'Nombre Aprobo', 'Firma Aprobo',
+    'Comite Paritario', 'Fecha Registro', 'Registrado Por'
+  ]);
+
   // Matriz IPER — partidas del Programa Edificio real de cada obra
   // (importado desde el Excel de programación de la obra), usadas para que
   // el Levantamiento (Anexo 1) elija Proceso/Tarea de una lista real en vez

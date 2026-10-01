@@ -29,6 +29,11 @@ const CONFIG = {
   SHEET_MIPER_RIESGOS_CUSTOM:'MIPER_RIESGOS_CUSTOM',
   SHEET_MIPER_DOCUMENTOS:    'MIPER_DOCUMENTOS',
   SHEET_MIPER_PROGRAMA:      'MIPER_PROGRAMA',
+  // Datos de la empresa (Entidad Empleadora + firmantes Elaboró/Revisó/
+  // Aprobó) configurados una sola vez y reutilizados en cada Matriz IPER
+  // nueva, en vez de re-tipearlos/re-firmarlos cada vez — ver
+  // abrirDatosEmpresaMiper/datosEmpresaMiperActual en app.js.
+  SHEET_MIPER_DATOS_EMPRESA: 'MIPER_DATOS_EMPRESA',
 
   // Capacitación DS44 art.16 (8 hrs) — ver CAPACITACION_DS44_MODULOS en
   // app.js para el contenido fijo de los 7 módulos.
