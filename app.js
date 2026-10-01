@@ -1673,9 +1673,9 @@ async function cargarTodo(silencioso) {
       `'${CONFIG.SHEET_SUBCONTRATISTAS_DOCS}'!A2:H2000`,
       `'${CONFIG.SHEET_PROGRAMA_PERSONALIZADO}'!A2:L4000`,
       `'${CONFIG.SHEET_MIPER_LEVANTAMIENTO}'!A2:L2000`,
-      `'${CONFIG.SHEET_MIPER_MATRIZ}'!A2:R4000`,
+      `'${CONFIG.SHEET_MIPER_MATRIZ}'!A2:S4000`,
       `'${CONFIG.SHEET_MIPER_RIESGOS_CUSTOM}'!A2:H500`,
-      `'${CONFIG.SHEET_MIPER_DOCUMENTOS}'!A2:P500`,
+      `'${CONFIG.SHEET_MIPER_DOCUMENTOS}'!A2:Q500`,
       `'${CONFIG.SHEET_MIPER_PROGRAMA}'!A2:H4000`,
       `'${CONFIG.SHEET_CAPACITACION_DS44}'!A2:M3000`,
     ]);
@@ -1840,7 +1840,7 @@ function rowToMiperMatriz(r, i) {
     equipos: r[5]||'', peligro: r[6]||'', riesgo: r[7]||'', codigoRiesgo: r[8]||'', familiaRiesgo: r[9]||'',
     probabilidad: Number(r[10])||0, consecuencia: Number(r[11])||0, vep: Number(r[12])||0,
     nivelRiesgo: r[13]||'', medidasCodigo: r[14]||'', anexo: r[15]||'',
-    fechaRegistro: r[16]||'', registradoPor: r[17]||'' };
+    fechaRegistro: r[16]||'', registradoPor: r[17]||'', pts: r[18]||'' };
 }
 function rowToMiperRiesgoCustom(r, i) {
   return { fila: i+2, n: r[0]||'', familia: r[1]||'', riesgo: r[2]||'', definicion: r[3]||'', codigo: r[4]||'',
@@ -1851,7 +1851,8 @@ function rowToMiperDocumento(r, i) {
     responsableLevantamiento: r[4]||'', fecha: r[5]||'', revision: Number(r[6])||0, proximaRevision: r[7]||'',
     protocolos: (() => { try { return JSON.parse(r[8]||'[]'); } catch(e) { return []; } })(),
     nombreElaboro: r[9]||'', nombreReviso: r[10]||'', nombreAprobo: r[11]||'',
-    pdf: r[12]||'', excel: r[13]||'', fechaRegistro: r[14]||'', registradoPor: r[15]||'' };
+    pdf: r[12]||'', excel: r[13]||'', fechaRegistro: r[14]||'', registradoPor: r[15]||'',
+    comiteParitario: r[16]||'' };
 }
 function rowToMiperPrograma(r, i) {
   return { fila: i+2, n: r[0]||'', obra: r[1]||'', item: r[2]||'', proceso: r[3]||'', tarea: r[4]||'',
@@ -8558,6 +8559,9 @@ function abrirFormMiperFila() {
       </div>
       <div class="card-sub" id="miper-fila-tarea-info"></div>
       <div class="form-group"><label>Equipos, máquinas y herramientas</label><input name="equipos" placeholder="Ej: Taladro, esmeril, andamio"></div>
+      <div class="form-group"><label>PTS aplicables (Procedimientos de Trabajo Seguro)</label>
+        <textarea name="pts" rows="3" placeholder="Uno por línea — se completa solo al usar el banco histórico"></textarea>
+      </div>
       ${CONFIG.MIPER_IA_WEBAPP_URL ? `
       <button type="button" class="action-btn" style="margin-bottom:14px;" onclick="sugerirRiesgosIaMiper()">${ic('miper',14)} Sugerencia automática (revisa antes de guardar)</button>` : ''}
 
@@ -8723,6 +8727,7 @@ async function guardarMiperFila(ev) {
     const t = tareas[f.tareaIdx.value];
     if (!t) { toast('Elige la tarea', 'error'); return; }
     const equipos = f.equipos.value.trim();
+    const pts = f.pts.value.trim();
 
     const bloques = [...document.querySelectorAll('#miper-bloques-peligro .miper-bloque-peligro')];
     if (bloques.length === 0) { toast('Agrega al menos un peligro', 'error'); return; }
@@ -8772,9 +8777,9 @@ async function guardarMiperFila(ev) {
     const filas = filasNuevas.map((fn, i) => [
       allMiperMatriz.length + 1 + i, obra, t.proceso, t.puesto, t.tarea, equipos, fn.peligro,
       fn.riesgoNombre, fn.codigo, fn.familia, fn.probabilidad, fn.consecuencia, fn.vep, fn.nivel,
-      fn.codigo, MIPER_FAMILIA_LABEL[fn.familia] || fn.familia, fechaRegistro, userEmail || ''
+      fn.codigo, MIPER_FAMILIA_LABEL[fn.familia] || fn.familia, fechaRegistro, userEmail || '', pts
     ]);
-    await appendSheet(`'${CONFIG.SHEET_MIPER_MATRIZ}'!A:R`, filas);
+    await appendSheet(`'${CONFIG.SHEET_MIPER_MATRIZ}'!A:S`, filas);
 
     toast(`${filas.length} riesgo(s) agregado(s) a la matriz ✓`, 'ok');
     closePanel('panel-miper-fila');
@@ -8831,6 +8836,7 @@ function aplicarPrefillMiperFila(r) {
   const tIdx = tareas.findIndex(t => t.proceso.toLowerCase() === String(r.proceso||'').toLowerCase() && t.tarea.toLowerCase() === String(r.tarea||'').toLowerCase());
   if (tIdx >= 0 && !f.tareaIdx.value) { f.tareaIdx.value = tIdx; onCambioTareaMiperFila(f.tareaIdx); }
   if (!f.equipos.value && r.equipos) f.equipos.value = r.equipos;
+  if (!f.pts.value && r.pts) f.pts.value = r.pts;
 
   const catalogo = miperCatalogoCompleto();
   const rIdx = catalogo.findIndex(c => c.riesgo.toLowerCase() === String(r.riesgo||'').toLowerCase());
@@ -8884,6 +8890,9 @@ function abrirDocumentoMiper() {
       <div class="form-group"><label>Fecha</label><input type="date" name="fecha" required value="${hoyISO()}"></div>
       <div class="form-group"><label>Revisión</label><input value="${revisionSiguiente}" readonly></div>
       <div class="form-group"><label>Próxima revisión</label><input type="date" name="proximaRevision" required></div>
+      <div class="form-group"><label>Representante(s) Comité Paritario / Delegado SST</label>
+        <input name="comiteParitario" placeholder="Nombre(s) — déjalo vacío si aún no está definido" value="${esc(ultimo ? ultimo.comiteParitario : '')}">
+      </div>
 
       <div class="sec-label">Protocolos de Vigilancia MINSAL aplicables</div>
       ${MIPER_PROTOCOLOS.map((p,i) => `
@@ -8948,6 +8957,7 @@ async function generarDocumentoMiper(ev) {
       obra, entidadEmpleadora: f.entidadEmpleadora.value.trim(), sucursal: f.sucursal.value.trim(),
       responsableLevantamiento: f.responsableLevantamiento.value.trim(), fecha: f.fecha.value,
       revision, proximaRevision: f.proximaRevision.value, protocolosSel,
+      comiteParitario: f.comiteParitario.value.trim(),
       nombreElaboro: f.nombreElaboro.value.trim(),
       firmaElaboroUrl: firmaCanvasADataURL('firma-canvas-miper-elaboro'),
       nombreReviso: f.nombreReviso.value.trim(),
@@ -8964,11 +8974,11 @@ async function generarDocumentoMiper(ev) {
     const up = await subirBytesADrive(excelBlob, folderId, `${nombreBase}.xlsx`);
     const excelLink = up.link;
 
-    await appendSheet(`'${CONFIG.SHEET_MIPER_DOCUMENTOS}'!A:P`, [[
+    await appendSheet(`'${CONFIG.SHEET_MIPER_DOCUMENTOS}'!A:Q`, [[
       allMiperDocumentos.length + 1, obra, datos.entidadEmpleadora, datos.sucursal, datos.responsableLevantamiento,
       datos.fecha, revision, datos.proximaRevision, JSON.stringify(protocolosSel),
       datos.nombreElaboro, datos.nombreReviso, datos.nombreAprobo,
-      '', excelLink, new Date().toLocaleString('es-CL'), userEmail || ''
+      '', excelLink, new Date().toLocaleString('es-CL'), userEmail || '', datos.comiteParitario
     ]]);
     toast('Excel generado ✓', 'ok');
     closePanel('panel-miper-documento');
@@ -9001,21 +9011,22 @@ async function generarExcelMiper(datos) {
 
   const bordeFino = { style: 'thin', color: { argb: 'FF999999' } };
   const borde = { top: bordeFino, left: bordeFino, bottom: bordeFino, right: bordeFino };
-  const NCOLS = 12;
+  const NCOLS = 13;
   // Anchos y textos de encabezado medidos directamente sobre el Excel del
   // cliente (incluido el error de tipeo "MAQUINRIAS" — se replica tal cual
   // porque así está en el documento original). Los anchos son
   // proporcionales al ancho combinado real de cada columna en el Excel
   // original (que usa muchas columnas angostas combinadas, ej. Equipos son
   // 18 columnas combinadas, Proceso son solo 4) traducido a una grilla más
-  // simple de 12 columnas — misma proporción visual, sin las miles de
+  // simple de 13 columnas — misma proporción visual, sin las miles de
   // combinaciones de celda del archivo original.
   // Anchos ajustados para que se lea bien con contenido real (procesos
   // largos importados del Programa Edificio, ej. "INST. SIST. EVACUACION
   // DE DESECHOS SOLIDOS") sin dejar de mantener Equipos/Peligro como las
   // columnas más anchas, igual que en el Excel original.
-  const ANCHOS_TABLA = [22, 18, 28, 38, 42, 17, 9, 9, 7, 10, 11, 13];
+  const ANCHOS_TABLA = [22, 18, 28, 38, 42, 17, 9, 9, 7, 10, 11, 13, 30];
   const TXT_EQUIPOS = 'EQUIPOS MAQUINRIAS Y HERRAMIENTAS';
+  const TXT_PTS = 'PROCEDIMIENTOS DE TRABAJO SEGURO (PTS) APLICABLES';
 
   // Encabezado de tabla (4 filas: PROCESO/PUESTO/TAREA/EQUIPOS/PELIGRO/
   // RIESGO/MEDIDAS/ANEXO combinados sobre las 4, EVALUACION DE RIESGOS con
@@ -9051,6 +9062,9 @@ async function generarExcelMiper(datos) {
     const anexoCell = ws.getCell(filaHead1, 12);
     anexoCell.value = 'ANEXO'; anexoCell.font = { name: 'Calibri', bold: true, size: 10 }; anexoCell.alignment = centrado;
     ws.mergeCells(filaHead1, 12, f4, 12);
+    const ptsCell = ws.getCell(filaHead1, 13);
+    ptsCell.value = TXT_PTS; ptsCell.font = { name: 'Calibri', bold: true, size: 10 }; ptsCell.alignment = centrado;
+    ws.mergeCells(filaHead1, 13, f4, 13);
     [filaHead1, f2, f3, f4].forEach(rr => {
       for (let c = 1; c <= NCOLS; c++) ws.getCell(rr, c).border = borde;
       ws.getRow(rr).height = 15;
@@ -9097,7 +9111,12 @@ async function generarExcelMiper(datos) {
       ws.getCell(filaGrupoInicio, 2).value = f0.puesto;
       ws.getCell(filaGrupoInicio, 3).value = f0.tarea;
       ws.getCell(filaGrupoInicio, 4).value = f0.equipos;
-      if (filaGrupoFin > filaGrupoInicio) [1, 2, 3, 4].forEach(c => ws.mergeCells(filaGrupoInicio, c, filaGrupoFin, c));
+      // PTS (col 13) — igual que Proceso/Puesto/Tarea/Equipos: un solo valor
+      // por grupo (se repite para toda tarea con el mismo Proceso/Puesto/
+      // Tarea/Equipos, nunca por fila de peligro individual).
+      const ptsCellDato = ws.getCell(filaGrupoInicio, 13);
+      ptsCellDato.value = f0.pts || ''; ptsCellDato.font = fuenteDato; ptsCellDato.alignment = alinIzq;
+      if (filaGrupoFin > filaGrupoInicio) [1, 2, 3, 4, 13].forEach(c => ws.mergeCells(filaGrupoInicio, c, filaGrupoFin, c));
       [1, 2].forEach(c => {
         const cell = ws.getCell(filaGrupoInicio, c);
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: MIPER_COLOR_BLOQUE_TAREA_EXCEL } };
@@ -9152,6 +9171,12 @@ async function generarExcelMiper(datos) {
   wsPrevias.getCell(r, 4).value = 'REVISION'; wsPrevias.getCell(r, 4).font = { bold: true };
   wsPrevias.getCell(r, 5).value = datos.revision;
   campoDer(r, 'PROXIMA REVISION', datos.proximaRevision ? ddmmyyyy(datos.proximaRevision) : '');
+  r++;
+  wsPrevias.getCell(r, 1).value = 'PARTICIPACIÓN COMITÉ PARITARIO / DELEGADO SST'; wsPrevias.getCell(r, 1).font = { bold: true };
+  wsPrevias.mergeCells(r, 2, r, 6);
+  wsPrevias.getCell(r, 2).value = datos.comiteParitario || 'A COMPLETAR: Nombre representante(s) de los trabajadores';
+  wsPrevias.getCell(r, 7).value = 'NOMBRE Y FIRMA VALIDACIÓN TRABAJADORES — A COMPLETAR'; wsPrevias.getCell(r, 7).font = { bold: true };
+  wsPrevias.mergeCells(r, 7, r, NCOLS);
   r += 2;
   wsPrevias.mergeCells(r, 1, r, NCOLS);
   wsPrevias.getCell(r, 1).value = 'PROTOCOLOS DE VIGILANCIA MINSAL APLICABLES';
@@ -9165,6 +9190,15 @@ async function generarExcelMiper(datos) {
     });
   }
   r++;
+  // Nota metodológica fija (Res. Ex. E668/2025, Guía ISP) — mismo texto en
+  // todo documento generado, no es un dato que varíe por obra.
+  wsPrevias.mergeCells(r, 1, r, NCOLS);
+  const notaCell = wsPrevias.getCell(r, 1);
+  notaCell.value = 'NOTA METODOLÓGICA: La calificación de "Consecuencia" en la evaluación de riesgos considera diferencias por sexo, edad, condición de salud y sensibilidad especial de las personas trabajadoras, conforme al numeral 7.3 de la Guía ISP para la Identificación y Evaluación de Riesgos en los Lugares de Trabajo (Res. Ex. E668/2025), en base a la composición de la dotación registrada en el Anexo 1.';
+  notaCell.font = { italic: true, size: 9 };
+  notaCell.alignment = { wrapText: true, vertical: 'middle' };
+  wsPrevias.getRow(r).height = 30;
+  r += 2;
   r = escribirEncabezadoTabla(wsPrevias, r);
   let banco = [];
   try { banco = await cargarMiperBanco(); } catch (e) { /* si no carga el banco histórico, solo quedan las filas nuevas */ }

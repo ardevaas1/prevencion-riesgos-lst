@@ -123,11 +123,14 @@ function inicializarPlanilla() {
   ]);
 
   // Matriz IPER — filas de la matriz (una fila = un peligro/riesgo evaluado
-  // para una tarea). VEP y Nivel de Riesgo los calcula la app sola.
+  // para una tarea). VEP y Nivel de Riesgo los calcula la app sola. PTS
+  // (Procedimientos de Trabajo Seguro aplicables) se escribe una vez por
+  // envío del formulario y queda repetido en cada fila de ese mismo grupo
+  // Proceso/Puesto/Tarea/Equipos — igual que Equipos.
   crearHoja(ss, 'MIPER_MATRIZ', [
     'N°', 'Obra', 'Proceso', 'Puesto', 'Tarea', 'Equipos', 'Peligro', 'Riesgo',
     'Codigo Riesgo', 'Familia Riesgo', 'Probabilidad', 'Consecuencia', 'VEP',
-    'Nivel Riesgo', 'Medidas Codigo', 'Anexo', 'Fecha Registro', 'Registrado Por'
+    'Nivel Riesgo', 'Medidas Codigo', 'Anexo', 'Fecha Registro', 'Registrado Por', 'PTS'
   ]);
 
   // Matriz IPER — riesgos agregados a mano por los supervisores que no
@@ -144,7 +147,7 @@ function inicializarPlanilla() {
     'N°', 'Obra', 'Entidad Empleadora', 'Sucursal', 'Responsable Levantamiento',
     'Fecha', 'Revision', 'Proxima Revision', 'Protocolos',
     'Nombre Elaboro', 'Nombre Reviso', 'Nombre Aprobo',
-    'PDF', 'Excel', 'Fecha Registro', 'Registrado Por'
+    'PDF', 'Excel', 'Fecha Registro', 'Registrado Por', 'Comite Paritario'
   ]);
 
   // Matriz IPER — partidas del Programa Edificio real de cada obra
