@@ -107,15 +107,30 @@ const MIPER_CATALOGO_RIESGOS = [
   { familia: "MUSCULO_ESQUELETICO", riesgo: "Sobrecarga física debido al trabajo repetitivo de miembros superiores", definicion: "Tarea donde se involucra los miembros superiores (hombro, brazo, antebrazo, mano), caracterizada por tareas durante las cuales las mismas acciones de trabajo son repetidas por más del 50% de la duración de éstas, y/o el tiempo de ciclo es inferior a 30 segundos, y con una duración total de una hora o más durante la jornada laboral y con un tiempo total de 5 o más horas a la semana", codigo: "R2", medidas: ["Ajustar la altura de las mesas, sillas y equipos para permitir una postura de trabajo cómoda y neutral", "Organizar el espacio de trabajo de manera que se minimicen los movimientos innecesarios y se eviten las posturas forzadas", "Rotar a los trabajadores entre diferentes tareas para reducir la exposición a movimientos repetitivos", "Establecer pausas cortas y frecuentes durante la jornada laboral para permitir que los músculos se relajen", "Capacitar en postura correcta y ergonómica, técnicas de levantamiento cargas y riesgos asociados a movimientos repetitivos.", "Realizar mantencion de equipos y herramientas para garantizar el correcto funcionamiento y minimizar la carga de trabajo", "Instruir en la realización de una rutina de elongación y calentamiento muscular previo al inicio de la tarea", "El trabajador durante la tarea de 1 hora, debe realizar una pausa de descanso e hidratación de 10 minutos"] },
   { familia: "PSICOSOCIAL", riesgo: "Carga de trabajo", definicion: "La carga de trabajo son las exigencias que se le hacen a los trabajadores y trabajadoras para que cumplan con un determinado objetivo o tarea en un tiempo acotado o limitado. Es decir, en la carga de trabajo existe una relación entre la cantidad de tareas y el tiempo en que se deben realizar, que puede ser desde minutos hasta semanas o más", codigo: "S1", medidas: ["Crear un ambiente de trabajo donde se valore la diversidad, la igualdad y el respeto mutuo.", "Capacitar a los trabajadores sobre acoso laboral, sus consecuencias y cómo identificarlo.", "Garantizar la confidencialidad de las personas que denuncian el acoso", "Contar con un Protocolo de Acoso, que los trabajadores estén en conocimiento", "Contar con un Procedimiento de Denuncias", "Contar con un Procedimiento de Investigación de Acoso", "Expresar tus necesidades y preocupaciones de manera clara y respetuosa", "Aprender a decir \"no\" cuando sea necesario"] },
 ];
-// Protocolos de Vigilancia Epidemiológica MINSAL (Anexo 6) — checklist fijo,
-// se marca por obra cuáles aplican según los riesgos identificados.
+// Protocolos de Vigilancia Epidemiológica MINSAL (Anexo 6) — ya no se marcan
+// a mano: se activan solos según qué códigos de riesgo (ver
+// MIPER_CATALOGO_RIESGOS → codigo) están presentes en la matriz de la obra,
+// igual que en la app de referencia del cliente (ver
+// protocolosAutomaticosMiper). "codigos" es la lista de códigos que, si
+// aparece AL MENOS UNO en la matriz, activa ese protocolo.
 const MIPER_PROTOCOLOS = [
-  "Protocolo de Vigilancia del Ambiente de Trabajo y de la Salud de los Trabajadores con Exposición a Sílice",
-  "Protocolo de Exposición Ocupacional a Ruido PREXOR",
-  "Protocolo de Vigilancia para Trabajadores Expuestos a Factores de Riesgo de Trastornos Musculo-Esqueléticos de Extremidades Superiores Relacionas con el Trabajo (TMERTEESS)",
-  "Protocolo de Vigilancia de Riesgos Psicosociales en el Trabajo",
-  "Guía Técnica sobre Radiación Ultravioleta de Origen Solar",
+  { texto: "Protocolo de Vigilancia del Ambiente de Trabajo y de la Salud de los Trabajadores con Exposición a Sílice", codigos: ["P1"] },
+  { texto: "Protocolo de Exposición Ocupacional a Ruido PREXOR", codigos: ["O1"] },
+  { texto: "Protocolo de Vigilancia para Trabajadores Expuestos a Factores de Riesgo de Trastornos Musculo-Esqueléticos de Extremidades Superiores Relacionas con el Trabajo (TMERTEESS)", codigos: ["R2"] },
+  { texto: "Protocolo de Vigilancia de Riesgos Psicosociales en el Trabajo", codigos: ["S1"] },
+  { texto: "Guía Técnica sobre Radiación Ultravioleta de Origen Solar", codigos: ["H1"] },
+  { texto: "Guía Técnica para la Evaluación y Control de los Riesgos Asociados al Manejo o Manipulación Manual de Carga", codigos: ["R1"] },
 ];
+// Índices de MIPER_PROTOCOLOS cuyos códigos aparecen en esas filas de la
+// matriz — reemplaza el checklist manual que tenía el formulario de
+// generar documento.
+function protocolosAutomaticosMiper(filas) {
+  const codigosPresentes = new Set(filas.map(f => f.codigoRiesgo).filter(Boolean));
+  return MIPER_PROTOCOLOS
+    .map((p, i) => ({ p, i }))
+    .filter(({ p }) => p.codigos.some(c => codigosPresentes.has(c)))
+    .map(({ i }) => i);
+}
 
 // Probabilidad × Consecuencia = VEP; el VEP determina el Nivel de Riesgo
 // (tabla "VEP" del Excel original). Con probabilidad y consecuencia acotadas
@@ -1551,6 +1566,7 @@ let allProgramaPersonalizado = [];
 let allMiperLevantamiento = [];
 let allMiperMatriz = [];
 let allMiperDocumentos = [];
+let allMiperDatosEmpresa = [];
 let allMiperPrograma = [];
 let allCapacitacionDs44 = [];
 
@@ -1658,7 +1674,7 @@ async function cargarTodo(silencioso) {
       return;
     }
 
-    const [trab, insp, inc, proc, epp, charlas, docsPend, invest, hcr, diat, subs, docs, prog, miperLev, miperMat, miperRiesgos, miperDocs, miperProg, capDs44] = await fetchSheetsBatch([
+    const [trab, insp, inc, proc, epp, charlas, docsPend, invest, hcr, diat, subs, docs, prog, miperLev, miperMat, miperRiesgos, miperDocs, miperDatosEmpresa, miperProg, capDs44] = await fetchSheetsBatch([
       `'${CONFIG.SHEET_TRABAJADORES}'!A2:AC2000`,
       `'${CONFIG.SHEET_INSPECCIONES}'!A2:M2000`,
       `'${CONFIG.SHEET_INCIDENTES}'!A2:V2000`,
@@ -1676,6 +1692,7 @@ async function cargarTodo(silencioso) {
       `'${CONFIG.SHEET_MIPER_MATRIZ}'!A2:S4000`,
       `'${CONFIG.SHEET_MIPER_RIESGOS_CUSTOM}'!A2:H500`,
       `'${CONFIG.SHEET_MIPER_DOCUMENTOS}'!A2:Q500`,
+      `'${CONFIG.SHEET_MIPER_DATOS_EMPRESA}'!A2:K500`,
       `'${CONFIG.SHEET_MIPER_PROGRAMA}'!A2:H4000`,
       `'${CONFIG.SHEET_CAPACITACION_DS44}'!A2:M3000`,
     ]);
@@ -1698,6 +1715,7 @@ async function cargarTodo(silencioso) {
     allMiperMatriz = miperMat.map((r,i) => rowToMiperMatriz(r,i));
     allMiperRiesgosCustom = miperRiesgos.map((r,i) => rowToMiperRiesgoCustom(r,i));
     allMiperDocumentos = miperDocs.map((r,i) => rowToMiperDocumento(r,i));
+    allMiperDatosEmpresa = miperDatosEmpresa.map((r,i) => rowToMiperDatosEmpresa(r,i));
     allMiperPrograma = miperProg.map((r,i) => rowToMiperPrograma(r,i));
     allCapacitacionDs44 = capDs44.map((r,i) => rowToCapacitacionDs44(r,i));
     renderModulosPrincipales();
@@ -1853,6 +1871,22 @@ function rowToMiperDocumento(r, i) {
     nombreElaboro: r[9]||'', nombreReviso: r[10]||'', nombreAprobo: r[11]||'',
     pdf: r[12]||'', excel: r[13]||'', fechaRegistro: r[14]||'', registradoPor: r[15]||'',
     comiteParitario: r[16]||'' };
+}
+// Nota: esta hoja NO está asociada a la Obra (a diferencia del resto de
+// MIPER) — es una configuración de la empresa, única para toda la app (ver
+// datosEmpresaMiperActual, que siempre toma la fila más reciente).
+function rowToMiperDatosEmpresa(r, i) {
+  return { fila: i+2, n: r[0]||'', entidadEmpleadora: r[1]||'',
+    nombreElaboro: r[2]||'', firmaElaboro: r[3]||'',
+    nombreReviso: r[4]||'', firmaReviso: r[5]||'',
+    nombreAprobo: r[6]||'', firmaAprobo: r[7]||'',
+    comiteParitario: r[8]||'', fechaRegistro: r[9]||'', registradoPor: r[10]||'' };
+}
+// La fila más reciente guardada es siempre la vigente — null si nunca se
+// configuró (la app sigue funcionando igual, solo que sin precargar nada).
+function datosEmpresaMiperActual() {
+  if (allMiperDatosEmpresa.length === 0) return null;
+  return allMiperDatosEmpresa[allMiperDatosEmpresa.length - 1];
 }
 function rowToMiperPrograma(r, i) {
   return { fila: i+2, n: r[0]||'', obra: r[1]||'', item: r[2]||'', proceso: r[3]||'', tarea: r[4]||'',
@@ -5591,6 +5625,26 @@ function cargarImagenDesdeDataUrl(dataUrl) {
     img.src = dataUrl;
   });
 }
+// Precarga una firma ya guardada (dataURL) dentro de un canvas de firma ya
+// inicializado (ver initFirmaPad) — se usa para que los firmantes
+// configurados en "Datos de empresa" (ver datosEmpresaMiperActual) no
+// tengan que volver a dibujarse cada vez que se genera un documento: la
+// firma guardada queda ahí lista para usar tal cual (firmaEstaVacia() la ve
+// como no-vacía, firmaCanvasADataURL() la recorta igual que una firmada a
+// mano), y si la persona prefiere cambiarla solo tiene que borrarla y
+// volver a firmar encima, como siempre.
+async function precargarFirmaId(canvasId, dataUrl) {
+  if (!dataUrl) return;
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  try {
+    const img = await cargarImagenDesdeDataUrl(dataUrl);
+    const ctx = canvas.getContext('2d');
+    const escala = Math.min(canvas.width / img.width, canvas.height / img.height, 1);
+    const w = img.width * escala, h = img.height * escala;
+    ctx.drawImage(img, (canvas.width - w) / 2, (canvas.height - h) / 2, w, h);
+  } catch (e) { /* si falla, el canvas queda vacío y se firma a mano como siempre */ }
+}
 FINALIZADORES_DOCUMENTO_PENDIENTE.epp = async function (meta, filas) {
   await finalizarEpp({ ...meta, firma: filas[0].firma });
 };
@@ -8259,6 +8313,11 @@ function renderMiper() {
         <div class="badge-row">${filas.length ? nivelBadges : '<span class="badge gray">Sin riesgos evaluados todavía</span>'}</div>
       </div>
     </div>
+    <div class="card-sub" style="margin:8px 0;"><a href="javascript:void(0)" onclick="abrirDatosEmpresaMiper()">⚙ Datos de empresa (Entidad Empleadora, firmantes)</a></div>
+
+    <div class="sec-label" style="margin-top:14px;">Agregar proceso y tareas</div>
+    <div class="card-sub" style="margin-bottom:8px;">Si el proceso ya existe en esta obra, las tareas se suman a él. Cada tarea recibe sus propios peligros, evaluación y PTS solos — desde el banco histórico, o con IA si no hay coincidencia.</div>
+    <button class="action-btn" onclick="abrirFormMiperProcesoTareas()">${ic('miper',14)} Agregar y generar</button>
 
     <div class="sec-label" style="margin-top:14px;">Levantamiento de procesos y tareas</div>
     ${(() => {
@@ -8532,6 +8591,169 @@ async function guardarMiperTarea(ev) {
     ]]);
     toast('Tarea agregada ✓', 'ok');
     closePanel('panel-miper-tarea');
+    await cargarTodo(true);
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+// ── Agregar proceso y tareas (flujo combinado y automático) ─────────────
+// Un solo formulario: Proceso + N bloques de Tarea (Puesto/Tarea/Equipos).
+// Al guardar, cada tarea levanta su fila en MIPER_LEVANTAMIENTO (o
+// reutiliza la que ya existe) y genera sus peligros/riesgos solos:
+// primero busca Proceso+Tarea en el banco histórico (ver
+// vendor/miper-banco.js) y copia TODAS las filas que matcheen (con su
+// PTS); si no hay ninguna coincidencia y hay IA configurada
+// (MIPER_IA_WEBAPP_URL), le pide sugerencias; si tampoco hay IA, la tarea
+// queda levantada pero sin riesgos — se completa después a mano con
+// "Agregar riesgo" (el flujo detallado de siempre sigue ahí para eso).
+let miperTareaProcesoContador = 0;
+function abrirFormMiperProcesoTareas() {
+  const obra = obraMiperEfectiva();
+  if (!obra) { toast('Elige una obra primero', 'error'); return; }
+  const procesosObra = [...new Set(allMiperLevantamiento.filter(t => t.obra === obra).map(t => t.proceso))];
+  miperTareaProcesoContador = 0;
+  document.getElementById('miper-proceso-tareas-body').innerHTML = `
+    <form id="form-miper-proceso-tareas" onsubmit="guardarMiperProcesoTareas(event)">
+      <div class="card-sub" style="margin-bottom:10px;">Si el proceso ya existe en esta obra, las tareas se suman a él.</div>
+      <div class="form-group"><label>Proceso</label>
+        <input name="proceso" list="lista-procesos-miper" required placeholder="Ej: Instalación de tabiquería interior">
+        <datalist id="lista-procesos-miper">${procesosObra.map(p => `<option value="${esc(p)}">`).join('')}</datalist>
+      </div>
+      <div id="miper-tareas-proceso"></div>
+      <button type="button" class="action-btn" onclick="agregarBloqueTareaMiperProceso()">${ic('miper',14)} Otra tarea en este proceso</button>
+      <div class="card-sub" style="margin:10px 0;">Cada tarea recibe sus propios peligros, evaluación y PTS sugeridos.</div>
+      <button class="btn-add" type="submit">${ic('miper',14)} Agregar y generar</button>
+    </form>
+  `;
+  agregarBloqueTareaMiperProceso();
+  openPanel('panel-miper-proceso-tareas');
+}
+function bloqueTareaMiperProcesoHtml(idx) {
+  return `
+  <div class="card card--default miper-bloque-tarea-proceso" data-idx="${idx}" style="flex-direction:column;align-items:stretch;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <div class="card-title">Tarea ${idx + 1}</div>
+      <button type="button" class="btn-quitar-bloque-tarea hidden" onclick="quitarBloqueTareaMiperProceso(${idx})" style="background:none;border:none;color:#c0392b;font-size:12px;font-weight:600;cursor:pointer;padding:4px;">✕ Quitar</button>
+    </div>
+    <div class="form-group"><label>Puesto de trabajo</label><input data-field="puesto" required placeholder="Ej: Carpintero"></div>
+    <div class="form-group"><label>Tarea</label><input data-field="tarea" required placeholder="Ej: Montaje de perfiles metálicos"></div>
+    <div class="form-group"><label>Equipos, máquinas y herramientas</label><input data-field="equipos" placeholder="Ej: Escala tijera, atornillador, sierra circular"></div>
+  </div>`;
+}
+function agregarBloqueTareaMiperProceso() {
+  if (bloquearSiViewer()) return;
+  const cont = document.getElementById('miper-tareas-proceso');
+  const idx = miperTareaProcesoContador++;
+  cont.insertAdjacentHTML('beforeend', bloqueTareaMiperProcesoHtml(idx));
+  const soloUno = cont.children.length <= 1;
+  cont.querySelectorAll('.btn-quitar-bloque-tarea').forEach(b => b.classList.toggle('hidden', soloUno));
+}
+function quitarBloqueTareaMiperProceso(idx) {
+  if (bloquearSiViewer()) return;
+  const cont = document.getElementById('miper-tareas-proceso');
+  if (cont.children.length <= 1) { toast('Debe quedar al menos una tarea', 'error'); return; }
+  const el = cont.querySelector(`[data-idx="${idx}"]`);
+  if (el) el.remove();
+  const soloUno = cont.children.length <= 1;
+  cont.querySelectorAll('.btn-quitar-bloque-tarea').forEach(b => b.classList.toggle('hidden', soloUno));
+}
+// Arma una fila lista para MIPER_MATRIZ a partir de una entrada del banco
+// histórico — resuelve la familia interna (SEGURIDAD/HIGIENE/...) por el
+// código del riesgo en el catálogo, porque el campo "anexo" del banco no
+// siempre tiene el mismo formato (filas viejas lo guardan en mayúsculas sin
+// tilde, las nuevas con el texto de exhibición).
+function filaDesdeBancoMiper(m, catalogo) {
+  const cat = catalogo.find(c => c.codigo && m.medidasCodigo && c.codigo === m.medidasCodigo);
+  const familia = cat ? cat.familia
+    : (Object.keys(MIPER_FAMILIA_LABEL).find(k => MIPER_FAMILIA_LABEL[k].toLowerCase() === String(m.anexo||'').toLowerCase())
+      || String(m.anexo||'').toUpperCase().replace(/\s+/g,'_'));
+  const probabilidad = Number(m.probabilidad)||0, consecuencia = Number(m.consecuencia)||0;
+  return {
+    peligro: m.peligro || '', riesgoNombre: m.riesgo || '', codigo: m.medidasCodigo || '', familia,
+    probabilidad, consecuencia, vep: Number(m.vep) || probabilidad * consecuencia,
+    nivel: m.nivel || miperNivelRiesgo(probabilidad, consecuencia).nivel, pts: m.pts || '',
+  };
+}
+async function guardarMiperProcesoTareas(ev) {
+  if (bloquearSiViewer()) return;
+  ev.preventDefault();
+  const f = ev.target;
+  try {
+    const obra = obraMiperEfectiva();
+    if (!obra) { toast('Elige una obra primero', 'error'); return; }
+    const proceso = f.proceso.value.trim();
+    if (!proceso) { toast('Escribe el proceso', 'error'); return; }
+    const bloques = [...document.querySelectorAll('#miper-tareas-proceso .miper-bloque-tarea-proceso')];
+    if (bloques.length === 0) { toast('Agrega al menos una tarea', 'error'); return; }
+    const tareasForm = bloques.map(b => ({
+      puesto: b.querySelector('[data-field="puesto"]').value.trim(),
+      tarea: b.querySelector('[data-field="tarea"]').value.trim(),
+      equipos: b.querySelector('[data-field="equipos"]').value.trim(),
+    }));
+    if (tareasForm.some(t => !t.puesto || !t.tarea)) { toast('Completa puesto y tarea en todas las tareas', 'error'); return; }
+
+    toast('Generando...');
+    let banco = [];
+    try { banco = await cargarMiperBanco(); } catch (e) { /* sin banco, se sigue igual con IA o a mano */ }
+    const catalogo = miperCatalogoCompleto();
+    const fechaRegistro = new Date().toLocaleString('es-CL');
+    let totalFilasNuevas = 0, totalSinMatch = 0;
+
+    for (const { puesto, tarea, equipos } of tareasForm) {
+      // Levantamiento: reutiliza la fila si Proceso+Puesto+Tarea ya existen
+      // en esta obra (incluye lo agregado por una tarea anterior de este
+      // mismo envío), si no, la crea.
+      let yaExiste = allMiperLevantamiento.some(t =>
+        t.obra === obra && t.proceso.toLowerCase() === proceso.toLowerCase() &&
+        t.puesto.toLowerCase() === puesto.toLowerCase() && t.tarea.toLowerCase() === tarea.toLowerCase());
+      if (!yaExiste) {
+        const match = trabajadoresPorPuestoMiper(obra, puesto);
+        const nPersonas = match.length;
+        const sexos = [...new Set(match.map(t => t.sexo).filter(Boolean))];
+        const sexo = sexos.length === 0 ? '' : sexos.length === 1 ? sexos[0] : 'Mixto';
+        await appendSheet(`'${CONFIG.SHEET_MIPER_LEVANTAMIENTO}'!A:L`, [[
+          allMiperLevantamiento.length + 1, obra, proceso, puesto, tarea, 'Rutinaria', '',
+          nPersonas, sexo, '', fechaRegistro, userEmail || ''
+        ]]);
+        allMiperLevantamiento.push({ fila: 0, n: '', obra, proceso, puesto, tarea, rutinaria: 'Rutinaria', lugar: '', nPersonas, sexo, observaciones: '', fechaRegistro, registradoPor: userEmail || '' });
+      }
+
+      // Peligros/riesgos: banco histórico primero, IA si no hay coincidencia.
+      const matches = banco.filter(b => (b.proceso||'').toLowerCase() === proceso.toLowerCase() && (b.tarea||'').toLowerCase() === tarea.toLowerCase());
+      let generadas = [];
+      if (matches.length > 0) {
+        generadas = matches.map(m => filaDesdeBancoMiper(m, catalogo));
+      } else if (CONFIG.MIPER_IA_WEBAPP_URL) {
+        try {
+          const data = await llamarWebAppMiperIa({
+            proceso, puesto, tarea, equipos,
+            catalogo: catalogo.map(r => ({ codigo: r.codigo, riesgo: r.riesgo, familia: r.familia, definicion: r.definicion })),
+          });
+          generadas = (data.sugerencias || []).map(s => {
+            const cat = catalogo.find(c => c.codigo === s.codigo);
+            if (!cat) return null;
+            const probabilidad = Number(s.probabilidad)||0, consecuencia = Number(s.consecuencia)||0;
+            const { vep, nivel } = miperNivelRiesgo(probabilidad, consecuencia);
+            return { peligro: s.peligro || cat.riesgo, riesgoNombre: cat.riesgo, codigo: cat.codigo, familia: cat.familia, probabilidad, consecuencia, vep, nivel, pts: '' };
+          }).filter(Boolean);
+        } catch (e) { /* si falla la IA, la tarea queda sin riesgos automáticos, igual que sin IA configurada */ }
+      }
+
+      if (generadas.length === 0) { totalSinMatch++; continue; }
+      const filas = generadas.map((fn, i) => [
+        allMiperMatriz.length + totalFilasNuevas + 1 + i, obra, proceso, puesto, tarea, equipos || '',
+        fn.peligro, fn.riesgoNombre, fn.codigo, fn.familia, fn.probabilidad, fn.consecuencia, fn.vep, fn.nivel,
+        fn.codigo, MIPER_FAMILIA_LABEL[fn.familia] || fn.familia, fechaRegistro, userEmail || '', fn.pts
+      ]);
+      await appendSheet(`'${CONFIG.SHEET_MIPER_MATRIZ}'!A:S`, filas);
+      totalFilasNuevas += filas.length;
+    }
+
+    closePanel('panel-miper-proceso-tareas');
+    if (totalSinMatch > 0) {
+      toast(`${totalFilasNuevas} riesgo(s) generado(s) ✓ — ${totalSinMatch} tarea(s) sin coincidencia, complétalas con "Agregar riesgo"`, 'ok');
+    } else {
+      toast(`${totalFilasNuevas} riesgo(s) generado(s) automáticamente ✓`, 'ok');
+    }
     await cargarTodo(true);
   } catch (e) { toast(e.message, 'error'); }
 }
@@ -8874,6 +9096,13 @@ function aplicarPrefillMiperFila(r) {
 }
 
 // ── Documento: encabezado + protocolos + firmas + Revisión/Próxima Revisión ──
+// Entidad Empleadora, firmantes (Elaboró/Revisó/Aprobó, con firma) y Comité
+// Paritario por defecto vienen de datosEmpresaMiperActual() (ver "Datos de
+// empresa") — ya no se vuelven a tipear/firmar en cada documento, solo si
+// la persona decide cambiarlos acá mismo (borra la firma precargada y
+// firma de nuevo, o escribe otro nombre). Los Protocolos MINSAL ya no son
+// un checklist manual: se calculan solos según los códigos de riesgo de la
+// matriz (ver protocolosAutomaticosMiper).
 function abrirDocumentoMiper() {
   const obra = obraMiperEfectiva();
   if (!obra) { toast('Elige una obra primero', 'error'); return; }
@@ -8881,39 +9110,39 @@ function abrirDocumentoMiper() {
   if (filas.length === 0) { toast('Agrega al menos un riesgo a la matriz antes de generar el documento', 'error'); return; }
   const docs = allMiperDocumentos.filter(d => d.obra === obra).sort((a,b) => b.fila - a.fila);
   const ultimo = docs[0] || null;
+  const cfg = datosEmpresaMiperActual();
   const revisionSiguiente = ultimo ? ultimo.revision + 1 : 0;
+  const protocolosAuto = protocolosAutomaticosMiper(filas);
   document.getElementById('miper-documento-body').innerHTML = `
+    ${cfg ? '' : `<div class="card-sub" style="margin-bottom:12px;">Todavía no configuraste los <a href="javascript:void(0)" onclick="abrirDatosEmpresaMiper()">Datos de empresa</a> — puedes completar todo acá abajo igual, o configurarlos una vez para no tener que volver a hacerlo cada vez.</div>`}
     <form id="form-miper-documento" onsubmit="generarDocumentoMiper(event)">
-      <div class="form-group"><label>Entidad Empleadora</label><input name="entidadEmpleadora" required value="${esc(ultimo ? ultimo.entidadEmpleadora : '')}"></div>
+      <div class="form-group"><label>Entidad Empleadora</label><input name="entidadEmpleadora" required value="${esc(cfg ? cfg.entidadEmpleadora : (ultimo ? ultimo.entidadEmpleadora : ''))}"></div>
       <div class="form-group"><label>Sucursal</label><input name="sucursal" required value="${esc(ultimo ? ultimo.sucursal : obra)}"></div>
       <div class="form-group"><label>Responsable del levantamiento</label><input name="responsableLevantamiento" required value="${esc(ultimo ? ultimo.responsableLevantamiento : '')}"></div>
       <div class="form-group"><label>Fecha</label><input type="date" name="fecha" required value="${hoyISO()}"></div>
       <div class="form-group"><label>Revisión</label><input value="${revisionSiguiente}" readonly></div>
       <div class="form-group"><label>Próxima revisión</label><input type="date" name="proximaRevision" required></div>
       <div class="form-group"><label>Representante(s) Comité Paritario / Delegado SST</label>
-        <input name="comiteParitario" placeholder="Nombre(s) — déjalo vacío si aún no está definido" value="${esc(ultimo ? ultimo.comiteParitario : '')}">
+        <input name="comiteParitario" placeholder="Nombre(s) — déjalo vacío si aún no está definido" value="${esc(cfg && cfg.comiteParitario ? cfg.comiteParitario : (ultimo ? ultimo.comiteParitario : ''))}">
       </div>
 
       <div class="sec-label">Protocolos de Vigilancia MINSAL aplicables</div>
-      ${MIPER_PROTOCOLOS.map((p,i) => `
-        <label style="display:flex;gap:8px;align-items:flex-start;margin-bottom:10px;font-size:13.5px;line-height:1.4;">
-          <input type="checkbox" name="protocolo" value="${i}" style="margin-top:3px;flex-shrink:0;" ${ultimo && ultimo.protocolos.includes(i) ? 'checked' : ''}>
-          <span>${esc(p)}</span>
-        </label>
-      `).join('')}
+      <div class="card-sub" style="margin-bottom:10px;">Se marcan solos según los riesgos que hay en la matriz de esta obra — no hace falta elegirlos a mano.</div>
+      ${protocolosAuto.length === 0 ? `<div class="card-sub" style="margin-bottom:10px;">Ninguno aplica con los riesgos evaluados hasta ahora.</div>` :
+        protocolosAuto.map(i => `<div class="card-sub" style="margin-bottom:6px;">✓ ${esc(MIPER_PROTOCOLOS[i].texto)}</div>`).join('')}
 
       <div class="sec-label" style="margin-top:14px;">Firmas</div>
-      <div class="form-group"><label>Elaboró — nombre</label><input name="nombreElaboro" required value="${esc(ultimo ? ultimo.nombreElaboro : '')}"></div>
+      <div class="form-group"><label>Elaboró — nombre</label><input name="nombreElaboro" required value="${esc(cfg ? cfg.nombreElaboro : (ultimo ? ultimo.nombreElaboro : ''))}"></div>
       <div class="form-group"><label>Firma de quien elabora</label>
         <div class="firma-box"><canvas id="firma-canvas-miper-elaboro"></canvas></div>
         <div class="firma-actions"><button type="button" onclick="limpiarFirmaId('firma-canvas-miper-elaboro')">Borrar firma</button></div>
       </div>
-      <div class="form-group"><label>Revisó — nombre</label><input name="nombreReviso" value="${esc(ultimo ? ultimo.nombreReviso : '')}"></div>
+      <div class="form-group"><label>Revisó — nombre</label><input name="nombreReviso" value="${esc(cfg ? cfg.nombreReviso : (ultimo ? ultimo.nombreReviso : ''))}"></div>
       <div class="form-group"><label>Firma de quien revisa</label>
         <div class="firma-box"><canvas id="firma-canvas-miper-reviso"></canvas></div>
         <div class="firma-actions"><button type="button" onclick="limpiarFirmaId('firma-canvas-miper-reviso')">Borrar firma</button></div>
       </div>
-      <div class="form-group"><label>Aprobó — nombre</label><input name="nombreAprobo" value="${esc(ultimo ? ultimo.nombreAprobo : '')}"></div>
+      <div class="form-group"><label>Aprobó — nombre</label><input name="nombreAprobo" value="${esc(cfg ? cfg.nombreAprobo : (ultimo ? ultimo.nombreAprobo : ''))}"></div>
       <div class="form-group"><label>Firma de quien aprueba</label>
         <div class="firma-box"><canvas id="firma-canvas-miper-aprobo"></canvas></div>
         <div class="firma-actions"><button type="button" onclick="limpiarFirmaId('firma-canvas-miper-aprobo')">Borrar firma</button></div>
@@ -8936,8 +9165,81 @@ function abrirDocumentoMiper() {
     initFirmaPad('firma-canvas-miper-elaboro');
     initFirmaPad('firma-canvas-miper-reviso');
     initFirmaPad('firma-canvas-miper-aprobo');
+    if (cfg) {
+      precargarFirmaId('firma-canvas-miper-elaboro', cfg.firmaElaboro);
+      precargarFirmaId('firma-canvas-miper-reviso', cfg.firmaReviso);
+      precargarFirmaId('firma-canvas-miper-aprobo', cfg.firmaAprobo);
+    }
   }, 80);
   openPanel('panel-miper-documento');
+}
+// ── Datos de empresa: Entidad Empleadora + firmantes, configurados una vez ──
+function abrirDatosEmpresaMiper() {
+  const cfg = datosEmpresaMiperActual();
+  document.getElementById('miper-datos-empresa-body').innerHTML = `
+    <div class="card-sub" style="margin-bottom:14px;">Esto se completa solo en cada Matriz IPER nueva que generes — guárdalo una vez y no tienes que volver a tipear ni a firmar cada vez. Si necesitas cambiar algo solo para UN documento puntual, puedes hacerlo directo al generarlo, sin tocar esto.</div>
+    <form id="form-miper-datos-empresa" onsubmit="guardarDatosEmpresaMiper(event)">
+      <div class="form-group"><label>Entidad Empleadora</label><input name="entidadEmpleadora" required value="${esc(cfg ? cfg.entidadEmpleadora : '')}"></div>
+      <div class="form-group"><label>Representante(s) Comité Paritario / Delegado SST (por defecto)</label>
+        <input name="comiteParitario" placeholder="Nombre(s) — opcional" value="${esc(cfg ? cfg.comiteParitario : '')}">
+      </div>
+
+      <div class="sec-label" style="margin-top:14px;">Elaboró</div>
+      <div class="form-group"><label>Nombre</label><input name="nombreElaboro" required value="${esc(cfg ? cfg.nombreElaboro : '')}"></div>
+      <div class="form-group"><label>Firma</label>
+        <div class="firma-box"><canvas id="firma-canvas-empresa-elaboro"></canvas></div>
+        <div class="firma-actions"><button type="button" onclick="limpiarFirmaId('firma-canvas-empresa-elaboro')">Borrar firma</button></div>
+      </div>
+
+      <div class="sec-label" style="margin-top:14px;">Revisó (opcional)</div>
+      <div class="form-group"><label>Nombre</label><input name="nombreReviso" value="${esc(cfg ? cfg.nombreReviso : '')}"></div>
+      <div class="form-group"><label>Firma</label>
+        <div class="firma-box"><canvas id="firma-canvas-empresa-reviso"></canvas></div>
+        <div class="firma-actions"><button type="button" onclick="limpiarFirmaId('firma-canvas-empresa-reviso')">Borrar firma</button></div>
+      </div>
+
+      <div class="sec-label" style="margin-top:14px;">Aprobó (opcional)</div>
+      <div class="form-group"><label>Nombre</label><input name="nombreAprobo" value="${esc(cfg ? cfg.nombreAprobo : '')}"></div>
+      <div class="form-group"><label>Firma</label>
+        <div class="firma-box"><canvas id="firma-canvas-empresa-aprobo"></canvas></div>
+        <div class="firma-actions"><button type="button" onclick="limpiarFirmaId('firma-canvas-empresa-aprobo')">Borrar firma</button></div>
+      </div>
+
+      <button class="btn-add" type="submit">Guardar datos de empresa</button>
+    </form>
+  `;
+  setTimeout(() => {
+    initFirmaPad('firma-canvas-empresa-elaboro');
+    initFirmaPad('firma-canvas-empresa-reviso');
+    initFirmaPad('firma-canvas-empresa-aprobo');
+    if (cfg) {
+      precargarFirmaId('firma-canvas-empresa-elaboro', cfg.firmaElaboro);
+      precargarFirmaId('firma-canvas-empresa-reviso', cfg.firmaReviso);
+      precargarFirmaId('firma-canvas-empresa-aprobo', cfg.firmaAprobo);
+    }
+  }, 80);
+  openPanel('panel-miper-datos-empresa');
+}
+async function guardarDatosEmpresaMiper(ev) {
+  if (bloquearSiViewer()) return;
+  ev.preventDefault();
+  const f = ev.target;
+  try {
+    if (firmaEstaVacia('firma-canvas-empresa-elaboro')) { toast('Falta la firma de quien elabora', 'error'); return; }
+    const firmaElaboro = firmaCanvasADataURL('firma-canvas-empresa-elaboro');
+    const firmaReviso = firmaEstaVacia('firma-canvas-empresa-reviso') ? '' : firmaCanvasADataURL('firma-canvas-empresa-reviso');
+    const firmaAprobo = firmaEstaVacia('firma-canvas-empresa-aprobo') ? '' : firmaCanvasADataURL('firma-canvas-empresa-aprobo');
+    await appendSheet(`'${CONFIG.SHEET_MIPER_DATOS_EMPRESA}'!A:K`, [[
+      allMiperDatosEmpresa.length + 1, f.entidadEmpleadora.value.trim(),
+      f.nombreElaboro.value.trim(), firmaElaboro,
+      f.nombreReviso.value.trim(), firmaReviso,
+      f.nombreAprobo.value.trim(), firmaAprobo,
+      f.comiteParitario.value.trim(), new Date().toLocaleString('es-CL'), userEmail || ''
+    ]]);
+    toast('Datos de empresa guardados ✓', 'ok');
+    closePanel('panel-miper-datos-empresa');
+    await cargarTodo(true);
+  } catch (e) { toast(e.message, 'error'); }
 }
 async function generarDocumentoMiper(ev) {
   ev.preventDefault();
@@ -8949,7 +9251,7 @@ async function generarDocumentoMiper(ev) {
     if (firmaEstaVacia('firma-canvas-miper-elaboro')) { toast('Falta la firma de quien elabora', 'error'); return; }
     if (!f.nombreElaboro.value.trim()) { toast('Falta el nombre de quien elabora', 'error'); return; }
 
-    const protocolosSel = Array.from(f.querySelectorAll('input[name="protocolo"]:checked')).map(el => Number(el.value));
+    const protocolosSel = protocolosAutomaticosMiper(filas);
     const docsPrevios = allMiperDocumentos.filter(d => d.obra === obra).sort((a,b) => b.fila - a.fila);
     const revision = docsPrevios[0] ? docsPrevios[0].revision + 1 : 0;
 
@@ -9186,7 +9488,7 @@ async function generarExcelMiper(datos) {
     wsPrevias.mergeCells(r, 1, r, NCOLS); wsPrevias.getCell(r, 1).value = 'Ninguno marcado como aplicable'; r++;
   } else {
     datos.protocolosSel.forEach(i => {
-      wsPrevias.mergeCells(r, 1, r, NCOLS); wsPrevias.getCell(r, 1).value = '- ' + MIPER_PROTOCOLOS[i]; r++;
+      wsPrevias.mergeCells(r, 1, r, NCOLS); wsPrevias.getCell(r, 1).value = '- ' + MIPER_PROTOCOLOS[i].texto; r++;
     });
   }
   r++;
@@ -9299,7 +9601,7 @@ async function generarExcelMiper(datos) {
   MIPER_PROTOCOLOS.forEach((p, i) => {
     const fr = 4 + i;
     wsAnexo6.getCell(fr, 1).value = i + 1; wsAnexo6.getCell(fr, 1).border = borde;
-    wsAnexo6.getCell(fr, 2).value = p; wsAnexo6.getCell(fr, 2).border = borde; wsAnexo6.getCell(fr, 2).alignment = { wrapText: true };
+    wsAnexo6.getCell(fr, 2).value = p.texto; wsAnexo6.getCell(fr, 2).border = borde; wsAnexo6.getCell(fr, 2).alignment = { wrapText: true };
     wsAnexo6.getCell(fr, 3).value = datos.protocolosSel.includes(i) ? 'Sí' : 'No'; wsAnexo6.getCell(fr, 3).border = borde;
   });
   wsAnexo6.columns = [{width:6},{width:75},{width:16}];
