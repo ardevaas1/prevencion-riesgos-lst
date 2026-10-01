@@ -21,19 +21,10 @@ const CONFIG = {
   SHEET_SUBCONTRATISTAS_DOCS: 'SUBCONTRATISTAS_DOCS',
   SHEET_PROGRAMA_PERSONALIZADO: 'PROGRAMA_PERSONALIZADO',
 
-  // Matriz IPER (DS44) — ver MIPER_CATALOGO_RIESGOS/MIPER_PROTOCOLOS en app.js
-  // para los catálogos fijos (no van en el Sheet), y vendor/miper-banco.js
-  // para el banco histórico de filas reutilizables.
-  SHEET_MIPER_LEVANTAMIENTO: 'MIPER_LEVANTAMIENTO',
-  SHEET_MIPER_MATRIZ:        'MIPER_MATRIZ',
-  SHEET_MIPER_RIESGOS_CUSTOM:'MIPER_RIESGOS_CUSTOM',
-  SHEET_MIPER_DOCUMENTOS:    'MIPER_DOCUMENTOS',
-  SHEET_MIPER_PROGRAMA:      'MIPER_PROGRAMA',
-  // Datos de la empresa (Entidad Empleadora + firmantes Elaboró/Revisó/
-  // Aprobó) configurados una sola vez y reutilizados en cada Matriz IPER
-  // nueva, en vez de re-tipearlos/re-firmarlos cada vez — ver
-  // abrirDatosEmpresaMiper/datosEmpresaMiperActual en app.js.
-  SHEET_MIPER_DATOS_EMPRESA: 'MIPER_DATOS_EMPRESA',
+  // Matriz IPER (DS44) — la matriz se arma en una app externa; acá solo se
+  // sube el Excel ya terminado y queda una fila por obra con la matriz
+  // vigente (ver guardarArchivoMatrizIper en app.js).
+  SHEET_MIPER_ARCHIVO: 'MIPER_ARCHIVO',
 
   // Capacitación DS44 art.16 (8 hrs) — ver CAPACITACION_DS44_MODULOS en
   // app.js para el contenido fijo de los 7 módulos.
@@ -51,11 +42,4 @@ const CONFIG = {
   // (la app cae automáticamente a este camino solo cuando detecta que la
   // cuenta no tiene permiso directo sobre el Sheet).
   SUBCONTRATISTAS_WEBAPP_URL: 'https://script.google.com/macros/s/AKfycbzTJGZ7foL2ruysG4sN9bHyNrIVejpADOj8qOZFTC7FAW-AJzpnGLuPy6wxH6nszyI8/exec',
-
-  // URL de la Web App de Apps Script para sugerencias con IA en la Matriz
-  // de Riesgos (ver APPS_SCRIPT_WEBAPP_MIPER_IA.js, usa el tier gratis de
-  // Gemini) — deja vacío ('') si no la vas a usar: el botón "Sugerencia
-  // automática" simplemente no aparece y el resto del módulo MIPER sigue
-  // funcionando 100% manual, como siempre.
-  MIPER_IA_WEBAPP_URL: 'https://script.google.com/macros/s/AKfycbzfmF5VyA0qLCvagViCb9l3N_d89UgHObTqnFyCSKEkA4IQ6xL6kMRtCrb9eaX7vJQ7Sw/exec',
 };
