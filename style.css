@@ -689,6 +689,14 @@ body.is-offline #app { padding-top: 30px; }
 /* .action-btn también se usa en enlaces <a> (ej. abrir Drive/Sheets). */
 a.action-btn { text-decoration: none; }
 
+/* ── Recordatorio compacto arriba del detalle de Subcontratistas ── */
+.subcont-recordatorio {
+  display: flex; align-items: flex-start; gap: 8px;
+  background: #fff3e0; color: #7a4a00; border-radius: 10px;
+  padding: 10px 12px; margin-bottom: 14px; font-size: 12px; line-height: 1.4;
+}
+.subcont-recordatorio svg { color: #e65100; margin-top: 1px; }
+
 /* ── Alerta de charla / plan de acción sugerido ── */
 .alerta-charla-box {
   background: #fff; border: 1px solid var(--line); border-radius: 14px;
