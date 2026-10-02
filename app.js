@@ -230,13 +230,19 @@ function formatoDeActividad(actividad) {
 // "Control de Herramientas" no tiene checklist: es una carpeta libre.
 const SUBCONT_CARPETA_EMPRESA = [
   'Reglamento', 'Política SSO', 'Programa trabajo preventivo',
-  'Certificados mutualidad', 'Miper', 'Procedimientos',
+  'Certificados mutualidad', 'Miper', 'Procedimientos de Trabajo Seguro',
   'Procedimientos de trabajo seguro riesgos críticos',
   'Procedimientos de trabajo seguro actividades específicas a realizar',
   'Protocolo Ley Karin', 'Procedimiento investigación Ley Karin',
   'Cronograma de implementación protocolos Minsal',
   'Plan de gestión del riesgo y desastres', 'Recepción del reglamento especial',
-  'Certificados EPP', 'Carnet prevencionista',
+  'Certificados EPP', 'Resolución del Experto en Prevención de Riesgos (SEREMI)',
+  'Miper Ley Karin',
+  'Procedimiento de investigación de incidentes, accidentes y cuasi accidentes con registro estadístico según DS44',
+  'Cronograma de actividades de supervisor a cargo',
+  'Carta conductora protocolos MINSAL, SEREMI y DT',
+  'Correo de solicitud de evaluación cualitativa de protocolos MINSAL (OAL) 30 días desde el ingreso a la obra',
+  'Programa preventivo máquinas, equipos y herramientas motrices (PPSMEHM)',
 ];
 const SUBCONT_CONTROL_MENSUAL = [
   'Capacitaciones específicas', 'Charlas diarias', 'Recambio EPP', 'Inspecciones',
@@ -1141,6 +1147,7 @@ const ICONS = {
   miper: '<svg viewBox="0 0 24 24" fill="none"><path d="M12 2 3 6.5v6C3 17 6.9 20.7 12 22c5.1-1.3 9-5 9-9.5v-6L12 2Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M12 8v5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="16" r="1" fill="currentColor"/></svg>',
   capacitacion: '<svg viewBox="0 0 24 24" fill="none"><path d="M2 8l10-4 10 4-10 4L2 8Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M6 10.5V16c0 1.4 2.7 3 6 3s6-1.6 6-3v-5.5" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M21 8v6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>',
   check: '<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/><path d="M8 12.3l2.5 2.5L16 9.5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  alerta: '<svg viewBox="0 0 24 24" fill="none"><path d="M12 3 2 20h20L12 3Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M12 9.5v4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="17" r="1" fill="currentColor"/></svg>',
 };
 // La tarjeta de Capacitación DS44 en el home usa la misma clave que su
 // color (`capacitacionds44`, ver MODULOS_COLOR) — nunca se le había
@@ -4973,6 +4980,11 @@ function renderSubcontratistaDetalleHTML(empresa, esRestringido) {
     acc + contarSubidosSubcontratista(empresa, categoriaDocTrabajador(t), DOCS_TRABAJADOR, null), 0);
 
   return `
+    <div class="subcont-recordatorio">
+      ${ic('alerta',16)}
+      <div>Recordatorio: el Experto en Prevención debe realizar <b>dos visitas mensuales</b> a la obra, dentro de la jornada laboral, ingresando con todos sus EPP (casco blanco con nombre y logo de su empresa, chaleco geólogo naranjo, zapatos de seguridad, antiparras de seguridad, tapón auditivo y barbiquejo). Si la empresa realiza trabajos en altura, además debe portar arnés de seguridad con doble cabo de vida.</div>
+    </div>
+
     <div class="subcont-section">
       <div class="subcont-section-head"><div class="subcont-section-title">Documentos generales</div></div>
       ${filaGlobalSubcontratista('Reglamento de Subcontratista', reglamento, esRestringido, empresa)}
