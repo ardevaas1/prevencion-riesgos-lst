@@ -230,7 +230,7 @@ function formatoDeActividad(actividad) {
 // "Control de Herramientas" no tiene checklist: es una carpeta libre.
 const SUBCONT_CARPETA_EMPRESA = [
   'Reglamento', 'Política SSO', 'Programa trabajo preventivo',
-  'Certificados mutualidad', 'Miper', 'Procedimientos de Trabajo Seguro',
+  'Certificados mutualidad', 'Miper',
   'Procedimientos de trabajo seguro riesgos críticos',
   'Procedimientos de trabajo seguro actividades específicas a realizar',
   'Protocolo Ley Karin', 'Procedimiento investigación Ley Karin',
