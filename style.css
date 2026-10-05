@@ -543,7 +543,7 @@ body.is-offline #app { padding-top: 30px; }
 .fl { font-size: 13px; color: #888; flex-shrink: 0; }
 .fv { font-size: 13px; font-weight: 500; text-align: right; word-break: break-word; max-width: 60%; }
 .ficha-obs { background: #fff8e1; border: 1px solid #ffe082; border-radius: 8px; padding: 10px 12px; font-size: 13px; color: #5d4037; margin: 8px 0; line-height: 1.4; }
-.doc-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f0f0; gap: 8px; }
+.doc-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f0f0; gap: 8px; flex-wrap: wrap; }
 .doc-row:last-child { border-bottom: none; padding-bottom: 0; }
 .doc-name { font-size: 13px; font-weight: 500; }
 .doc-date { font-size: 11px; color: #aaa; margin-top: 1px; }
@@ -581,7 +581,14 @@ body.is-offline #app { padding-top: 30px; }
 .subcont-row-body { flex: 1; min-width: 0; }
 .subcont-row-nombre { font-weight: 500; font-size: 14px; color: var(--ink); }
 .subcont-row-fecha { font-size: 11px; color: #999; margin-top: 1px; }
-.subcont-row-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+/* flex-wrap: ahora puede haber hasta 5 botones/badges juntos (estado,
+   Ver, Aprobar, Rechazar, Eliminar/Reemplazar) — sin wrap se cortaban en
+   pantallas angostas. */
+.subcont-row-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; }
+/* Motivo de un documento rechazado por el admin — mismo criterio en los 4
+   lugares donde se suben documentos de Subcontratistas (ver
+   motivoRechazoHtml en app.js). */
+.subcont-motivo-rechazo { font-size: 11px; color: #c62828; margin-top: 3px; }
 
 /* ── Documentación trabajadores: un bloque colapsable por trabajador (18
    documentos × todos los trabajadores de la empresa sería una lista eterna

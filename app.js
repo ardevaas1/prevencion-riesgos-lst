@@ -231,7 +231,6 @@ function formatoDeActividad(actividad) {
 const SUBCONT_CARPETA_EMPRESA = [
   'Reglamento', 'Política SSO', 'Programa trabajo preventivo',
   'Certificados mutualidad', 'Miper',
-  'Procedimientos de trabajo seguro riesgos críticos',
   'Procedimientos de trabajo seguro actividades específicas a realizar',
   'Protocolo Ley Karin', 'Procedimiento investigación Ley Karin',
   'Cronograma de implementación protocolos Minsal',
@@ -243,6 +242,7 @@ const SUBCONT_CARPETA_EMPRESA = [
   'Carta conductora protocolos MINSAL, SEREMI y DT',
   'Correo de solicitud de evaluación cualitativa de protocolos MINSAL (OAL) 30 días desde el ingreso a la obra',
   'Programa preventivo máquinas, equipos y herramientas motrices (PPSMEHM)',
+  'Cartas Conductoras del reglamento interno a SEREMI de salud y DT',
 ];
 const SUBCONT_CONTROL_MENSUAL = [
   'Capacitaciones específicas', 'Charlas diarias', 'Recambio EPP', 'Inspecciones',
@@ -1532,7 +1532,7 @@ async function cargarTodo(silencioso) {
     if (miEmpresaSubcontratista) {
       const [subs, docs, trab] = await fetchSheetsBatch([
         `'${CONFIG.SHEET_SUBCONTRATISTAS}'!A2:B2000`,
-        `'${CONFIG.SHEET_SUBCONTRATISTAS_DOCS}'!A2:H2000`,
+        `'${CONFIG.SHEET_SUBCONTRATISTAS_DOCS}'!A2:J2000`,
         `'${CONFIG.SHEET_TRABAJADORES}'!A2:AC2000`,
       ]);
       allSubcontratistas = subs.map((r,i) => rowToSubcontratista(r,i));
@@ -1558,7 +1558,7 @@ async function cargarTodo(silencioso) {
       `'${CONFIG.SHEET_HCR}'!A2:V2000`,
       `'${CONFIG.SHEET_DIAT}'!A2:BA2000`,
       `'${CONFIG.SHEET_SUBCONTRATISTAS}'!A2:B2000`,
-      `'${CONFIG.SHEET_SUBCONTRATISTAS_DOCS}'!A2:H2000`,
+      `'${CONFIG.SHEET_SUBCONTRATISTAS_DOCS}'!A2:J2000`,
       `'${CONFIG.SHEET_PROGRAMA_PERSONALIZADO}'!A2:L4000`,
       `'${CONFIG.SHEET_MIPER_ARCHIVO}'!A2:F500`,
       `'${CONFIG.SHEET_CAPACITACION_DS44}'!A2:M3000`,
@@ -1681,7 +1681,8 @@ function rowToSubcontratista(r, i) {
 }
 function rowToSubDoc(r, i) {
   return { fila: i+2, empresa: r[0]||'', categoria: r[1]||'', item: r[2]||'', periodo: r[3]||'',
-    archivo: r[4]||'', link: r[5]||'', fecha: r[6]||'', subidoPor: r[7]||'' };
+    archivo: r[4]||'', link: r[5]||'', fecha: r[6]||'', subidoPor: r[7]||'',
+    estado: r[8]||'', motivoRechazo: r[9]||'' };
 }
 // Una fila = una actividad del "Programa Personalizado" de UN supervisor en
 // UN mes (ej. "Charla 5 minutos", frecuencia Diaria) — Dias Marcados guarda
@@ -4877,6 +4878,49 @@ function botonEliminarDocSubcontratista(doc, empresa) {
   if (!doc || userRole !== 'admin') return '';
   return `<button type="button" class="badge red" style="border:none;cursor:pointer;" onclick="onEliminarDocSubcontratista(${doc.fila},'${esc(empresa)}')">Eliminar</button>`;
 }
+// Estado de revisión de un documento subido por el subcontratista — lo
+// decide un admin (Aprobado/Rechazado); mientras no lo revise nadie queda
+// "Sin revisar". Lo ve cualquiera (admin, viewer y la propia cuenta
+// subcontratista, para que sepa si le rechazaron algo y por qué).
+function badgeEstadoDocSubcontratista(doc) {
+  if (doc.estado === 'Aprobado') return '<span class="badge green">Aprobado</span>';
+  if (doc.estado === 'Rechazado') return '<span class="badge red">Rechazado</span>';
+  return '<span class="badge gray">Sin revisar</span>';
+}
+function motivoRechazoHtml(doc) {
+  if (!doc || doc.estado !== 'Rechazado' || !doc.motivoRechazo) return '';
+  return `<div class="subcont-motivo-rechazo">Motivo del rechazo: ${esc(doc.motivoRechazo)}</div>`;
+}
+// Aprobar/Rechazar un documento — SOLO lo ve un admin, mismo criterio que
+// botonEliminarDocSubcontratista. Nunca pasa por la Web App/proxy (ver
+// onEliminarDocSubcontratista): un admin siempre tiene acceso directo al
+// Sheet.
+function accionesRevisionDocSubcontratista(doc) {
+  if (!doc || userRole !== 'admin') return '';
+  return `<button type="button" class="badge green" style="border:none;cursor:pointer;" onclick="aprobarDocSubcontratista(${doc.fila})">Aprobar</button>
+    <button type="button" class="badge red" style="border:none;cursor:pointer;" onclick="rechazarDocSubcontratista(${doc.fila})">Rechazar</button>`;
+}
+async function aprobarDocSubcontratista(fila) {
+  if (userRole !== 'admin') { toast('Solo un administrador puede aprobar documentos', 'error'); return; }
+  try {
+    await actualizarRangoSheet(`'${CONFIG.SHEET_SUBCONTRATISTAS_DOCS}'!I${fila}:J${fila}`, [['Aprobado', '']]);
+    toast('Documento aprobado ✓', 'ok');
+    await cargarTodo(true);
+    if (empresaSubcontratistaActual) abrirDetalleSubcontratista(empresaSubcontratistaActual);
+  } catch (e) { toast(e.message, 'error'); }
+}
+async function rechazarDocSubcontratista(fila) {
+  if (userRole !== 'admin') { toast('Solo un administrador puede rechazar documentos', 'error'); return; }
+  const motivo = prompt('¿Por qué se rechaza este documento?');
+  if (motivo === null) return;
+  if (!motivo.trim()) { toast('Escribe un motivo', 'error'); return; }
+  try {
+    await actualizarRangoSheet(`'${CONFIG.SHEET_SUBCONTRATISTAS_DOCS}'!I${fila}:J${fila}`, [['Rechazado', motivo.trim()]]);
+    toast('Documento rechazado', 'ok');
+    await cargarTodo(true);
+    if (empresaSubcontratistaActual) abrirDetalleSubcontratista(empresaSubcontratistaActual);
+  } catch (e) { toast(e.message, 'error'); }
+}
 function filaChecklistSubcontratista(empresa, categoria, item, periodo) {
   const doc = ultimoDocSubcontratista(docsSubcontratista(empresa, categoria, item, periodo));
   return `
@@ -4885,9 +4929,12 @@ function filaChecklistSubcontratista(empresa, categoria, item, periodo) {
       <div class="subcont-row-body">
         <div class="subcont-row-nombre">${esc(item)}</div>
         <div class="subcont-row-fecha">${doc ? 'Subido ' + esc((doc.fecha||'').split(',')[0] || doc.fecha) : 'Pendiente'}</div>
+        ${motivoRechazoHtml(doc)}
       </div>
       <div class="subcont-row-actions">
+        ${doc ? badgeEstadoDocSubcontratista(doc) : ''}
         ${doc ? `<a class="badge blue" href="${esc(doc.link)}" target="_blank">${ic('documento',12)} Ver</a>` : ''}
+        ${accionesRevisionDocSubcontratista(doc)}
         ${botonEliminarDocSubcontratista(doc, empresa)}
         ${!esViewer() ? `<label class="doc-file-label${doc ? ' selected' : ''}" style="width:auto;padding:6px 12px;font-size:12px;">
           ${doc ? 'Reemplazar' : '+ Subir'}
@@ -4926,7 +4973,8 @@ function bloqueDocTrabajador(empresa, t) {
       <div class="subcont-doctrab-body">
         <div class="subcont-doctrab-inner">
           ${respaldos.length ? respaldos.map(d => `
-            <div class="doc-row"><a class="badge blue" href="${esc(d.link)}" target="_blank">${ic('documento',12)} ${esc(d.archivo)}</a><span style="font-size:11px;color:#888;">${esc((d.fecha||'').split(',')[0] || d.fecha)}</span>${botonEliminarDocSubcontratista(d, empresa)}</div>
+            <div class="doc-row"><a class="badge blue" href="${esc(d.link)}" target="_blank">${ic('documento',12)} ${esc(d.archivo)}</a><span style="font-size:11px;color:#888;">${esc((d.fecha||'').split(',')[0] || d.fecha)}</span>${badgeEstadoDocSubcontratista(d)}${accionesRevisionDocSubcontratista(d)}${botonEliminarDocSubcontratista(d, empresa)}</div>
+            ${motivoRechazoHtml(d)}
           `).join('') : '<div class="empty-sub" style="padding:6px 0;">Sin archivos subidos</div>'}
           ${!esViewer() ? `<label class="upload-label" style="margin-top:8px;">+ Subir archivo (puedes elegir varios)<input type="file" multiple style="display:none" onchange="onSubirRespaldoTrabajador(this,'${esc(empresa)}','${categoria}','${esc(t.nombre)}')"></label>` : ''}
         </div>
@@ -4940,9 +4988,12 @@ function filaGlobalSubcontratista(item, doc, esRestringido, empresaEnPantalla) {
       <div class="subcont-row-body">
         <div class="subcont-row-nombre">${esc(item)}</div>
         <div class="subcont-row-fecha">${doc ? 'Subido ' + esc((doc.fecha||'').split(',')[0] || doc.fecha) : 'Pendiente'}</div>
+        ${motivoRechazoHtml(doc)}
       </div>
       <div class="subcont-row-actions">
+        ${doc ? badgeEstadoDocSubcontratista(doc) : ''}
         ${doc ? `<a class="badge blue" href="${esc(doc.link)}" target="_blank">${ic('documento',12)} Ver</a>` : ''}
+        ${accionesRevisionDocSubcontratista(doc)}
         ${botonEliminarDocSubcontratista(doc, empresaEnPantalla)}
         ${!esRestringido && !esViewer() ? `<label class="doc-file-label${doc ? ' selected' : ''}" style="width:auto;padding:6px 12px;font-size:12px;">${doc ? 'Reemplazar' : '+ Subir'}<input type="file" style="display:none" onchange="onSubirDocGlobalSubcontratista(this,'${esc(item)}')"></label>` : ''}
       </div>
@@ -4976,6 +5027,7 @@ function renderSubcontratistaDetalleHTML(empresa, esRestringido) {
   const reglamento = ultimoDocSubcontratista(docsSubcontratista('__GLOBAL__', 'global', 'Reglamento de Subcontratista'));
   const correos = allUsuarios.filter(u => u.empresa === empresa && u.rol === 'subcontratista');
   const herramientas = docsSubcontratista(empresa, 'herramientas').slice().reverse();
+  const procedimientosCriticos = docsProcedimientosCriticos(empresa);
   const subidosEmpresa = contarSubidosSubcontratista(empresa, 'empresa', SUBCONT_CARPETA_EMPRESA, null);
   const subidosMensual = contarSubidosSubcontratista(empresa, 'mensual', SUBCONT_CONTROL_MENSUAL, mesControlSubcontratista);
   const trabajadoresEmpresa = allTrabajadores.filter(t => t.empresa === empresa && t.estado === 'Activo');
@@ -5011,6 +5063,37 @@ function renderSubcontratistaDetalleHTML(empresa, esRestringido) {
 
     <div class="subcont-section">
       <div class="subcont-section-head">
+        <div class="subcont-section-title">Procedimientos de Trabajo Seguro — Riesgos Críticos</div>
+        <span class="subcont-progress${procedimientosCriticos.length ? ' completo' : ''}">${procedimientosCriticos.length}</span>
+      </div>
+      ${procedimientosCriticos.length ? procedimientosCriticos.map(d => `
+        <div class="subcont-row">
+          ${iconoEstadoDoc(true)}
+          <div class="subcont-row-body">
+            <div class="subcont-row-nombre">${esc(d.item)}</div>
+            <div class="subcont-row-fecha">Subido ${esc((d.fecha||'').split(',')[0] || d.fecha)}</div>
+          </div>
+          <div class="subcont-row-actions">
+            ${badgeEstadoDocSubcontratista(d)}
+            <a class="badge blue" href="${esc(d.link)}" target="_blank">${ic('documento',12)} Ver</a>
+            ${accionesRevisionDocSubcontratista(d)}
+            ${botonEliminarDocSubcontratista(d, empresa)}
+          </div>
+        </div>
+        ${motivoRechazoHtml(d)}
+      `).join('') : '<div class="empty-sub" style="padding:8px 0;">Sin procedimientos subidos</div>'}
+      ${!esViewer() ? `
+      <form onsubmit="onSubirProcedimientoCritico(event,'${esc(empresa)}')" style="margin-top:10px;">
+        <div class="form-group" style="margin-bottom:8px;">
+          <input name="nombre" type="text" placeholder="Nombre del procedimiento (ej. Trabajo en altura)" required style="width:100%;padding:10px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit;box-sizing:border-box;">
+        </div>
+        <label class="upload-label">${ic('documento',14)} <span class="upload-label-text">Subir archivo</span><input type="file" name="archivo" required style="display:none" onchange="marcarArchivoElegido(this)"></label>
+        <button class="btn-add" type="submit" style="margin-top:8px;">+ Agregar procedimiento</button>
+      </form>` : ''}
+    </div>
+
+    <div class="subcont-section">
+      <div class="subcont-section-head">
         <div class="subcont-section-title">Documentación trabajadores</div>
       </div>
       ${esRestringido ? `<button type="button" class="action-btn" style="margin-bottom:10px;" onclick="abrirFormTrabajadorSubcontratista()">${ic('trabajadores',14)} Agregar trabajador</button>` : ''}
@@ -5034,7 +5117,8 @@ function renderSubcontratistaDetalleHTML(empresa, esRestringido) {
     <div class="subcont-section">
       <div class="subcont-section-head"><div class="subcont-section-title">Control de herramientas y extensiones eléctricas</div></div>
       ${herramientas.length ? herramientas.map(d => `
-        <div class="doc-row"><a class="badge blue" href="${esc(d.link)}" target="_blank">${ic('documento',12)} ${esc(d.archivo)}</a><span style="font-size:11px;color:#888;">${esc((d.fecha||'').split(',')[0] || d.fecha)}</span>${botonEliminarDocSubcontratista(d, empresa)}</div>
+        <div class="doc-row"><a class="badge blue" href="${esc(d.link)}" target="_blank">${ic('documento',12)} ${esc(d.archivo)}</a><span style="font-size:11px;color:#888;">${esc((d.fecha||'').split(',')[0] || d.fecha)}</span>${badgeEstadoDocSubcontratista(d)}${accionesRevisionDocSubcontratista(d)}${botonEliminarDocSubcontratista(d, empresa)}</div>
+        ${motivoRechazoHtml(d)}
       `).join('') : '<div class="empty-sub" style="padding:8px 0;">Sin archivos subidos</div>'}
       ${!esViewer() ? `<label class="upload-label" style="margin-top:10px;">+ Subir archivo<input type="file" style="display:none" onchange="onSubirDocSubcontratista(this,'${esc(empresa)}','herramientas','','')"></label>` : ''}
     </div>
@@ -5079,12 +5163,62 @@ async function onSubirDocSubcontratista(inputEl, empresa, categoria, item, perio
       });
     } else {
       const up = await uploadFileSubcontratista(file, empresa, prefix, item || 'Herramientas');
-      await appendSheet(`'${CONFIG.SHEET_SUBCONTRATISTAS_DOCS}'!A:H`, [[
+      await appendSheet(`'${CONFIG.SHEET_SUBCONTRATISTAS_DOCS}'!A:J`, [[
         empresa, categoria, item || '', periodo || '', up.name, up.link,
-        new Date().toLocaleString('es-CL'), userEmail || ''
+        new Date().toLocaleString('es-CL'), userEmail || '', '', ''
       ]]);
     }
     toast('Documento subido ✓', 'ok');
+    await cargarTodo(true);
+    if (miEmpresaSubcontratista) mostrarModoSubcontratista(empresa); else abrirDetalleSubcontratista(empresa);
+  } catch (e) { toast(e.message, 'error'); }
+}
+// Procedimientos de Trabajo Seguro — riesgos críticos: a diferencia del
+// resto de "Carpeta de empresa" (un ítem fijo, un solo archivo vigente
+// cada uno), acá el subcontratista puede subir tantos procedimientos como
+// necesite, cada uno con el nombre que él mismo le pone (ej. "Trabajo en
+// altura", "Izaje de cargas") — no hay una lista fija de procedimientos
+// esperados. Mismo Sheet de documentos de siempre, categoría propia
+// "procedimientos_criticos" (Item = el nombre que escribió el
+// subcontratista, no uno de los fijos de SUBCONT_CARPETA_EMPRESA).
+function docsProcedimientosCriticos(empresa) {
+  return docsSubcontratista(empresa, 'procedimientos_criticos').slice().reverse();
+}
+async function onSubirProcedimientoCritico(ev, empresa) {
+  if (bloquearSiViewer()) return;
+  ev.preventDefault();
+  const f = ev.target;
+  const file = f.archivo.files[0];
+  const nombre = f.nombre.value.trim();
+  if (!file || !nombre) return;
+  try {
+    const prefix = 'ProcedimientoCritico_' + nombre.replace(/\s+/g, '-');
+    if (subcontratistaUsaProxy) {
+      const b64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const fecha = new Date().toLocaleDateString('es-CL').replace(/\//g, '-');
+      const hora = new Date().toTimeString().slice(0,5).replace(':','');
+      const extension = file.name.split('.').pop() || 'bin';
+      toast('Subiendo archivo...');
+      await llamarWebAppSubcontratista('subirDocumento', {
+        empresa, categoria: 'procedimientos_criticos', item: nombre, periodo: '',
+        subcarpeta: 'Procedimientos de trabajo seguro riesgos críticos',
+        nombreArchivo: `${prefix}_${fecha}_${hora}.${extension}`,
+        mimeType: file.type || 'application/octet-stream', contenidoBase64: b64,
+      });
+    } else {
+      const up = await uploadFileSubcontratista(file, empresa, prefix, 'Procedimientos de trabajo seguro riesgos críticos');
+      await appendSheet(`'${CONFIG.SHEET_SUBCONTRATISTAS_DOCS}'!A:J`, [[
+        empresa, 'procedimientos_criticos', nombre, '', up.name, up.link,
+        new Date().toLocaleString('es-CL'), userEmail || '', '', ''
+      ]]);
+    }
+    toast('Procedimiento subido ✓', 'ok');
+    f.reset();
     await cargarTodo(true);
     if (miEmpresaSubcontratista) mostrarModoSubcontratista(empresa); else abrirDetalleSubcontratista(empresa);
   } catch (e) { toast(e.message, 'error'); }
@@ -5118,9 +5252,9 @@ async function subirRespaldoTrabajadorArchivo(empresa, categoria, nombreTrabajad
     });
   } else {
     const up = await uploadFileSubcontratistaTrabajador(file, empresa, nombreTrabajador, prefix);
-    await appendSheet(`'${CONFIG.SHEET_SUBCONTRATISTAS_DOCS}'!A:H`, [[
+    await appendSheet(`'${CONFIG.SHEET_SUBCONTRATISTAS_DOCS}'!A:J`, [[
       empresa, categoria, '', '', up.name, up.link,
-      new Date().toLocaleString('es-CL'), userEmail || ''
+      new Date().toLocaleString('es-CL'), userEmail || '', '', ''
     ]]);
   }
 }
@@ -5220,9 +5354,9 @@ async function onSubirDocGlobalSubcontratista(inputEl, item) {
   if (!file) return;
   try {
     const up = await uploadFileSubcontratista(file, '__GLOBAL__', item.replace(/\s+/g, '-'), item);
-    await appendSheet(`'${CONFIG.SHEET_SUBCONTRATISTAS_DOCS}'!A:H`, [[
+    await appendSheet(`'${CONFIG.SHEET_SUBCONTRATISTAS_DOCS}'!A:J`, [[
       '__GLOBAL__', 'global', item, '', up.name, up.link,
-      new Date().toLocaleString('es-CL'), userEmail || ''
+      new Date().toLocaleString('es-CL'), userEmail || '', '', ''
     ]]);
     toast('Documento actualizado ✓', 'ok');
     await cargarTodo(true);
