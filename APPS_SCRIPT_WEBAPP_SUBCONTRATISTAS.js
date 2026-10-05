@@ -206,8 +206,16 @@ function subirDocumento(correo, body) {
   const carpetaEmpresa = obtenerOCrearCarpetaDrive(empresa, carpetaSub);
   // Subcarpeta por documento (mismo criterio que el resto de la app — ver
   // uploadFileSubcontratista en app.js): así no queda todo suelto mezclado
-  // en la carpeta de la empresa.
-  const carpetaDestino = body.subcarpeta ? obtenerOCrearCarpetaDrive(body.subcarpeta, carpetaEmpresa) : carpetaEmpresa;
+  // en la carpeta de la empresa. body.carpetaTrabajador (PDF de respaldo
+  // por trabajador, ver onSubirRespaldoTrabajador en app.js) usa en cambio
+  // una carpeta propia por trabajador dentro de Trabajadores/.
+  let carpetaDestino;
+  if (body.carpetaTrabajador) {
+    const carpetaTrabajadores = obtenerOCrearCarpetaDrive('Trabajadores', carpetaEmpresa);
+    carpetaDestino = obtenerOCrearCarpetaDrive(body.carpetaTrabajador, carpetaTrabajadores);
+  } else {
+    carpetaDestino = body.subcarpeta ? obtenerOCrearCarpetaDrive(body.subcarpeta, carpetaEmpresa) : carpetaEmpresa;
+  }
 
   const bytes = Utilities.base64Decode(body.contenidoBase64);
   const blob = Utilities.newBlob(bytes, body.mimeType || 'application/octet-stream', body.nombreArchivo);
