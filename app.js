@@ -5013,6 +5013,7 @@ function renderSubcontratistaDetalleHTML(empresa, esRestringido) {
         <div class="subcont-section-title">Documentación trabajadores</div>
         ${trabajadoresEmpresa.length ? progresoBadgeSubcontratista(subidosDocsTrabajador, totalDocsTrabajador) : ''}
       </div>
+      ${esRestringido ? `<button type="button" class="action-btn" style="margin-bottom:10px;" onclick="abrirFormTrabajadorSubcontratista()">${ic('trabajadores',14)} Agregar trabajador</button>` : ''}
       ${trabajadoresEmpresa.length
         ? trabajadoresEmpresa.map(t => bloqueDocTrabajador(empresa, t)).join('')
         : '<div class="empty-sub" style="padding:8px 0;">Sin trabajadores asociados a esta empresa todavía</div>'}
@@ -5086,6 +5087,76 @@ async function onSubirDocSubcontratista(inputEl, empresa, categoria, item, perio
     toast('Documento subido ✓', 'ok');
     await cargarTodo(true);
     if (miEmpresaSubcontratista) mostrarModoSubcontratista(empresa); else abrirDetalleSubcontratista(empresa);
+  } catch (e) { toast(e.message, 'error'); }
+}
+// Obras donde ya trabaja algún trabajador de esta misma empresa — sugerencia
+// para el datalist del formulario de abajo (no hay acceso a
+// opcionesObrasDisponibles() completo en este modo porque cargarTodo() nunca
+// carga Inspecciones/Incidentes para una cuenta subcontratista, ver arriba).
+function obrasPropiasSubcontratista() {
+  return [...new Set(allTrabajadores.filter(t => t.empresa === miEmpresaSubcontratista).map(t => t.obra).filter(Boolean))];
+}
+function abrirFormTrabajadorSubcontratista() {
+  const f = document.getElementById('form-trabajador-subcont');
+  f.reset();
+  document.getElementById('lista-obras-trabajador-subcont').innerHTML =
+    obrasPropiasSubcontratista().map(o => `<option value="${esc(o)}"></option>`).join('');
+  openPanel('panel-form-trabajador-subcont');
+}
+// Agregar trabajador desde la vista restringida de Subcontratista — a
+// diferencia de guardarTrabajador (el formulario completo, solo para admin),
+// acá la Empresa queda fija a la de la cuenta logueada (nunca viene de un
+// campo editable) y la escritura bifurca igual que onSubirDocSubcontratista:
+// si la cuenta no tiene acceso directo al Sheet/Drive, pasa por la Web App
+// (ver APPS_SCRIPT_WEBAPP_SUBCONTRATISTAS.js → agregarTrabajador); si lo
+// tiene, usa las mismas funciones genéricas de escritura que usa un admin.
+// Los campos que no pide este formulario (Contrato, Examen de Altura, datos
+// personales, etc.) quedan vacíos — el admin los puede completar después
+// desde la ficha del trabajador en el módulo Trabajadores, igual que con
+// cualquier alta inicial.
+async function guardarTrabajadorSubcontratista(ev) {
+  ev.preventDefault();
+  const f = ev.target;
+  const empresa = miEmpresaSubcontratista;
+  if (!empresa) return;
+  try {
+    const fotoFile = f.foto.files[0];
+    if (subcontratistaUsaProxy) {
+      let fotoNombreArchivo = '', fotoMimeType = '', fotoBase64 = '';
+      if (fotoFile) {
+        fotoBase64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result.split(',')[1]);
+          reader.onerror = reject;
+          reader.readAsDataURL(fotoFile);
+        });
+        fotoMimeType = fotoFile.type || 'application/octet-stream';
+        fotoNombreArchivo = 'foto_' + Date.now() + '.' + (fotoFile.name.split('.').pop() || 'jpg');
+      }
+      await llamarWebAppSubcontratista('agregarTrabajador', {
+        empresa, nombre: f.nombre.value, rut: f.rut.value, cargo: f.cargo.value,
+        obra: f.obra.value, fechaIngreso: f.fechaIngreso.value, correo: f.correo.value,
+        fotoNombreArchivo, fotoMimeType, fotoBase64,
+      });
+    } else {
+      let fotoLink = '';
+      if (fotoFile) {
+        const up = await uploadFileTrabajador(fotoFile, f.nombre.value, 'foto');
+        fotoLink = up.link;
+      }
+      const n = allTrabajadores.length + 1;
+      await appendSheet(`'${CONFIG.SHEET_TRABAJADORES}'!A:AC`, [[
+        n, f.nombre.value, f.rut.value, f.cargo.value, empresa,
+        f.fechaIngreso.value, 'Activo', fotoLink, new Date().toLocaleString('es-CL'),
+        f.obra.value, '', '', '', '', '', '',
+        '', '', '', '', '', '', '', '', '', '',
+        f.correo.value, '', ''
+      ]]);
+    }
+    toast('Trabajador agregado ✓', 'ok');
+    closePanel('panel-form-trabajador-subcont');
+    await cargarTodo(true);
+    mostrarModoSubcontratista(empresa);
   } catch (e) { toast(e.message, 'error'); }
 }
 async function onSubirDocGlobalSubcontratista(inputEl, item) {

@@ -78,6 +78,7 @@ function doPost(e) {
     if (accion === 'listarDocumentos') return respuesta(listarDocumentos(correo, body.empresa));
     if (accion === 'listarTrabajadores') return respuesta(listarTrabajadores(correo, body.empresa));
     if (accion === 'subirDocumento') return respuesta(subirDocumento(correo, body));
+    if (accion === 'agregarTrabajador') return respuesta(agregarTrabajador(correo, body));
     if (accion === 'notificarContacto') return respuesta(notificarContacto(body.correoDestino, body.empresa));
     return respuesta({ error: 'Acción desconocida: ' + accion });
   } catch (err) {
@@ -227,6 +228,42 @@ function subirDocumento(correo, body) {
   ]);
 
   return { nombre: archivo.getName(), link: link };
+}
+
+// Agrega un trabajador nuevo a TRABAJADORES desde la vista restringida de
+// Subcontratista (ver guardarTrabajadorSubcontratista en app.js) — mismas
+// 29 columnas que escribe el alta normal de un admin (guardarTrabajador en
+// app.js), dejando vacíos los campos que ese formulario simplificado no
+// pide (Contrato, Examen de Altura, datos personales, etc.); el admin los
+// puede completar después desde la ficha del trabajador. La foto, si viene,
+// se sube con el mismo criterio de carpeta que usa el resto de la app
+// (Root/Trabajadores/{nombre}/, ver getTrabajadorFolder en app.js).
+function agregarTrabajador(correo, body) {
+  const empresa = body.empresa;
+  verificarPertenece(correo, empresa);
+  if (!body.nombre || !body.rut) throw new Error('Falta el nombre o el RUT');
+
+  let fotoLink = '';
+  if (body.fotoBase64 && body.fotoNombreArchivo) {
+    const raiz = DriveApp.getFolderById(RAIZ_DRIVE_ID);
+    const carpetaTrab = obtenerOCrearCarpetaDrive('Trabajadores', raiz);
+    const carpetaPersona = obtenerOCrearCarpetaDrive(body.nombre, carpetaTrab);
+    const bytes = Utilities.base64Decode(body.fotoBase64);
+    const blob = Utilities.newBlob(bytes, body.fotoMimeType || 'image/jpeg', body.fotoNombreArchivo);
+    const archivo = carpetaPersona.createFile(blob);
+    fotoLink = 'https://drive.google.com/file/d/' + archivo.getId() + '/view';
+  }
+
+  const sh = hojaTrabajadores();
+  const n = sh.getLastRow(); // encabezado = fila 1, así que esto ya es el próximo correlativo
+  sh.appendRow([
+    n, body.nombre, body.rut, body.cargo || '', empresa,
+    body.fechaIngreso || '', 'Activo', fotoLink, new Date().toLocaleString('es-CL'),
+    body.obra || '', '', '', '', '', '', '',
+    '', '', '', '', '', '', '', '', '', '',
+    body.correo || '', '', ''
+  ]);
+  return { ok: true };
 }
 
 // ============================================================
