@@ -518,6 +518,28 @@
   </div>
 </div>
 
+<!-- ===== PANEL: Agregar trabajador (vista restringida de Subcontratista) ===== -->
+<div class="panel hidden" id="panel-form-trabajador-subcont">
+  <div class="panel-bar"><div class="pnl-back" onclick="closePanel('panel-form-trabajador-subcont')">‹ Volver</div><div class="pnl-title">Nuevo trabajador</div><div></div></div>
+  <div class="panel-body">
+    <form id="form-trabajador-subcont" onsubmit="guardarTrabajadorSubcontratista(event)">
+      <div class="form-group"><label>Nombre completo</label><input name="nombre" required></div>
+      <div class="form-group"><label>RUT</label><input name="rut" required placeholder="12.345.678-9" oninput="formatearRutInput(this)"></div>
+      <div class="form-group"><label>Cargo</label><input name="cargo" required></div>
+      <div class="form-group"><label>Obra</label><input name="obra" required list="lista-obras-trabajador-subcont" placeholder="Nombre de la obra">
+        <datalist id="lista-obras-trabajador-subcont"></datalist>
+      </div>
+      <div class="form-group"><label>Fecha de ingreso</label><input type="date" name="fechaIngreso"></div>
+      <div class="form-group">
+        <label>Foto (opcional)</label>
+        <label class="upload-label"><svg viewBox="0 0 24 24" fill="none" class="inline-ic"><path d="M4 8a1 1 0 0 1 1-1h2l1.2-2h7.6L17 7h2a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.4" stroke="currentColor" stroke-width="1.7"/></svg> <span class="upload-label-text">Tomar / subir foto</span><input type="file" name="foto" accept="image/*" capture="environment" style="display:none" onchange="marcarArchivoElegido(this)"></label>
+      </div>
+      <div class="form-group"><label>Correo (opcional)</label><input type="email" name="correo" placeholder="Para notificaciones automáticas"></div>
+      <button class="btn-add" type="submit">Guardar trabajador</button>
+    </form>
+  </div>
+</div>
+
 <!-- ===== PANEL: Nueva Inspección ===== -->
 <div class="panel hidden" id="panel-form-inspeccion">
   <div class="panel-bar"><div class="pnl-back" onclick="closePanel('panel-form-inspeccion')">‹ Volver</div><div class="pnl-title">Nueva inspección</div><div></div></div>
