@@ -105,9 +105,16 @@ function inicializarPlanilla() {
   // "global" (Reglamento/Programa, comunes a todos, Empresa="__GLOBAL__"),
   // "empresa" (Carpeta de Empresa, ítem fijo, sin período),
   // "mensual" (Control Mensual, ítem fijo + Período "AAAA-MM"),
-  // "herramientas" (Control de Herramientas, archivos libres sin ítem fijo).
+  // "herramientas" (Control de Herramientas, archivos libres sin ítem fijo),
+  // "procedimientos_criticos" (Procedimientos de Trabajo Seguro — riesgos
+  // críticos, archivos libres con Item = nombre que escribe el subcontratista),
+  // "doctrab_<rut o nombre>" (archivos de respaldo de un trabajador puntual).
+  // Estado/Motivo Rechazo: un admin aprueba o rechaza cada documento desde
+  // la vista de detalle de la empresa (ver aprobarDocSubcontratista/
+  // rechazarDocSubcontratista en app.js) — vacío mientras no se revise.
   crearHoja(ss, 'SUBCONTRATISTAS_DOCS', [
-    'Empresa', 'Categoria', 'Item', 'Periodo', 'Archivo', 'Link', 'Fecha', 'Subido Por'
+    'Empresa', 'Categoria', 'Item', 'Periodo', 'Archivo', 'Link', 'Fecha', 'Subido Por',
+    'Estado', 'Motivo Rechazo'
   ]);
 
   crearHoja(ss, 'PROGRAMA_PERSONALIZADO', [
