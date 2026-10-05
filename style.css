@@ -570,7 +570,12 @@ body.is-offline #app { padding-top: 30px; }
   flex-shrink: 0;
 }
 .subcont-progress.completo { color: #2e7d32; background: #e8f5e9; }
-.subcont-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid #f0f0f0; }
+/* flex-wrap: con hasta 5 botones/badges en .subcont-row-actions (estado,
+   Ver, Aprobar, Rechazar, Eliminar/Reemplazar) casi nunca entran junto al
+   ícono+texto en la misma línea — sin wrap acá, flex-shrink:0 en
+   .subcont-row-actions lo mandaba fuera de la tarjeta hacia la derecha en
+   vez de bajar de línea. */
+.subcont-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid #f0f0f0; flex-wrap: wrap; }
 .subcont-row:last-child { border-bottom: none; padding-bottom: 0; }
 .subcont-row-icon {
   width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
@@ -581,10 +586,12 @@ body.is-offline #app { padding-top: 30px; }
 .subcont-row-body { flex: 1; min-width: 0; }
 .subcont-row-nombre { font-weight: 500; font-size: 14px; color: var(--ink); }
 .subcont-row-fecha { font-size: 11px; color: #999; margin-top: 1px; }
-/* flex-wrap: ahora puede haber hasta 5 botones/badges juntos (estado,
-   Ver, Aprobar, Rechazar, Eliminar/Reemplazar) — sin wrap se cortaban en
-   pantallas angostas. */
-.subcont-row-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; }
+/* flex-basis:100% fuerza que las acciones siempre queden en su propia
+   línea completa debajo del ícono+texto (en vez de competir por espacio
+   en la primera línea y recién bajar cuando ni cabe un botón) — con tantos
+   botones posibles, es más legible que siempre quede así, prolijo y
+   consistente, en vez de a veces en una línea y a veces en dos. */
+.subcont-row-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; flex-basis: 100%; justify-content: flex-start; margin-top: 2px; }
 /* Motivo de un documento rechazado por el admin — mismo criterio en los 4
    lugares donde se suben documentos de Subcontratistas (ver
    motivoRechazoHtml en app.js). */
