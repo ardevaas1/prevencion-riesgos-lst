@@ -1247,9 +1247,14 @@ function marcarArchivoElegido(inputEl) {
   if (!label) return;
   const textoEl = label.querySelector('.upload-label-text');
   if (textoEl && textoEl.dataset.textoOriginal === undefined) textoEl.dataset.textoOriginal = textoEl.textContent;
-  const archivo = inputEl.files && inputEl.files[0];
-  label.classList.toggle('selected', !!archivo);
-  if (textoEl) textoEl.textContent = archivo ? archivo.name : textoEl.dataset.textoOriginal;
+  const archivos = inputEl.files;
+  label.classList.toggle('selected', !!(archivos && archivos.length));
+  if (!textoEl) return;
+  if (!archivos || !archivos.length) textoEl.textContent = textoEl.dataset.textoOriginal;
+  // input con "multiple" (ej. PDF de respaldo al crear un trabajador): si
+  // se elige más de uno, muestra la cantidad en vez del nombre de un solo
+  // archivo (que sería engañoso, da la impresión de que solo se eligió ese).
+  else textoEl.textContent = archivos.length === 1 ? archivos[0].name : archivos.length + ' archivos seleccionados';
 }
 // form.reset() (se usa al abrir de nuevo varios paneles, ej. abrirEditarAltura)
 // vacía el <input type="file"> pero no toca el <label> a mano — sin esto, al
@@ -5122,44 +5127,51 @@ async function onSubirDocSubcontratista(inputEl, empresa, categoria, item, perio
     if (miEmpresaSubcontratista) mostrarModoSubcontratista(empresa); else abrirDetalleSubcontratista(empresa);
   } catch (e) { toast(e.message, 'error'); }
 }
-// Sube uno o varios PDF de respaldo para un trabajador (ver
-// docsRespaldoTrabajador/bloqueDocTrabajador más arriba) — a diferencia de
-// onSubirDocSubcontratista (un solo archivo, Item fijo del checklist), este
-// input permite elegir varios a la vez y los sube de a uno, cada uno como
-// una fila nueva con Item vacío, a la carpeta propia del trabajador dentro
-// de la carpeta del subcontratista (Subcontratistas/{empresa}/Trabajadores/{nombre}/).
+// Sube UN PDF de respaldo para un trabajador a la carpeta propia de ese
+// trabajador dentro de la carpeta del subcontratista
+// (Subcontratistas/{empresa}/Trabajadores/{nombre}/), como una fila nueva
+// con Item vacío en SUBCONTRATISTAS_DOCS — bifurca según
+// subcontratistaUsaProxy, igual que el resto del módulo. La usan tanto
+// onSubirRespaldoTrabajador (trabajador ya existente, ver
+// docsRespaldoTrabajador/bloqueDocTrabajador más arriba) como
+// guardarTrabajadorSubcontratista (subida opcional al momento de crearlo).
+async function subirRespaldoTrabajadorArchivo(empresa, categoria, nombreTrabajador, file) {
+  const prefix = categoria.replace(/\s+/g, '-');
+  if (subcontratistaUsaProxy) {
+    const b64 = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result.split(',')[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+    const fecha = new Date().toLocaleDateString('es-CL').replace(/\//g, '-');
+    const hora = new Date().toTimeString().slice(0,5).replace(':','');
+    const extension = file.name.split('.').pop() || 'pdf';
+    toast('Subiendo archivo...');
+    await llamarWebAppSubcontratista('subirDocumento', {
+      empresa, categoria, item: '', periodo: '',
+      carpetaTrabajador: nombreTrabajador,
+      nombreArchivo: `${prefix}_${fecha}_${hora}.${extension}`,
+      mimeType: file.type || 'application/pdf', contenidoBase64: b64,
+    });
+  } else {
+    const up = await uploadFileSubcontratistaTrabajador(file, empresa, nombreTrabajador, prefix);
+    await appendSheet(`'${CONFIG.SHEET_SUBCONTRATISTAS_DOCS}'!A:H`, [[
+      empresa, categoria, '', '', up.name, up.link,
+      new Date().toLocaleString('es-CL'), userEmail || ''
+    ]]);
+  }
+}
+// Sube uno o varios PDF de respaldo para un trabajador YA EXISTENTE — a
+// diferencia de onSubirDocSubcontratista (un solo archivo, Item fijo del
+// checklist), este input permite elegir varios a la vez y los sube de a
+// uno con subirRespaldoTrabajadorArchivo.
 async function onSubirRespaldoTrabajador(inputEl, empresa, categoria, nombreTrabajador) {
   if (bloquearSiViewer()) return;
   const files = [...inputEl.files];
   if (!files.length) return;
   try {
-    for (const file of files) {
-      const prefix = categoria.replace(/\s+/g, '-');
-      if (subcontratistaUsaProxy) {
-        const b64 = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result.split(',')[1]);
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
-        const fecha = new Date().toLocaleDateString('es-CL').replace(/\//g, '-');
-        const hora = new Date().toTimeString().slice(0,5).replace(':','');
-        const extension = file.name.split('.').pop() || 'pdf';
-        toast('Subiendo archivo...');
-        await llamarWebAppSubcontratista('subirDocumento', {
-          empresa, categoria, item: '', periodo: '',
-          carpetaTrabajador: nombreTrabajador,
-          nombreArchivo: `${prefix}_${fecha}_${hora}.${extension}`,
-          mimeType: file.type || 'application/pdf', contenidoBase64: b64,
-        });
-      } else {
-        const up = await uploadFileSubcontratistaTrabajador(file, empresa, nombreTrabajador, prefix);
-        await appendSheet(`'${CONFIG.SHEET_SUBCONTRATISTAS_DOCS}'!A:H`, [[
-          empresa, categoria, '', '', up.name, up.link,
-          new Date().toLocaleString('es-CL'), userEmail || ''
-        ]]);
-      }
-    }
+    for (const file of files) await subirRespaldoTrabajadorArchivo(empresa, categoria, nombreTrabajador, file);
     toast(files.length > 1 ? 'PDF subidos ✓' : 'PDF subido ✓', 'ok');
     await cargarTodo(true);
     if (miEmpresaSubcontratista) mostrarModoSubcontratista(empresa); else abrirDetalleSubcontratista(empresa);
@@ -5228,6 +5240,11 @@ async function guardarTrabajadorSubcontratista(ev) {
         '', '', '', '', '', '', '', '', '', '',
         f.correo.value, '', ''
       ]]);
+    }
+    const archivosRespaldo = [...f.respaldo.files];
+    if (archivosRespaldo.length) {
+      const categoria = categoriaDocTrabajador({ rut: f.rut.value, nombre: f.nombre.value });
+      for (const file of archivosRespaldo) await subirRespaldoTrabajadorArchivo(empresa, categoria, f.nombre.value, file);
     }
     toast('Trabajador agregado ✓', 'ok');
     closePanel('panel-form-trabajador-subcont');
