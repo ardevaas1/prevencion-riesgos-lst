@@ -249,31 +249,6 @@ const SUBCONT_CONTROL_MENSUAL = [
   'AST', 'Cronograma', 'Certificados', 'Exámenes ocupacionales',
   'Informe Mensual', 'Listado de trabajadores',
 ];
-// Checklist de "Documentación trabajadores" — uno por cada trabajador de la
-// empresa (no una sola carpeta compartida). Mismo Sheet de documentos que el
-// resto del módulo: la categoría queda "doctrab_<rut o nombre>" (así el
-// "item" adentro de cada trabajador es el nombre del documento, igual que en
-// SUBCONT_CARPETA_EMPRESA) — no hace falta ninguna columna nueva.
-const DOCS_TRABAJADOR = [
-  'Exámenes ocupacionales (altura física sobre 1,8 m o espacios confinados, según corresponda)',
-  'Registro difusión Plan de gestión del riesgo y desastre',
-  'Difusión Política SSO',
-  'Registro entrega de EPP',
-  'Registro de capacitación uso, mantención y almacenamiento de EPP',
-  'IRL — Actividades a desarrollar',
-  'Recepción de Reglamento Interno',
-  'Difusión Miper',
-  'Difusión Procedimientos de trabajo seguro — riesgos críticos',
-  'Difusión Procedimientos de trabajo seguro — actividad específica a realizar',
-  'Difusión Procedimiento de investigación de acoso sexual laboral y violencia en el trabajo',
-  'Capacitación uso y manejo de extintores',
-  'Registro recambio de EPP',
-  'Difusión de actualización Miper',
-  'Certificado curso Orientación en Prevención de Riesgos (DS44 — 8 hrs)',
-  'Registro de difusión Protocolos Minsal',
-  'Informativo Canal de denuncias Ley Karin',
-  'Re-instrucciones (según se soliciten)',
-];
 
 const NIVELES_RIESGO = [
   { value: 'Bajo',  color: 'green' },
@@ -1058,8 +1033,9 @@ async function uploadFileSubcontratista(fileOrBlob, empresa, prefixName, subcarp
 // (Root/Subcontratistas/{empresa}/Trabajadores/{nombre}/) — a diferencia de
 // getSubcontratistaFolder (una subcarpeta por ÍTEM del checklist,
 // compartida entre todos los trabajadores), esto agrupa por TRABAJADOR, para
-// los PDF de respaldo sueltos que un subcontratista quiera subir por cada
-// uno (ver docsRespaldoTrabajador/onSubirRespaldoTrabajador más abajo).
+// los archivos sueltos que un subcontratista quiera subir por cada uno,
+// sin ningún ítem obligatorio (ver docsRespaldoTrabajador/
+// onSubirRespaldoTrabajador más abajo).
 async function getSubcontratistaTrabajadorFolder(empresa, nombreTrabajador) {
   const carpetaEmpresa = await getSubcontratistaFolder(empresa);
   const carpetaTrabajadores = await findOrCreateFolder('Trabajadores', carpetaEmpresa);
@@ -1251,7 +1227,7 @@ function marcarArchivoElegido(inputEl) {
   label.classList.toggle('selected', !!(archivos && archivos.length));
   if (!textoEl) return;
   if (!archivos || !archivos.length) textoEl.textContent = textoEl.dataset.textoOriginal;
-  // input con "multiple" (ej. PDF de respaldo al crear un trabajador): si
+  // input con "multiple" (ej. archivos de respaldo al crear un trabajador): si
   // se elige más de uno, muestra la cantidad en vez del nombre de un solo
   // archivo (que sería engañoso, da la impresión de que solo se eligió ese).
   else textoEl.textContent = archivos.length === 1 ? archivos[0].name : archivos.length + ' archivos seleccionados';
@@ -4920,30 +4896,22 @@ function filaChecklistSubcontratista(empresa, categoria, item, periodo) {
       </div>
     </div>`;
 }
-// Documentación por trabajador — a diferencia de "Carpeta de empresa" (un
-// checklist compartido por toda la empresa), acá cada trabajador tiene SU
-// PROPIO checklist de DOCS_TRABAJADOR. Se guarda en el mismo Sheet de
-// documentos de siempre: la "categoría" queda "doctrab_<rut o nombre>"
-// (identifica al trabajador) y el "item" es el nombre del documento —así
-// se puede reusar filaChecklistSubcontratista/contarSubidosSubcontratista
-// tal cual, sin tocar el Sheet ni la Web App. Se muestra colapsado por
-// trabajador (18 documentos × todos los trabajadores de la empresa sería
-// una lista eterna si estuviera todo abierto de entrada).
+// Documentación por trabajador — espacio libre, sin checklist ni ítems
+// obligatorios: cada trabajador tiene su propia carpeta donde el
+// subcontratista puede subir los archivos que quiera (los que sean, cuantos
+// sean), sin tener que completar nada en particular. Se guarda en el mismo
+// Sheet de documentos de siempre: la "categoría" queda "doctrab_<rut o
+// nombre>" (identifica al trabajador) con Item vacío (ver
+// docsRespaldoTrabajador). En Drive quedan en su propia carpeta por
+// trabajador (ver getSubcontratistaTrabajadorFolder) dentro de la carpeta
+// del subcontratista. Se muestra colapsado por trabajador.
 function claveDocTrabajador(t) { return t.rut || t.nombre; }
 function categoriaDocTrabajador(t) { return 'doctrab_' + claveDocTrabajador(t); }
-// PDF de respaldo sueltos por trabajador — a diferencia del checklist fijo
-// DOCS_TRABAJADOR (18 ítems, máximo 1 archivo vigente cada uno), acá se
-// puede subir cualquier cantidad de PDF por trabajador. Mismo Sheet y misma
-// categoría que el checklist (doctrab_<rut o nombre>) pero con Item vacío,
-// así no se mezclan con los 18 ítems fijos; en Drive quedan en su propia
-// carpeta por trabajador (ver getSubcontratistaTrabajadorFolder) en vez de
-// la carpeta compartida por ítem que usa el checklist.
 function docsRespaldoTrabajador(empresa, categoria) {
   return docsSubcontratista(empresa, categoria, '', null).slice().reverse();
 }
 function bloqueDocTrabajador(empresa, t) {
   const categoria = categoriaDocTrabajador(t);
-  const subidos = contarSubidosSubcontratista(empresa, categoria, DOCS_TRABAJADOR, null);
   const respaldos = docsRespaldoTrabajador(empresa, categoria);
   return `
     <div class="subcont-doctrab">
@@ -4953,16 +4921,14 @@ function bloqueDocTrabajador(empresa, t) {
           <div class="subcont-row-nombre">${esc(t.nombre)}</div>
           <div class="subcont-row-fecha">${t.rut ? esc(t.rut) : ''}</div>
         </div>
-        ${progresoBadgeSubcontratista(subidos, DOCS_TRABAJADOR.length)}
+        <span class="subcont-progress${respaldos.length ? ' completo' : ''}">${respaldos.length}</span>
       </div>
       <div class="subcont-doctrab-body">
         <div class="subcont-doctrab-inner">
-          ${DOCS_TRABAJADOR.map(item => filaChecklistSubcontratista(empresa, categoria, item, null)).join('')}
-          <div class="sec-label" style="margin:14px 0 6px;">Documentos de respaldo (PDF)</div>
           ${respaldos.length ? respaldos.map(d => `
             <div class="doc-row"><a class="badge blue" href="${esc(d.link)}" target="_blank">${ic('documento',12)} ${esc(d.archivo)}</a><span style="font-size:11px;color:#888;">${esc((d.fecha||'').split(',')[0] || d.fecha)}</span>${botonEliminarDocSubcontratista(d, empresa)}</div>
-          `).join('') : '<div class="empty-sub" style="padding:6px 0;">Sin PDF de respaldo subidos</div>'}
-          ${!esViewer() ? `<label class="upload-label" style="margin-top:8px;">+ Subir PDF (puedes elegir varios)<input type="file" accept=".pdf,application/pdf" multiple style="display:none" onchange="onSubirRespaldoTrabajador(this,'${esc(empresa)}','${categoria}','${esc(t.nombre)}')"></label>` : ''}
+          `).join('') : '<div class="empty-sub" style="padding:6px 0;">Sin archivos subidos</div>'}
+          ${!esViewer() ? `<label class="upload-label" style="margin-top:8px;">+ Subir archivo (puedes elegir varios)<input type="file" multiple style="display:none" onchange="onSubirRespaldoTrabajador(this,'${esc(empresa)}','${categoria}','${esc(t.nombre)}')"></label>` : ''}
         </div>
       </div>
     </div>`;
@@ -5013,9 +4979,6 @@ function renderSubcontratistaDetalleHTML(empresa, esRestringido) {
   const subidosEmpresa = contarSubidosSubcontratista(empresa, 'empresa', SUBCONT_CARPETA_EMPRESA, null);
   const subidosMensual = contarSubidosSubcontratista(empresa, 'mensual', SUBCONT_CONTROL_MENSUAL, mesControlSubcontratista);
   const trabajadoresEmpresa = allTrabajadores.filter(t => t.empresa === empresa && t.estado === 'Activo');
-  const totalDocsTrabajador = trabajadoresEmpresa.length * DOCS_TRABAJADOR.length;
-  const subidosDocsTrabajador = trabajadoresEmpresa.reduce((acc, t) =>
-    acc + contarSubidosSubcontratista(empresa, categoriaDocTrabajador(t), DOCS_TRABAJADOR, null), 0);
 
   return `
     <div class="subcont-recordatorio">
@@ -5049,7 +5012,6 @@ function renderSubcontratistaDetalleHTML(empresa, esRestringido) {
     <div class="subcont-section">
       <div class="subcont-section-head">
         <div class="subcont-section-title">Documentación trabajadores</div>
-        ${trabajadoresEmpresa.length ? progresoBadgeSubcontratista(subidosDocsTrabajador, totalDocsTrabajador) : ''}
       </div>
       ${esRestringido ? `<button type="button" class="action-btn" style="margin-bottom:10px;" onclick="abrirFormTrabajadorSubcontratista()">${ic('trabajadores',14)} Agregar trabajador</button>` : ''}
       ${trabajadoresEmpresa.length
@@ -5127,7 +5089,7 @@ async function onSubirDocSubcontratista(inputEl, empresa, categoria, item, perio
     if (miEmpresaSubcontratista) mostrarModoSubcontratista(empresa); else abrirDetalleSubcontratista(empresa);
   } catch (e) { toast(e.message, 'error'); }
 }
-// Sube UN PDF de respaldo para un trabajador a la carpeta propia de ese
+// Sube UN archivo de respaldo para un trabajador a la carpeta propia de ese
 // trabajador dentro de la carpeta del subcontratista
 // (Subcontratistas/{empresa}/Trabajadores/{nombre}/), como una fila nueva
 // con Item vacío en SUBCONTRATISTAS_DOCS — bifurca según
@@ -5146,13 +5108,13 @@ async function subirRespaldoTrabajadorArchivo(empresa, categoria, nombreTrabajad
     });
     const fecha = new Date().toLocaleDateString('es-CL').replace(/\//g, '-');
     const hora = new Date().toTimeString().slice(0,5).replace(':','');
-    const extension = file.name.split('.').pop() || 'pdf';
+    const extension = file.name.split('.').pop() || 'bin';
     toast('Subiendo archivo...');
     await llamarWebAppSubcontratista('subirDocumento', {
       empresa, categoria, item: '', periodo: '',
       carpetaTrabajador: nombreTrabajador,
       nombreArchivo: `${prefix}_${fecha}_${hora}.${extension}`,
-      mimeType: file.type || 'application/pdf', contenidoBase64: b64,
+      mimeType: file.type || 'application/octet-stream', contenidoBase64: b64,
     });
   } else {
     const up = await uploadFileSubcontratistaTrabajador(file, empresa, nombreTrabajador, prefix);
@@ -5162,8 +5124,8 @@ async function subirRespaldoTrabajadorArchivo(empresa, categoria, nombreTrabajad
     ]]);
   }
 }
-// Sube uno o varios PDF de respaldo para un trabajador YA EXISTENTE — a
-// diferencia de onSubirDocSubcontratista (un solo archivo, Item fijo del
+// Sube uno o varios archivos de respaldo para un trabajador YA EXISTENTE —
+// a diferencia de onSubirDocSubcontratista (un solo archivo, Item fijo del
 // checklist), este input permite elegir varios a la vez y los sube de a
 // uno con subirRespaldoTrabajadorArchivo.
 async function onSubirRespaldoTrabajador(inputEl, empresa, categoria, nombreTrabajador) {
@@ -5172,7 +5134,7 @@ async function onSubirRespaldoTrabajador(inputEl, empresa, categoria, nombreTrab
   if (!files.length) return;
   try {
     for (const file of files) await subirRespaldoTrabajadorArchivo(empresa, categoria, nombreTrabajador, file);
-    toast(files.length > 1 ? 'PDF subidos ✓' : 'PDF subido ✓', 'ok');
+    toast(files.length > 1 ? 'Archivos subidos ✓' : 'Archivo subido ✓', 'ok');
     await cargarTodo(true);
     if (miEmpresaSubcontratista) mostrarModoSubcontratista(empresa); else abrirDetalleSubcontratista(empresa);
   } catch (e) { toast(e.message, 'error'); }
