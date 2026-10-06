@@ -597,9 +597,12 @@ body.is-offline #app { padding-top: 30px; }
    motivoRechazoHtml en app.js). */
 .subcont-motivo-rechazo { font-size: 11px; color: #c62828; margin-top: 3px; }
 
-/* ── Documentación trabajadores: un bloque colapsable por trabajador (18
-   documentos × todos los trabajadores de la empresa sería una lista eterna
-   si estuviera todo abierto de una) — se expande solo el que se toca. ── */
+/* ── Bloque colapsable reutilizado en varios lados del módulo
+   Subcontratistas (Documentación trabajadores, ítems de Carpeta de
+   empresa/Control mensual, Reglamento — ver bloqueDocTrabajador,
+   filaChecklistSubcontratista y filaGlobalSubcontratista en app.js): con
+   varios ítems × varios archivos cada uno, mostrar todo destapado se ve
+   saturado — se expande solo el que se toca. ── */
 .subcont-doctrab { border-bottom: 1px solid #f0f0f0; }
 .subcont-doctrab:last-child { border-bottom: none; }
 .subcont-doctrab-head {
