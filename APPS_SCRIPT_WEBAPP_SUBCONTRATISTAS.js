@@ -23,15 +23,21 @@
 //    config.js → DRIVE_ROOT_FOLDER. Opcional: completa también APP_URL con
 //    la URL pública de la app, para que el correo de bienvenida a un
 //    contacto nuevo (ver notificarContacto) incluya el link directo.
-// 4. Arriba a la derecha, botón "Implementar" → "Nueva implementación".
+// 4. Activa el servicio avanzado de Drive (lo usa
+//    compartirArchivoSinNotificar para compartir archivos sin mandar el
+//    correo nativo de Drive "te compartieron un archivo"): en el panel
+//    izquierdo, ícono "+" al lado de "Servicios" → busca "Drive API" →
+//    Agregar. Si no haces este paso, subirDocumento falla con "Drive no
+//    está definido".
+// 5. Arriba a la derecha, botón "Implementar" → "Nueva implementación".
 //    - Tipo: "Aplicación web".
 //    - Ejecutar como: "Yo" (tu cuenta).
 //    - Quién tiene acceso: "Cualquier usuario".
-// 5. Implementar. La primera vez te va a pedir autorizar el script (acepta
+// 6. Implementar. La primera vez te va a pedir autorizar el script (acepta
 //    los permisos sobre tu propio Sheet/Drive).
-// 6. Copia la URL que te da (termina en "/exec") y pégala en config.js, en
+// 7. Copia la URL que te da (termina en "/exec") y pégala en config.js, en
 //    SUBCONTRATISTAS_WEBAPP_URL.
-// 7. Ojo: cada vez que cambies este código hay que crear una NUEVA VERSIÓN
+// 8. Ojo: cada vez que cambies este código hay que crear una NUEVA VERSIÓN
 //    de la implementación (Implementar → Gestionar implementaciones →
 //    ✏️ → "Nueva versión") para que los cambios se apliquen — la URL no
 //    cambia, así que no hay que tocar config.js de nuevo.
@@ -216,6 +222,24 @@ function notificarRechazoDocumento(empresa, item, motivo) {
   return { enviado: true };
 }
 
+// Comparte un archivo con varios correos (solo lectura) SIN el correo nativo
+// de Drive "te compartieron un archivo" — DriveApp.addViewer() no tiene forma
+// de apagar ese aviso, por eso se usa el servicio avanzado Drive API
+// (Drive.Permissions.create con sendNotificationEmail:false). Requiere
+// activar ese servicio en el proyecto: ⚙️ Servicios (ícono "+" al lado de
+// "Servicios" en el panel izquierdo) → busca "Drive API" → Agregar.
+function compartirArchivoSinNotificar(fileId, correos) {
+  correos.forEach(function (correoDestino) {
+    try {
+      Drive.Permissions.create(
+        { role: 'reader', type: 'user', emailAddress: correoDestino },
+        fileId,
+        { sendNotificationEmail: false }
+      );
+    } catch (e) { /* best-effort */ }
+  });
+}
+
 function obtenerOCrearCarpetaDrive(nombre, padre) {
   const iter = padre.getFoldersByName(nombre);
   if (iter.hasNext()) return iter.next();
@@ -251,10 +275,13 @@ function subirDocumento(correo, body) {
   // Comparte el archivo puntual (solo lectura) con las cuentas de esta
   // empresa — sin esto, una cuenta subcontratista sin acceso directo al
   // Drive (que es justo el caso de quien pasa por este proxy) no podría
-  // abrir su propio "Ver" del documento que acaba de subir.
-  correosSubcontratistaDeEmpresa(empresa).forEach(function (correoDestino) {
-    try { archivo.addViewer(correoDestino); } catch (e) { /* best-effort */ }
-  });
+  // abrir su propio "Ver" del documento que acaba de subir. Usa el
+  // servicio avanzado de Drive (no DriveApp.addViewer) para poder apagar
+  // el correo nativo de "te compartieron un archivo" que manda Google
+  // automáticamente — ese correo no dice nada sobre aprobado/rechazado,
+  // solo generaba confusión con el correo de verdad (ver
+  // notificarRechazoDocumento más abajo).
+  compartirArchivoSinNotificar(archivo.getId(), correosSubcontratistaDeEmpresa(empresa));
 
   hojaSubDocs().appendRow([
     empresa, body.categoria || '', body.item || '', body.periodo || '',
