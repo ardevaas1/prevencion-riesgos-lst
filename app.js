@@ -4949,23 +4949,35 @@ async function notificarRechazoDocumento(empresa, descripcion, motivo) {
   catch (e) { console.warn('No se pudo notificar el rechazo a ' + empresa, e); }
 }
 // Cada ítem del checklist admite más de un archivo (ya no "uno vigente que
-// reemplaza al anterior"): se listan TODOS los documentos subidos para ese
-// ítem, más reciente primero, cada uno con su propio estado/acciones —
-// mismo criterio que ya se usaba en Control de herramientas y Procedimientos
-// críticos, ahora parejo en todo el módulo.
+// reemplaza al anterior"), pero mostrar todos los archivos y botones
+// siempre destapados para los 20 ítems de Carpeta de empresa se veía
+// saturado — se colapsa igual que bloqueDocTrabajador más abajo (mismo
+// mecanismo de clase "abierto" + grid-template-rows en CSS): por defecto
+// solo se ve el nombre del ítem y cuántos archivos tiene, el detalle
+// (archivos, estado, Aprobar/Rechazar/Eliminar, subir) aparece al tocarlo.
+// Si algún archivo quedó rechazado se avisa en la cabecera para que no
+// pase inadvertido sin tener que abrir cada ítem.
 function filaChecklistSubcontratista(empresa, categoria, item, periodo) {
   const docs = docsSubcontratista(empresa, categoria, item, periodo).slice().reverse();
+  const hayRechazo = docs.some(d => d.estado === 'Rechazado');
   return `
-    <div class="subcont-row" style="align-items:flex-start;">
-      ${iconoEstadoDoc(docs.length > 0)}
-      <div class="subcont-row-body">
-        <div class="subcont-row-nombre">${esc(item)}</div>
-        <div class="subcont-row-fecha">${docs.length ? docs.length + (docs.length === 1 ? ' archivo subido' : ' archivos subidos') : 'Pendiente'}</div>
-        ${docs.map(d => `
-          <div class="doc-row"><a class="badge blue" href="${esc(d.link)}" target="_blank">${ic('documento',12)} ${esc(d.archivo)}</a><span style="font-size:11px;color:#888;">${esc((d.fecha||'').split(',')[0] || d.fecha)}</span>${badgeEstadoDocSubcontratista(d)}${accionesRevisionDocSubcontratista(d)}${botonEliminarDocSubcontratista(d, empresa)}</div>
-          ${motivoRechazoHtml(d)}
-        `).join('')}
-        ${!esViewer() ? `<label class="upload-label" style="margin-top:6px;">+ Subir archivo (puedes elegir varios)<input type="file" multiple style="display:none" onchange="onSubirDocSubcontratista(this,'${esc(empresa)}','${categoria}','${esc(item)}','${periodo||''}')"></label>` : ''}
+    <div class="subcont-doctrab">
+      <div class="subcont-doctrab-head" onclick="this.parentElement.classList.toggle('abierto')">
+        <div class="subcont-doctrab-chevron"><svg viewBox="0 0 24 24" fill="none" style="width:14px;height:14px"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        ${iconoEstadoDoc(docs.length > 0)}
+        <div class="subcont-row-body">
+          <div class="subcont-row-nombre">${esc(item)}</div>
+          <div class="subcont-row-fecha">${docs.length ? docs.length + (docs.length === 1 ? ' archivo' : ' archivos') : 'Pendiente'}${hayRechazo ? ' · <span style="color:#c62828;">rechazado, revisar</span>' : ''}</div>
+        </div>
+      </div>
+      <div class="subcont-doctrab-body">
+        <div class="subcont-doctrab-inner">
+          ${docs.map(d => `
+            <div class="doc-row"><a class="badge blue" href="${esc(d.link)}" target="_blank">${ic('documento',12)} Ver</a><span style="font-size:11px;color:#888;">${esc((d.fecha||'').split(',')[0] || d.fecha)}</span>${badgeEstadoDocSubcontratista(d)}${accionesRevisionDocSubcontratista(d)}${botonEliminarDocSubcontratista(d, empresa)}</div>
+            ${motivoRechazoHtml(d)}
+          `).join('')}
+          ${!esViewer() ? `<label class="upload-label" style="margin-top:8px;">+ Subir archivo (puedes elegir varios)<input type="file" multiple style="display:none" onchange="onSubirDocSubcontratista(this,'${esc(empresa)}','${categoria}','${esc(item)}','${periodo||''}')"></label>` : ''}
+        </div>
       </div>
     </div>`;
 }
@@ -5009,17 +5021,25 @@ function bloqueDocTrabajador(empresa, t) {
 }
 function filaGlobalSubcontratista(item, esRestringido, empresaEnPantalla) {
   const docs = docsSubcontratista('__GLOBAL__', 'global', item).slice().reverse();
+  const hayRechazo = docs.some(d => d.estado === 'Rechazado');
   return `
-    <div class="subcont-row" style="align-items:flex-start;">
-      ${iconoEstadoDoc(docs.length > 0)}
-      <div class="subcont-row-body">
-        <div class="subcont-row-nombre">${esc(item)}</div>
-        <div class="subcont-row-fecha">${docs.length ? docs.length + (docs.length === 1 ? ' archivo subido' : ' archivos subidos') : 'Pendiente'}</div>
-        ${docs.map(d => `
-          <div class="doc-row"><a class="badge blue" href="${esc(d.link)}" target="_blank">${ic('documento',12)} ${esc(d.archivo)}</a><span style="font-size:11px;color:#888;">${esc((d.fecha||'').split(',')[0] || d.fecha)}</span>${badgeEstadoDocSubcontratista(d)}${accionesRevisionDocSubcontratista(d)}${botonEliminarDocSubcontratista(d, empresaEnPantalla)}</div>
-          ${motivoRechazoHtml(d)}
-        `).join('')}
-        ${!esRestringido && !esViewer() ? `<label class="upload-label" style="margin-top:6px;">+ Subir archivo (puedes elegir varios)<input type="file" multiple style="display:none" onchange="onSubirDocGlobalSubcontratista(this,'${esc(item)}')"></label>` : ''}
+    <div class="subcont-doctrab">
+      <div class="subcont-doctrab-head" onclick="this.parentElement.classList.toggle('abierto')">
+        <div class="subcont-doctrab-chevron"><svg viewBox="0 0 24 24" fill="none" style="width:14px;height:14px"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        ${iconoEstadoDoc(docs.length > 0)}
+        <div class="subcont-row-body">
+          <div class="subcont-row-nombre">${esc(item)}</div>
+          <div class="subcont-row-fecha">${docs.length ? docs.length + (docs.length === 1 ? ' archivo' : ' archivos') : 'Pendiente'}${hayRechazo ? ' · <span style="color:#c62828;">rechazado, revisar</span>' : ''}</div>
+        </div>
+      </div>
+      <div class="subcont-doctrab-body">
+        <div class="subcont-doctrab-inner">
+          ${docs.map(d => `
+            <div class="doc-row"><a class="badge blue" href="${esc(d.link)}" target="_blank">${ic('documento',12)} Ver</a><span style="font-size:11px;color:#888;">${esc((d.fecha||'').split(',')[0] || d.fecha)}</span>${badgeEstadoDocSubcontratista(d)}${accionesRevisionDocSubcontratista(d)}${botonEliminarDocSubcontratista(d, empresaEnPantalla)}</div>
+            ${motivoRechazoHtml(d)}
+          `).join('')}
+          ${!esRestringido && !esViewer() ? `<label class="upload-label" style="margin-top:8px;">+ Subir archivo (puedes elegir varios)<input type="file" multiple style="display:none" onchange="onSubirDocGlobalSubcontratista(this,'${esc(item)}')"></label>` : ''}
+        </div>
       </div>
     </div>`;
 }
