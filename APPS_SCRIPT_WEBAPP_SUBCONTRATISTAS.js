@@ -80,6 +80,7 @@ function doPost(e) {
     if (accion === 'subirDocumento') return respuesta(subirDocumento(correo, body));
     if (accion === 'agregarTrabajador') return respuesta(agregarTrabajador(correo, body));
     if (accion === 'notificarContacto') return respuesta(notificarContacto(body.correoDestino, body.empresa));
+    if (accion === 'notificarRechazoDocumento') return respuesta(notificarRechazoDocumento(body.empresa, body.item, body.motivo));
     return respuesta({ error: 'Acción desconocida: ' + accion });
   } catch (err) {
     return respuesta({ error: String(err.message || err) });
@@ -187,6 +188,31 @@ function notificarContacto(correoDestino, empresa) {
     'Ahí vas a poder ver y subir la documentación pendiente de tu empresa.\n\n' +
     'Saludos,\nConstructora LST';
   MailApp.sendEmail(correo, asunto, cuerpo);
+  return { enviado: true };
+}
+
+// Avisa por correo a todas las cuentas subcontratista de una empresa cuando
+// el admin rechaza uno de sus documentos (ver rechazarDocSubcontratista en
+// app.js) — quien llama es siempre el admin (tiene acceso directo al
+// Sheet/Drive, nunca pasa por verificarPertenece), así que no hace falta
+// validar que el correo que llama pertenezca a esa empresa, a diferencia de
+// listarDocumentos/subirDocumento. Si la empresa no tiene ningún correo
+// registrado todavía, no manda nada (no es un error, solo no hay a quién
+// avisarle).
+function notificarRechazoDocumento(empresa, item, motivo) {
+  if (!empresa || !motivo) throw new Error('Falta la empresa o el motivo');
+  const destinatarios = correosSubcontratistaDeEmpresa(empresa);
+  if (!destinatarios.length) return { enviado: false };
+
+  const asunto = 'Documento rechazado — ' + (item || 'Subcontratistas') + ' (' + empresa + ')';
+  const cuerpo = 'Hola,\n\n' +
+    'El documento "' + (item || 'sin nombre') + '" de "' + empresa + '" fue rechazado por Constructora LST.\n\n' +
+    'Motivo del rechazo: ' + motivo + '\n\n' +
+    (APP_URL ? 'Ingresa a la app para revisarlo y volver a subir el documento corregido: ' + APP_URL + '\n\n' : 'Por favor vuelve a subir el documento corregido en la app.\n\n') +
+    'Saludos,\nConstructora LST';
+  destinatarios.forEach(function (correoDestino) {
+    try { MailApp.sendEmail(correoDestino, asunto, cuerpo); } catch (e) { /* best-effort */ }
+  });
   return { enviado: true };
 }
 
