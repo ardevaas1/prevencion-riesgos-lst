@@ -873,6 +873,11 @@ a.action-btn { text-decoration: none; }
   border-style: solid; background: var(--accent-soft);
 }
 .upload-label.selected .upload-label-text::before { content: '✓ '; }
+/* Mientras la subida está en curso (ver marcarSubiendoArchivo en app.js) —
+   evita que un segundo toque mientras se sube duplique el archivo, y dejar
+   el botón igual que siempre no avisaba que el primer toque sí se
+   registró. */
+.upload-label.subiendo { opacity: .6; cursor: wait; pointer-events: none; }
 
 /* Arrastrar y soltar (ver app.js) — solo en escritorio, mismo quiebre que
    el resto de la UI de escritorio. En mobile el label se ve igual que

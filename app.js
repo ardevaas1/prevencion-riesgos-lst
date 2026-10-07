@@ -1232,6 +1232,47 @@ function marcarArchivoElegido(inputEl) {
   // archivo (que sería engañoso, da la impresión de que solo se eligió ese).
   else textoEl.textContent = archivos.length === 1 ? archivos[0].name : archivos.length + ' archivos seleccionados';
 }
+// Evita subidas duplicadas en los botones "+ Subir archivo" de
+// Subcontratistas (ver onSubirDocSubcontratista/onSubirDocGlobalSubcontratista/
+// onSubirRespaldoTrabajador) — a diferencia del resto de la app, estos NO son
+// un <form> con botón submit, así que el mecanismo genérico de ahí arriba
+// ("Evita guardados duplicados por doble clic") no los cubre. Son
+// subidas que pueden tardar varios segundos (sobre todo la ruta con proxy:
+// lee el archivo a base64 y lo manda a la Web App) sin más feedback que un
+// toast que pasa rápido — si el usuario no lo nota, vuelve a tocar "+ Subir"
+// y elige el mismo archivo de nuevo, duplicando la fila. Se desactiva el
+// <input> (un input disabled no abre el selector de archivos al tocar su
+// <label>, así que un segundo toque mientras la subida está en curso no
+// hace nada) y se cambia el texto a "Subiendo..." para que quede claro que
+// sí se registró el primer toque.
+function marcarSubiendoArchivo(inputEl, subiendo) {
+  const label = inputEl.closest('.upload-label');
+  if (!label) return;
+  inputEl.disabled = subiendo;
+  label.classList.toggle('subiendo', subiendo);
+  const textoEl = label.querySelector('.upload-label-text');
+  if (textoEl) {
+    if (subiendo) {
+      if (textoEl.dataset.textoOriginal === undefined) textoEl.dataset.textoOriginal = textoEl.textContent;
+      textoEl.textContent = 'Subiendo...';
+    } else if (textoEl.dataset.textoOriginal !== undefined) {
+      textoEl.textContent = textoEl.dataset.textoOriginal;
+      delete textoEl.dataset.textoOriginal;
+    }
+    return;
+  }
+  // Labels de Subcontratistas: el texto es un nodo de texto plano, hermano
+  // del <input>, sin un <span class="upload-label-text"> que envolverlo.
+  const textNode = [...label.childNodes].find(n => n.nodeType === Node.TEXT_NODE && n.nodeValue.trim());
+  if (!textNode) return;
+  if (subiendo) {
+    label.dataset.textoOriginal = textNode.nodeValue;
+    textNode.nodeValue = 'Subiendo...';
+  } else if (label.dataset.textoOriginal !== undefined) {
+    textNode.nodeValue = label.dataset.textoOriginal;
+    delete label.dataset.textoOriginal;
+  }
+}
 // form.reset() (se usa al abrir de nuevo varios paneles, ej. abrirEditarAltura)
 // vacía el <input type="file"> pero no toca el <label> a mano — sin esto, al
 // reabrir un panel quedaba mostrando el nombre del archivo de la vez
@@ -5182,6 +5223,7 @@ async function onSubirDocSubcontratista(inputEl, empresa, categoria, item, perio
   if (bloquearSiViewer()) return;
   const files = [...inputEl.files];
   if (!files.length) return;
+  marcarSubiendoArchivo(inputEl, true);
   try {
     for (const file of files) {
       const prefix = [categoria, item, periodo].filter(Boolean).join('_').replace(/\s+/g, '-');
@@ -5216,7 +5258,7 @@ async function onSubirDocSubcontratista(inputEl, empresa, categoria, item, perio
     toast(files.length > 1 ? 'Archivos subidos ✓' : 'Documento subido ✓', 'ok');
     await cargarTodo(true);
     if (miEmpresaSubcontratista) mostrarModoSubcontratista(empresa); else abrirDetalleSubcontratista(empresa);
-  } catch (e) { toast(e.message, 'error'); }
+  } catch (e) { toast(e.message, 'error'); marcarSubiendoArchivo(inputEl, false); }
 }
 // Procedimientos de Trabajo Seguro — riesgos críticos: a diferencia del
 // resto de "Carpeta de empresa" (un ítem fijo, un solo archivo vigente
@@ -5313,12 +5355,13 @@ async function onSubirRespaldoTrabajador(inputEl, empresa, categoria, nombreTrab
   if (bloquearSiViewer()) return;
   const files = [...inputEl.files];
   if (!files.length) return;
+  marcarSubiendoArchivo(inputEl, true);
   try {
     for (const file of files) await subirRespaldoTrabajadorArchivo(empresa, categoria, nombreTrabajador, file);
     toast(files.length > 1 ? 'Archivos subidos ✓' : 'Archivo subido ✓', 'ok');
     await cargarTodo(true);
     if (miEmpresaSubcontratista) mostrarModoSubcontratista(empresa); else abrirDetalleSubcontratista(empresa);
-  } catch (e) { toast(e.message, 'error'); }
+  } catch (e) { toast(e.message, 'error'); marcarSubiendoArchivo(inputEl, false); }
 }
 // Obras donde ya trabaja algún trabajador de esta misma empresa — sugerencia
 // para el datalist del formulario de abajo (no hay acceso a
@@ -5399,6 +5442,7 @@ async function onSubirDocGlobalSubcontratista(inputEl, item) {
   if (bloquearSiViewer()) return;
   const files = [...inputEl.files];
   if (!files.length) return;
+  marcarSubiendoArchivo(inputEl, true);
   try {
     for (const file of files) {
       const up = await uploadFileSubcontratista(file, '__GLOBAL__', item.replace(/\s+/g, '-'), item);
@@ -5410,7 +5454,7 @@ async function onSubirDocGlobalSubcontratista(inputEl, item) {
     toast(files.length > 1 ? 'Documentos actualizados ✓' : 'Documento actualizado ✓', 'ok');
     await cargarTodo(true);
     if (empresaSubcontratistaActual) abrirDetalleSubcontratista(empresaSubcontratistaActual);
-  } catch (e) { toast(e.message, 'error'); }
+  } catch (e) { toast(e.message, 'error'); marcarSubiendoArchivo(inputEl, false); }
 }
 // Borra un documento subido en Subcontratistas — a propósito NO tiene
 // equivalente en la Web App de Apps Script (llamarWebAppSubcontratista):
