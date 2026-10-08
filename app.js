@@ -1073,6 +1073,23 @@ async function uploadFileSubcontratistaTrabajador(fileOrBlob, empresa, nombreTra
   compartirArchivoConEmpresa(up.id, empresa).catch(() => {});
   return up;
 }
+// Una subcarpeta más por ÍTEM, DENTRO de la carpeta propia del trabajador
+// (Trabajadores/{nombre}/{ítem}/) — la usa el checklist fijo de 18 ítems por
+// trabajador (ver filaChecklistSubcontratista/bloqueDocTrabajador), a
+// pedido explícito del cliente para que esos documentos no queden
+// mezclados con los de otros trabajadores (que es lo que pasaba antes, al
+// reusar getSubcontratistaFolder sin más: una carpeta por ítem compartida
+// entre toda la empresa).
+async function getSubcontratistaTrabajadorItemFolder(empresa, nombreTrabajador, item) {
+  const carpetaTrabajador = await getSubcontratistaTrabajadorFolder(empresa, nombreTrabajador);
+  return findOrCreateFolder(item, carpetaTrabajador);
+}
+async function uploadFileSubcontratistaTrabajadorItem(fileOrBlob, empresa, nombreTrabajador, item, prefixName) {
+  const folderId = await getSubcontratistaTrabajadorItemFolder(empresa, nombreTrabajador, item);
+  const up = await uploadFileToFolder(fileOrBlob, folderId, prefixName);
+  compartirArchivoConEmpresa(up.id, empresa).catch(() => {});
+  return up;
+}
 // Comparte un archivo recién subido en Subcontratistas — SOLO lectura —
 // con las cuentas de esa empresa dadas de alta como subcontratista. Antes
 // el "Ver" de un documento era un link de Drive que solo abría si la
@@ -5024,7 +5041,13 @@ async function notificarRechazoDocumento(empresa, descripcion, motivo) {
 // (archivos, estado, Aprobar/Rechazar/Eliminar, subir) aparece al tocarlo.
 // Si algún archivo quedó rechazado se avisa en la cabecera para que no
 // pase inadvertido sin tener que abrir cada ítem.
-function filaChecklistSubcontratista(empresa, categoria, item, periodo) {
+// `nombreTrabajador` es opcional: solo lo pasa bloqueDocTrabajador (el
+// checklist de cada trabajador). Cuando viene, la subida va a la carpeta
+// PROPIA de ese trabajador (Trabajadores/{nombre}/{ítem}/) en vez de la
+// carpeta compartida por ítem que usan Carpeta de empresa/Control mensual
+// (Subcontratistas/{empresa}/{ítem}/, mezclada entre todos los
+// trabajadores) — ver onSubirDocSubcontratista.
+function filaChecklistSubcontratista(empresa, categoria, item, periodo, nombreTrabajador) {
   const docs = docsSubcontratista(empresa, categoria, item, periodo).slice().reverse();
   const hayRechazo = docs.some(d => d.estado === 'Rechazado');
   return `
@@ -5043,7 +5066,7 @@ function filaChecklistSubcontratista(empresa, categoria, item, periodo) {
             <div class="doc-row"><a class="badge blue" href="${esc(d.link)}" target="_blank">${ic('documento',12)} Ver</a><span style="font-size:11px;color:#888;">${esc((d.fecha||'').split(',')[0] || d.fecha)}</span>${badgeEstadoDocSubcontratista(d)}${accionesRevisionDocSubcontratista(d)}${botonEliminarDocSubcontratista(d, empresa)}</div>
             ${motivoRechazoHtml(d)}
           `).join('')}
-          ${!esViewer() ? `<label class="upload-label" style="margin-top:8px;">+ Subir archivo (puedes elegir varios)<input type="file" multiple style="display:none" onchange="onSubirDocSubcontratista(this,'${esc(empresa)}','${categoria}','${esc(item)}','${periodo||''}')"></label>` : ''}
+          ${!esViewer() ? `<label class="upload-label" style="margin-top:8px;">+ Subir archivo (puedes elegir varios)<input type="file" multiple style="display:none" onchange="onSubirDocSubcontratista(this,'${esc(empresa)}','${categoria}','${esc(item)}','${periodo||''}'${nombreTrabajador ? `,'${esc(nombreTrabajador)}'` : ''})"></label>` : ''}
         </div>
       </div>
     </div>`;
@@ -5058,9 +5081,15 @@ function filaChecklistSubcontratista(empresa, categoria, item, periodo) {
 // Item vacío — ver docsRespaldoTrabajador — y sin este espacio habrían
 // quedado invisibles). Se guarda en el mismo Sheet de documentos de
 // siempre: la "categoría" queda "doctrab_<rut o nombre>" (identifica al
-// trabajador). En Drive quedan en su propia carpeta por trabajador (ver
-// getSubcontratistaTrabajadorFolder) dentro de la carpeta del
-// subcontratista. Se muestra colapsado por trabajador.
+// trabajador). En Drive, tanto los 18 ítems del checklist como "Otros
+// documentos" quedan dentro de la carpeta propia del trabajador
+// (Trabajadores/{nombre}/, ver getSubcontratistaTrabajadorFolder) — el
+// checklist además abre una subcarpeta por ítem dentro de esa
+// (Trabajadores/{nombre}/{ítem}/, ver
+// getSubcontratistaTrabajadorItemFolder/onSubirDocSubcontratista), a
+// diferencia de Carpeta de empresa/Control mensual, donde la carpeta por
+// ítem (Subcontratistas/{empresa}/{ítem}/) queda mezclada entre todos los
+// trabajadores. Se muestra colapsado por trabajador.
 function claveDocTrabajador(t) { return t.rut || t.nombre; }
 function categoriaDocTrabajador(t) { return 'doctrab_' + claveDocTrabajador(t); }
 function docsRespaldoTrabajador(empresa, categoria) {
@@ -5082,7 +5111,7 @@ function bloqueDocTrabajador(empresa, t) {
       </div>
       <div class="subcont-doctrab-body">
         <div class="subcont-doctrab-inner">
-          ${DOCS_TRABAJADOR.map(item => filaChecklistSubcontratista(empresa, categoria, item, null)).join('')}
+          ${DOCS_TRABAJADOR.map(item => filaChecklistSubcontratista(empresa, categoria, item, null, t.nombre)).join('')}
           <div class="subcont-row-nombre" style="margin-top:16px;font-size:12px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.02em;">Otros documentos</div>
           ${otros.length ? otros.map(d => `
             <div class="doc-row"><a class="badge blue" href="${esc(d.link)}" target="_blank">${ic('documento',12)} ${esc(d.archivo)}</a><span style="font-size:11px;color:#888;">${esc((d.fecha||'').split(',')[0] || d.fecha)}</span>${badgeEstadoDocSubcontratista(d)}${accionesRevisionDocSubcontratista(d)}${botonEliminarDocSubcontratista(d, empresa)}</div>
@@ -5252,7 +5281,14 @@ function renderSubcontratistaDetalleHTML(empresa, esRestringido) {
   `;
 }
 
-async function onSubirDocSubcontratista(inputEl, empresa, categoria, item, periodo) {
+// `nombreTrabajador` es opcional: lo pasa filaChecklistSubcontratista
+// cuando se usa para el checklist de un trabajador puntual (ver
+// bloqueDocTrabajador) — en ese caso la subida va a la carpeta PROPIA de
+// ese trabajador (Trabajadores/{nombre}/{ítem}/) en vez de la carpeta
+// compartida por ítem (Subcontratistas/{empresa}/{ítem}/) que usan Carpeta
+// de empresa/Control mensual/Herramientas, donde mezclaría los documentos
+// de todos los trabajadores de la empresa en la misma carpeta.
+async function onSubirDocSubcontratista(inputEl, empresa, categoria, item, periodo, nombreTrabajador) {
   if (bloquearSiViewer()) return;
   const files = [...inputEl.files];
   if (!files.length) return;
@@ -5277,11 +5313,14 @@ async function onSubirDocSubcontratista(inputEl, empresa, categoria, item, perio
         await llamarWebAppSubcontratista('subirDocumento', {
           empresa, categoria, item: item || '', periodo: periodo || '',
           subcarpeta: item || 'Herramientas',
+          ...(nombreTrabajador ? { carpetaTrabajador: nombreTrabajador } : {}),
           nombreArchivo: `${prefix}_${fecha}_${hora}.${extension}`,
           mimeType: file.type || 'application/octet-stream', contenidoBase64: b64,
         });
       } else {
-        const up = await uploadFileSubcontratista(file, empresa, prefix, item || 'Herramientas');
+        const up = nombreTrabajador
+          ? await uploadFileSubcontratistaTrabajadorItem(file, empresa, nombreTrabajador, item || 'Herramientas', prefix)
+          : await uploadFileSubcontratista(file, empresa, prefix, item || 'Herramientas');
         await appendSheet(`'${CONFIG.SHEET_SUBCONTRATISTAS_DOCS}'!A:J`, [[
           empresa, categoria, item || '', periodo || '', up.name, up.link,
           new Date().toLocaleString('es-CL'), userEmail || '', '', ''
