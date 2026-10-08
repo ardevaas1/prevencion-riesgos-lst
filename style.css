@@ -612,7 +612,7 @@ body.is-offline #app { padding-top: 30px; }
   flex-shrink: 0; color: var(--ink-soft); display: flex;
   transition: transform 0.15s;
 }
-.subcont-doctrab.abierto .subcont-doctrab-chevron { transform: rotate(90deg); color: var(--accent); }
+.subcont-doctrab.abierto > .subcont-doctrab-head .subcont-doctrab-chevron { transform: rotate(90deg); color: var(--accent); }
 /* Truco de grid para animar hasta "altura automática" — display:none/block
    no se puede animar directo, y max-height con un valor fijo se ve cortado
    o con un salto si el contenido mide distinto (18 documentos no siempre
@@ -623,7 +623,16 @@ body.is-offline #app { padding-top: 30px; }
   grid-template-rows: 0fr;
   transition: grid-template-rows 0.25s ease;
 }
-.subcont-doctrab.abierto .subcont-doctrab-body { grid-template-rows: 1fr; }
+/* ">" a propósito, no un descendiente cualquiera: Documentación trabajadores
+   anida un .subcont-doctrab colapsable (cada ítem del checklist, ver
+   filaChecklistSubcontratista) DENTRO de otro .subcont-doctrab colapsable
+   (el trabajador). Con un selector de descendiente normal, abrir el del
+   trabajador hacía match también contra el -body de cada ítem anidado (son
+   descendientes igual, aunque esos NO tengan la clase "abierto" puesta en
+   su propio contenedor) y los mostraba todos destapados de una — justo lo
+   que se quería evitar colapsando. ">" limita la regla al -body que es hijo
+   DIRECTO de ESE .abierto puntual. */
+.subcont-doctrab.abierto > .subcont-doctrab-body { grid-template-rows: 1fr; }
 .subcont-doctrab-inner { overflow: hidden; padding: 0 0 10px 24px; }
 .subcont-doctrab-body .subcont-row { padding: 8px 0; }
 
