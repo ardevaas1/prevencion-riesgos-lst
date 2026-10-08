@@ -249,6 +249,32 @@ const SUBCONT_CONTROL_MENSUAL = [
   'AST', 'Cronograma', 'Certificados', 'Exámenes ocupacionales',
   'Informe Mensual', 'Listado de trabajadores',
 ];
+// Checklist fijo de documentos por CADA trabajador de una empresa
+// subcontratista (ver bloqueDocTrabajador) — mismo listado para todos los
+// trabajadores, igual criterio que SUBCONT_CARPETA_EMPRESA. "Documentación
+// trabajadores" también deja subir archivos sueltos fuera de estos 18 ítems
+// (ver docsRespaldoTrabajador) para lo que no encaje en ninguno en
+// particular o para lo que ya se subió cuando este checklist no existía.
+const DOCS_TRABAJADOR = [
+  'Exámenes ocupacionales (altura física sobre 1,8 m o espacios confinados, según corresponda)',
+  'Registro difusión Plan de gestión del riesgo y desastre',
+  'Difusión Política SSO',
+  'Registro entrega de EPP',
+  'Registro de capacitación uso, mantención y almacenamiento de EPP',
+  'IRL — Actividades a desarrollar',
+  'Recepción de Reglamento Interno',
+  'Difusión Miper',
+  'Difusión Procedimientos de trabajo seguro — riesgos críticos',
+  'Difusión Procedimientos de trabajo seguro — actividad específica a realizar',
+  'Difusión Procedimiento de investigación de acoso sexual laboral y violencia en el trabajo',
+  'Capacitación uso y manejo de extintores',
+  'Registro recambio de EPP',
+  'Difusión de actualización Miper',
+  'Certificado curso Orientación en Prevención de Riesgos (DS44 — 8 hrs)',
+  'Registro de difusión Protocolos Minsal',
+  'Informativo Canal de denuncias Ley Karin',
+  'Re-instrucciones (según se soliciten)',
+];
 
 const NIVELES_RIESGO = [
   { value: 'Bajo',  color: 'green' },
@@ -5022,15 +5048,19 @@ function filaChecklistSubcontratista(empresa, categoria, item, periodo) {
       </div>
     </div>`;
 }
-// Documentación por trabajador — espacio libre, sin checklist ni ítems
-// obligatorios: cada trabajador tiene su propia carpeta donde el
-// subcontratista puede subir los archivos que quiera (los que sean, cuantos
-// sean), sin tener que completar nada en particular. Se guarda en el mismo
-// Sheet de documentos de siempre: la "categoría" queda "doctrab_<rut o
-// nombre>" (identifica al trabajador) con Item vacío (ver
-// docsRespaldoTrabajador). En Drive quedan en su propia carpeta por
-// trabajador (ver getSubcontratistaTrabajadorFolder) dentro de la carpeta
-// del subcontratista. Se muestra colapsado por trabajador.
+// Documentación por trabajador — checklist fijo de 18 ítems (ver
+// DOCS_TRABAJADOR), mismo criterio que Carpeta de empresa: cada ítem admite
+// más de un archivo, con su propio estado/Aprobar/Rechazar/Eliminar (ver
+// filaChecklistSubcontratista). Debajo del checklist queda además un
+// espacio libre ("Otros documentos") para lo que no encaje en ninguno de
+// los 18 ítems en particular, o para archivos que ya se habían subido
+// cuando este checklist todavía no existía (esos quedaron guardados con
+// Item vacío — ver docsRespaldoTrabajador — y sin este espacio habrían
+// quedado invisibles). Se guarda en el mismo Sheet de documentos de
+// siempre: la "categoría" queda "doctrab_<rut o nombre>" (identifica al
+// trabajador). En Drive quedan en su propia carpeta por trabajador (ver
+// getSubcontratistaTrabajadorFolder) dentro de la carpeta del
+// subcontratista. Se muestra colapsado por trabajador.
 function claveDocTrabajador(t) { return t.rut || t.nombre; }
 function categoriaDocTrabajador(t) { return 'doctrab_' + claveDocTrabajador(t); }
 function docsRespaldoTrabajador(empresa, categoria) {
@@ -5038,7 +5068,8 @@ function docsRespaldoTrabajador(empresa, categoria) {
 }
 function bloqueDocTrabajador(empresa, t) {
   const categoria = categoriaDocTrabajador(t);
-  const respaldos = docsRespaldoTrabajador(empresa, categoria);
+  const subidos = contarSubidosSubcontratista(empresa, categoria, DOCS_TRABAJADOR, null);
+  const otros = docsRespaldoTrabajador(empresa, categoria);
   return `
     <div class="subcont-doctrab">
       <div class="subcont-doctrab-head" onclick="this.parentElement.classList.toggle('abierto')">
@@ -5047,15 +5078,17 @@ function bloqueDocTrabajador(empresa, t) {
           <div class="subcont-row-nombre">${esc(t.nombre)}</div>
           <div class="subcont-row-fecha">${t.rut ? esc(t.rut) : ''}</div>
         </div>
-        <span class="subcont-progress${respaldos.length ? ' completo' : ''}">${respaldos.length}</span>
+        ${progresoBadgeSubcontratista(subidos, DOCS_TRABAJADOR.length)}
       </div>
       <div class="subcont-doctrab-body">
         <div class="subcont-doctrab-inner">
-          ${respaldos.length ? respaldos.map(d => `
+          ${DOCS_TRABAJADOR.map(item => filaChecklistSubcontratista(empresa, categoria, item, null)).join('')}
+          <div class="subcont-row-nombre" style="margin-top:16px;font-size:12px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.02em;">Otros documentos</div>
+          ${otros.length ? otros.map(d => `
             <div class="doc-row"><a class="badge blue" href="${esc(d.link)}" target="_blank">${ic('documento',12)} ${esc(d.archivo)}</a><span style="font-size:11px;color:#888;">${esc((d.fecha||'').split(',')[0] || d.fecha)}</span>${badgeEstadoDocSubcontratista(d)}${accionesRevisionDocSubcontratista(d)}${botonEliminarDocSubcontratista(d, empresa)}</div>
             ${motivoRechazoHtml(d)}
-          `).join('') : '<div class="empty-sub" style="padding:6px 0;">Sin archivos subidos</div>'}
-          ${!esViewer() ? `<label class="upload-label" style="margin-top:8px;">+ Subir archivo (puedes elegir varios)<input type="file" multiple style="display:none" onchange="onSubirRespaldoTrabajador(this,'${esc(empresa)}','${categoria}','${esc(t.nombre)}')"></label>` : ''}
+          `).join('') : '<div class="empty-sub" style="padding:6px 0;">Sin archivos adicionales</div>'}
+          ${!esViewer() ? `<label class="upload-label" style="margin-top:8px;">+ Subir archivo adicional (puedes elegir varios)<input type="file" multiple style="display:none" onchange="onSubirRespaldoTrabajador(this,'${esc(empresa)}','${categoria}','${esc(t.nombre)}')"></label>` : ''}
         </div>
       </div>
     </div>`;
