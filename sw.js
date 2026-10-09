@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lst-prevencion-shell-v37';
+const CACHE_NAME = 'lst-prevencion-shell-v38';
 // Archivos de código/shell: cambian seguido mientras se sigue desarrollando
 // la app — necesitan "network-first" (siempre intentar la versión más
 // nueva) para que un cambio recién publicado se vea de inmediato con un
