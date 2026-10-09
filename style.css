@@ -959,6 +959,15 @@ a.action-btn { text-decoration: none; }
   max-width: 640px; width: 100%; margin: 0 auto;
   padding: 16px 16px 32px; box-sizing: border-box;
 }
+/* En escritorio los 640px se quedan chicos y dejan franjas grises enormes
+   a los lados — se ensancha la columna (sigue siendo una sola columna,
+   sin sidebar, por lo de arriba) y se le da más aire arriba/abajo. */
+@media (min-width: 900px) {
+  .subcontratista-root-content {
+    max-width: 860px;
+    padding: 32px 32px 48px;
+  }
+}
 /* #subcontratista-root tiene z-index 500 (arriba), más alto que el de
    .panel (50) — por eso un panel normal (ej. "Agregar trabajador", ver
    abrirFormTrabajadorSubcontratista en app.js) abierto DESDE la pantalla
