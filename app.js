@@ -1184,6 +1184,7 @@ const ICONS = {
   capacitacion: '<svg viewBox="0 0 24 24" fill="none"><path d="M2 8l10-4 10 4-10 4L2 8Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M6 10.5V16c0 1.4 2.7 3 6 3s6-1.6 6-3v-5.5" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M21 8v6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>',
   check: '<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/><path d="M8 12.3l2.5 2.5L16 9.5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   alerta: '<svg viewBox="0 0 24 24" fill="none"><path d="M12 3 2 20h20L12 3Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M12 9.5v4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="17" r="1" fill="currentColor"/></svg>',
+  correo: '<svg viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="m4 7 8 6 8-6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>',
 };
 // La tarjeta de Capacitación DS44 en el home usa la misma clave que su
 // color (`capacitacionds44`, ver MODULOS_COLOR) — nunca se le había
@@ -5169,6 +5170,14 @@ function contarSubidosSubcontratista(empresa, categoria, items, periodo) {
 function progresoBadgeSubcontratista(subidos, total) {
   return `<span class="subcont-progress${subidos === total ? ' completo' : ''}">${subidos}/${total}</span>`;
 }
+// Chip de color antes del título de cada sección del detalle de
+// Subcontratistas (ver renderSubcontratistaDetalleHTML) — mismo criterio
+// visual que .card-icon en el resto de la app (degradé + sombra), solo que
+// más chico para encajar en la cabecera de una tarjeta que ya tiene su
+// propio padding.
+function chipSeccionSubcontratista(icono) {
+  return `<div class="subcont-section-icon">${ic(icono, 16)}</div>`;
+}
 
 function renderSubcontratistaDetalleHTML(empresa, esRestringido) {
   const correos = allUsuarios.filter(u => u.empresa === empresa && u.rol === 'subcontratista');
@@ -5185,7 +5194,7 @@ function renderSubcontratistaDetalleHTML(empresa, esRestringido) {
     </div>
 
     <div class="subcont-section">
-      <div class="subcont-section-head"><div class="subcont-section-title">Documentos generales</div></div>
+      <div class="subcont-section-head">${chipSeccionSubcontratista('documento')}<div class="subcont-section-title">Documentos generales</div></div>
       ${filaGlobalSubcontratista('Reglamento de Subcontratista', esRestringido, empresa)}
       <div class="subcont-row" style="display:block;">
         <div class="subcont-row-nombre">Programa personalizado</div>
@@ -5201,6 +5210,7 @@ function renderSubcontratistaDetalleHTML(empresa, esRestringido) {
 
     <div class="subcont-section">
       <div class="subcont-section-head">
+        ${chipSeccionSubcontratista('carpeta')}
         <div class="subcont-section-title">Carpeta de empresa</div>
         ${progresoBadgeSubcontratista(subidosEmpresa, SUBCONT_CARPETA_EMPRESA.length)}
       </div>
@@ -5209,6 +5219,7 @@ function renderSubcontratistaDetalleHTML(empresa, esRestringido) {
 
     <div class="subcont-section">
       <div class="subcont-section-head">
+        ${chipSeccionSubcontratista('procedimientos')}
         <div class="subcont-section-title">Procedimientos de Trabajo Seguro — Riesgos Críticos</div>
         <span class="subcont-progress${procedimientosCriticos.length ? ' completo' : ''}">${procedimientosCriticos.length}</span>
       </div>
@@ -5240,6 +5251,7 @@ function renderSubcontratistaDetalleHTML(empresa, esRestringido) {
 
     <div class="subcont-section">
       <div class="subcont-section-head">
+        ${chipSeccionSubcontratista('trabajadores')}
         <div class="subcont-section-title">Documentación trabajadores</div>
       </div>
       ${esRestringido ? `<button type="button" class="action-btn" style="margin-bottom:10px;" onclick="abrirFormTrabajadorSubcontratista()">${ic('trabajadores',14)} Agregar trabajador</button>` : ''}
@@ -5250,6 +5262,7 @@ function renderSubcontratistaDetalleHTML(empresa, esRestringido) {
 
     <div class="subcont-section">
       <div class="subcont-section-head">
+        ${chipSeccionSubcontratista('inspecciones')}
         <div class="subcont-section-title">Control mensual</div>
         ${progresoBadgeSubcontratista(subidosMensual, SUBCONT_CONTROL_MENSUAL.length)}
       </div>
@@ -5261,7 +5274,7 @@ function renderSubcontratistaDetalleHTML(empresa, esRestringido) {
     </div>
 
     <div class="subcont-section">
-      <div class="subcont-section-head"><div class="subcont-section-title">Control de herramientas y extensiones eléctricas</div></div>
+      <div class="subcont-section-head">${chipSeccionSubcontratista('obra')}<div class="subcont-section-title">Control de herramientas y extensiones eléctricas</div></div>
       ${herramientas.length ? herramientas.map(d => `
         <div class="doc-row"><a class="badge blue" href="${esc(d.link)}" target="_blank">${ic('documento',12)} ${esc(d.archivo)}</a><span style="font-size:11px;color:#888;">${esc((d.fecha||'').split(',')[0] || d.fecha)}</span>${badgeEstadoDocSubcontratista(d)}${accionesRevisionDocSubcontratista(d)}${botonEliminarDocSubcontratista(d, empresa)}</div>
         ${motivoRechazoHtml(d)}
@@ -5271,7 +5284,7 @@ function renderSubcontratistaDetalleHTML(empresa, esRestringido) {
 
     ${!esRestringido ? `
     <div class="subcont-section">
-      <div class="subcont-section-head"><div class="subcont-section-title">Correos autorizados</div></div>
+      <div class="subcont-section-head">${chipSeccionSubcontratista('correo')}<div class="subcont-section-title">Correos autorizados</div></div>
       ${correos.map(c => `<div class="doc-row"><span>${esc(c.correo)}</span></div>`).join('') || '<div class="empty-sub">Sin correos asignados todavía</div>'}
       ${!esViewer() ? `<form onsubmit="onAgregarCorreoSubcontratista(event,'${esc(empresa)}')" style="display:flex;gap:8px;margin-top:10px;">
         <input name="correo" type="email" placeholder="correo@empresa.com" required style="flex:1;padding:10px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit;">
