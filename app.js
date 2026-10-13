@@ -767,8 +767,18 @@ async function ensureToken() {
   if (ensureTokenPromise) return ensureTokenPromise;
   ensureTokenPromise = new Promise((resolve, reject) => {
     if (!tokenClient) { reject(new Error('Sesión no iniciada')); return; }
+    // Si Google nunca llama al callback (ej. cookies de terceros bloqueadas,
+    // o el refresh silencioso falla sin avisar) la promesa quedaba pegada
+    // para siempre y cualquier acción que dependiera de ella (como subir un
+    // documento) se veía "cargando" sin parar, sin ningún error — recién al
+    // recargar la página se notaba que no se había guardado nada. Un timeout
+    // de resguardo convierte ese cuelgue silencioso en un error explícito.
+    const timeoutId = setTimeout(() => {
+      reject(new Error('No se pudo renovar la sesión. Vuelve a cargar la página e inicia sesión de nuevo.'));
+    }, 15000);
     const prevCb = tokenClient.callback;
     tokenClient.callback = (resp) => {
+      clearTimeout(timeoutId);
       tokenClient.callback = prevCb;
       if (resp.error) { reject(new Error(resp.error)); return; }
       saveToken(resp.access_token, resp.expires_in || 3600);
@@ -1129,11 +1139,28 @@ async function compartirArchivoConEmpresa(fileId, empresa) {
 // el error de CORS.
 async function llamarWebAppSubcontratista(accion, datos) {
   if (!CONFIG.SUBCONTRATISTAS_WEBAPP_URL) throw new Error('Falta configurar SUBCONTRATISTAS_WEBAPP_URL en config.js');
-  const res = await fetch(CONFIG.SUBCONTRATISTAS_WEBAPP_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ accion, correo: userEmail, ...datos }),
-  });
+  // Sin timeout, un archivo grande (ej. el Excel de "Listado de
+  // trabajadores") o un cold-start lento de Apps Script podían dejar este
+  // fetch colgado indefinidamente: no hay error, el botón se queda en
+  // "Subiendo..." para siempre y recién al recargar la página se nota que
+  // nunca se guardó nada. 90s de margen (la subida en sí puede tardar con
+  // archivos grandes en base64) antes de abortar con un error explícito.
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 90000);
+  let res;
+  try {
+    res = await fetch(CONFIG.SUBCONTRATISTAS_WEBAPP_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ accion, correo: userEmail, ...datos }),
+      signal: controller.signal,
+    });
+  } catch (e) {
+    if (e.name === 'AbortError') throw new Error('La solicitud tardó demasiado y se canceló. Si el archivo es muy pesado, prueba con uno más liviano o revisa tu conexión.');
+    throw e;
+  } finally {
+    clearTimeout(timeoutId);
+  }
   if (!res.ok) throw new Error('Error ' + res.status + ' llamando a la Web App de Subcontratistas');
   const data = await res.json();
   if (data.error) throw new Error(data.error);
