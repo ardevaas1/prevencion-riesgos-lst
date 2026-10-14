@@ -244,10 +244,15 @@ const SUBCONT_CARPETA_EMPRESA = [
   'Programa preventivo máquinas, equipos y herramientas motrices (PPSMEHM)',
   'Cartas Conductoras del reglamento interno a SEREMI de salud y DT',
 ];
+// Nombre exacto del ítem de Control mensual cuyo archivo además se intenta
+// LEER para dar de alta automáticamente a los trabajadores que trae (ver
+// importarListadoTrabajadores más abajo) — constante aparte para no repetir
+// el string literal en los dos lugares que lo necesitan.
+const ITEM_LISTADO_TRABAJADORES = 'Listado de trabajadores';
 const SUBCONT_CONTROL_MENSUAL = [
   'Capacitaciones específicas', 'Charlas diarias', 'Recambio EPP', 'Inspecciones',
   'AST', 'Cronograma', 'Certificados', 'Exámenes ocupacionales',
-  'Informe Mensual', 'Listado de trabajadores',
+  'Informe Mensual', ITEM_LISTADO_TRABAJADORES,
 ];
 // Checklist fijo de documentos por CADA trabajador de una empresa
 // subcontratista (ver bloqueDocTrabajador) — mismo listado para todos los
@@ -1127,6 +1132,109 @@ async function compartirArchivoConEmpresa(fileId, empresa) {
       });
     } catch (e) { console.warn('No se pudo compartir el archivo con ' + correo, e); }
   }
+}
+
+// ── Importar trabajadores desde el Excel de "Listado de trabajadores" ──
+// Deja el RUT solo con dígitos y el dígito verificador (sin puntos, guión
+// ni espacios, en mayúscula) para poder comparar dos RUT escritos distinto
+// — mismo criterio que normalizarRut en APPS_SCRIPT_WEBAPP_SUBCONTRATISTAS.js.
+function normalizarRutCliente(rut) { return (rut || '').toString().toUpperCase().replace(/[^0-9K]/g, ''); }
+// Quita tildes/mayúsculas/espacios de un encabezado de columna para poder
+// reconocerlo aunque la planilla real lo haya escrito distinto (ej. "Rut"
+// vs "RUT", "Fecha Ingreso" vs "Fecha de ingreso").
+function normalizarHeaderExcel(s) {
+  return (s || '').toString().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+}
+function indiceColumnaExcel(headers, candidatos) {
+  const normalizados = headers.map(normalizarHeaderExcel);
+  for (const c of candidatos) {
+    const idx = normalizados.indexOf(normalizarHeaderExcel(c));
+    if (idx !== -1) return idx;
+  }
+  return -1;
+}
+// Convierte un Excel a una Hoja de Google TEMPORAL (Drive lo hace solo con
+// pedir ese mimeType al subir) para poder leer sus filas con la API de
+// Sheets, sin tener que cargar ninguna librería de parseo de Excel en el
+// navegador — la hoja temporal se borra apenas se terminó de leer, nunca
+// queda visible en el Drive del cliente.
+async function convertirYLeerExcel(fileOrBlob) {
+  await ensureToken();
+  const b64 = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result.split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(fileOrBlob);
+  });
+  const boundary = 'lstpr_' + Date.now();
+  const metadata = JSON.stringify({ name: 'temp_import_' + Date.now(), mimeType: 'application/vnd.google-apps.spreadsheet' });
+  const mimeOriginal = fileOrBlob.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+  const body = [
+    '--' + boundary, 'Content-Type: application/json; charset=UTF-8', '', metadata,
+    '--' + boundary, 'Content-Type: ' + mimeOriginal, 'Content-Transfer-Encoding: base64', '', b64,
+    '--' + boundary + '--'
+  ].join('\r\n');
+  const res = await fetch(`${DRIVE_UP}/files?uploadType=multipart`, {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'multipart/related; boundary=' + boundary },
+    body,
+  });
+  if (!res.ok) throw new Error(friendlyErr(res.status, await res.text()));
+  const { id: tempSheetId } = await res.json();
+  try {
+    const valRes = await fetch(`${SHEETS_BASE}/${tempSheetId}/values/A1:Z2000`, { headers: authHeader() });
+    if (!valRes.ok) throw new Error(friendlyErr(valRes.status, await valRes.text()));
+    return (await valRes.json()).values || [];
+  } finally {
+    // Borrado permanente (no papelera) — es un archivo descartable que solo
+    // existió para poder leerlo, nunca debería quedar en el Drive real.
+    fetch(`https://www.googleapis.com/drive/v3/files/${tempSheetId}`, { method: 'DELETE', headers: authHeader() }).catch(() => {});
+  }
+}
+// Da de alta en TRABAJADORES a cada fila del Excel que traiga al menos
+// Nombre y RUT, saltándose los que ya existen para esa empresa (comparando
+// por RUT normalizado) para no duplicar si se vuelve a subir el mismo
+// listado o uno con gente repetida. Columnas reconocidas por el NOMBRE del
+// encabezado (no por posición, ver indiceColumnaExcel) — si el Excel no
+// trae ni "Nombre" ni "RUT" como encabezado, no se puede leer y se avisa
+// con sinLeer:true (el archivo igual queda guardado como documento, esto
+// solo afecta el alta automática de trabajadores).
+async function importarListadoTrabajadores(fileOrBlob, empresa) {
+  let filas;
+  try { filas = await convertirYLeerExcel(fileOrBlob); }
+  catch (e) { return { creados: 0, omitidos: 0, sinLeer: true }; }
+  if (!filas.length) return { creados: 0, omitidos: 0, sinLeer: true };
+
+  const headers = filas[0];
+  const iNombre = indiceColumnaExcel(headers, ['Nombre', 'Nombre completo', 'Nombre trabajador']);
+  const iRut = indiceColumnaExcel(headers, ['RUT', 'Rut']);
+  if (iNombre === -1 || iRut === -1) return { creados: 0, omitidos: 0, sinLeer: true };
+  const iCargo = indiceColumnaExcel(headers, ['Cargo']);
+  const iObra = indiceColumnaExcel(headers, ['Obra']);
+  const iFechaIngreso = indiceColumnaExcel(headers, ['Fecha de ingreso', 'Fecha ingreso']);
+  const iCorreo = indiceColumnaExcel(headers, ['Correo', 'Email', 'Correo electrónico']);
+
+  const existentes = new Set(allTrabajadores.filter(t => t.empresa === empresa).map(t => normalizarRutCliente(t.rut)));
+  let n = allTrabajadores.length + 1;
+  const nuevas = [];
+  let omitidos = 0;
+  for (const fila of filas.slice(1)) {
+    const nombre = (fila[iNombre] || '').toString().trim();
+    const rut = (fila[iRut] || '').toString().trim();
+    if (!nombre || !rut) continue;
+    const rutNorm = normalizarRutCliente(rut);
+    if (existentes.has(rutNorm)) { omitidos++; continue; }
+    existentes.add(rutNorm);
+    nuevas.push([
+      n++, nombre, rut, iCargo !== -1 ? (fila[iCargo] || '').toString().trim() : '', empresa,
+      iFechaIngreso !== -1 ? (fila[iFechaIngreso] || '').toString().trim() : '', 'Activo', '', new Date().toLocaleString('es-CL'),
+      iObra !== -1 ? (fila[iObra] || '').toString().trim() : '', '', '', '', '', '', '',
+      '', '', '', '', '', '', '', '', '', '',
+      iCorreo !== -1 ? (fila[iCorreo] || '').toString().trim() : '', '', ''
+    ]);
+  }
+  if (nuevas.length) await appendSheet(`'${CONFIG.SHEET_TRABAJADORES}'!A:AC`, nuevas);
+  return { creados: nuevas.length, omitidos, sinLeer: false };
 }
 
 // Llama a la Web App de Apps Script (ver APPS_SCRIPT_WEBAPP_SUBCONTRATISTAS.js)
@@ -5328,14 +5436,39 @@ function renderSubcontratistaDetalleHTML(empresa, esRestringido) {
 // compartida por ítem (Subcontratistas/{empresa}/{ítem}/) que usan Carpeta
 // de empresa/Control mensual/Herramientas, donde mezclaría los documentos
 // de todos los trabajadores de la empresa en la misma carpeta.
+// Guarda, por cada combinación empresa+categoria+item+periodo, el último
+// archivo subido en esta pestaña (nombre+tamaño+cuándo) — solo para poder
+// avisar si alguien intenta subir el MISMO archivo dos veces seguidas sin
+// darse cuenta (ej. doble clic, o reintentar creyendo que no se subió nada
+// la primera vez). No persiste entre recargas ni bloquea nada por sí solo,
+// solo pide confirmar antes de subir un posible duplicado.
+const ultimoArchivoSubidoPorItem = {};
+function claveArchivoItem(empresa, categoria, item, periodo) { return [empresa, categoria, item || '', periodo || ''].join('|'); }
+function pareceArchivoDuplicado(empresa, categoria, item, periodo, file) {
+  const anterior = ultimoArchivoSubidoPorItem[claveArchivoItem(empresa, categoria, item, periodo)];
+  return !!anterior && anterior.nombre === file.name && anterior.tamano === file.size && (Date.now() - anterior.cuando) < 2 * 60 * 1000;
+}
+function marcarArchivoSubidoParaItem(empresa, categoria, item, periodo, file) {
+  ultimoArchivoSubidoPorItem[claveArchivoItem(empresa, categoria, item, periodo)] = { nombre: file.name, tamano: file.size, cuando: Date.now() };
+}
 async function onSubirDocSubcontratista(inputEl, empresa, categoria, item, periodo, nombreTrabajador) {
   if (bloquearSiViewer()) return;
   const files = [...inputEl.files];
   if (!files.length) return;
   marcarSubiendoArchivo(inputEl, true);
+  // Solo el ítem "Listado de trabajadores" (Control mensual) intenta además
+  // LEER el archivo y dar de alta a los trabajadores que trae — ver
+  // importarListadoTrabajadores. Se acumula el resultado de todos los
+  // archivos subidos en esta tanda (normalmente es solo uno) para avisar un
+  // único resumen al final en vez de un toast por archivo.
+  const esListadoTrabajadores = item === ITEM_LISTADO_TRABAJADORES;
+  let importCreados = 0, importOmitidos = 0, importIntentado = false, subidos = 0;
   try {
     for (const file of files) {
+      if (pareceArchivoDuplicado(empresa, categoria, item, periodo, file)
+        && !confirm(`Ya subiste "${file.name}" para este ítem hace un momento. ¿Subirlo de nuevo igual?`)) continue;
       const prefix = [categoria, item, periodo].filter(Boolean).join('_').replace(/\s+/g, '-');
+      const esExcel = /\.(xlsx|xls)$/i.test(file.name);
       if (subcontratistaUsaProxy) {
         // Esta cuenta no tiene acceso directo al Sheet/Drive: el archivo se
         // manda en base64 a la Web App, que hace la subida real con sus
@@ -5357,6 +5490,13 @@ async function onSubirDocSubcontratista(inputEl, empresa, categoria, item, perio
           nombreArchivo: `${prefix}_${fecha}_${hora}.${extension}`,
           mimeType: file.type || 'application/octet-stream', contenidoBase64: b64,
         });
+        if (esListadoTrabajadores && esExcel) {
+          importIntentado = true;
+          const r = await llamarWebAppSubcontratista('importarListadoTrabajadores', {
+            empresa, nombreArchivo: file.name, mimeType: file.type || 'application/octet-stream', contenidoBase64: b64,
+          });
+          importCreados += r.creados || 0; importOmitidos += r.omitidos || 0;
+        }
       } else {
         const up = nombreTrabajador
           ? await uploadFileSubcontratistaTrabajadorItem(file, empresa, nombreTrabajador, item || 'Herramientas', prefix)
@@ -5365,9 +5505,21 @@ async function onSubirDocSubcontratista(inputEl, empresa, categoria, item, perio
           empresa, categoria, item || '', periodo || '', up.name, up.link,
           new Date().toLocaleString('es-CL'), userEmail || '', '', ''
         ]]);
+        if (esListadoTrabajadores && esExcel) {
+          importIntentado = true;
+          const r = await importarListadoTrabajadores(file, empresa);
+          importCreados += r.creados || 0; importOmitidos += r.omitidos || 0;
+        }
       }
+      marcarArchivoSubidoParaItem(empresa, categoria, item, periodo, file);
+      subidos++;
     }
-    toast(files.length > 1 ? 'Archivos subidos ✓' : 'Documento subido ✓', 'ok');
+    if (!subidos) { marcarSubiendoArchivo(inputEl, false); return; }
+    if (importIntentado && (importCreados || importOmitidos)) {
+      toast(`Documento subido ✓ — ${importCreados} trabajador${importCreados === 1 ? '' : 'es'} agregado${importCreados === 1 ? '' : 's'}${importOmitidos ? `, ${importOmitidos} ya existía${importOmitidos === 1 ? '' : 'n'}` : ''}`, 'ok');
+    } else {
+      toast(subidos > 1 ? 'Archivos subidos ✓' : 'Documento subido ✓', 'ok');
+    }
     await cargarTodo(true);
     if (miEmpresaSubcontratista) mostrarModoSubcontratista(empresa); else abrirDetalleSubcontratista(empresa);
   } catch (e) { toast(e.message, 'error'); marcarSubiendoArchivo(inputEl, false); }

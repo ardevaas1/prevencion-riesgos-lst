@@ -23,12 +23,12 @@
 //    config.js → DRIVE_ROOT_FOLDER. Opcional: completa también APP_URL con
 //    la URL pública de la app, para que el correo de bienvenida a un
 //    contacto nuevo (ver notificarContacto) incluya el link directo.
-// 4. Activa el servicio avanzado de Drive (lo usa
-//    compartirArchivoSinNotificar para compartir archivos sin mandar el
-//    correo nativo de Drive "te compartieron un archivo"): en el panel
-//    izquierdo, ícono "+" al lado de "Servicios" → busca "Drive API" →
-//    Agregar. Si no haces este paso, subirDocumento falla con "Drive no
-//    está definido".
+// 4. Activa el servicio avanzado de Drive (lo usa compartirArchivoSinNotificar
+//    para compartir archivos sin mandar el correo nativo de Drive "te
+//    compartieron un archivo", y también convertirExcelATabla para poder leer
+//    el Excel de "Listado de trabajadores"): en el panel izquierdo, ícono "+"
+//    al lado de "Servicios" → busca "Drive API" → Agregar. Si no haces este
+//    paso, subirDocumento falla con "Drive no está definido".
 // 5. Arriba a la derecha, botón "Implementar" → "Nueva implementación".
 //    - Tipo: "Aplicación web".
 //    - Ejecutar como: "Yo" (tu cuenta).
@@ -85,6 +85,7 @@ function doPost(e) {
     if (accion === 'listarTrabajadores') return respuesta(listarTrabajadores(correo, body.empresa));
     if (accion === 'subirDocumento') return respuesta(subirDocumento(correo, body));
     if (accion === 'agregarTrabajador') return respuesta(agregarTrabajador(correo, body));
+    if (accion === 'importarListadoTrabajadores') return respuesta(importarListadoTrabajadores(correo, body));
     if (accion === 'notificarContacto') return respuesta(notificarContacto(body.correoDestino, body.empresa));
     if (accion === 'notificarRechazoDocumento') return respuesta(notificarRechazoDocumento(body.empresa, body.item, body.motivo));
     return respuesta({ error: 'Acción desconocida: ' + accion });
@@ -330,6 +331,98 @@ function agregarTrabajador(correo, body) {
     body.correo || '', '', ''
   ]);
   return { ok: true };
+}
+
+// Quita tildes/mayúsculas/espacios de un encabezado de columna para poder
+// reconocerlo aunque la planilla real lo haya escrito distinto (ej. "Rut"
+// vs "RUT", "Fecha Ingreso" vs "Fecha de ingreso") — mismo criterio que
+// normalizarHeaderExcel en app.js.
+function normalizarHeaderTexto(s) {
+  return (s || '').toString().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+}
+function indiceColumnaTexto(headers, candidatos) {
+  const normalizados = headers.map(normalizarHeaderTexto);
+  for (let i = 0; i < candidatos.length; i++) {
+    const idx = normalizados.indexOf(normalizarHeaderTexto(candidatos[i]));
+    if (idx !== -1) return idx;
+  }
+  return -1;
+}
+// Convierte el Excel a una Hoja de Google TEMPORAL (Drive lo hace solo con
+// pedir ese mimeType al crear el archivo) para poder leer sus filas con
+// SpreadsheetApp — se borra apenas se terminó de leer, nunca queda en el
+// Drive real. Requiere el servicio avanzado "Drive API" (el mismo que ya
+// pide compartirArchivoSinNotificar más arriba).
+function convertirExcelATabla(blob) {
+  const archivoTemp = Drive.Files.create({ name: 'temp_import_' + Date.now(), mimeType: MimeType.GOOGLE_SHEETS }, blob);
+  try {
+    return SpreadsheetApp.openById(archivoTemp.id).getSheets()[0].getDataRange().getValues();
+  } finally {
+    // Borrado permanente (no papelera): es un archivo descartable que solo
+    // existió para poder leerlo.
+    try { Drive.Files.remove(archivoTemp.id); } catch (e) { /* best-effort */ }
+  }
+}
+// Lee el Excel de "Listado de trabajadores" (ver onSubirDocSubcontratista/
+// importarListadoTrabajadores en app.js — mismo criterio, versión server
+// para cuentas sin acceso directo al Sheet/Drive) y da de alta en
+// TRABAJADORES a cada fila que traiga al menos Nombre y RUT, saltándose los
+// que ya existen para esa empresa (comparando por RUT normalizado). Si el
+// archivo no se puede leer como planilla, o no trae esos dos encabezados,
+// no es un error — solo no se da de alta a nadie (el documento ya se
+// guardó aparte, en subirDocumento).
+function importarListadoTrabajadores(correo, body) {
+  const empresa = body.empresa;
+  verificarPertenece(correo, empresa);
+  if (!body.contenidoBase64 || !body.nombreArchivo) throw new Error('Falta el archivo');
+
+  const bytes = Utilities.base64Decode(body.contenidoBase64);
+  const blob = Utilities.newBlob(bytes, body.mimeType || 'application/octet-stream', body.nombreArchivo);
+
+  let valores;
+  try { valores = convertirExcelATabla(blob); }
+  catch (e) { return { creados: 0, omitidos: 0, sinLeer: true }; }
+  if (!valores || valores.length < 2) return { creados: 0, omitidos: 0, sinLeer: true };
+
+  const headers = valores[0];
+  const iNombre = indiceColumnaTexto(headers, ['Nombre', 'Nombre completo', 'Nombre trabajador']);
+  const iRut = indiceColumnaTexto(headers, ['RUT', 'Rut']);
+  if (iNombre === -1 || iRut === -1) return { creados: 0, omitidos: 0, sinLeer: true };
+  const iCargo = indiceColumnaTexto(headers, ['Cargo']);
+  const iObra = indiceColumnaTexto(headers, ['Obra']);
+  const iFechaIngreso = indiceColumnaTexto(headers, ['Fecha de ingreso', 'Fecha ingreso']);
+  const iCorreo = indiceColumnaTexto(headers, ['Correo', 'Email', 'Correo electronico', 'Correo electrónico']);
+
+  const sh = hojaTrabajadores();
+  const datosExistentes = sh.getDataRange().getValues();
+  const existentes = {};
+  for (let i = 1; i < datosExistentes.length; i++) {
+    const fila = datosExistentes[i];
+    if ((fila[4] || '').toString() === empresa) existentes[normalizarRut(fila[2])] = true;
+  }
+
+  let n = sh.getLastRow(); // encabezado = fila 1, así que esto ya es el próximo correlativo
+  const nuevas = [];
+  let omitidos = 0;
+  for (let i = 1; i < valores.length; i++) {
+    const fila = valores[i];
+    const nombre = (fila[iNombre] || '').toString().trim();
+    const rut = (fila[iRut] || '').toString().trim();
+    if (!nombre || !rut) continue;
+    const rutNorm = normalizarRut(rut);
+    if (existentes[rutNorm]) { omitidos++; continue; }
+    existentes[rutNorm] = true;
+    n++;
+    nuevas.push([
+      n, nombre, rut, iCargo !== -1 ? (fila[iCargo] || '').toString().trim() : '', empresa,
+      iFechaIngreso !== -1 ? (fila[iFechaIngreso] || '').toString().trim() : '', 'Activo', '', new Date().toLocaleString('es-CL'),
+      iObra !== -1 ? (fila[iObra] || '').toString().trim() : '', '', '', '', '', '', '',
+      '', '', '', '', '', '', '', '', '', '',
+      iCorreo !== -1 ? (fila[iCorreo] || '').toString().trim() : '', '', ''
+    ]);
+  }
+  if (nuevas.length) sh.getRange(sh.getLastRow() + 1, 1, nuevas.length, 29).setValues(nuevas);
+  return { creados: nuevas.length, omitidos: omitidos, sinLeer: false };
 }
 
 // ============================================================
