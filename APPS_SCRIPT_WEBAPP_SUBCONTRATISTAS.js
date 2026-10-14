@@ -348,6 +348,21 @@ function indiceColumnaTexto(headers, candidatos) {
   }
   return -1;
 }
+// Muchas planillas reales no empiezan con la fila de encabezados: traen
+// antes 2-3 filas de título/metadata (ej. "LISTADO DE TRABAJADORES",
+// "Empresa: ...", "Obra: ..."). Se busca entre las primeras `maxFilas` la
+// primera fila que tenga tanto "Nombre" como "RUT" reconocibles, en vez de
+// asumir siempre que es la fila 0 — mismo criterio que
+// buscarFilaEncabezadosExcel en app.js.
+function buscarFilaEncabezadosTexto(valores, maxFilas) {
+  var limite = Math.min(valores.length, maxFilas || 10);
+  for (var i = 0; i < limite; i++) {
+    var headers = valores[i];
+    if (indiceColumnaTexto(headers, ['Nombre', 'Nombre completo', 'Nombre trabajador']) !== -1
+      && indiceColumnaTexto(headers, ['RUT', 'Rut']) !== -1) return i;
+  }
+  return -1;
+}
 // Convierte el Excel a una Hoja de Google TEMPORAL (Drive lo hace solo con
 // pedir ese mimeType al crear el archivo) para poder leer sus filas con
 // SpreadsheetApp — se borra apenas se terminó de leer, nunca queda en el
@@ -384,10 +399,11 @@ function importarListadoTrabajadores(correo, body) {
   catch (e) { return { creados: 0, omitidos: 0, sinLeer: true }; }
   if (!valores || valores.length < 2) return { creados: 0, omitidos: 0, sinLeer: true };
 
-  const headers = valores[0];
+  const filaEncabezados = buscarFilaEncabezadosTexto(valores, 10);
+  if (filaEncabezados === -1) return { creados: 0, omitidos: 0, sinLeer: true };
+  const headers = valores[filaEncabezados];
   const iNombre = indiceColumnaTexto(headers, ['Nombre', 'Nombre completo', 'Nombre trabajador']);
   const iRut = indiceColumnaTexto(headers, ['RUT', 'Rut']);
-  if (iNombre === -1 || iRut === -1) return { creados: 0, omitidos: 0, sinLeer: true };
   const iCargo = indiceColumnaTexto(headers, ['Cargo']);
   const iObra = indiceColumnaTexto(headers, ['Obra']);
   const iFechaIngreso = indiceColumnaTexto(headers, ['Fecha de ingreso', 'Fecha ingreso']);
@@ -404,7 +420,7 @@ function importarListadoTrabajadores(correo, body) {
   let n = sh.getLastRow(); // encabezado = fila 1, así que esto ya es el próximo correlativo
   const nuevas = [];
   let omitidos = 0;
-  for (let i = 1; i < valores.length; i++) {
+  for (let i = filaEncabezados + 1; i < valores.length; i++) {
     const fila = valores[i];
     const nombre = (fila[iNombre] || '').toString().trim();
     const rut = (fila[iRut] || '').toString().trim();
