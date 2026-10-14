@@ -1153,62 +1153,62 @@ function indiceColumnaExcel(headers, candidatos) {
   }
   return -1;
 }
-// Convierte un Excel a una Hoja de Google TEMPORAL (Drive lo hace solo con
-// pedir ese mimeType al subir) para poder leer sus filas con la API de
-// Sheets, sin tener que cargar ninguna librería de parseo de Excel en el
-// navegador — la hoja temporal se borra apenas se terminó de leer, nunca
-// queda visible en el Drive del cliente.
-async function convertirYLeerExcel(fileOrBlob) {
-  await ensureToken();
-  const b64 = await new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result.split(',')[1]);
-    reader.onerror = reject;
-    reader.readAsDataURL(fileOrBlob);
-  });
-  const boundary = 'lstpr_' + Date.now();
-  const metadata = JSON.stringify({ name: 'temp_import_' + Date.now(), mimeType: 'application/vnd.google-apps.spreadsheet' });
-  const mimeOriginal = fileOrBlob.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-  const body = [
-    '--' + boundary, 'Content-Type: application/json; charset=UTF-8', '', metadata,
-    '--' + boundary, 'Content-Type: ' + mimeOriginal, 'Content-Transfer-Encoding: base64', '', b64,
-    '--' + boundary + '--'
-  ].join('\r\n');
-  const res = await fetch(`${DRIVE_UP}/files?uploadType=multipart`, {
-    method: 'POST',
-    headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'multipart/related; boundary=' + boundary },
-    body,
-  });
-  if (!res.ok) throw new Error(friendlyErr(res.status, await res.text()));
-  const { id: tempSheetId } = await res.json();
-  try {
-    const valRes = await fetch(`${SHEETS_BASE}/${tempSheetId}/values/A1:Z2000`, { headers: authHeader() });
-    if (!valRes.ok) throw new Error(friendlyErr(valRes.status, await valRes.text()));
-    return (await valRes.json()).values || [];
-  } finally {
-    // Borrado permanente (no papelera) — es un archivo descartable que solo
-    // existió para poder leerlo, nunca debería quedar en el Drive real.
-    fetch(`https://www.googleapis.com/drive/v3/files/${tempSheetId}`, { method: 'DELETE', headers: authHeader() }).catch(() => {});
+// xlsx.full.min.js (SheetJS, ≈860KB) solo hace falta para leer el Excel de
+// "Listado de trabajadores" — se carga bajo demanda, una sola vez, justo
+// antes del primer uso real (mismo criterio que cargarPdfLib más arriba).
+// Antes esto se hacía subiendo el archivo a Drive pidiéndole que lo
+// convirtiera a una Hoja de Google y leyendo esa hoja con la API de Sheets
+// (3 llamadas de red de más, encima de la subida real del documento) —
+// además de no llegar a confirmarse funcionando, esa vuelta extra hacía la
+// subida notablemente más lenta y "pegada", lo que invitaba a reintentar de
+// más (la causa más probable de ver el mismo documento subido varias
+// veces). Parsearlo directo en el navegador no necesita Drive para nada.
+let xlsxLibPromise = null;
+function cargarXlsxLib() {
+  if (window.XLSX) return Promise.resolve(window.XLSX);
+  if (!xlsxLibPromise) {
+    xlsxLibPromise = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'vendor/xlsx.full.min.js';
+      s.onload = () => resolve(window.XLSX);
+      s.onerror = () => { xlsxLibPromise = null; reject(new Error('No se pudo cargar la librería de lectura de Excel')); };
+      document.head.appendChild(s);
+    });
   }
+  return xlsxLibPromise;
+}
+// Lee un archivo Excel y devuelve sus filas como array de arrays (fila 0 =
+// encabezados) — mismo formato que antes devolvía la API de Sheets.
+async function leerFilasExcel(fileOrBlob) {
+  const XLSX = await cargarXlsxLib();
+  const buffer = await fileOrBlob.arrayBuffer();
+  const wb = XLSX.read(buffer, { type: 'array' });
+  const primeraHoja = wb.SheetNames[0];
+  if (!primeraHoja) return [];
+  return XLSX.utils.sheet_to_json(wb.Sheets[primeraHoja], { header: 1, defval: '', blankrows: false });
 }
 // Da de alta en TRABAJADORES a cada fila del Excel que traiga al menos
 // Nombre y RUT, saltándose los que ya existen para esa empresa (comparando
 // por RUT normalizado) para no duplicar si se vuelve a subir el mismo
 // listado o uno con gente repetida. Columnas reconocidas por el NOMBRE del
-// encabezado (no por posición, ver indiceColumnaExcel) — si el Excel no
-// trae ni "Nombre" ni "RUT" como encabezado, no se puede leer y se avisa
-// con sinLeer:true (el archivo igual queda guardado como documento, esto
-// solo afecta el alta automática de trabajadores).
+// encabezado (no por posición, ver indiceColumnaExcel) — si el archivo no
+// se puede leer, o no trae ni "Nombre" ni "RUT" como encabezado, no se da
+// de alta a nadie (el archivo igual queda guardado como documento, esto
+// solo afecta el alta automática) y se avisa con sinLeer:true; el motivo
+// real queda en la consola del navegador para poder diagnosticarlo.
 async function importarListadoTrabajadores(fileOrBlob, empresa) {
   let filas;
-  try { filas = await convertirYLeerExcel(fileOrBlob); }
-  catch (e) { return { creados: 0, omitidos: 0, sinLeer: true }; }
+  try { filas = await leerFilasExcel(fileOrBlob); }
+  catch (e) { console.warn('No se pudo leer el Excel de "Listado de trabajadores"', e); return { creados: 0, omitidos: 0, sinLeer: true }; }
   if (!filas.length) return { creados: 0, omitidos: 0, sinLeer: true };
 
   const headers = filas[0];
   const iNombre = indiceColumnaExcel(headers, ['Nombre', 'Nombre completo', 'Nombre trabajador']);
   const iRut = indiceColumnaExcel(headers, ['RUT', 'Rut']);
-  if (iNombre === -1 || iRut === -1) return { creados: 0, omitidos: 0, sinLeer: true };
+  if (iNombre === -1 || iRut === -1) {
+    console.warn('El Excel de "Listado de trabajadores" no trae columnas "Nombre" y "RUT" reconocibles. Encabezados leídos:', headers);
+    return { creados: 0, omitidos: 0, sinLeer: true };
+  }
   const iCargo = indiceColumnaExcel(headers, ['Cargo']);
   const iObra = indiceColumnaExcel(headers, ['Obra']);
   const iFechaIngreso = indiceColumnaExcel(headers, ['Fecha de ingreso', 'Fecha ingreso']);
@@ -5437,19 +5437,26 @@ function renderSubcontratistaDetalleHTML(empresa, esRestringido) {
 // de empresa/Control mensual/Herramientas, donde mezclaría los documentos
 // de todos los trabajadores de la empresa en la misma carpeta.
 // Guarda, por cada combinación empresa+categoria+item+periodo, el último
-// archivo subido en esta pestaña (nombre+tamaño+cuándo) — solo para poder
-// avisar si alguien intenta subir el MISMO archivo dos veces seguidas sin
-// darse cuenta (ej. doble clic, o reintentar creyendo que no se subió nada
-// la primera vez). No persiste entre recargas ni bloquea nada por sí solo,
-// solo pide confirmar antes de subir un posible duplicado.
-const ultimoArchivoSubidoPorItem = {};
-function claveArchivoItem(empresa, categoria, item, periodo) { return [empresa, categoria, item || '', periodo || ''].join('|'); }
+// archivo subido (nombre+tamaño+cuándo) — solo para poder avisar si alguien
+// intenta subir el MISMO archivo dos veces seguidas sin darse cuenta (ej.
+// doble clic, o recargar la página pensando que la subida anterior no
+// funcionó y reintentar). Se guarda en localStorage (no solo en memoria) a
+// propósito: JUSTO ese reintento después de recargar es el caso real que se
+// reportó (una subida que tardaba, parecía "pegada", y terminaba
+// reintentada 3-4 veces) — un objeto en memoria se habría perdido con la
+// recarga y no lo habría detectado. No bloquea nada por sí solo, solo pide
+// confirmar antes de subir un posible duplicado.
+function claveArchivoItem(empresa, categoria, item, periodo) { return 'ultimoArchivoItem:' + [empresa, categoria, item || '', periodo || ''].join('|'); }
 function pareceArchivoDuplicado(empresa, categoria, item, periodo, file) {
-  const anterior = ultimoArchivoSubidoPorItem[claveArchivoItem(empresa, categoria, item, periodo)];
+  let anterior;
+  try { anterior = JSON.parse(localStorage.getItem(claveArchivoItem(empresa, categoria, item, periodo)) || 'null'); }
+  catch (e) { return false; }
   return !!anterior && anterior.nombre === file.name && anterior.tamano === file.size && (Date.now() - anterior.cuando) < 2 * 60 * 1000;
 }
 function marcarArchivoSubidoParaItem(empresa, categoria, item, periodo, file) {
-  ultimoArchivoSubidoPorItem[claveArchivoItem(empresa, categoria, item, periodo)] = { nombre: file.name, tamano: file.size, cuando: Date.now() };
+  try {
+    localStorage.setItem(claveArchivoItem(empresa, categoria, item, periodo), JSON.stringify({ nombre: file.name, tamano: file.size, cuando: Date.now() }));
+  } catch (e) { /* localStorage lleno o no disponible — no es crítico, solo se pierde el aviso de posible duplicado */ }
 }
 async function onSubirDocSubcontratista(inputEl, empresa, categoria, item, periodo, nombreTrabajador) {
   if (bloquearSiViewer()) return;
@@ -5462,7 +5469,7 @@ async function onSubirDocSubcontratista(inputEl, empresa, categoria, item, perio
   // archivos subidos en esta tanda (normalmente es solo uno) para avisar un
   // único resumen al final en vez de un toast por archivo.
   const esListadoTrabajadores = item === ITEM_LISTADO_TRABAJADORES;
-  let importCreados = 0, importOmitidos = 0, importIntentado = false, subidos = 0;
+  let importCreados = 0, importOmitidos = 0, importIntentado = false, importSinLeer = false, subidos = 0;
   try {
     for (const file of files) {
       if (pareceArchivoDuplicado(empresa, categoria, item, periodo, file)
@@ -5495,7 +5502,7 @@ async function onSubirDocSubcontratista(inputEl, empresa, categoria, item, perio
           const r = await llamarWebAppSubcontratista('importarListadoTrabajadores', {
             empresa, nombreArchivo: file.name, mimeType: file.type || 'application/octet-stream', contenidoBase64: b64,
           });
-          importCreados += r.creados || 0; importOmitidos += r.omitidos || 0;
+          importCreados += r.creados || 0; importOmitidos += r.omitidos || 0; if (r.sinLeer) importSinLeer = true;
         }
       } else {
         const up = nombreTrabajador
@@ -5508,7 +5515,7 @@ async function onSubirDocSubcontratista(inputEl, empresa, categoria, item, perio
         if (esListadoTrabajadores && esExcel) {
           importIntentado = true;
           const r = await importarListadoTrabajadores(file, empresa);
-          importCreados += r.creados || 0; importOmitidos += r.omitidos || 0;
+          importCreados += r.creados || 0; importOmitidos += r.omitidos || 0; if (r.sinLeer) importSinLeer = true;
         }
       }
       marcarArchivoSubidoParaItem(empresa, categoria, item, periodo, file);
@@ -5517,6 +5524,12 @@ async function onSubirDocSubcontratista(inputEl, empresa, categoria, item, perio
     if (!subidos) { marcarSubiendoArchivo(inputEl, false); return; }
     if (importIntentado && (importCreados || importOmitidos)) {
       toast(`Documento subido ✓ — ${importCreados} trabajador${importCreados === 1 ? '' : 'es'} agregado${importCreados === 1 ? '' : 's'}${importOmitidos ? `, ${importOmitidos} ya existía${importOmitidos === 1 ? '' : 'n'}` : ''}`, 'ok');
+    } else if (importIntentado && importSinLeer) {
+      // No es un error (el documento sí quedó guardado) — solo no se pudo
+      // leer el Excel para dar de alta a nadie automáticamente. El motivo
+      // exacto (columnas no reconocidas, archivo no es una planilla válida,
+      // etc.) queda en la consola del navegador — ver importarListadoTrabajadores.
+      toast('Documento subido ✓ — no se pudo leer el listado para agregar trabajadores automáticamente', 'error');
     } else {
       toast(subidos > 1 ? 'Archivos subidos ✓' : 'Documento subido ✓', 'ok');
     }
