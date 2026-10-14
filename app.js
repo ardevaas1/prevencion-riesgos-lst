@@ -260,6 +260,16 @@ const SUBCONT_CONTROL_MENSUAL = [
 // trabajadores" también deja subir archivos sueltos fuera de estos 18 ítems
 // (ver docsRespaldoTrabajador) para lo que no encaje en ninguno en
 // particular o para lo que ya se subió cuando este checklist no existía.
+// Nombre exacto del ítem del checklist que, a diferencia del resto (un solo
+// archivo vigente por ítem), funciona como una carpeta: el subcontratista
+// puede subir varios protocolos distintos (Radiación UV, MMC, PLANESI,
+// etc.), cada uno con su propio nombre — ver bloqueProtocolosMinsalTrabajador
+// más abajo. Constante aparte para no repetir el string literal.
+const ITEM_PROTOCOLOS_MINSAL_TRABAJADOR = 'Registro de difusión Protocolos Minsal';
+// Protocolos MINSAL más comunes — se ofrecen como sugerencia (datalist) al
+// agregar uno nuevo, pero no son una lista cerrada: el subcontratista puede
+// escribir cualquier otro nombre si corresponde.
+const PROTOCOLOS_MINSAL_SUGERIDOS = ['Radiación UV', 'MMC', 'PLANESI', 'TMRT', 'PREXOR', 'Vibraciones', 'Psicosocial'];
 const DOCS_TRABAJADOR = [
   'Exámenes ocupacionales (altura física sobre 1,8 m o espacios confinados, según corresponda)',
   'Registro difusión Plan de gestión del riesgo y desastre',
@@ -276,7 +286,7 @@ const DOCS_TRABAJADOR = [
   'Registro recambio de EPP',
   'Difusión de actualización Miper',
   'Certificado curso Orientación en Prevención de Riesgos (DS44 — 8 hrs)',
-  'Registro de difusión Protocolos Minsal',
+  ITEM_PROTOCOLOS_MINSAL_TRABAJADOR,
   'Informativo Canal de denuncias Ley Karin',
   'Re-instrucciones (según se soliciten)',
 ];
@@ -5316,12 +5326,60 @@ function filaChecklistSubcontratista(empresa, categoria, item, periodo, nombreTr
 // trabajadores. Se muestra colapsado por trabajador.
 function claveDocTrabajador(t) { return t.rut || t.nombre; }
 function categoriaDocTrabajador(t) { return 'doctrab_' + claveDocTrabajador(t); }
+// Categoría propia (no "doctrab_<rut>" normal) para los protocolos Minsal
+// de este trabajador — así un protocolo escrito a mano nunca puede chocar
+// por nombre con alguno de los otros 17 ítems fijos del checklist.
+function categoriaProtocolosMinsalTrabajador(t) { return categoriaDocTrabajador(t) + '_minsal'; }
+function docsProtocolosMinsalTrabajador(empresa, categoriaMinsal) {
+  return docsSubcontratista(empresa, categoriaMinsal).slice().reverse();
+}
 function docsRespaldoTrabajador(empresa, categoria) {
   return docsSubcontratista(empresa, categoria, '', null).slice().reverse();
 }
+// "Registro de difusión Protocolos Minsal" es el único ítem del checklist
+// que funciona como una carpeta en vez de un solo archivo vigente: hay
+// varios protocolos distintos (Radiación UV, MMC, PLANESI...) y hace falta
+// uno por cada uno, con su propio nombre — mismo criterio que
+// Procedimientos de trabajo seguro riesgos críticos (ver
+// onSubirProcedimientoCritico), pero acá por TRABAJADOR en vez de por
+// empresa. PROTOCOLOS_MINSAL_SUGERIDOS solo rellena el <datalist>, el
+// subcontratista puede escribir cualquier otro nombre.
+function bloqueProtocolosMinsalTrabajador(empresa, categoriaMinsal, nombreTrabajador, docs) {
+  const hayRechazo = docs.some(d => d.estado === 'Rechazado');
+  return `
+    <div class="subcont-doctrab">
+      <div class="subcont-doctrab-head" onclick="this.parentElement.classList.toggle('abierto')">
+        <div class="subcont-doctrab-chevron"><svg viewBox="0 0 24 24" fill="none" style="width:14px;height:14px"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        ${iconoEstadoDoc(docs.length > 0)}
+        <div class="subcont-row-body">
+          <div class="subcont-row-nombre">${esc(ITEM_PROTOCOLOS_MINSAL_TRABAJADOR)}</div>
+          <div class="subcont-row-fecha">${docs.length ? docs.length + (docs.length === 1 ? ' protocolo' : ' protocolos') : 'Pendiente'}${hayRechazo ? ' · <span style="color:#c62828;">rechazado, revisar</span>' : ''}</div>
+        </div>
+      </div>
+      <div class="subcont-doctrab-body">
+        <div class="subcont-doctrab-inner">
+          ${docs.length ? docs.map(d => `
+            <div class="doc-row"><a class="badge blue" href="${esc(d.link)}" target="_blank">${ic('documento',12)} ${esc(d.item)}</a><span style="font-size:11px;color:#888;">${esc((d.fecha||'').split(',')[0] || d.fecha)}</span>${badgeEstadoDocSubcontratista(d)}${accionesRevisionDocSubcontratista(d)}${botonEliminarDocSubcontratista(d, empresa)}</div>
+            ${motivoRechazoHtml(d)}
+          `).join('') : '<div class="empty-sub" style="padding:6px 0;">Sin protocolos subidos</div>'}
+          ${!esViewer() ? `
+          <form onsubmit="onSubirProtocoloMinsalTrabajador(event,'${esc(empresa)}','${categoriaMinsal}','${esc(nombreTrabajador)}')" style="margin-top:10px;">
+            <div class="form-group" style="margin-bottom:8px;">
+              <input name="nombre" type="text" list="protocolos-minsal-sugeridos" placeholder="Nombre del protocolo (ej. Radiación UV)" required style="width:100%;padding:10px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit;box-sizing:border-box;">
+            </div>
+            <label class="upload-label">${ic('documento',14)} <span class="upload-label-text">Subir archivo (puedes elegir varios)</span><input type="file" name="archivo" multiple required style="display:none" onchange="marcarArchivoElegido(this)"></label>
+            <button class="btn-add" type="submit" style="margin-top:8px;">+ Agregar protocolo</button>
+          </form>` : ''}
+        </div>
+      </div>
+    </div>`;
+}
 function bloqueDocTrabajador(empresa, t) {
   const categoria = categoriaDocTrabajador(t);
-  const subidos = contarSubidosSubcontratista(empresa, categoria, DOCS_TRABAJADOR, null);
+  const categoriaMinsal = categoriaProtocolosMinsalTrabajador(t);
+  const protocolosMinsal = docsProtocolosMinsalTrabajador(empresa, categoriaMinsal);
+  const otrosItems = DOCS_TRABAJADOR.filter(item => item !== ITEM_PROTOCOLOS_MINSAL_TRABAJADOR);
+  const subidos = contarSubidosSubcontratista(empresa, categoria, otrosItems, null) + (protocolosMinsal.length > 0 ? 1 : 0);
   const otros = docsRespaldoTrabajador(empresa, categoria);
   return `
     <div class="subcont-doctrab">
@@ -5335,7 +5393,10 @@ function bloqueDocTrabajador(empresa, t) {
       </div>
       <div class="subcont-doctrab-body">
         <div class="subcont-doctrab-inner">
-          ${DOCS_TRABAJADOR.map(item => filaChecklistSubcontratista(empresa, categoria, item, null, t.nombre)).join('')}
+          ${DOCS_TRABAJADOR.map(item => item === ITEM_PROTOCOLOS_MINSAL_TRABAJADOR
+            ? bloqueProtocolosMinsalTrabajador(empresa, categoriaMinsal, t.nombre, protocolosMinsal)
+            : filaChecklistSubcontratista(empresa, categoria, item, null, t.nombre)
+          ).join('')}
           <div class="subcont-row-nombre" style="margin-top:16px;font-size:12px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.02em;">Otros documentos</div>
           ${otros.length ? otros.map(d => `
             <div class="doc-row"><a class="badge blue" href="${esc(d.link)}" target="_blank">${ic('documento',12)} ${esc(d.archivo)}</a><span style="font-size:11px;color:#888;">${esc((d.fecha||'').split(',')[0] || d.fecha)}</span>${badgeEstadoDocSubcontratista(d)}${accionesRevisionDocSubcontratista(d)}${botonEliminarDocSubcontratista(d, empresa)}</div>
@@ -5478,6 +5539,7 @@ function renderSubcontratistaDetalleHTML(empresa, esRestringido) {
         <div class="subcont-section-title">Documentación trabajadores</div>
       </div>
       ${esRestringido ? `<button type="button" class="action-btn" style="margin-bottom:10px;" onclick="abrirFormTrabajadorSubcontratista()">${ic('trabajadores',14)} Agregar trabajador</button>` : ''}
+      <datalist id="protocolos-minsal-sugeridos">${PROTOCOLOS_MINSAL_SUGERIDOS.map(p => `<option value="${esc(p)}">`).join('')}</datalist>
       ${trabajadoresEmpresa.length
         ? trabajadoresEmpresa.map(t => bloqueDocTrabajador(empresa, t)).join('')
         : '<div class="empty-sub" style="padding:8px 0;">Sin trabajadores asociados a esta empresa todavía</div>'}
@@ -5676,6 +5738,54 @@ async function onSubirProcedimientoCritico(ev, empresa) {
       }
     }
     toast(files.length > 1 ? 'Procedimientos subidos ✓' : 'Procedimiento subido ✓', 'ok');
+    f.reset();
+    await cargarTodo(true);
+    if (miEmpresaSubcontratista) mostrarModoSubcontratista(empresa); else abrirDetalleSubcontratista(empresa);
+  } catch (e) { toast(e.message, 'error'); }
+}
+// Mismo criterio que onSubirProcedimientoCritico (nombre libre + archivo,
+// sin lista fija), pero para los protocolos Minsal de UN trabajador — ver
+// bloqueProtocolosMinsalTrabajador. Queda en la categoría propia
+// "doctrab_<rut>_minsal" (categoriaMinsal) y, en Drive, dentro de la
+// carpeta del trabajador en una subcarpeta "Protocolos Minsal"
+// (Trabajadores/{nombre}/Protocolos Minsal/, mismo mecanismo que el resto
+// del checklist por ítem — ver uploadFileSubcontratistaTrabajadorItem).
+async function onSubirProtocoloMinsalTrabajador(ev, empresa, categoriaMinsal, nombreTrabajador) {
+  if (bloquearSiViewer()) return;
+  ev.preventDefault();
+  const f = ev.target;
+  const files = [...f.archivo.files];
+  const nombre = f.nombre.value.trim();
+  if (!files.length || !nombre) return;
+  try {
+    for (const file of files) {
+      const prefix = 'ProtocoloMinsal_' + nombre.replace(/\s+/g, '-');
+      if (subcontratistaUsaProxy) {
+        const b64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result.split(',')[1]);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        const fecha = new Date().toLocaleDateString('es-CL').replace(/\//g, '-');
+        const hora = new Date().toTimeString().slice(0,5).replace(':','');
+        const extension = file.name.split('.').pop() || 'bin';
+        toast('Subiendo archivo...');
+        await llamarWebAppSubcontratista('subirDocumento', {
+          empresa, categoria: categoriaMinsal, item: nombre, periodo: '',
+          carpetaTrabajador: nombreTrabajador, subcarpeta: 'Protocolos Minsal',
+          nombreArchivo: `${prefix}_${fecha}_${hora}.${extension}`,
+          mimeType: file.type || 'application/octet-stream', contenidoBase64: b64,
+        });
+      } else {
+        const up = await uploadFileSubcontratistaTrabajadorItem(file, empresa, nombreTrabajador, 'Protocolos Minsal', prefix);
+        await appendSheet(`'${CONFIG.SHEET_SUBCONTRATISTAS_DOCS}'!A:J`, [[
+          empresa, categoriaMinsal, nombre, '', up.name, up.link,
+          new Date().toLocaleString('es-CL'), userEmail || '', '', ''
+        ]]);
+      }
+    }
+    toast(files.length > 1 ? 'Protocolos subidos ✓' : 'Protocolo subido ✓', 'ok');
     f.reset();
     await cargarTodo(true);
     if (miEmpresaSubcontratista) mostrarModoSubcontratista(empresa); else abrirDetalleSubcontratista(empresa);
