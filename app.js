@@ -1153,6 +1153,21 @@ function indiceColumnaExcel(headers, candidatos) {
   }
   return -1;
 }
+// Muchas planillas reales no empiezan con la fila de encabezados: traen
+// antes 2-3 filas de título/metadata (ej. "LISTADO DE TRABAJADORES",
+// "Empresa: ...", "Obra: ..."). Se busca entre las primeras `maxFilas` la
+// primera fila que tenga tanto "Nombre" como "RUT" reconocibles, en vez de
+// asumir siempre que es la fila 0 — devuelve su índice, o -1 si ninguna
+// de esas primeras filas calza.
+function buscarFilaEncabezadosExcel(filas, maxFilas) {
+  const limite = Math.min(filas.length, maxFilas || 10);
+  for (let i = 0; i < limite; i++) {
+    const headers = filas[i];
+    if (indiceColumnaExcel(headers, ['Nombre', 'Nombre completo', 'Nombre trabajador']) !== -1
+      && indiceColumnaExcel(headers, ['RUT', 'Rut']) !== -1) return i;
+  }
+  return -1;
+}
 // xlsx.full.min.js (SheetJS, ≈860KB) solo hace falta para leer el Excel de
 // "Listado de trabajadores" — se carga bajo demanda, una sola vez, justo
 // antes del primer uso real (mismo criterio que cargarPdfLib más arriba).
@@ -1177,8 +1192,10 @@ function cargarXlsxLib() {
   }
   return xlsxLibPromise;
 }
-// Lee un archivo Excel y devuelve sus filas como array de arrays (fila 0 =
-// encabezados) — mismo formato que antes devolvía la API de Sheets.
+// Lee un archivo Excel (o CSV — XLSX.read detecta el formato solo con el
+// contenido, sin importar la extensión) y devuelve sus filas como array de
+// arrays (fila 0 = encabezados) — mismo formato que antes devolvía la API
+// de Sheets.
 async function leerFilasExcel(fileOrBlob) {
   const XLSX = await cargarXlsxLib();
   const buffer = await fileOrBlob.arrayBuffer();
@@ -1186,6 +1203,76 @@ async function leerFilasExcel(fileOrBlob) {
   const primeraHoja = wb.SheetNames[0];
   if (!primeraHoja) return [];
   return XLSX.utils.sheet_to_json(wb.Sheets[primeraHoja], { header: 1, defval: '', blankrows: false });
+}
+// Patrón de RUT chileno (con o sin puntos, con guión antes del dígito
+// verificador) — se usa para reconocer trabajadores en archivos que no
+// traen una tabla real para XLSX.read (ej. un PDF), buscando el patrón
+// directamente en el texto en vez de depender de columnas/encabezados.
+const PATRON_RUT = /\b(\d{1,2}(?:\.?\d{3}){2}-[\dkK])\b/;
+// Agrupa los fragmentos de texto de una página de PDF (ya vienen ordenados
+// de arriba hacia abajo, izquierda a derecha — ver extraerTextoPdfJs) en
+// "renglones" (misma fila visual, aunque el PDF la haya partido en varios
+// fragmentos de texto) y arma el texto completo de cada uno, para poder
+// buscar el RUT línea por línea igual que se leería la tabla a simple
+// vista.
+function agruparRenglonesPdf(items) {
+  const renglones = [];
+  for (const it of items) {
+    const anterior = renglones[renglones.length - 1];
+    if (anterior && Math.abs(anterior.y - it.y) < 3) anterior.items.push(it);
+    else renglones.push({ y: it.y, items: [it] });
+  }
+  return renglones.map(r => r.items.sort((a, b) => a.x - b.x).map(it => it.texto).join(' '));
+}
+// Último recurso cuando el archivo de "Listado de trabajadores" no es un
+// Excel/CSV legible — cada subcontratista entrega esto en el formato que
+// tiene a mano, no siempre el mismo, a veces un PDF. Busca el patrón de
+// RUT chileno en cada línea de texto extraída del PDF (ver
+// extraerTextoPdfJs, ya usado en otras partes de la app) y, si lo
+// encuentra, toma el texto que viene ANTES en esa misma línea como el
+// nombre. Solo cuenta una coincidencia si ese texto "antes del RUT" tiene
+// pinta real de nombre (al menos 2 palabras, solo letras) — mejor omitir
+// un trabajador que crear uno con datos basura. No sirve para PDFs
+// escaneados (una imagen, sin texto real seleccionable) — eso necesitaría
+// reconocimiento óptico (OCR), que esta app no hace.
+async function leerFilasPdfListado(fileOrBlob) {
+  const bytes = new Uint8Array(await fileOrBlob.arrayBuffer());
+  const paginas = await extraerTextoPdfJs(bytes);
+  const filas = [['Nombre', 'RUT']];
+  for (const items of paginas) {
+    for (const linea of agruparRenglonesPdf(items)) {
+      const m = PATRON_RUT.exec(linea);
+      if (!m) continue;
+      const nombre = linea.slice(0, m.index)
+        .replace(/^\s*\d+[.)]?\s*/, '') // quita un número de orden al inicio ("1.", "3", etc.)
+        .replace(/\s+/g, ' ').trim();
+      const palabras = nombre.split(' ').filter(Boolean);
+      if (palabras.length < 2 || !/^[a-zA-ZÀ-ÿ\s.'-]+$/.test(nombre)) continue;
+      filas.push([nombre, m[1]]);
+    }
+  }
+  return filas;
+}
+// Punto de entrada único: intenta leer el archivo del ítem "Listado de
+// trabajadores" sea cual sea su formato, en vez de exigir una extensión en
+// particular — las empresas subcontratistas no siempre entregan el mismo
+// tipo de archivo. Primero como planilla (Excel/CSV, que es lo más común);
+// si eso no encuentra nada reconocible y el archivo es un PDF, se
+// reintenta con el método de texto (ver leerFilasPdfListado). Cualquier
+// archivo que no calce con ninguno de los dos (ej. una imagen, un Word)
+// simplemente no deja nada para leer — el documento igual queda guardado
+// aparte, esto solo afecta el alta automática.
+async function leerFilasListado(fileOrBlob) {
+  try {
+    const filas = await leerFilasExcel(fileOrBlob);
+    if (buscarFilaEncabezadosExcel(filas, 10) !== -1) return filas;
+  } catch (e) { /* no es una planilla legible — se intenta como PDF abajo */ }
+  const esPdf = fileOrBlob.type === 'application/pdf' || /\.pdf$/i.test(fileOrBlob.name || '');
+  if (esPdf) {
+    try { return await leerFilasPdfListado(fileOrBlob); }
+    catch (e) { console.warn('No se pudo leer el PDF de "Listado de trabajadores"', e); }
+  }
+  return [];
 }
 // Da de alta en TRABAJADORES a cada fila del Excel que traiga al menos
 // Nombre y RUT, saltándose los que ya existen para esa empresa (comparando
@@ -1198,17 +1285,18 @@ async function leerFilasExcel(fileOrBlob) {
 // real queda en la consola del navegador para poder diagnosticarlo.
 async function importarListadoTrabajadores(fileOrBlob, empresa) {
   let filas;
-  try { filas = await leerFilasExcel(fileOrBlob); }
-  catch (e) { console.warn('No se pudo leer el Excel de "Listado de trabajadores"', e); return { creados: 0, omitidos: 0, sinLeer: true }; }
+  try { filas = await leerFilasListado(fileOrBlob); }
+  catch (e) { console.warn('No se pudo leer el archivo de "Listado de trabajadores"', e); return { creados: 0, omitidos: 0, sinLeer: true }; }
   if (!filas.length) return { creados: 0, omitidos: 0, sinLeer: true };
 
-  const headers = filas[0];
-  const iNombre = indiceColumnaExcel(headers, ['Nombre', 'Nombre completo', 'Nombre trabajador']);
-  const iRut = indiceColumnaExcel(headers, ['RUT', 'Rut']);
-  if (iNombre === -1 || iRut === -1) {
-    console.warn('El Excel de "Listado de trabajadores" no trae columnas "Nombre" y "RUT" reconocibles. Encabezados leídos:', headers);
+  const filaEncabezados = buscarFilaEncabezadosExcel(filas, 10);
+  if (filaEncabezados === -1) {
+    console.warn('El archivo de "Listado de trabajadores" no trae columnas "Nombre" y "RUT" reconocibles en sus primeras 10 filas. Primeras filas leídas:', filas.slice(0, 10));
     return { creados: 0, omitidos: 0, sinLeer: true };
   }
+  const headers = filas[filaEncabezados];
+  const iNombre = indiceColumnaExcel(headers, ['Nombre', 'Nombre completo', 'Nombre trabajador']);
+  const iRut = indiceColumnaExcel(headers, ['RUT', 'Rut']);
   const iCargo = indiceColumnaExcel(headers, ['Cargo']);
   const iObra = indiceColumnaExcel(headers, ['Obra']);
   const iFechaIngreso = indiceColumnaExcel(headers, ['Fecha de ingreso', 'Fecha ingreso']);
@@ -1218,7 +1306,7 @@ async function importarListadoTrabajadores(fileOrBlob, empresa) {
   let n = allTrabajadores.length + 1;
   const nuevas = [];
   let omitidos = 0;
-  for (const fila of filas.slice(1)) {
+  for (const fila of filas.slice(filaEncabezados + 1)) {
     const nombre = (fila[iNombre] || '').toString().trim();
     const rut = (fila[iRut] || '').toString().trim();
     if (!nombre || !rut) continue;
@@ -5475,7 +5563,11 @@ async function onSubirDocSubcontratista(inputEl, empresa, categoria, item, perio
       if (pareceArchivoDuplicado(empresa, categoria, item, periodo, file)
         && !confirm(`Ya subiste "${file.name}" para este ítem hace un momento. ¿Subirlo de nuevo igual?`)) continue;
       const prefix = [categoria, item, periodo].filter(Boolean).join('_').replace(/\s+/g, '-');
-      const esExcel = /\.(xlsx|xls)$/i.test(file.name);
+      // Se intenta leer sea cual sea el formato del archivo (no todas las
+      // empresas subcontratistas entregan el mismo tipo) — leerFilasListado/
+      // importarListadoTrabajadores se rinden solos con sinLeer:true si el
+      // archivo no se puede leer de ninguna forma reconocida, sin romper la
+      // subida del documento en sí.
       if (subcontratistaUsaProxy) {
         // Esta cuenta no tiene acceso directo al Sheet/Drive: el archivo se
         // manda en base64 a la Web App, que hace la subida real con sus
@@ -5497,7 +5589,7 @@ async function onSubirDocSubcontratista(inputEl, empresa, categoria, item, perio
           nombreArchivo: `${prefix}_${fecha}_${hora}.${extension}`,
           mimeType: file.type || 'application/octet-stream', contenidoBase64: b64,
         });
-        if (esListadoTrabajadores && esExcel) {
+        if (esListadoTrabajadores) {
           importIntentado = true;
           const r = await llamarWebAppSubcontratista('importarListadoTrabajadores', {
             empresa, nombreArchivo: file.name, mimeType: file.type || 'application/octet-stream', contenidoBase64: b64,
@@ -5512,7 +5604,7 @@ async function onSubirDocSubcontratista(inputEl, empresa, categoria, item, perio
           empresa, categoria, item || '', periodo || '', up.name, up.link,
           new Date().toLocaleString('es-CL'), userEmail || '', '', ''
         ]]);
-        if (esListadoTrabajadores && esExcel) {
+        if (esListadoTrabajadores) {
           importIntentado = true;
           const r = await importarListadoTrabajadores(file, empresa);
           importCreados += r.creados || 0; importOmitidos += r.omitidos || 0; if (r.sinLeer) importSinLeer = true;
