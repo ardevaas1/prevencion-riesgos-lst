@@ -1128,7 +1128,7 @@ async function compartirArchivoConEmpresa(fileId, empresa) {
   const correos = [...new Set(
     (empresa === '__GLOBAL__'
       ? allUsuarios.filter(u => u.rol === 'subcontratista')
-      : allUsuarios.filter(u => u.empresa === empresa && u.rol === 'subcontratista')
+      : allUsuarios.filter(u => normalizarEmpresa(u.empresa) === normalizarEmpresa(empresa) && u.rol === 'subcontratista')
     ).map(u => u.correo).filter(Boolean)
   )];
   if (!correos.length) return;
@@ -1144,6 +1144,14 @@ async function compartirArchivoConEmpresa(fileId, empresa) {
   }
 }
 
+// Normaliza un nombre de empresa SOLO para compararlo (nunca para guardarlo
+// ni mostrarlo) — quita espacios de más al inicio/final, junta espacios
+// dobles y pasa a minúscula. Mismo criterio que normalizarEmpresa en
+// APPS_SCRIPT_WEBAPP_SUBCONTRATISTAS.js — un caso real: dos cuentas
+// subcontratista con "SEJEM" en USUARIOS que a simple vista se veían
+// idénticas, pero una de las dos celdas tenía un espacio de más, así que
+// esa cuenta veía "Sin trabajadores" aunque los datos sí existían.
+function normalizarEmpresa(e) { return (e || '').toString().trim().replace(/\s+/g, ' ').toLowerCase(); }
 // ── Importar trabajadores desde el Excel de "Listado de trabajadores" ──
 // Deja el RUT solo con dígitos y el dígito verificador (sin puntos, guión
 // ni espacios, en mayúscula) para poder comparar dos RUT escritos distinto
@@ -1312,7 +1320,7 @@ async function importarListadoTrabajadores(fileOrBlob, empresa) {
   const iFechaIngreso = indiceColumnaExcel(headers, ['Fecha de ingreso', 'Fecha ingreso']);
   const iCorreo = indiceColumnaExcel(headers, ['Correo', 'Email', 'Correo electrónico']);
 
-  const existentes = new Set(allTrabajadores.filter(t => t.empresa === empresa).map(t => normalizarRutCliente(t.rut)));
+  const existentes = new Set(allTrabajadores.filter(t => normalizarEmpresa(t.empresa) === normalizarEmpresa(empresa)).map(t => normalizarRutCliente(t.rut)));
   let n = allTrabajadores.length + 1;
   const nuevas = [];
   let omitidos = 0;
@@ -1858,7 +1866,7 @@ async function cargarTodo(silencioso) {
       // Solo los de su propia empresa — el resto de la nómina no se le
       // muestra a una cuenta subcontratista restringida (ver comentario más
       // arriba), aunque técnicamente tenga acceso de Editor al Sheet.
-      allTrabajadores = trab.map((r,i) => rowToTrabajador(r,i)).filter(t => t.empresa === miEmpresaSubcontratista);
+      allTrabajadores = trab.map((r,i) => rowToTrabajador(r,i)).filter(t => normalizarEmpresa(t.empresa) === normalizarEmpresa(miEmpresaSubcontratista));
       if (!silencioso) splash(100, '¡Listo!');
       else toast('Datos actualizados ✓', 'ok');
       return;
@@ -5114,7 +5122,7 @@ function renderSubcontratistas() {
     return;
   }
   setListHTML('subcontratistas', allSubcontratistas.map(s => {
-    const correos = allUsuarios.filter(u => u.empresa === s.empresa && u.rol === 'subcontratista').length;
+    const correos = allUsuarios.filter(u => normalizarEmpresa(u.empresa) === normalizarEmpresa(s.empresa) && u.rol === 'subcontratista').length;
     return `
     <div class="card card--default" onclick="abrirDetalleSubcontratista('${esc(s.empresa)}')">
       <div class="card-icon modulo-icon--cont">${ic('subcontratistas',18)}</div>
@@ -5138,7 +5146,7 @@ async function guardarSubcontratista(ev) {
   const f = ev.target;
   try {
     const empresa = f.empresa.value.trim();
-    if (allSubcontratistas.some(s => s.empresa.toLowerCase() === empresa.toLowerCase())) {
+    if (allSubcontratistas.some(s => normalizarEmpresa(s.empresa) === normalizarEmpresa(empresa))) {
       toast('Ya existe un subcontratista con ese nombre', 'error');
       return;
     }
@@ -5174,7 +5182,7 @@ function mostrarModoSubcontratista(empresa) {
 }
 
 function docsSubcontratista(empresa, categoria, item, periodo) {
-  return allSubDocs.filter(d => d.empresa === empresa && d.categoria === categoria &&
+  return allSubDocs.filter(d => normalizarEmpresa(d.empresa) === normalizarEmpresa(empresa) && d.categoria === categoria &&
     (item == null || d.item === item) && (periodo == null || d.periodo === periodo));
 }
 // Cada subida nueva se agrega como fila aparte (queda historial en el
@@ -5464,12 +5472,12 @@ function chipSeccionSubcontratista(icono) {
 }
 
 function renderSubcontratistaDetalleHTML(empresa, esRestringido) {
-  const correos = allUsuarios.filter(u => u.empresa === empresa && u.rol === 'subcontratista');
+  const correos = allUsuarios.filter(u => normalizarEmpresa(u.empresa) === normalizarEmpresa(empresa) && u.rol === 'subcontratista');
   const herramientas = docsSubcontratista(empresa, 'herramientas').slice().reverse();
   const procedimientosCriticos = docsProcedimientosCriticos(empresa);
   const subidosEmpresa = contarSubidosSubcontratista(empresa, 'empresa', SUBCONT_CARPETA_EMPRESA, null);
   const subidosMensual = contarSubidosSubcontratista(empresa, 'mensual', SUBCONT_CONTROL_MENSUAL, mesControlSubcontratista);
-  const trabajadoresEmpresa = allTrabajadores.filter(t => t.empresa === empresa && t.estado === 'Activo');
+  const trabajadoresEmpresa = allTrabajadores.filter(t => normalizarEmpresa(t.empresa) === normalizarEmpresa(empresa) && t.estado === 'Activo');
 
   return `
     <div class="subcont-recordatorio">
@@ -5847,7 +5855,7 @@ async function onSubirRespaldoTrabajador(inputEl, empresa, categoria, nombreTrab
 // opcionesObrasDisponibles() completo en este modo porque cargarTodo() nunca
 // carga Inspecciones/Incidentes para una cuenta subcontratista, ver arriba).
 function obrasPropiasSubcontratista() {
-  return [...new Set(allTrabajadores.filter(t => t.empresa === miEmpresaSubcontratista).map(t => t.obra).filter(Boolean))];
+  return [...new Set(allTrabajadores.filter(t => normalizarEmpresa(t.empresa) === normalizarEmpresa(miEmpresaSubcontratista)).map(t => t.obra).filter(Boolean))];
 }
 function abrirFormTrabajadorSubcontratista() {
   const f = document.getElementById('form-trabajador-subcont');
