@@ -257,7 +257,7 @@ const SUBCONT_CONTROL_MENSUAL = [
 // Checklist fijo de documentos por CADA trabajador de una empresa
 // subcontratista (ver bloqueDocTrabajador) — mismo listado para todos los
 // trabajadores, igual criterio que SUBCONT_CARPETA_EMPRESA. "Documentación
-// trabajadores" también deja subir archivos sueltos fuera de estos 18 ítems
+// trabajadores" también deja subir archivos sueltos fuera de estos ítems
 // (ver docsRespaldoTrabajador) para lo que no encaje en ninguno en
 // particular o para lo que ya se subió cuando este checklist no existía.
 // Nombre exacto del ítem del checklist que, a diferencia del resto (un solo
@@ -286,6 +286,7 @@ const DOCS_TRABAJADOR = [
   'Registro recambio de EPP',
   'Difusión de actualización Miper',
   'Certificado curso Orientación en Prevención de Riesgos (DS44 — 8 hrs)',
+  'Curso OS10 exclusivo para guardias',
   ITEM_PROTOCOLOS_MINSAL_TRABAJADOR,
   'Informativo Canal de denuncias Ley Karin',
   'Re-instrucciones (según se soliciten)',
@@ -1099,8 +1100,8 @@ async function uploadFileSubcontratistaTrabajador(fileOrBlob, empresa, nombreTra
   return up;
 }
 // Una subcarpeta más por ÍTEM, DENTRO de la carpeta propia del trabajador
-// (Trabajadores/{nombre}/{ítem}/) — la usa el checklist fijo de 18 ítems por
-// trabajador (ver filaChecklistSubcontratista/bloqueDocTrabajador), a
+// (Trabajadores/{nombre}/{ítem}/) — la usa el checklist fijo por
+// trabajador (ver DOCS_TRABAJADOR, filaChecklistSubcontratista/bloqueDocTrabajador), a
 // pedido explícito del cliente para que esos documentos no queden
 // mezclados con los de otros trabajadores (que es lo que pasaba antes, al
 // reusar getSubcontratistaFolder sin más: una carpeta por ítem compartida
@@ -5165,20 +5166,52 @@ async function guardarSubcontratista(ev) {
 let empresaSubcontratistaActual = null;
 let mesControlSubcontratista = new Date().toISOString().slice(0,7);
 
+// Cada vez que se sube un documento, se agrega un trabajador, etc., la
+// pantalla de Subcontratistas se vuelve a pintar ENTERA desde cero (para
+// mostrar lo nuevo) — eso borraba qué checklist tenía cada quien
+// desplegado (la clase "abierto" vive solo en el DOM, no en ningún estado
+// de JS) y de paso el navegador perdía la posición del scroll. El resultado
+// se sentía como que la app "cerraba todo y volvía arriba" de golpe en
+// cuanto subías algo, como si no se hubiera guardado nada — aunque el
+// documento sí hubiera quedado guardado. Se captura qué paneles
+// (.subcont-doctrab, hay anidados: uno por trabajador y uno por ítem
+// adentro de cada trabajador) estaban abiertos y el scroll ANTES de
+// reemplazar el HTML, y se restauran después — por posición (mismo orden
+// en que aparecen en el documento), ya que no tienen un id propio.
+function capturarEstadoAbiertoSubcontratista(contenedorScroll, raizPaneles) {
+  const paneles = [...raizPaneles.querySelectorAll('.subcont-doctrab')];
+  return {
+    scrollTop: contenedorScroll.scrollTop,
+    abiertos: paneles.reduce((acc, el, i) => { if (el.classList.contains('abierto')) acc.push(i); return acc; }, []),
+  };
+}
+function restaurarEstadoAbiertoSubcontratista(contenedorScroll, raizPaneles, estado) {
+  const paneles = [...raizPaneles.querySelectorAll('.subcont-doctrab')];
+  estado.abiertos.forEach(i => { if (paneles[i]) paneles[i].classList.add('abierto'); });
+  contenedorScroll.scrollTop = estado.scrollTop;
+}
+
 function abrirDetalleSubcontratista(empresa) {
   empresaSubcontratistaActual = empresa;
   document.getElementById('pnl-title-detalle-subcontratista').textContent = empresa;
-  document.getElementById('detalle-subcontratista-body').innerHTML = renderSubcontratistaDetalleHTML(empresa, false);
+  const body = document.getElementById('detalle-subcontratista-body');
+  const estado = capturarEstadoAbiertoSubcontratista(body, body);
+  body.innerHTML = renderSubcontratistaDetalleHTML(empresa, false);
+  restaurarEstadoAbiertoSubcontratista(body, body, estado);
   openPanel('panel-detalle-subcontratista');
 }
 // Pantalla fija de la cuenta subcontratista — sin panel, sin "Volver"
 // (no hay a dónde volver: esta ES toda su app).
 function mostrarModoSubcontratista(empresa) {
-  document.getElementById('subcontratista-root').classList.remove('hidden');
+  const raiz = document.getElementById('subcontratista-root');
+  const body = document.getElementById('subcontratista-root-body');
+  const estado = capturarEstadoAbiertoSubcontratista(raiz, body);
+  raiz.classList.remove('hidden');
   document.getElementById('subcontratista-root-empresa').textContent = empresa;
   document.getElementById('subcontratista-root-email').textContent = userEmail || '';
   document.getElementById('subcontratista-root-email-2').textContent = userEmail || '';
-  document.getElementById('subcontratista-root-body').innerHTML = renderSubcontratistaDetalleHTML(empresa, true);
+  body.innerHTML = renderSubcontratistaDetalleHTML(empresa, true);
+  restaurarEstadoAbiertoSubcontratista(raiz, body, estado);
 }
 
 function docsSubcontratista(empresa, categoria, item, periodo) {
@@ -5313,17 +5346,17 @@ function filaChecklistSubcontratista(empresa, categoria, item, periodo, nombreTr
       </div>
     </div>`;
 }
-// Documentación por trabajador — checklist fijo de 18 ítems (ver
+// Documentación por trabajador — checklist fijo de ítems (ver
 // DOCS_TRABAJADOR), mismo criterio que Carpeta de empresa: cada ítem admite
 // más de un archivo, con su propio estado/Aprobar/Rechazar/Eliminar (ver
 // filaChecklistSubcontratista). Debajo del checklist queda además un
 // espacio libre ("Otros documentos") para lo que no encaje en ninguno de
-// los 18 ítems en particular, o para archivos que ya se habían subido
+// los ítems en particular, o para archivos que ya se habían subido
 // cuando este checklist todavía no existía (esos quedaron guardados con
 // Item vacío — ver docsRespaldoTrabajador — y sin este espacio habrían
 // quedado invisibles). Se guarda en el mismo Sheet de documentos de
 // siempre: la "categoría" queda "doctrab_<rut o nombre>" (identifica al
-// trabajador). En Drive, tanto los 18 ítems del checklist como "Otros
+// trabajador). En Drive, tanto los ítems del checklist como "Otros
 // documentos" quedan dentro de la carpeta propia del trabajador
 // (Trabajadores/{nombre}/, ver getSubcontratistaTrabajadorFolder) — el
 // checklist además abre una subcarpeta por ítem dentro de esa
