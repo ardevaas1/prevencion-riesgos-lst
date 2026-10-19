@@ -102,6 +102,15 @@ function hojaUsuarios() { return SpreadsheetApp.getActiveSpreadsheet().getSheetB
 function hojaSubDocs() { return SpreadsheetApp.getActiveSpreadsheet().getSheetByName('SUBCONTRATISTAS_DOCS'); }
 function hojaTrabajadores() { return SpreadsheetApp.getActiveSpreadsheet().getSheetByName('TRABAJADORES'); }
 
+// Normaliza un nombre de empresa SOLO para compararlo (nunca para guardarlo
+// ni mostrarlo) — quita espacios de más al inicio/final, junta espacios
+// dobles y pasa a minúscula. Un caso real: dos cuentas con "SEJEM" en
+// USUARIOS que a simple vista se veían idénticas, pero una de las dos
+// celdas tenía un espacio de más — esa cuenta veía "Sin trabajadores" aunque
+// los datos sí existían, porque TRABAJADORES/SUBCONTRATISTAS_DOCS comparaba
+// la Empresa letra por letra contra el valor (sin recortar) de USUARIOS.
+function normalizarEmpresa(e) { return (e || '').toString().trim().replace(/\s+/g, ' ').toLowerCase(); }
+
 // Busca la fila de USUARIOS para ese correo y confirma que su Rol es
 // "subcontratista". Devuelve su Empresa (columna D) o null si no calza.
 function buscarUsuarioSubcontratista(correo) {
@@ -127,7 +136,7 @@ function verificarAcceso(correo) {
 // es la suya.
 function verificarPertenece(correo, empresa) {
   const u = buscarUsuarioSubcontratista(correo);
-  if (!u || u.empresa !== empresa) throw new Error('Esta cuenta no tiene acceso a esa empresa');
+  if (!u || normalizarEmpresa(u.empresa) !== normalizarEmpresa(empresa)) throw new Error('Esta cuenta no tiene acceso a esa empresa');
 }
 
 function listarDocumentos(correo, empresa) {
@@ -136,7 +145,7 @@ function listarDocumentos(correo, empresa) {
   const filas = [];
   for (let i = 1; i < datos.length; i++) {
     const fila = datos[i];
-    if (fila[0] === empresa || fila[0] === '__GLOBAL__') filas.push(fila);
+    if (normalizarEmpresa(fila[0]) === normalizarEmpresa(empresa) || fila[0] === '__GLOBAL__') filas.push(fila);
   }
   return { filas: filas };
 }
@@ -151,7 +160,7 @@ function listarTrabajadores(correo, empresa) {
   const filas = [];
   for (let i = 1; i < datos.length; i++) {
     const fila = datos[i];
-    if ((fila[4] || '').toString() === empresa) filas.push(fila);
+    if (normalizarEmpresa(fila[4]) === normalizarEmpresa(empresa)) filas.push(fila);
   }
   return { filas: filas };
 }
@@ -166,7 +175,7 @@ function correosSubcontratistaDeEmpresa(empresa) {
     const fila = datos[i];
     const rol = (fila[1] || '').toString().trim().toLowerCase();
     const filaEmpresa = (fila[3] || '').toString();
-    if (rol === 'subcontratista' && filaEmpresa === empresa) correos.push((fila[0] || '').toString().trim().toLowerCase());
+    if (rol === 'subcontratista' && normalizarEmpresa(filaEmpresa) === normalizarEmpresa(empresa)) correos.push((fila[0] || '').toString().trim().toLowerCase());
   }
   return correos;
 }
@@ -183,7 +192,7 @@ function notificarContacto(correoDestino, empresa) {
     if (i === 0) return false;
     return (fila[0] || '').toString().trim().toLowerCase() === correo &&
       (fila[1] || '').toString().trim().toLowerCase() === 'subcontratista' &&
-      (fila[3] || '').toString() === empresa;
+      normalizarEmpresa(fila[3]) === normalizarEmpresa(empresa);
   });
   if (!existe) throw new Error('Ese correo no está registrado para esa empresa');
 
@@ -414,7 +423,7 @@ function importarListadoTrabajadores(correo, body) {
   const existentes = {};
   for (let i = 1; i < datosExistentes.length; i++) {
     const fila = datosExistentes[i];
-    if ((fila[4] || '').toString() === empresa) existentes[normalizarRut(fila[2])] = true;
+    if (normalizarEmpresa(fila[4]) === normalizarEmpresa(empresa)) existentes[normalizarRut(fila[2])] = true;
   }
 
   let n = sh.getLastRow(); // encabezado = fila 1, así que esto ya es el próximo correlativo
