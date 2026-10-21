@@ -1352,7 +1352,7 @@ async function importarListadoTrabajadores(fileOrBlob, empresa) {
 // Apps Script no responde al preflight OPTIONS que el navegador manda
 // para JSON, así que hay que mandarlo como "simple request" para evitar
 // el error de CORS.
-async function llamarWebAppSubcontratista(accion, datos) {
+async function llamarWebAppSubcontratista(accion, datos, _esReintento) {
   if (!CONFIG.SUBCONTRATISTAS_WEBAPP_URL) throw new Error('Falta configurar SUBCONTRATISTAS_WEBAPP_URL en config.js');
   // Sin timeout, un archivo grande (ej. el Excel de "Listado de
   // trabajadores") o un cold-start lento de Apps Script podían dejar este
@@ -1372,7 +1372,18 @@ async function llamarWebAppSubcontratista(accion, datos) {
     });
   } catch (e) {
     if (e.name === 'AbortError') throw new Error('La solicitud tardó demasiado y se canceló. Si el archivo es muy pesado, prueba con uno más liviano o revisa tu conexión.');
-    throw e;
+    // Un "Failed to fetch" acá (reportado en consola como bloqueado por
+    // CORS) no es casi nunca un problema real de configuración — es Apps
+    // Script respondiendo de forma rara justo cuando se le pide una
+    // llamada a los pocos milisegundos de la anterior (típico al cargar
+    // la app: primero verificarAcceso, enseguida listarDocumentos). Un
+    // reintento único, con un respiro breve, resuelve esto casi siempre;
+    // si vuelve a fallar ahí sí es un problema de conexión real.
+    if (!_esReintento) {
+      await new Promise((r) => setTimeout(r, 1500));
+      return llamarWebAppSubcontratista(accion, datos, true);
+    }
+    throw new Error('No se pudo conectar con el servidor de Subcontratistas. Revisa tu conexión e inténtalo de nuevo en un momento.');
   } finally {
     clearTimeout(timeoutId);
   }
