@@ -1857,6 +1857,15 @@ async function cargarTodo(silencioso) {
       userRole = 'subcontratista';
       const { filas } = await llamarWebAppSubcontratista('listarDocumentos', { empresa: miEmpresaSubcontratista });
       allSubDocs = filas.map((r,i) => rowToSubDoc(r,i));
+      // Trabajadores de su propia empresa (para el checklist de Exámenes
+      // ocupacionales por trabajador) — faltaba acá: esta es la rama que
+      // SIEMPRE corre en una carga de página normal (subcontratistaUsaProxy
+      // arranca en false en cada reload, nunca se guarda), así que sin esto
+      // "Documentación trabajadores" quedaba vacío todo el tiempo para
+      // cualquier cuenta que use este proxy, sin importar qué tan bien
+      // calzara el nombre de la empresa — nunca se llegaba a pedir el dato.
+      const { filas: filasTrab } = await llamarWebAppSubcontratista('listarTrabajadores', { empresa: miEmpresaSubcontratista });
+      allTrabajadores = filasTrab.map((r,i) => rowToTrabajador(r,i));
       accesoDeterminado = true;
       if (!silencioso) splash(100, '¡Listo!'); else toast('Datos actualizados ✓', 'ok');
       return;
