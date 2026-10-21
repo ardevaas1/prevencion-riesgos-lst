@@ -427,6 +427,18 @@ let miEmpresaSubcontratista = null;
 // (ver llamarWebAppSubcontratista) — se detecta solo, no hay que
 // configurar nada aparte de SUBCONTRATISTAS_WEBAPP_URL en config.js.
 let subcontratistaUsaProxy = false;
+// Se pone en true SOLO cuando cargarTodo() logra determinar con certeza el
+// rol de la cuenta (admin/viewer/subcontratista) contra USUARIOS o contra
+// la Web App de Subcontratistas. Es la bandera que arrancarApp() exige
+// antes de revelar CUALQUIER pantalla — si cargarTodo() falla a mitad de
+// camino (ej. un error de red al verificar contra la Web App, como el
+// "Failed to fetch"/CORS intermitente de llamarWebAppSubcontratista) sin
+// esto, miEmpresaSubcontratista se queda en null (su valor inicial) y
+// arrancarApp() terminaba revelando la app COMPLETA (Inicio, todos los
+// módulos) como si la cuenta fuera admin/viewer, aunque en realidad fuera
+// una cuenta subcontratista restringida cuya verificación simplemente no
+// se pudo completar — un hueco de seguridad real, no solo un error visual.
+let accesoDeterminado = false;
 // Si el correo logueado coincide con el Correo de un trabajador marcado
 // "Es Supervisor" (Activo), queda acá su ficha completa — activa el modo
 // restringido de supervisor: solo ve lo de su propia obra y, dentro de los
@@ -1819,6 +1831,7 @@ async function cargarTodo(silencioso) {
       // que esta cuenta nunca recibe datos de otras empresas.
       const { filas: filasTrab } = await llamarWebAppSubcontratista('listarTrabajadores', { empresa: miEmpresaSubcontratista });
       allTrabajadores = filasTrab.map((r,i) => rowToTrabajador(r,i));
+      accesoDeterminado = true;
       if (!silencioso) splash(100, '¡Listo!'); else toast('Datos actualizados ✓', 'ok');
       return;
     }
@@ -1844,6 +1857,7 @@ async function cargarTodo(silencioso) {
       userRole = 'subcontratista';
       const { filas } = await llamarWebAppSubcontratista('listarDocumentos', { empresa: miEmpresaSubcontratista });
       allSubDocs = filas.map((r,i) => rowToSubDoc(r,i));
+      accesoDeterminado = true;
       if (!silencioso) splash(100, '¡Listo!'); else toast('Datos actualizados ✓', 'ok');
       return;
     }
@@ -1879,6 +1893,7 @@ async function cargarTodo(silencioso) {
       // muestra a una cuenta subcontratista restringida (ver comentario más
       // arriba), aunque técnicamente tenga acceso de Editor al Sheet.
       allTrabajadores = trab.map((r,i) => rowToTrabajador(r,i)).filter(t => normalizarEmpresa(t.empresa) === normalizarEmpresa(miEmpresaSubcontratista));
+      accesoDeterminado = true;
       if (!silencioso) splash(100, '¡Listo!');
       else toast('Datos actualizados ✓', 'ok');
       return;
@@ -1919,6 +1934,7 @@ async function cargarTodo(silencioso) {
     allMiperArchivo = miperArchivo.map((r,i) => rowToMiperArchivo(r,i));
     allCapacitacionDs44 = capDs44.map((r,i) => rowToCapacitacionDs44(r,i));
     renderModulosPrincipales();
+    accesoDeterminado = true;
     if (!silencioso) splash(100, '¡Listo!');
     else toast('Datos actualizados ✓', 'ok');
   } catch (e) {
@@ -8815,6 +8831,7 @@ async function arrancarApp() {
   document.getElementById('login-screen').classList.add('hidden');
   document.getElementById('splash').classList.remove('hidden');
   document.getElementById('splash-progress').classList.add('splash-waiting');
+  document.getElementById('splash-reintentar').classList.add('hidden');
   document.getElementById('chip-email').textContent = userEmail || '';
   document.getElementById('dt-chip-email').textContent = userEmail || '';
   document.getElementById('chip-footer-email').textContent = userEmail || '';
@@ -8830,6 +8847,23 @@ async function arrancarApp() {
   // login si la cuenta no está autorizada (ver forzarCierreSesion) — en ese
   // caso userEmail queda en null y acá no hay que revelar la app.
   if (!userEmail) return;
+
+  // Si cargarTodo() no logró determinar con certeza el rol de esta cuenta
+  // (ej. un error de red al verificar contra la Web App de Subcontratistas,
+  // que queda solo como un toast sin interrumpir la app — ver el catch al
+  // final de cargarTodo), NO hay que caer al "else" de más abajo: eso
+  // revelaría la app completa (Inicio, todos los módulos) con
+  // miEmpresaSubcontratista todavía en null, exactamente como si la cuenta
+  // fuera admin/viewer — así sea en realidad una cuenta subcontratista
+  // restringida cuya verificación simplemente no se completó. Mejor no
+  // mostrar nada y dejar reintentar a propósito.
+  if (!accesoDeterminado) {
+    document.getElementById('splash-progress').classList.remove('splash-waiting');
+    document.getElementById('splash-progress').style.width = '100%';
+    document.getElementById('splash-hint').textContent = 'No se pudo verificar tu acceso. Revisa tu conexión e inténtalo de nuevo.';
+    document.getElementById('splash-reintentar').classList.remove('hidden');
+    return;
+  }
 
   const splashEl = document.getElementById('splash');
 
@@ -8874,6 +8908,10 @@ async function arrancarApp() {
   splashEl.style.opacity = '0';
   setTimeout(() => { splashEl.classList.add('hidden'); splashEl.style.opacity = ''; }, 380);
 }
+// Botón "Reintentar" del splash cuando no se pudo verificar el acceso (ver
+// el bloque "if (!accesoDeterminado)" en arrancarApp) — simplemente vuelve
+// a correr todo el arranque desde cero.
+function reintentarArranque() { return arrancarApp(); }
 window.addEventListener('DOMContentLoaded', () => {
   // Sesión de trabajador por RUT (ver mostrarPendientesRut) — no usa Google
   // para nada, así que va antes y aparte de todo lo demás. Solo aplica a la
