@@ -81,6 +81,7 @@ function doPost(e) {
     if (!correo) return respuesta({ error: 'Falta el correo' });
 
     if (accion === 'verificarAcceso') return respuesta(verificarAcceso(correo));
+    if (accion === 'cargarInicial') return respuesta(cargarInicial(correo));
     if (accion === 'listarDocumentos') return respuesta(listarDocumentos(correo, body.empresa));
     if (accion === 'listarTrabajadores') return respuesta(listarTrabajadores(correo, body.empresa));
     if (accion === 'subirDocumento') return respuesta(subirDocumento(correo, body));
@@ -163,6 +164,37 @@ function listarTrabajadores(correo, empresa) {
     if (normalizarEmpresa(fila[4]) === normalizarEmpresa(empresa)) filas.push(fila);
   }
   return { filas: filas };
+}
+
+// Todo lo que necesita la pantalla inicial de una cuenta subcontratista en
+// UNA sola llamada, en vez de que la app tenga que hacer tres viajes de red
+// seguidos (verificarAcceso → listarDocumentos → listarTrabajadores) — cada
+// uno paga aparte el costo fijo de invocar este Web App (más notorio
+// todavía si el script estaba "frío"), así que juntarlos en uno recorta el
+// tiempo de carga a la tercera parte. Si esta acción no existe porque
+// todavía no se redesplegó esta versión, la app (ver
+// cargarDatosProxySubcontratista en app.js) cae sola al camino viejo de 3
+// llamadas — no hace falta coordinar el despliegue con nada más.
+function cargarInicial(correo) {
+  const u = buscarUsuarioSubcontratista(correo);
+  if (!u) return { subcontratista: false };
+  const empresa = u.empresa;
+
+  const datosDocs = hojaSubDocs().getDataRange().getValues();
+  const filasDocs = [];
+  for (let i = 1; i < datosDocs.length; i++) {
+    const fila = datosDocs[i];
+    if (normalizarEmpresa(fila[0]) === normalizarEmpresa(empresa) || fila[0] === '__GLOBAL__') filasDocs.push(fila);
+  }
+
+  const datosTrab = hojaTrabajadores().getDataRange().getValues();
+  const filasTrab = [];
+  for (let i = 1; i < datosTrab.length; i++) {
+    const fila = datosTrab[i];
+    if (normalizarEmpresa(fila[4]) === normalizarEmpresa(empresa)) filasTrab.push(fila);
+  }
+
+  return { subcontratista: true, empresa: empresa, documentos: filasDocs, trabajadores: filasTrab };
 }
 
 // Todos los correos dados de alta como "subcontratista" de una empresa —

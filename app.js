@@ -457,6 +457,16 @@ const TOKEN_KEY   = 'lst_pr_token';
 const EXPIRY_KEY  = 'lst_pr_expiry';
 const EMAIL_KEY   = 'lst_pr_email';
 const HADLOGIN_KEY = 'lst_pr_had_login'; // se mantiene aunque el token expire; solo se borra al Cerrar sesión
+// Recuerda, de una carga a otra, que esta cuenta no tiene acceso directo al
+// Sheet y usa el proxy de Apps Script (ver subcontratistaUsaProxy) — sin
+// esto, cada recarga de página repetía un intento de acceso directo
+// destinado a fallar siempre (un viaje de red entero perdido) antes de caer
+// recién ahí al proxy. Guarda el CORREO (no solo true/false) para no
+// arrastrar el atajo a otra cuenta que inicie sesión después en el mismo
+// navegador (ej. una PC compartida) — solo se confía en el valor guardado
+// si coincide con userEmail. Se borra junto con el resto de la sesión en
+// forzarCierreSesion.
+const PROXY_SUBCONTRATISTA_KEY = 'lst_pr_proxy_subcontratista';
 
 function saveToken(token, expiresIn) {
   accessToken = token;
@@ -567,6 +577,7 @@ function forzarCierreSesion(mensaje, noAutorizada) {
   localStorage.removeItem(HADLOGIN_KEY);
   localStorage.removeItem(EMAIL_KEY);
   localStorage.removeItem(OBRA_ACTIVA_KEY);
+  localStorage.removeItem(PROXY_SUBCONTRATISTA_KEY);
   userEmail = null; userRole = null; miEmpresaSubcontratista = null; subcontratistaUsaProxy = false;
   obraActiva = null;
   document.getElementById('main').classList.add('hidden');
@@ -1405,6 +1416,34 @@ async function llamarWebAppSubcontratista(accion, datos, _esReintento) {
   return data;
 }
 
+// Trae todo lo necesario para mostrar la pantalla de una cuenta
+// subcontratista por proxy en UN solo viaje de red en vez de tres seguidos
+// (verificarAcceso → listarDocumentos → listarTrabajadores) — cada viaje a
+// Apps Script tiene un costo fijo de varios cientos de ms (a veces más de
+// 1s) aparte de lo que tarde en sí, así que tres uno detrás de otro se
+// notaban mucho en el tiempo de carga. Intenta primero la acción combinada
+// "cargarInicial" (ver APPS_SCRIPT_WEBAPP_SUBCONTRATISTAS.js); si el
+// despliegue activo todavía es una versión vieja que no la reconoce
+// ("Acción desconocida"), cae sola al camino anterior — pero con las dos
+// llamadas de datos en PARALELO (no dependen una de la otra) en vez de
+// seguidas, así igual mejora mientras no se redespliegue el script.
+async function cargarDatosProxySubcontratista() {
+  try {
+    const r = await llamarWebAppSubcontratista('cargarInicial', {});
+    if (!r.subcontratista) return { subcontratista: false };
+    return { subcontratista: true, empresa: r.empresa, documentosFilas: r.documentos || [], trabajadoresFilas: r.trabajadores || [] };
+  } catch (e) {
+    if (!/Acci[oó]n desconocida/i.test(e.message || '')) throw e;
+  }
+  const chequeo = await llamarWebAppSubcontratista('verificarAcceso', {});
+  if (!chequeo.subcontratista) return { subcontratista: false };
+  const [docs, trab] = await Promise.all([
+    llamarWebAppSubcontratista('listarDocumentos', { empresa: chequeo.empresa }),
+    llamarWebAppSubcontratista('listarTrabajadores', { empresa: chequeo.empresa }),
+  ]);
+  return { subcontratista: true, empresa: chequeo.empresa, documentosFilas: docs.filas, trabajadoresFilas: trab.filas };
+}
+
 // ── UI helpers ───────────────────────────────────────────────
 function splash(pct, hint) {
   const fill = document.getElementById('splash-progress');
@@ -1817,20 +1856,18 @@ async function cargarTodo(silencioso) {
     // acceso directo al Sheet (ver más abajo), no hace falta repetir ese
     // intento fallido cada vez — se va derecho por la Web App.
     if (subcontratistaUsaProxy) {
-      const chequeo = await llamarWebAppSubcontratista('verificarAcceso', {});
-      if (!chequeo.subcontratista) {
+      const r = await cargarDatosProxySubcontratista();
+      if (!r.subcontratista) {
         forzarCierreSesion('Tu cuenta (' + userEmail + ') ya no está autorizada para usar esta aplicación.', true);
         return;
       }
-      miEmpresaSubcontratista = chequeo.empresa;
+      miEmpresaSubcontratista = r.empresa;
       userRole = 'subcontratista';
-      const { filas } = await llamarWebAppSubcontratista('listarDocumentos', { empresa: miEmpresaSubcontratista });
-      allSubDocs = filas.map((r,i) => rowToSubDoc(r,i));
+      allSubDocs = r.documentosFilas.map((fila,i) => rowToSubDoc(fila,i));
       // Trabajadores de su propia empresa (para el checklist de Exámenes
       // ocupacionales por trabajador) — el proxy ya filtra server-side, así
       // que esta cuenta nunca recibe datos de otras empresas.
-      const { filas: filasTrab } = await llamarWebAppSubcontratista('listarTrabajadores', { empresa: miEmpresaSubcontratista });
-      allTrabajadores = filasTrab.map((r,i) => rowToTrabajador(r,i));
+      allTrabajadores = r.trabajadoresFilas.map((fila,i) => rowToTrabajador(fila,i));
       accesoDeterminado = true;
       if (!silencioso) splash(100, '¡Listo!'); else toast('Datos actualizados ✓', 'ok');
       return;
@@ -1850,22 +1887,18 @@ async function cargarTodo(silencioso) {
       // sea justo un subcontratista al que a propósito no se le dio acceso
       // de Editor — se verifica por ahí antes de darnos por vencidos.
       if (!CONFIG.SUBCONTRATISTAS_WEBAPP_URL) throw errAccesoDirecto;
-      const chequeo = await llamarWebAppSubcontratista('verificarAcceso', {});
-      if (!chequeo.subcontratista) throw errAccesoDirecto;
+      const r = await cargarDatosProxySubcontratista();
+      if (!r.subcontratista) throw errAccesoDirecto;
       subcontratistaUsaProxy = true;
-      miEmpresaSubcontratista = chequeo.empresa;
+      // Para que la PRÓXIMA carga de esta misma cuenta se salte el intento
+      // de acceso directo (ver el inicio de arrancarApp) — guarda el correo,
+      // no solo true/false, para no arrastrar el atajo a otra cuenta que
+      // inicie sesión después en el mismo navegador.
+      localStorage.setItem(PROXY_SUBCONTRATISTA_KEY, userEmail);
+      miEmpresaSubcontratista = r.empresa;
       userRole = 'subcontratista';
-      const { filas } = await llamarWebAppSubcontratista('listarDocumentos', { empresa: miEmpresaSubcontratista });
-      allSubDocs = filas.map((r,i) => rowToSubDoc(r,i));
-      // Trabajadores de su propia empresa (para el checklist de Exámenes
-      // ocupacionales por trabajador) — faltaba acá: esta es la rama que
-      // SIEMPRE corre en una carga de página normal (subcontratistaUsaProxy
-      // arranca en false en cada reload, nunca se guarda), así que sin esto
-      // "Documentación trabajadores" quedaba vacío todo el tiempo para
-      // cualquier cuenta que use este proxy, sin importar qué tan bien
-      // calzara el nombre de la empresa — nunca se llegaba a pedir el dato.
-      const { filas: filasTrab } = await llamarWebAppSubcontratista('listarTrabajadores', { empresa: miEmpresaSubcontratista });
-      allTrabajadores = filasTrab.map((r,i) => rowToTrabajador(r,i));
+      allSubDocs = r.documentosFilas.map((fila,i) => rowToSubDoc(fila,i));
+      allTrabajadores = r.trabajadoresFilas.map((fila,i) => rowToTrabajador(fila,i));
       accesoDeterminado = true;
       if (!silencioso) splash(100, '¡Listo!'); else toast('Datos actualizados ✓', 'ok');
       return;
@@ -8849,6 +8882,13 @@ async function arrancarApp() {
   renderModulosHome();
   configurarAccesosDirectos();
   actualizarContadorPlantillasCharla();
+
+  // Si en una carga anterior de ESTA MISMA cuenta ya se detectó que usa el
+  // proxy (ver PROXY_SUBCONTRATISTA_KEY), cargarTodo() se salta el intento
+  // de acceso directo al Sheet (que de todas formas está destinado a
+  // fallar) y va directo a la Web App — ahorra un viaje de red entero en
+  // cada recarga.
+  subcontratistaUsaProxy = localStorage.getItem(PROXY_SUBCONTRATISTA_KEY) === userEmail;
 
   await cargarTodo();
 
