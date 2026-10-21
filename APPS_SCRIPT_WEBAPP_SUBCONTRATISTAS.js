@@ -112,6 +112,26 @@ function hojaTrabajadores() { return SpreadsheetApp.getActiveSpreadsheet().getSh
 // la Empresa letra por letra contra el valor (sin recortar) de USUARIOS.
 function normalizarEmpresa(e) { return (e || '').toString().trim().replace(/\s+/g, ' ').toLowerCase(); }
 
+// La columna Periodo (Control mensual, ej. "2026-10") se guarda como texto
+// plano desde la app, pero Google Sheets a veces detecta solo ese texto
+// como si fuera una fecha y la convierte en un valor de fecha interno al
+// escribirlo — ahí getValues() (acá en Apps Script) devuelve un objeto
+// Date, NO el string "2026-10", mientras que la API REST que usa el resto
+// de la app (fetchSheet) sí lo muestra como texto formateado. Resultado:
+// un documento con Periodo "transformado" así nunca calzaba con el mes
+// elegido (comparación exacta de texto) para una cuenta que pasa por este
+// proxy, aunque en el Sheet se viera perfecto y el admin sí lo viera bien
+// (caso real: "Listado de trabajadores" de SEJEM, octubre 2026). Se
+// reconstruye el string "AAAA-MM" a partir de la fecha para que calce
+// igual que si nunca se hubiera convertido.
+function normalizarPeriodo(v) {
+  if (Object.prototype.toString.call(v) === '[object Date]') {
+    const mes = ('0' + (v.getMonth() + 1)).slice(-2);
+    return v.getFullYear() + '-' + mes;
+  }
+  return (v || '').toString();
+}
+
 // Busca la fila de USUARIOS para ese correo y confirma que su Rol es
 // "subcontratista". Devuelve su Empresa (columna D) o null si no calza.
 function buscarUsuarioSubcontratista(correo) {
@@ -146,7 +166,10 @@ function listarDocumentos(correo, empresa) {
   const filas = [];
   for (let i = 1; i < datos.length; i++) {
     const fila = datos[i];
-    if (normalizarEmpresa(fila[0]) === normalizarEmpresa(empresa) || fila[0] === '__GLOBAL__') filas.push(fila);
+    if (normalizarEmpresa(fila[0]) === normalizarEmpresa(empresa) || fila[0] === '__GLOBAL__') {
+      fila[3] = normalizarPeriodo(fila[3]); // Periodo — ver normalizarPeriodo
+      filas.push(fila);
+    }
   }
   return { filas: filas };
 }
@@ -184,7 +207,10 @@ function cargarInicial(correo) {
   const filasDocs = [];
   for (let i = 1; i < datosDocs.length; i++) {
     const fila = datosDocs[i];
-    if (normalizarEmpresa(fila[0]) === normalizarEmpresa(empresa) || fila[0] === '__GLOBAL__') filasDocs.push(fila);
+    if (normalizarEmpresa(fila[0]) === normalizarEmpresa(empresa) || fila[0] === '__GLOBAL__') {
+      fila[3] = normalizarPeriodo(fila[3]); // Periodo — ver normalizarPeriodo
+      filasDocs.push(fila);
+    }
   }
 
   const datosTrab = hojaTrabajadores().getDataRange().getValues();
