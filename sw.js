@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lst-prevencion-shell-v55';
+const CACHE_NAME = 'lst-prevencion-shell-v56';
 // Archivos de código/shell: cambian seguido mientras se sigue desarrollando
 // la app — necesitan "network-first" (siempre intentar la versión más
 // nueva) para que un cambio recién publicado se vea de inmediato con un
@@ -65,6 +65,26 @@ const APP_SHELL = [
   './plantillas/irl/IRL_19_Conductor.docx',
   './plantillas/irl/IRL_20_Techador_Hojalatero.docx',
   './plantillas/irl/IRL_21_Guardia_Nochero.docx',
+  './plantillas/irl/IRL_22_Gerente_Desarrollo_Social.docx',
+  './plantillas/irl/IRL_23_Arquitecto_a.docx',
+  './plantillas/irl/IRL_24_Asistente_Social.docx',
+  './plantillas/irl/IRL_25_Constructor_Civil.docx',
+  './plantillas/irl/IRL_26_Constructor_Civil_Presupuesto.docx',
+  './plantillas/irl/IRL_27_Encargado_RR_HH.docx',
+  './plantillas/irl/IRL_28_Encargado_Mantencion_Maquinaria.docx',
+  './plantillas/irl/IRL_29_Ayudante_de_Bodega.docx',
+  './plantillas/irl/IRL_30_Coordinador_Tecnico_Obras.docx',
+  './plantillas/irl/IRL_31_Jefe_de_Terreno.docx',
+  './plantillas/irl/IRL_32_Supervisor.docx',
+  './plantillas/irl/IRL_33_Supervisor_de_Obra.docx',
+  './plantillas/irl/IRL_34_Supervisor_Obra_Maq_y_Veh.docx',
+  './plantillas/irl/IRL_35_Autocontrol.docx',
+  './plantillas/irl/IRL_36_Asistente_Oficina_Tecnica.docx',
+  './plantillas/irl/IRL_37_Ejecutiva_Adm_y_Adquisiciones.docx',
+  './plantillas/irl/IRL_38_Ingeniero_Civil.docx',
+  './plantillas/irl/IRL_39_Contador.docx',
+  './plantillas/irl/IRL_40_Ing_Constructor_Postventa.docx',
+  './plantillas/irl/IRL_41_Directora_de_Finanzas.docx',
 ];
 
 self.addEventListener('install', (event) => {
