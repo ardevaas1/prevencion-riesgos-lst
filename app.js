@@ -2676,7 +2676,10 @@ function abrirFichaTrabajador(nombre) {
     <div class="ficha-section">
       <div class="ficha-sec-title">IRL — Actividades a desarrollar</div>
       ${plantillaIrl
-        ? `<div class="field-row"><span class="fl">Plantilla según su cargo (${esc(t.cargo)})</span><a href="${esc(plantillaIrl.archivo)}" target="_blank" class="badge blue">${ic('documento',12)} Descargar</a></div>`
+        ? `<div class="field-row" style="flex-direction:column;align-items:flex-start;gap:8px;">
+             <span class="fl" style="flex-shrink:1;white-space:normal;">Plantilla según su cargo (${esc(t.cargo)})</span>
+             <a href="${esc(plantillaIrl.archivo)}" target="_blank" class="badge blue">${ic('documento',12)} Descargar</a>
+           </div>`
         : `<div class="card-sub" style="padding:6px 2px;">No hay una plantilla de IRL asociada al cargo "${esc(t.cargo || 'sin especificar')}".</div>`}
     </div>
 
