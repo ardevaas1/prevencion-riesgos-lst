@@ -335,14 +335,21 @@ body.is-offline #app { padding-top: 30px; }
 /* Iconos de línea pequeños embebidos en texto/botones (currentColor = hereda el color del texto) */
 .inline-ic { width: 15px; height: 15px; vertical-align: -3px; flex-shrink: 0; }
 
-/* ── Cards ── */
+/* ── Cards ──
+   Mismo lenguaje "más atrevido" que las fichas de detalle (#47/#48) —
+   .card es el componente más repetido de toda la app (listas de
+   Trabajadores, Inspecciones, Charlas, EPP, HCR, Procedimientos...), así
+   que subirle el nivel acá se nota en casi todos los módulos de una. */
+@keyframes cardIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 .card {
-  background: #fff; border-radius: 16px; border: 1px solid var(--line);
+  background: #fff; border-radius: 18px; border: 1px solid var(--line);
   padding: 13px 14px; margin-bottom: 10px; cursor: pointer;
   display: flex; align-items: center; gap: 12px;
-  border-left-width: 4px; /* sobreescrito por los modificadores de estado abajo */
-  box-shadow: 0 1px 2px rgba(0,0,0,.03), 0 6px 16px rgba(0,0,0,.05);
+  border-left-width: 5px; /* sobreescrito por los modificadores de estado abajo */
+  box-shadow: 0 1px 2px rgba(0,0,0,.03), 0 8px 20px rgba(0,0,0,.06);
+  animation: cardIn .3s cubic-bezier(.16,1,.3,1) backwards;
 }
+.card:active { box-shadow: 0 1px 2px rgba(0,0,0,.03), 0 2px 6px rgba(0,0,0,.08); }
 /* Strip de color según estado */
 .card--op  { border-left-color: #43a047; }
 .card--obs { border-left-color: #f59e0b; }
@@ -355,7 +362,7 @@ body.is-offline #app { padding-top: 30px; }
   display: flex; align-items: center; justify-content: center;
   border-radius: 11px; color: #fff;
   background: linear-gradient(145deg, var(--accent), var(--accent-dark));
-  box-shadow: 0 3px 8px rgba(var(--accent-rgb),0.3);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.25), 0 3px 8px rgba(var(--accent-rgb),0.3);
 }
 .card-icon--flota { /* color ya viene del tema por defecto (azul) */ }
 .card-body { flex: 1; min-width: 0; }
@@ -499,12 +506,37 @@ body.is-offline #app { padding-top: 30px; }
 .panel-bar {
   display: flex; align-items: center; justify-content: space-between;
   padding: 12px 16px; padding-top: max(12px, env(safe-area-inset-top));
-  background: #fff; border-bottom: 1px solid var(--line); flex-shrink: 0;
+  background: #fff; border-bottom: 3px solid var(--line); flex-shrink: 0;
+  transition: border-color .2s;
 }
 .pnl-back { color: var(--accent); font-size: 15px; font-weight: 500; padding: 4px 0; }
-.pnl-title { font-size: 15px; font-weight: 600; color: var(--ink); }
+.pnl-title { font-size: 15px; font-weight: 600; color: var(--ink); display: inline-flex; align-items: center; gap: 7px; }
 .pnl-action { background: var(--accent); color: #fff; font-size: 13px; font-weight: 600; padding: 7px 16px; border-radius: 8px; }
 .pnl-action:active { background: var(--accent-dark); }
+/* Identificador de módulo en la barra de cualquier panel (formulario,
+   ficha, sub-lista) — ver pintarBarraPanelConModulo en app.js. Sin esto,
+   un panel que muestra algo puntual (la ficha de un trabajador, por
+   ejemplo) no dice en ningún lado que se sigue dentro de ese módulo, a
+   diferencia de la página principal (ver aplicarColorHeader en
+   index.html), que sí cambia de color. Mismos 5 colores de tema ya usados
+   ahí — borde grueso abajo de la barra + chip con el ícono del módulo
+   antes del título, sin tocar el naranjo de los botones de acción.
+   "flota" no tiene color propio en el tema por módulo (ver :root): usa el
+   naranjo de marca normal, igual que si no tuviera match. */
+.panel-bar--inv   { border-bottom-color: #f5a623; }
+.panel-bar--cont  { border-bottom-color: #c08a5a; }
+.panel-bar--mov   { border-bottom-color: #2f8a4d; }
+.panel-bar--and   { border-bottom-color: #d64545; }
+.panel-bar--flota { border-bottom-color: #4a8ec2; }
+.panel-bar-mod-icon {
+  width: 22px; height: 22px; border-radius: 7px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; color: #fff;
+}
+.panel-bar--inv   .panel-bar-mod-icon { background: linear-gradient(145deg, #f5a623, #b15c0c); }
+.panel-bar--cont  .panel-bar-mod-icon { background: linear-gradient(145deg, #c08a5a, #6b462a); }
+.panel-bar--mov   .panel-bar-mod-icon { background: linear-gradient(145deg, #2f8a4d, #1f6b39); }
+.panel-bar--and   .panel-bar-mod-icon { background: linear-gradient(145deg, #d64545, #9c2f2f); }
+.panel-bar--flota .panel-bar-mod-icon { background: linear-gradient(145deg, #4a8ec2, #2f6f9e); }
 .panel-body { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 16px 14px 40px; }
 
 /* ── Ficha ──
@@ -1931,8 +1963,8 @@ a.action-btn { text-decoration: none; }
   margin: 0 16px;
 }
 .modulo-card {
-  background: transparent; border-radius: 12px; border: none;
-  padding: 14px 8px;
+  background: transparent; border-radius: 14px; border: none;
+  padding: 12px 8px;
   display: flex; flex-direction: row; align-items: center; justify-content: flex-start;
   text-align: left;
   gap: 14px;
@@ -1950,11 +1982,13 @@ a.action-btn { text-decoration: none; }
 }
 .modulo-card:active .modulo-icon { color: var(--accent); }
 .modulo-icon svg { width: 22px; height: 22px; }
-.modulo-info { flex: 1; }
+.modulo-info { flex: 1; min-width: 0; }
 .modulo-nombre { font-size: 15px; font-weight: 700; color: var(--ink); line-height: 1.2; }
 .modulo-card:active .modulo-nombre { color: var(--accent); }
-.modulo-desc { display: none; }
-.modulo-arrow { display: none; }
+/* Se reactiva la descripción de cada módulo (estaba oculta) — además de
+   dar más contexto de un vistazo, llena de contenido real una lista que
+   antes era puro título + ícono apagado en una sola línea. */
+.modulo-desc { display: block; font-size: 12px; color: var(--ink-soft); margin-top: 2px; line-height: 1.3; }
 
 /* ══ FOOTER de modulos-home: usuario + acciones ══ */
 .modulos-footer {
