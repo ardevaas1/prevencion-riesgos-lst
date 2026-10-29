@@ -2665,7 +2665,7 @@ function abrirFichaTrabajador(nombre) {
     </div>
 
     <div class="ficha-section">
-      <div class="ficha-sec-title">Información general</div>
+      <div class="ficha-sec-title"><span class="ficha-sec-icon">${ic('obra',13)}</span>Información general</div>
       <div class="field-row"><span class="fl">RUT</span><span class="fv">${esc(t.rut)}</span></div>
       <div class="field-row"><span class="fl">Empresa / Contratista</span><span class="fv">${esc(t.empresa)}</span></div>
       <div class="field-row"><span class="fl">Obra</span><span class="fv">${esc(t.obra || '—')}</span></div>
@@ -2674,7 +2674,7 @@ function abrirFichaTrabajador(nombre) {
     </div>
 
     <div class="ficha-section">
-      <div class="ficha-sec-title">IRL — Actividades a desarrollar</div>
+      <div class="ficha-sec-title"><span class="ficha-sec-icon">${ic('documento',13)}</span>IRL — Actividades a desarrollar</div>
       ${plantillaIrl
         ? `<div class="field-row" style="flex-direction:column;align-items:flex-start;gap:8px;">
              <span class="fl" style="flex-shrink:1;white-space:normal;">Plantilla según su cargo (${esc(t.cargo)})</span>
@@ -2684,7 +2684,7 @@ function abrirFichaTrabajador(nombre) {
     </div>
 
     <div class="ficha-section">
-      <div class="ficha-sec-title">Rol</div>
+      <div class="ficha-sec-title"><span class="ficha-sec-icon">${ic('check',13)}</span>Rol</div>
       <div class="field-row"><span class="fl">Rol</span>${t.esSupervisor ? '<span class="badge amber">Supervisor de obra</span>' : supervisorDeEste ? `<span>Supervisado por <span class="fv">${esc(supervisorDeEste.nombre)}</span></span>` : '<span class="badge gray">Trabajador</span>'}</div>
       ${t.esSupervisor ? `<div class="field-row"><span class="fl">Especialidades</span><span class="fv">${t.especialidadesSupervisor.length ? esc(t.especialidadesSupervisor.join(', ')) : 'Supervisor general (todos los temas)'}</span></div>` : ''}
       <button class="action-btn" onclick="abrirEditarSupervisor(${t.fila})">${t.esSupervisor ? 'Editar rol de supervisor' : 'Marcar como supervisor de esta obra'}</button>
@@ -2694,7 +2694,7 @@ function abrirFichaTrabajador(nombre) {
     </div>
 
     <div class="ficha-section">
-      <div class="ficha-sec-title">Datos personales</div>
+      <div class="ficha-sec-title"><span class="ficha-sec-icon">${ic('trabajadores',13)}</span>Datos personales</div>
       <div class="field-row"><span class="fl">Estado</span>${datosPersonalesCompletos ? '<span class="badge green">Completos</span>' : '<span class="badge amber">Incompletos</span>'}</div>
       <div class="field-row"><span class="fl">Fecha de nacimiento</span><span class="fv">${esc(t.fechaNacimiento || '—')}</span></div>
       <div class="field-row"><span class="fl">Sexo</span><span class="fv">${esc(t.sexo || '—')}</span></div>
@@ -2710,7 +2710,7 @@ function abrirFichaTrabajador(nombre) {
     </div>
 
     <div class="ficha-section">
-      <div class="ficha-sec-title">Contrato de trabajo</div>
+      <div class="ficha-sec-title"><span class="ficha-sec-icon">${ic('documento',13)}</span>Contrato de trabajo</div>
       <div class="field-row"><span class="fl">Inicio</span><span class="fv">${esc(t.contratoInicio || '—')}</span></div>
       <div class="field-row"><span class="fl">Término</span><span class="fv">${esc(t.contratoTermino || 'Indefinido')}</span></div>
       <div class="field-row"><span class="fl">Estado</span>${contratoBadge}</div>
@@ -2719,7 +2719,7 @@ function abrirFichaTrabajador(nombre) {
     </div>
 
     <div class="ficha-section">
-      <div class="ficha-sec-title">Examen de altura física</div>
+      <div class="ficha-sec-title"><span class="ficha-sec-icon">${ic('alerta',13)}</span>Examen de altura física</div>
       <div class="field-row"><span class="fl">Vigencia</span><span class="fv">${esc(t.alturaVigencia || '—')}</span></div>
       <div class="field-row"><span class="fl">Estado</span>${alturaBadge}</div>
       ${t.alturaArchivo ? `<div class="field-row"><span class="fl">Documento</span><a href="${esc(t.alturaArchivo)}" target="_blank" class="badge blue">${ic('documento',12)} Ver examen</a></div>` : ''}
@@ -2731,7 +2731,7 @@ function abrirFichaTrabajador(nombre) {
       const estadoDs44 = ds44Estado(recDs44);
       return `
     <div class="ficha-section">
-      <div class="ficha-sec-title">Capacitación DS44 (8 hrs)</div>
+      <div class="ficha-sec-title"><span class="ficha-sec-icon">${ic('capacitacion',13)}</span>Capacitación DS44 (8 hrs)</div>
       <div class="field-row"><span class="fl">Vigencia</span><span class="fv">${esc(recDs44 && recDs44.fechaVencimiento || '—')}</span></div>
       <div class="field-row"><span class="fl">Estado</span><span class="badge ${estadoDs44.badge}">${esc(estadoDs44.label)}</span></div>
       ${recDs44 && recDs44.certificado ? `<div class="field-row"><span class="fl">Documento</span><a href="${esc(recDs44.certificado)}" target="_blank" class="badge blue">${ic('documento',12)} Ver certificado</a></div>` : ''}
@@ -2741,12 +2741,12 @@ function abrirFichaTrabajador(nombre) {
 
     ${miSupervisorPerfil ? '' : `
     <div class="ficha-section">
-      <div class="ficha-sec-title">Historial de EPP entregado</div>
+      <div class="ficha-sec-title"><span class="ficha-sec-icon">${ic('epp',13)}</span>Historial de EPP entregado</div>
       ${entregasHtml}
     </div>`}
 
     <div class="ficha-section">
-      <div class="ficha-sec-title">Incidentes relacionados</div>
+      <div class="ficha-sec-title"><span class="ficha-sec-icon">${ic('incidentes',13)}</span>Incidentes relacionados</div>
       ${incidentesHtml}
     </div>
   `;
@@ -3850,7 +3850,7 @@ function abrirDetalleIncidente(fila) {
     </div>
 
     <div class="ficha-section">
-      <div class="ficha-sec-title">Información general</div>
+      <div class="ficha-sec-title"><span class="ficha-sec-icon">${ic('obra',13)}</span>Información general</div>
       <div class="field-row"><span class="fl">Fecha</span><span class="fv">${esc(i.fecha)}</span></div>
       ${i.trabajador ? `<div class="field-row"><span class="fl">Trabajador</span><span class="fv">${esc(i.trabajador)}</span></div>` : ''}
       <div class="field-row"><span class="fl">Obra</span><span class="fv">${esc(i.obra || '—')}</span></div>
@@ -3859,14 +3859,14 @@ function abrirDetalleIncidente(fila) {
     </div>
 
     <div class="ficha-section">
-      <div class="ficha-sec-title">Descripción</div>
+      <div class="ficha-sec-title"><span class="ficha-sec-icon">${ic('documento',13)}</span>Descripción</div>
       <div class="card-sub" style="white-space:normal;">${esc(i.descripcion) || '—'}</div>
       ${i.causas ? `<div class="sec-label" style="margin-top:14px;">Causas</div><div class="card-sub" style="white-space:normal;">${esc(i.causas)}</div>` : ''}
       ${i.accion ? `<div class="sec-label" style="margin-top:14px;">Acciones correctivas</div><div class="card-sub" style="white-space:normal;">${esc(i.accion)}</div>` : ''}
     </div>
 
     <div class="ficha-section">
-      <div class="ficha-sec-title">Registro</div>
+      <div class="ficha-sec-title"><span class="ficha-sec-icon">${ic('hoja',13)}</span>Registro</div>
       <div class="field-row"><span class="fl">Fecha de registro</span><span class="fv">${esc(i.fechaRegistro || '—')}</span></div>
       <div class="field-row"><span class="fl">Reportado por</span><span class="fv">${esc(i.reportadoPor || '—')}</span></div>
       ${i.foto ? `<div class="field-row"><span class="fl">Foto</span><a href="${esc(i.foto)}" target="_blank" class="badge blue">${ic('camara',12)} Ver foto</a></div>` : ''}
@@ -3875,14 +3875,14 @@ function abrirDetalleIncidente(fila) {
 
     ${i.atencionMedicaEstado ? `
     <div class="ficha-section">
-      <div class="ficha-sec-title">Atención médica</div>
+      <div class="ficha-sec-title"><span class="ficha-sec-icon">${ic('check',13)}</span>Atención médica</div>
       <div class="field-row"><span class="fl">Estado</span><span class="badge ${i.atencionMedicaEstado==='Pendiente'?'amber':'green'}">${esc(i.atencionMedicaEstado)}</span></div>
       ${i.atencionMedicaPdf ? `<div class="field-row"><span class="fl">Documento</span><a href="${esc(i.atencionMedicaPdf)}" target="_blank" class="badge blue">${ic('documento',12)} Ver documento</a></div>` : ''}
     </div>` : ''}
 
     ${i.investigacionEstado ? `
     <div class="ficha-section">
-      <div class="ficha-sec-title">Investigación de accidente</div>
+      <div class="ficha-sec-title"><span class="ficha-sec-icon">${ic('lupa',13)}</span>Investigación de accidente</div>
       <div class="field-row"><span class="fl">Estado</span><span class="badge ${i.investigacionEstado==='Completada'?'green':'amber'}">${esc(i.investigacionEstado)}</span></div>
       ${i.investigacionResponsable ? `<div class="field-row"><span class="fl">Responsable</span><span class="fv">${esc(i.investigacionResponsable)}</span></div>` : ''}
       ${i.investigacionFecha ? `<div class="field-row"><span class="fl">Fecha</span><span class="fv">${esc(i.investigacionFecha)}</span></div>` : ''}
