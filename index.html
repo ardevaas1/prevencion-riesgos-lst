@@ -1326,6 +1326,13 @@
 <script src="config.js"></script>
 <script src="app.js"></script>
 <script>
+  // Nombre de la página/módulo en el que se está AHORA (ver irPagina) — lo
+  // usa openPanel (app.js) para pintar la barra de cualquier panel que se
+  // abra desde acá (formulario, ficha, sub-lista) con el color/ícono de
+  // ESE módulo, aunque el panel en sí no diga el nombre del módulo en
+  // ningún lado (ej. la ficha de un trabajador puntual solo dice su
+  // nombre, nunca "Trabajadores").
+  let paginaActiva = 'inicio';
   const TITULOS_PAGINA = {
     inicio: 'Inicio', inspecciones: 'Inspecciones', incidentes: 'Incidentes y Accidentes',
     procedimientos: 'Procedimientos de Trabajo Seguro', epp: 'Entrega de EPP',
@@ -1361,6 +1368,7 @@
     // (ver miSupervisorPerfil) — por si queda un link/atajo viejo apuntando
     // ahí, se redirige a Inicio en vez de mostrar una página vacía.
     if (nombre === 'epp' && typeof miSupervisorPerfil !== 'undefined' && miSupervisorPerfil) nombre = 'inicio';
+    paginaActiva = nombre;
 
     // Siempre arranca scrolleado arriba del todo — sin esto, el contenedor
     // se queda con el scroll donde haya quedado la navegación anterior (ej.

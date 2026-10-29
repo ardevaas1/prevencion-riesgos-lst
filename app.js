@@ -1787,8 +1787,38 @@ function reactivarBotonesGuardar(scope) {
     if (btn.dataset.textoOriginal !== undefined) { btn.textContent = btn.dataset.textoOriginal; delete btn.dataset.textoOriginal; }
   });
 }
+// Pinta la barra superior de un panel (formulario, ficha, sub-lista) con el
+// color + ícono del módulo en el que se está ahora mismo (ver "paginaActiva"
+// en index.html) — sin esto, un panel que muestra algo puntual (ej. la
+// ficha de "Juan Pérez") no dice en ningún lado que seguís dentro de
+// Trabajadores, a diferencia de la página principal, que sí cambia de
+// color por módulo (ver aplicarColorHeader). Solo toca la barra: los
+// botones de acción (.pnl-action, "‹ Volver") siguen siempre en el naranjo
+// de marca de siempre, para no perder esa consistencia.
+function pintarBarraPanelConModulo(el) {
+  const barra = el.querySelector(':scope > .panel-bar');
+  if (!barra) return;
+  const color = (typeof paginaActiva !== 'undefined' && MODULOS_COLOR[paginaActiva]) || '';
+  barra.className = 'panel-bar' + (color ? ' panel-bar--' + color : '');
+  // El chip se mete DENTRO de .pnl-title (primer hijo), no como hermano
+  // suelto en la barra — así no altera el balance de 3 columnas
+  // (Volver / título / acción) que arma el space-between de .panel-bar.
+  const titleEl = barra.querySelector('.pnl-title');
+  let chip = titleEl && titleEl.querySelector('.panel-bar-mod-icon');
+  if (color && titleEl) {
+    if (!chip) {
+      chip = document.createElement('span');
+      chip.className = 'panel-bar-mod-icon';
+      titleEl.insertAdjacentElement('afterbegin', chip);
+    }
+    chip.innerHTML = ic(paginaActiva, 13);
+  } else if (chip) {
+    chip.remove();
+  }
+}
 function openPanel(id) {
   const el = document.getElementById(id);
+  pintarBarraPanelConModulo(el);
   // Red de seguridad extra contra el botón "Guardando..." que pudiera
   // quedar pegado (ver listener de submit más arriba): cada vez que se
   // abre un panel, sus botones de guardar quedan frescos y listos.
