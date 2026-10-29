@@ -305,7 +305,10 @@ const DOCS_TRABAJADOR = [
 // funcionando igual (solo sin el atajo), nunca bloquea nada.
 const IRL_POR_CARGO = [
   { cargo: 'Gerente General', archivo: 'plantillas/irl/IRL_01_Gerente_General.docx' },
-  { cargo: 'Administrativo', archivo: 'plantillas/irl/IRL_02_Administrativo.docx' },
+  // "Administrativa Entidad Patrocinante LST" es el mismo rol de oficina,
+  // solo con el nombre de la entidad pegado al cargo — ver el listado real
+  // de cargos que mandó el usuario.
+  { cargo: 'Administrativo', alias: ['Administrativa Entidad Patrocinante LST'], archivo: 'plantillas/irl/IRL_02_Administrativo.docx' },
   // "Constructor Residente" es el mismo rol con otro nombre — así está
   // escrito en la base de datos real de un trabajador (LST_-_Prevención_de_
   // Riesgos_Base_de_Datos) — se agrega como alias en vez de una entrada
@@ -313,7 +316,9 @@ const IRL_POR_CARGO = [
   { cargo: 'Residente de Obra', alias: ['Constructor Residente'], archivo: 'plantillas/irl/IRL_03_Residente_de_Obra.docx' },
   { cargo: 'Jefe de Obra', archivo: 'plantillas/irl/IRL_04_Jefe_de_Obra.docx' },
   { cargo: 'Capataz', archivo: 'plantillas/irl/IRL_05_Capataz.docx' },
-  { cargo: 'Prevencionista de Riesgos', archivo: 'plantillas/irl/IRL_06_Prevencionista_de_Riesgos.docx' },
+  // "Asesor de Prevención de Riesgos" es el mismo rol profesional, término
+  // más común en el listado real que "Prevencionista de Riesgos".
+  { cargo: 'Prevencionista de Riesgos', alias: ['Asesor de Prevención de Riesgos'], archivo: 'plantillas/irl/IRL_06_Prevencionista_de_Riesgos.docx' },
   { cargo: 'Bodeguero', archivo: 'plantillas/irl/IRL_07_Bodeguero.docx' },
   { cargo: 'Jornal', archivo: 'plantillas/irl/IRL_08_Jornal.docx' },
   { cargo: 'Carpintero', archivo: 'plantillas/irl/IRL_09_Carpintero.docx' },
@@ -322,13 +327,21 @@ const IRL_POR_CARGO = [
   { cargo: 'Concretero', archivo: 'plantillas/irl/IRL_12_Concretero.docx' },
   { cargo: 'Pintor', archivo: 'plantillas/irl/IRL_13_Pintor.docx' },
   { cargo: 'Ceramista', archivo: 'plantillas/irl/IRL_14_Ceramista.docx' },
-  { cargo: 'Electricista', archivo: 'plantillas/irl/IRL_15_Electricista.docx' },
+  // "Eléctrico" es la misma forma corta/coloquial de "Electricista" en el
+  // listado real.
+  { cargo: 'Electricista', alias: ['Eléctrico'], archivo: 'plantillas/irl/IRL_15_Electricista.docx' },
   { cargo: 'Gasfiter', archivo: 'plantillas/irl/IRL_16_Gasfiter.docx' },
   { cargo: 'Soldador', archivo: 'plantillas/irl/IRL_17_Soldador.docx' },
-  { cargo: 'Operador de Maquinaria', archivo: 'plantillas/irl/IRL_18_Operador_de_Maquinaria.docx' },
-  { cargo: 'Conductor', archivo: 'plantillas/irl/IRL_19_Conductor.docx' },
+  // "Operador Retroexcavadora"/"Operador de Retroexcavadora" son un tipo
+  // específico de maquinaria dentro de la categoría general.
+  { cargo: 'Operador de Maquinaria', alias: ['Operador Retroexcavadora', 'Operador de Retroexcavadora'], archivo: 'plantillas/irl/IRL_18_Operador_de_Maquinaria.docx' },
+  // "Chofer de Camión" es el mismo rol de manejo que "Conductor", término
+  // más usado en el listado real.
+  { cargo: 'Conductor', alias: ['Chofer de Camión'], archivo: 'plantillas/irl/IRL_19_Conductor.docx' },
   { cargo: 'Techador Hojalatero', archivo: 'plantillas/irl/IRL_20_Techador_Hojalatero.docx' },
-  { cargo: 'Guardia Nochero', archivo: 'plantillas/irl/IRL_21_Guardia_Nochero.docx' },
+  // "Guardia de Seguridad" es el mismo rol de vigilancia que "Guardia
+  // Nochero" (la plantilla no distingue turno día/noche).
+  { cargo: 'Guardia Nochero', alias: ['Guardia de Seguridad'], archivo: 'plantillas/irl/IRL_21_Guardia_Nochero.docx' },
 ];
 // Compara el Cargo de un trabajador contra IRL_POR_CARGO tolerando
 // mayúsculas/acentos/espacios de más — mismo criterio que normalizarEmpresa,
