@@ -2542,6 +2542,7 @@ function abrirFichaTrabajador(nombre) {
   const t = allTrabajadores.find(x => x.nombre === nombre);
   if (!t) { toast('No se encontró el trabajador', 'error'); return; }
 
+  const plantillaIrl = plantillaIrlParaCargo(t.cargo);
   const eppDeEste = allEpp.filter(e => e.trabajador === nombre);
   const grupos = {};
   const orden = [];
@@ -2625,6 +2626,13 @@ function abrirFichaTrabajador(nombre) {
       <div class="field-row"><span class="fl">Obra</span><span class="fv">${esc(t.obra || '—')}</span></div>
       <div class="field-row"><span class="fl">Fecha de ingreso</span><span class="fv">${esc(t.fechaIngreso || '—')}</span></div>
       ${t.foto ? `<div class="field-row"><span class="fl">Foto</span><a href="${esc(t.foto)}" target="_blank" class="badge blue">${ic('camara',12)} Ver foto</a></div>` : ''}
+    </div>
+
+    <div class="ficha-section">
+      <div class="ficha-sec-title">IRL — Actividades a desarrollar</div>
+      ${plantillaIrl
+        ? `<div class="field-row"><span class="fl">Plantilla según su cargo (${esc(t.cargo)})</span><a href="${esc(plantillaIrl.archivo)}" target="_blank" class="badge blue">${ic('documento',12)} Descargar</a></div>`
+        : `<div class="card-sub" style="padding:6px 2px;">No hay una plantilla de IRL asociada al cargo "${esc(t.cargo || 'sin especificar')}".</div>`}
     </div>
 
     <div class="ficha-section">
