@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lst-prevencion-shell-v51';
+const CACHE_NAME = 'lst-prevencion-shell-v52';
 // Archivos de código/shell: cambian seguido mientras se sigue desarrollando
 // la app — necesitan "network-first" (siempre intentar la versión más
 // nueva) para que un cambio recién publicado se vea de inmediato con un
@@ -44,6 +44,27 @@ const APP_SHELL = [
   './plantillas/programas/SGSST-PER-009_Inspeccion_Seguridad_Esmeril_Angular.pdf',
   './plantillas/programas/SGSST-PER-010_Charla_de_Seguridad.pdf',
   './plantillas/programas/SGSST-PER-011_Hoja_de_Control_de_Riesgos_HCR.pdf',
+  './plantillas/irl/IRL_01_Gerente_General.docx',
+  './plantillas/irl/IRL_02_Administrativo.docx',
+  './plantillas/irl/IRL_03_Residente_de_Obra.docx',
+  './plantillas/irl/IRL_04_Jefe_de_Obra.docx',
+  './plantillas/irl/IRL_05_Capataz.docx',
+  './plantillas/irl/IRL_06_Prevencionista_de_Riesgos.docx',
+  './plantillas/irl/IRL_07_Bodeguero.docx',
+  './plantillas/irl/IRL_08_Jornal.docx',
+  './plantillas/irl/IRL_09_Carpintero.docx',
+  './plantillas/irl/IRL_10_Albanil.docx',
+  './plantillas/irl/IRL_11_Enfierrador.docx',
+  './plantillas/irl/IRL_12_Concretero.docx',
+  './plantillas/irl/IRL_13_Pintor.docx',
+  './plantillas/irl/IRL_14_Ceramista.docx',
+  './plantillas/irl/IRL_15_Electricista.docx',
+  './plantillas/irl/IRL_16_Gasfiter.docx',
+  './plantillas/irl/IRL_17_Soldador.docx',
+  './plantillas/irl/IRL_18_Operador_de_Maquinaria.docx',
+  './plantillas/irl/IRL_19_Conductor.docx',
+  './plantillas/irl/IRL_20_Techador_Hojalatero.docx',
+  './plantillas/irl/IRL_21_Guardia_Nochero.docx',
 ];
 
 self.addEventListener('install', (event) => {
