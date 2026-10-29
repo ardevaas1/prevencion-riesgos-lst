@@ -342,6 +342,34 @@ const IRL_POR_CARGO = [
   // "Guardia de Seguridad" es el mismo rol de vigilancia que "Guardia
   // Nochero" (la plantilla no distingue turno día/noche).
   { cargo: 'Guardia Nochero', alias: ['Guardia de Seguridad'], archivo: 'plantillas/irl/IRL_21_Guardia_Nochero.docx' },
+  // Cargos de oficina/administración y profesionales que no tenían
+  // plantilla al principio — agregados a pedido, a partir del listado real
+  // de cargos de la nómina ("IRL_Cargos_Pendientes_en_blanco").
+  { cargo: 'Gerente de Desarrollo Social', archivo: 'plantillas/irl/IRL_22_Gerente_Desarrollo_Social.docx' },
+  { cargo: 'Arquitecto', alias: ['Arquitecta'], archivo: 'plantillas/irl/IRL_23_Arquitecto_a.docx' },
+  { cargo: 'Asistente Social', archivo: 'plantillas/irl/IRL_24_Asistente_Social.docx' },
+  { cargo: 'Constructor Civil', archivo: 'plantillas/irl/IRL_25_Constructor_Civil.docx' },
+  { cargo: 'Constructor Civil Presupuesto', archivo: 'plantillas/irl/IRL_26_Constructor_Civil_Presupuesto.docx' },
+  { cargo: 'Encargado de Departamento de RRHH', archivo: 'plantillas/irl/IRL_27_Encargado_RR_HH.docx' },
+  // "Mantención" a secas (así aparece suelto en la nómina real) se trata
+  // como alias de este — es el cargo más cercano de los 41 conocidos.
+  { cargo: 'Encargado de Mantención y Reparación de Maquinaria, Vehículos, Camionetas y Camiones', alias: ['Mantención'], archivo: 'plantillas/irl/IRL_28_Encargado_Mantencion_Maquinaria.docx' },
+  { cargo: 'Ayudante de Bodega', archivo: 'plantillas/irl/IRL_29_Ayudante_de_Bodega.docx' },
+  { cargo: 'Coordinador Técnico de Ejecución de Obras Habitacionales', archivo: 'plantillas/irl/IRL_30_Coordinador_Tecnico_Obras.docx' },
+  { cargo: 'Jefe de Terreno', archivo: 'plantillas/irl/IRL_31_Jefe_de_Terreno.docx' },
+  // "Supervisor", "Supervisor de Obra" y "Supervisor de Obra, Maquinaria y
+  // Vehículos" son TRES plantillas distintas a propósito (así vinieron) —
+  // no se alias entre ellas, aunque suenen parecidas.
+  { cargo: 'Supervisor', archivo: 'plantillas/irl/IRL_32_Supervisor.docx' },
+  { cargo: 'Supervisor de Obra', archivo: 'plantillas/irl/IRL_33_Supervisor_de_Obra.docx' },
+  { cargo: 'Supervisor de Obra, Maquinaria y Vehículos', archivo: 'plantillas/irl/IRL_34_Supervisor_Obra_Maq_y_Veh.docx' },
+  { cargo: 'Autocontrol', archivo: 'plantillas/irl/IRL_35_Autocontrol.docx' },
+  { cargo: 'Asistente de Oficina Técnica', archivo: 'plantillas/irl/IRL_36_Asistente_Oficina_Tecnica.docx' },
+  { cargo: 'Ejecutiva de Administración y Adquisiciones', archivo: 'plantillas/irl/IRL_37_Ejecutiva_Adm_y_Adquisiciones.docx' },
+  { cargo: 'Ingeniero Civil', archivo: 'plantillas/irl/IRL_38_Ingeniero_Civil.docx' },
+  { cargo: 'Contador', archivo: 'plantillas/irl/IRL_39_Contador.docx' },
+  { cargo: 'Ingeniero Constructor área Postventa', alias: ['Ingeniero Constructor Area Postventa y Ejecutivo de Administracion y Adquisiciones'], archivo: 'plantillas/irl/IRL_40_Ing_Constructor_Postventa.docx' },
+  { cargo: 'Directora de Finanzas', archivo: 'plantillas/irl/IRL_41_Directora_de_Finanzas.docx' },
 ];
 // Compara el Cargo de un trabajador contra IRL_POR_CARGO tolerando
 // mayúsculas/acentos/espacios de más — mismo criterio que normalizarEmpresa,
