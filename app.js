@@ -306,7 +306,11 @@ const DOCS_TRABAJADOR = [
 const IRL_POR_CARGO = [
   { cargo: 'Gerente General', archivo: 'plantillas/irl/IRL_01_Gerente_General.docx' },
   { cargo: 'Administrativo', archivo: 'plantillas/irl/IRL_02_Administrativo.docx' },
-  { cargo: 'Residente de Obra', archivo: 'plantillas/irl/IRL_03_Residente_de_Obra.docx' },
+  // "Constructor Residente" es el mismo rol con otro nombre — así está
+  // escrito en la base de datos real de un trabajador (LST_-_Prevención_de_
+  // Riesgos_Base_de_Datos) — se agrega como alias en vez de una entrada
+  // aparte, para no duplicar la plantilla.
+  { cargo: 'Residente de Obra', alias: ['Constructor Residente'], archivo: 'plantillas/irl/IRL_03_Residente_de_Obra.docx' },
   { cargo: 'Jefe de Obra', archivo: 'plantillas/irl/IRL_04_Jefe_de_Obra.docx' },
   { cargo: 'Capataz', archivo: 'plantillas/irl/IRL_05_Capataz.docx' },
   { cargo: 'Prevencionista de Riesgos', archivo: 'plantillas/irl/IRL_06_Prevencionista_de_Riesgos.docx' },
@@ -335,7 +339,7 @@ function normalizarCargo(c) {
 function plantillaIrlParaCargo(cargo) {
   const buscado = normalizarCargo(cargo);
   if (!buscado) return null;
-  return IRL_POR_CARGO.find(p => normalizarCargo(p.cargo) === buscado) || null;
+  return IRL_POR_CARGO.find(p => normalizarCargo(p.cargo) === buscado || (p.alias || []).some(a => normalizarCargo(a) === buscado)) || null;
 }
 
 const NIVELES_RIESGO = [
