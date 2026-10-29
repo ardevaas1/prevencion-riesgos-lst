@@ -270,13 +270,16 @@ const ITEM_PROTOCOLOS_MINSAL_TRABAJADOR = 'Registro de difusión Protocolos Mins
 // agregar uno nuevo, pero no son una lista cerrada: el subcontratista puede
 // escribir cualquier otro nombre si corresponde.
 const PROTOCOLOS_MINSAL_SUGERIDOS = ['Radiación UV', 'MMC', 'PLANESI', 'TMRT', 'PREXOR', 'Vibraciones', 'Psicosocial'];
+// Nombre exacto del ítem de IRL (Informe de Riesgos Laborales) — constante
+// aparte para no repetir el string literal (ver IRL_POR_CARGO más abajo).
+const ITEM_IRL_ACTIVIDADES_TRABAJADOR = 'IRL — Actividades a desarrollar';
 const DOCS_TRABAJADOR = [
   'Exámenes ocupacionales (altura física sobre 1,8 m o espacios confinados, según corresponda)',
   'Registro difusión Plan de gestión del riesgo y desastre',
   'Difusión Política SSO',
   'Registro entrega de EPP',
   'Registro de capacitación uso, mantención y almacenamiento de EPP',
-  'IRL — Actividades a desarrollar',
+  ITEM_IRL_ACTIVIDADES_TRABAJADOR,
   'Recepción de Reglamento Interno',
   'Difusión Miper',
   'Difusión Procedimientos de trabajo seguro — riesgos críticos',
@@ -291,6 +294,49 @@ const DOCS_TRABAJADOR = [
   'Informativo Canal de denuncias Ley Karin',
   'Re-instrucciones (según se soliciten)',
 ];
+
+// Plantillas de IRL (Informe de Riesgos Laborales) en blanco, una por
+// cargo — ver plantillas/irl/. Al ítem "IRL — Actividades a desarrollar"
+// de cada trabajador (ver filaIrlTrabajador) se le agrega automáticamente
+// el link de descarga de la plantilla que corresponde a SU Cargo (ej. un
+// carpintero ve la de Carpintero), para que la empresa no tenga que andar
+// buscando cuál usar. Si el Cargo no calza con ninguna de esta lista,
+// simplemente no se muestra ninguna sugerencia — el checklist sigue
+// funcionando igual (solo sin el atajo), nunca bloquea nada.
+const IRL_POR_CARGO = [
+  { cargo: 'Gerente General', archivo: 'plantillas/irl/IRL_01_Gerente_General.docx' },
+  { cargo: 'Administrativo', archivo: 'plantillas/irl/IRL_02_Administrativo.docx' },
+  { cargo: 'Residente de Obra', archivo: 'plantillas/irl/IRL_03_Residente_de_Obra.docx' },
+  { cargo: 'Jefe de Obra', archivo: 'plantillas/irl/IRL_04_Jefe_de_Obra.docx' },
+  { cargo: 'Capataz', archivo: 'plantillas/irl/IRL_05_Capataz.docx' },
+  { cargo: 'Prevencionista de Riesgos', archivo: 'plantillas/irl/IRL_06_Prevencionista_de_Riesgos.docx' },
+  { cargo: 'Bodeguero', archivo: 'plantillas/irl/IRL_07_Bodeguero.docx' },
+  { cargo: 'Jornal', archivo: 'plantillas/irl/IRL_08_Jornal.docx' },
+  { cargo: 'Carpintero', archivo: 'plantillas/irl/IRL_09_Carpintero.docx' },
+  { cargo: 'Albañil', archivo: 'plantillas/irl/IRL_10_Albanil.docx' },
+  { cargo: 'Enfierrador', archivo: 'plantillas/irl/IRL_11_Enfierrador.docx' },
+  { cargo: 'Concretero', archivo: 'plantillas/irl/IRL_12_Concretero.docx' },
+  { cargo: 'Pintor', archivo: 'plantillas/irl/IRL_13_Pintor.docx' },
+  { cargo: 'Ceramista', archivo: 'plantillas/irl/IRL_14_Ceramista.docx' },
+  { cargo: 'Electricista', archivo: 'plantillas/irl/IRL_15_Electricista.docx' },
+  { cargo: 'Gasfiter', archivo: 'plantillas/irl/IRL_16_Gasfiter.docx' },
+  { cargo: 'Soldador', archivo: 'plantillas/irl/IRL_17_Soldador.docx' },
+  { cargo: 'Operador de Maquinaria', archivo: 'plantillas/irl/IRL_18_Operador_de_Maquinaria.docx' },
+  { cargo: 'Conductor', archivo: 'plantillas/irl/IRL_19_Conductor.docx' },
+  { cargo: 'Techador Hojalatero', archivo: 'plantillas/irl/IRL_20_Techador_Hojalatero.docx' },
+  { cargo: 'Guardia Nochero', archivo: 'plantillas/irl/IRL_21_Guardia_Nochero.docx' },
+];
+// Compara el Cargo de un trabajador contra IRL_POR_CARGO tolerando
+// mayúsculas/acentos/espacios de más — mismo criterio que normalizarEmpresa,
+// para que "carpintero", "Carpintero " o "CARPINTERO" calcen igual.
+function normalizarCargo(c) {
+  return (c || '').toString().trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ');
+}
+function plantillaIrlParaCargo(cargo) {
+  const buscado = normalizarCargo(cargo);
+  if (!buscado) return null;
+  return IRL_POR_CARGO.find(p => normalizarCargo(p.cargo) === buscado) || null;
+}
 
 const NIVELES_RIESGO = [
   { value: 'Bajo',  color: 'green' },
@@ -5391,7 +5437,7 @@ async function notificarRechazoDocumento(empresa, descripcion, motivo) {
 // carpeta compartida por ítem que usan Carpeta de empresa/Control mensual
 // (Subcontratistas/{empresa}/{ítem}/, mezclada entre todos los
 // trabajadores) — ver onSubirDocSubcontratista.
-function filaChecklistSubcontratista(empresa, categoria, item, periodo, nombreTrabajador) {
+function filaChecklistSubcontratista(empresa, categoria, item, periodo, nombreTrabajador, notaExtraHtml) {
   const docs = docsSubcontratista(empresa, categoria, item, periodo).slice().reverse();
   const hayRechazo = docs.some(d => d.estado === 'Rechazado');
   return `
@@ -5406,6 +5452,7 @@ function filaChecklistSubcontratista(empresa, categoria, item, periodo, nombreTr
       </div>
       <div class="subcont-doctrab-body">
         <div class="subcont-doctrab-inner">
+          ${notaExtraHtml || ''}
           ${docs.map(d => `
             <div class="doc-row"><a class="badge blue" href="${esc(d.link)}" target="_blank">${ic('documento',12)} Ver</a><span style="font-size:11px;color:#888;">${esc((d.fecha||'').split(',')[0] || d.fecha)}</span>${badgeEstadoDocSubcontratista(d)}${accionesRevisionDocSubcontratista(d)}${botonEliminarDocSubcontratista(d, empresa)}</div>
             ${motivoRechazoHtml(d)}
@@ -5484,6 +5531,20 @@ function bloqueProtocolosMinsalTrabajador(empresa, categoriaMinsal, nombreTrabaj
       </div>
     </div>`;
 }
+// Nota que se inserta arriba del ítem "IRL — Actividades a desarrollar" de
+// un trabajador, ofreciendo el link de descarga de la plantilla que
+// corresponde a SU Cargo (ver IRL_POR_CARGO/plantillaIrlParaCargo) — vacío
+// si el Cargo no calza con ninguna conocida, para no mostrar un bloque sin
+// sentido.
+function notaPlantillaIrl(t) {
+  const plantilla = plantillaIrlParaCargo(t.cargo);
+  if (!plantilla) return '';
+  return `
+    <div class="doc-row" style="background:var(--neutral-soft);border-radius:8px;padding:8px 10px;border-bottom:none;margin-bottom:6px;">
+      <span style="font-size:12px;color:var(--ink-soft);">${ic('documento',12)} Plantilla sugerida según su cargo (<b>${esc(t.cargo)}</b>)</span>
+      <a class="badge blue" href="${esc(plantilla.archivo)}" target="_blank">Descargar</a>
+    </div>`;
+}
 function bloqueDocTrabajador(empresa, t) {
   const categoria = categoriaDocTrabajador(t);
   const categoriaMinsal = categoriaProtocolosMinsalTrabajador(t);
@@ -5505,7 +5566,7 @@ function bloqueDocTrabajador(empresa, t) {
         <div class="subcont-doctrab-inner">
           ${DOCS_TRABAJADOR.map(item => item === ITEM_PROTOCOLOS_MINSAL_TRABAJADOR
             ? bloqueProtocolosMinsalTrabajador(empresa, categoriaMinsal, t.nombre, protocolosMinsal)
-            : filaChecklistSubcontratista(empresa, categoria, item, null, t.nombre)
+            : filaChecklistSubcontratista(empresa, categoria, item, null, t.nombre, item === ITEM_IRL_ACTIVIDADES_TRABAJADOR ? notaPlantillaIrl(t) : null)
           ).join('')}
           <div class="subcont-row-nombre" style="margin-top:16px;font-size:12px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.02em;">Otros documentos</div>
           ${otros.length ? otros.map(d => `
