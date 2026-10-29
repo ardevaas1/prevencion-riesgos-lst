@@ -2067,7 +2067,7 @@ async function cargarTodo(silencioso) {
       `'${CONFIG.SHEET_INSPECCIONES}'!A2:M2000`,
       `'${CONFIG.SHEET_INCIDENTES}'!A2:V2000`,
       `'${CONFIG.SHEET_PROCEDIMIENTOS}'!A2:I2000`,
-      `'${CONFIG.SHEET_EPP}'!A2:J2000`,
+      `'${CONFIG.SHEET_EPP}'!A2:K2000`,
       `'${CONFIG.SHEET_CHARLAS}'!A2:N2000`,
       `'${CONFIG.SHEET_DOCUMENTOS_PENDIENTES}'!A2:K4000`,
       `'${CONFIG.SHEET_INVESTIGACIONES}'!A2:AT2000`,
@@ -2187,7 +2187,8 @@ function rowToProcedimiento(r, i) {
 }
 function rowToEpp(r, i) {
   return { fila: i+2, n: r[0]||'', fecha: r[1]||'', trabajador: r[2]||'', rut: r[3]||'', epp: r[4]||'',
-    cantidad: r[5]||'', firma: r[6]||'', responsable: r[7]||'', fechaRegistro: r[8]||'', documento: r[9]||'' };
+    cantidad: r[5]||'', firma: r[6]||'', responsable: r[7]||'', fechaRegistro: r[8]||'', documento: r[9]||'',
+    fotos: r[10]||'' };
 }
 function rowToUsuario(r, i) {
   return { fila: i+2, correo: (r[0]||'').trim().toLowerCase(), rol: (r[1]||'').trim().toLowerCase(),
@@ -2623,7 +2624,7 @@ function abrirFichaTrabajador(nombre) {
   const orden = [];
   eppDeEste.forEach(e => {
     const key = e.fecha + '|' + e.firma;
-    if (!grupos[key]) { grupos[key] = { fecha: e.fecha, firma: e.firma, documento: e.documento, items: [] }; orden.push(key); }
+    if (!grupos[key]) { grupos[key] = { fecha: e.fecha, firma: e.firma, documento: e.documento, fotos: e.fotos, items: [] }; orden.push(key); }
     grupos[key].items.push(...itemsDeFilaEpp(e).map(x => `${x.item} (${x.cantidad})`));
   });
   const entregasHtml = orden.length === 0
@@ -2634,6 +2635,8 @@ function abrirFichaTrabajador(nombre) {
           <span class="badge-row" style="justify-content:flex-end;">
             ${g.documento ? `<a href="${esc(g.documento)}" target="_blank" class="badge blue">${ic('documento',12)} Documento</a>` : ''}
             ${g.firma ? `<a href="${esc(g.firma)}" target="_blank" class="badge blue">${ic('firma',12)} Firma</a>` : ''}
+            ${(g.fotos || '').split(';').map(l => l.trim()).filter(Boolean).map((link, i) =>
+              `<a href="${esc(link)}" target="_blank" class="badge blue">${ic('camara',12)} Foto ${i + 1}</a>`).join('')}
           </span>
         </div>`).join('');
 
@@ -6274,7 +6277,7 @@ function renderEpp() {
   const orden = [];
   eppObra.forEach(e => {
     const key = e.fecha + '|' + e.trabajador + '|' + e.firma;
-    if (!grupos[key]) { grupos[key] = { fecha: e.fecha, trabajador: e.trabajador, firma: e.firma, documento: e.documento, items: [] }; orden.push(key); }
+    if (!grupos[key]) { grupos[key] = { fecha: e.fecha, trabajador: e.trabajador, firma: e.firma, documento: e.documento, fotos: e.fotos, items: [] }; orden.push(key); }
     grupos[key].items.push(...itemsDeFilaEpp(e).map(x => `${x.item} (${x.cantidad})`));
   });
   const items = orden.map(k => grupos[k]).reverse();
@@ -6290,6 +6293,8 @@ function renderEpp() {
         <div class="card-sub">${esc(g.items.join(' · '))}</div>
         <div class="badge-row">
           ${g.documento ? `<a href="${esc(g.documento)}" target="_blank" class="badge blue">${ic('documento',12)} Ver documento</a>` : '<span class="badge gray">Sin documento</span>'}
+          ${(g.fotos || '').split(';').map(l => l.trim()).filter(Boolean).map((link, i) =>
+            `<a href="${esc(link)}" target="_blank" class="badge blue">${ic('camara',12)} Foto ${i + 1}</a>`).join('')}
         </div>
       </div>
     </div>`).join(''));
@@ -6360,10 +6365,41 @@ function recolectarItemsEpp() {
   return items;
 }
 
+// Fotos tomadas "en el momento" de una entrega de EPP (ej. antes/después de
+// entregar) — un array en memoria de { file, url } mientras se arma el
+// formulario; recién se suben a Drive al guardar (ver guardarEpp), porque
+// datosParaFinalizar se guarda como JSON en localStorage y un File/Blob no
+// sobrevive ese JSON.stringify.
+let fotosEppSeleccionadas = [];
+function onFotoEppElegida(inputEl) {
+  const file = inputEl.files[0];
+  inputEl.value = ''; // permite volver a tocar "Tomar foto" para la siguiente
+  if (!file) return;
+  fotosEppSeleccionadas.push({ file, url: URL.createObjectURL(file) });
+  renderFotosEppGrid();
+}
+function quitarFotoEpp(i) {
+  const [removida] = fotosEppSeleccionadas.splice(i, 1);
+  if (removida) URL.revokeObjectURL(removida.url);
+  renderFotosEppGrid();
+}
+function renderFotosEppGrid() {
+  const el = document.getElementById('fotos-epp-grid');
+  if (!el) return;
+  el.innerHTML = fotosEppSeleccionadas.map((foto, i) => `
+    <div class="foto-epp-thumb">
+      <img src="${foto.url}" alt="Foto ${i + 1}">
+      <button type="button" class="foto-epp-del" onclick="quitarFotoEpp(${i})">✕</button>
+    </div>`).join('');
+}
+
 // prefillItem/prefillTrabajador: usados por la sugerencia de "reponer EPP" al cerrar un incidente
 function abrirFormEpp(prefillItem, prefillTrabajador) {
   const f = document.getElementById('form-epp');
   f.reset();
+  fotosEppSeleccionadas.forEach(foto => URL.revokeObjectURL(foto.url));
+  fotosEppSeleccionadas = [];
+  renderFotosEppGrid();
   f.fecha.value = hoyISO();
   document.getElementById('sel-trabajador-epp').innerHTML =
     '<option value="">— Selecciona un trabajador —</option>' + selectTrabajadoresOptions();
@@ -6525,13 +6561,27 @@ async function guardarEpp(ev) {
     const responsable = userEmail || f.responsable.value;
     const itemsTexto = itemsEpp.map(it => `${it.item} (${it.cantidad})`).join('; ');
 
+    // Las fotos se suben ahora (no en finalizarEpp) porque el trabajador
+    // puede firmar minutos/horas después desde su propio celular — mejor no
+    // tener el File en memoria esperando todo ese rato. Solo el link de
+    // Drive (texto) viaja en datosParaFinalizar.
+    const fotosLinks = [];
+    for (let i = 0; i < fotosEppSeleccionadas.length; i++) {
+      const up = await uploadFileTrabajadorEnModulo(fotosEppSeleccionadas[i].file, 'Entrega de EPP', trabNombre, 'foto_epp_' + (i + 1));
+      fotosLinks.push(up.link);
+    }
+    const fotosTexto = fotosLinks.join('; ');
+    fotosEppSeleccionadas.forEach(foto => URL.revokeObjectURL(foto.url));
+    fotosEppSeleccionadas = [];
+    renderFotosEppGrid();
+
     closePanel('panel-form-epp');
     const idDocumento = await crearDocumentoEnCurso('epp', {
       obra: trab ? trab.obra : '', fecha: f.fecha.value, titulo: itemsTexto,
       responsable, asistentes: [{ nombre: trabNombre, rut: trabRut }],
       datosParaFinalizar: {
         obra: trab ? trab.obra : '', fecha: f.fecha.value, trabNombre, trabRut,
-        cargo: trab ? trab.cargo : '', itemsEpp, responsable, fechaRegistro, horaRegistro,
+        cargo: trab ? trab.cargo : '', itemsEpp, responsable, fechaRegistro, horaRegistro, fotos: fotosTexto,
       },
     });
     toast('Entrega creada — esperando firma ✓', 'ok');
@@ -6555,7 +6605,7 @@ FINALIZADORES_DOCUMENTO_PENDIENTE.epp = async function (meta, filas) {
 async function finalizarEpp(datos) {
   try {
     toast('Generando documento...');
-    const { obra, fecha, trabNombre, trabRut, cargo, itemsEpp, responsable, fechaRegistro, horaRegistro, firma } = datos;
+    const { obra, fecha, trabNombre, trabRut, cargo, itemsEpp, responsable, fechaRegistro, horaRegistro, firma, fotos } = datos;
 
     const imgFirma = await cargarImagenDesdeDataUrl(firma);
     const canvasFirma = firmaConIdentificacion(imgFirma, trabNombre, trabRut, fecha, horaRegistro);
@@ -6590,9 +6640,9 @@ async function finalizarEpp(datos) {
     // (misma fecha/trabajador/firma repetidos), y una sola entrega se veía
     // como varias entregas duplicadas.
     const itemsTexto = itemsEpp.map(it => `${it.item} (${it.cantidad})`).join('; ');
-    await appendSheet(`'${CONFIG.SHEET_EPP}'!A:J`, [[
+    await appendSheet(`'${CONFIG.SHEET_EPP}'!A:K`, [[
       allEpp.length + 1, fecha, trabNombre, trabRut, itemsTexto, '',
-      firmaLink, responsable, fechaRegistro, documentoLink
+      firmaLink, responsable, fechaRegistro, documentoLink, fotos || ''
     ]]);
     toast(`Entrega registrada ✓ (${itemsEpp.length} ítem${itemsEpp.length>1?'s':''})`, 'ok');
   } catch (e) { toast(e.message, 'error'); }

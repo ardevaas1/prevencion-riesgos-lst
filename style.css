@@ -999,6 +999,27 @@ a.action-btn { text-decoration: none; }
    registró. */
 .upload-label.subiendo { opacity: .6; cursor: wait; pointer-events: none; }
 
+/* Fotos tomadas en el momento (ver onFotoEppElegida en app.js) — cada toque
+   en "Tomar foto" abre la cámara una vez y agrega una miniatura más a esta
+   grilla, en vez de reemplazar la anterior, para poder dejar varias fotos
+   en una misma entrega (ej. antes/después de entregar el EPP). */
+.fotos-epp-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 8px;
+  margin-top: 10px;
+}
+.fotos-epp-grid:empty { display: none; }
+.foto-epp-thumb {
+  position: relative; aspect-ratio: 1; border-radius: 10px; overflow: hidden;
+  border: 1px solid var(--line); background: var(--neutral-soft);
+}
+.foto-epp-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.foto-epp-del {
+  position: absolute; top: 3px; right: 3px; width: 20px; height: 20px;
+  border-radius: 50%; border: none; background: rgba(0,0,0,0.6); color: #fff;
+  font-size: 13px; line-height: 1; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; padding: 0;
+}
+
 /* Arrastrar y soltar (ver app.js) — solo en escritorio, mismo quiebre que
    el resto de la UI de escritorio. En mobile el label se ve igual que
    siempre, sin el aviso ni el resaltado de "sobre la zona de destino". */
