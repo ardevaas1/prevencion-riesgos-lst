@@ -1580,6 +1580,7 @@ const ICONS = {
   check: '<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/><path d="M8 12.3l2.5 2.5L16 9.5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   alerta: '<svg viewBox="0 0 24 24" fill="none"><path d="M12 3 2 20h20L12 3Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M12 9.5v4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="17" r="1" fill="currentColor"/></svg>',
   correo: '<svg viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="m4 7 8 6 8-6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  cumpleanos: '<svg viewBox="0 0 24 24" fill="none"><rect x="4" y="13" width="16" height="7" rx="1.5" stroke="currentColor" stroke-width="1.7"/><path d="M4 16.5c1.3.9 2.2-.8 3.5 0s2.2-.8 3.5 0 2.2-.8 3.5 0 2.2-.8 3.5 0" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 13V9.5M12 13V8M16 13V9.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M8 9.5c-.9-.5-.9-1.4 0-2M12 8c-.9-.5-.9-1.4 0-2M16 9.5c-.9-.5-.9-1.4 0-2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>',
 };
 // La tarjeta de Capacitación DS44 en el home usa la misma clave que su
 // color (`capacitacionds44`, ver MODULOS_COLOR) — nunca se le había
@@ -1796,6 +1797,7 @@ function reactivarBotonesGuardar(scope) {
 // botones de acción (.pnl-action, "‹ Volver") siguen siempre en el naranjo
 // de marca de siempre, para no perder esa consistencia.
 function pintarBarraPanelConModulo(el) {
+  if (!el) return;
   const barra = el.querySelector(':scope > .panel-bar');
   if (!barra) return;
   const color = (typeof paginaActiva !== 'undefined' && MODULOS_COLOR[paginaActiva]) || '';
@@ -1818,6 +1820,12 @@ function pintarBarraPanelConModulo(el) {
 }
 function openPanel(id) {
   const el = document.getElementById(id);
+  // Si el panel no existe en el HTML servido (típico: el navegador quedó
+  // con una versión del HTML más vieja que la del JS, por una caché
+  // intermedia o una recarga interrumpida), antes esto rompía en
+  // silencio — el click no hacía nada y no quedaba ningún aviso de por
+  // qué. Ahora avisa y sugiere recargar en vez de fallar callado.
+  if (!el) { console.error('openPanel: no existe #' + id); toast('No se pudo abrir esa pantalla — prueba recargar la página', 'error'); return; }
   pintarBarraPanelConModulo(el);
   // Red de seguridad extra contra el botón "Guardando..." que pudiera
   // quedar pegado (ver listener de submit más arriba): cada vez que se
@@ -2330,7 +2338,7 @@ function renderAlertaCumpleanos(trabajadores) {
   const texto = cumpleaneros.length === 1
     ? `Hoy cumple años <strong>${esc(cumpleaneros[0])}</strong>`
     : `Hoy cumplen años: <strong>${esc(cumpleaneros.join(', '))}</strong>`;
-  setListHTML('alerta-cumpleanos', `<div class="alerta-cumple"><span class="alerta-cumple-ic">🎂</span><span>${texto}</span></div>`);
+  setListHTML('alerta-cumpleanos', `<div class="alerta-cumple"><span class="alerta-cumple-ic">${ic('cumpleanos',16)}</span><span>${texto}</span></div>`);
 }
 
 // ── Obras (catálogo dinámico, mismo patrón que "Otro" en EPP) ──────────
@@ -2621,7 +2629,7 @@ function renderCumpleanosTrabajadores() {
   const proxEsHoy = prox.distancia === 0;
   const destacado = `
     <div class="cumple-destacado">
-      <div class="cumple-destacado-ic">🎂</div>
+      <div class="cumple-destacado-ic">${ic('cumpleanos',30)}</div>
       <div class="cumple-destacado-info">
         <div class="cumple-destacado-label">${proxEsHoy ? 'Cumple hoy' : 'Próximo cumpleaños'}</div>
         <div class="cumple-destacado-nombre">${esc(prox.nombre)}</div>
@@ -2636,12 +2644,12 @@ function renderCumpleanosTrabajadores() {
     const esHoy = f.distancia === 0;
     return header + `
       <div class="card card--default" onclick="abrirFichaTrabajador('${esc(f.nombre).replace(/'/g,"\\'")}')">
-        <div class="card-icon modulo-icon--inv"><span style="font-size:17px;">🎂</span></div>
+        <div class="card-icon modulo-icon--inv">${ic('cumpleanos',17)}</div>
         <div class="card-body">
           <div class="card-title">${esc(f.nombre)}</div>
           <div class="card-sub">${esc(f.cargo || '')} · cumple ${f.edadQueCumple}</div>
         </div>
-        <span class="badge ${esHoy ? 'green' : 'gray'}">${esHoy ? '🎂 Hoy' : `${f.dia} de ${MESES_LARGOS[f.mes]}`}</span>
+        <span class="badge ${esHoy ? 'green' : 'gray'}">${esHoy ? `${ic('cumpleanos',11)} Hoy` : `${f.dia} de ${MESES_LARGOS[f.mes]}`}</span>
       </div>`;
   }).join('');
 }
