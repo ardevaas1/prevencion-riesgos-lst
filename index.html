@@ -255,6 +255,14 @@
     <!-- TRABAJADORES -->
     <div class="page" id="page-trabajadores">
       <div class="sec-label">Trabajadores</div>
+      <div class="card card--default" onclick="abrirCumpleanosTrabajadores()">
+        <div class="card-icon modulo-icon--inv"><span style="font-size:17px;">🎂</span></div>
+        <div class="card-body">
+          <div class="card-title">Cumpleaños</div>
+          <div class="card-sub">Resumen por fecha de nacimiento</div>
+        </div>
+        <div class="card-chevron"><svg viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      </div>
       <div class="search-area"><div class="searchbox"><span class="search-ic"><svg viewBox="0 0 24 24" fill="none" style="width:16px;height:16px"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span><input type="text" placeholder="Buscar por nombre, RUT o cargo..." oninput="onBuscarTrabajadores(this.value)"></div></div>
       <div data-list="trabajadores"></div>
       <div class="az-index" data-azindex="trabajadores"></div>
@@ -839,6 +847,14 @@
 </div>
 
 <!-- ===== PANEL: Charlas ya subidas (biblioteca, de solo lectura) ===== -->
+<div class="panel hidden" id="panel-cumpleanos-trabajadores">
+  <div class="panel-bar"><div class="pnl-back" onclick="closePanel('panel-cumpleanos-trabajadores')">‹ Volver</div><div class="pnl-title">Cumpleaños</div><div></div></div>
+  <div class="panel-body">
+    <p style="font-size:13px;color:#666;margin:0 0 14px;">Ordenados por el próximo en llegar. Solo se cuentan los trabajadores activos con fecha de nacimiento registrada.</p>
+    <div id="lista-cumpleanos-trabajadores"></div>
+  </div>
+</div>
+
 <div class="panel hidden" id="panel-plantillas-charla">
   <div class="panel-bar"><div class="pnl-back" onclick="closePanel('panel-plantillas-charla')">‹ Volver</div><div class="pnl-title">Charlas ya subidas</div><div></div></div>
   <div class="panel-body">
