@@ -1460,11 +1460,10 @@
 
       aplicarColorHeader(document.getElementById('desktop-sidebar-header'), nombre);
 
+      const heroEl = document.getElementById('desktop-sidebar-hero');
+      if (heroEl) heroEl.className = 'desktop-sidebar-hero desktop-sidebar-hero--' + (MODULOS_COLOR[nombre] || 'inv');
       const heroIcon = document.getElementById('desktop-sidebar-hero-icon');
-      if (heroIcon) {
-        heroIcon.className = 'desktop-sidebar-hero-icon desktop-sidebar-hero-icon--' + (MODULOS_COLOR[nombre] || 'inv');
-        heroIcon.innerHTML = (typeof ICONS !== 'undefined' && ICONS[nombre]) || '';
-      }
+      if (heroIcon) heroIcon.innerHTML = (typeof ICONS !== 'undefined' && ICONS[nombre]) || '';
       const heroTitulo = document.getElementById('desktop-sidebar-hero-titulo');
       if (heroTitulo) heroTitulo.textContent = TITULOS_PAGINA[nombre];
       const heroDesc = document.getElementById('desktop-sidebar-hero-desc');
