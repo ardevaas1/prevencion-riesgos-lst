@@ -386,6 +386,18 @@
   </div>
   <div class="desktop-nav desktop-nav--back">
     <button class="desktop-nav-item desktop-nav-back" onclick="irPagina('inicio')"><span class="dn-ic">‹</span><span class="dn-lb">Volver a Inicio</span></button>
+    <!-- El sidebar a propósito NO tiene más ítems de navegación (el
+         cliente pidió que no se pueda saltar de un módulo a otro sin
+         pasar por Inicio) — .desktop-nav es flex:1 pensado para una
+         lista larga, así que con un solo botón quedaba un espacio
+         vacío enorme debajo. Este hero (ícono/nombre/descripción del
+         módulo activo, llenado por irPagina) ocupa ese espacio sin
+         agregar navegación nueva. -->
+    <div class="desktop-sidebar-hero" id="desktop-sidebar-hero">
+      <div class="desktop-sidebar-hero-icon" id="desktop-sidebar-hero-icon"></div>
+      <div class="desktop-sidebar-hero-titulo" id="desktop-sidebar-hero-titulo"></div>
+      <div class="desktop-sidebar-hero-desc" id="desktop-sidebar-hero-desc"></div>
+    </div>
   </div>
   <div class="desktop-sidebar-footer">
     <div class="account-chip"><span class="account-chip-avatar">G</span><span class="account-chip-email" id="dt-footer-email"></span></div>
@@ -1447,6 +1459,16 @@
       if (dtTitle) dtTitle.textContent = TITULOS_PAGINA[nombre];
 
       aplicarColorHeader(document.getElementById('desktop-sidebar-header'), nombre);
+
+      const heroIcon = document.getElementById('desktop-sidebar-hero-icon');
+      if (heroIcon) {
+        heroIcon.className = 'desktop-sidebar-hero-icon desktop-sidebar-hero-icon--' + (MODULOS_COLOR[nombre] || 'inv');
+        heroIcon.innerHTML = (typeof ICONS !== 'undefined' && ICONS[nombre]) || '';
+      }
+      const heroTitulo = document.getElementById('desktop-sidebar-hero-titulo');
+      if (heroTitulo) heroTitulo.textContent = TITULOS_PAGINA[nombre];
+      const heroDesc = document.getElementById('desktop-sidebar-hero-desc');
+      if (heroDesc) heroDesc.textContent = (typeof MODULOS_DESC !== 'undefined' && MODULOS_DESC[nombre]) || '';
     }
 
     document.querySelectorAll('.desktop-nav-item').forEach(n => n.classList.remove('active'));
