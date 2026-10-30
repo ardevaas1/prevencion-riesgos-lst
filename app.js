@@ -2612,14 +2612,35 @@ function renderCumpleanosTrabajadores() {
     el.innerHTML = emptyState('Sin fechas de nacimiento registradas', 'Agrégalas desde la ficha de cada trabajador');
     return;
   }
+
+  // Destacado del próximo en llegar — con pocos trabajadores la lista de
+  // abajo se veía muy vacía (solo texto chico, mucho espacio en blanco),
+  // así que arriba va una tarjeta grande en degradé, mismo lenguaje
+  // visual que .ficha-hero, con el nombre de quien cumple antes.
+  const prox = filas[0];
+  const proxEsHoy = prox.distancia === 0;
+  const destacado = `
+    <div class="cumple-destacado">
+      <div class="cumple-destacado-ic">🎂</div>
+      <div class="cumple-destacado-info">
+        <div class="cumple-destacado-label">${proxEsHoy ? 'Cumple hoy' : 'Próximo cumpleaños'}</div>
+        <div class="cumple-destacado-nombre">${esc(prox.nombre)}</div>
+        <div class="cumple-destacado-fecha">${proxEsHoy ? `Cumple ${prox.edadQueCumple} años` : `${prox.dia} de ${MESES_LARGOS[prox.mes]} · en ${prox.distancia} día${prox.distancia===1?'':'s'} · cumple ${prox.edadQueCumple}`}</div>
+      </div>
+    </div>`;
+
   let mesAnterior = null;
-  el.innerHTML = filas.map(f => {
+  el.innerHTML = destacado + filas.map(f => {
     const header = f.mes !== mesAnterior ? `<div class="letra-header">${MESES_LARGOS[f.mes].toUpperCase()}</div>` : '';
     mesAnterior = f.mes;
     const esHoy = f.distancia === 0;
     return header + `
-      <div class="field-row" onclick="abrirFichaTrabajador('${esc(f.nombre).replace(/'/g,"\\'")}')" style="cursor:pointer;">
-        <span>${esc(f.nombre)}<br><span style="color:#888;font-size:12px;">${esc(f.cargo || '')} · cumple ${f.edadQueCumple}</span></span>
+      <div class="card card--default" onclick="abrirFichaTrabajador('${esc(f.nombre).replace(/'/g,"\\'")}')">
+        <div class="card-icon modulo-icon--inv"><span style="font-size:17px;">🎂</span></div>
+        <div class="card-body">
+          <div class="card-title">${esc(f.nombre)}</div>
+          <div class="card-sub">${esc(f.cargo || '')} · cumple ${f.edadQueCumple}</div>
+        </div>
         <span class="badge ${esHoy ? 'green' : 'gray'}">${esHoy ? '🎂 Hoy' : `${f.dia} de ${MESES_LARGOS[f.mes]}`}</span>
       </div>`;
   }).join('');
