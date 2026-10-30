@@ -1505,7 +1505,9 @@ a.action-btn { text-decoration: none; }
      bloque sólido de color). Tono CÁLIDO (marrón-carbón, no azul) para
      que combine con el naranjo de marca — "de Naranjo sacamos la idea,
      no la paleta". */
-  .desktop-sidebar { background: linear-gradient(165deg, #211a14 0%, #17120d 55%, #0f0b08 100%); }
+  /* Oscuro derivado del propio --accent-dark de la marca (no un marrón
+     genérico sin relación) — mismo matiz naranjo, muy oscurecido. */
+  .desktop-sidebar { background: linear-gradient(165deg, #2b1708 0%, #1c0f05 55%, #110a04 100%); }
   .desktop-sidebar-header {
     background: transparent; box-shadow: none;
     position: relative; padding-bottom: 17px;
