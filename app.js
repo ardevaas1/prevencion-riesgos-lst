@@ -2589,8 +2589,18 @@ function onBuscarTrabajadores(v) {
 const LETRAS_INDICE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 const MESES_LARGOS = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
 function abrirCumpleanosTrabajadores() {
-  renderCumpleanosTrabajadores();
-  openPanel('panel-cumpleanos-trabajadores');
+  // El usuario reportó que el botón "no hace nada" al tocarlo — un
+  // onclick="..." inline que tira una excepción no muestra NADA en
+  // pantalla por defecto, solo queda en la consola, invisible para
+  // cualquiera que no esté con las herramientas de desarrollador
+  // abiertas. Este try/catch convierte eso en un aviso real.
+  try {
+    renderCumpleanosTrabajadores();
+    openPanel('panel-cumpleanos-trabajadores');
+  } catch (e) {
+    console.error('abrirCumpleanosTrabajadores:', e);
+    toast('No se pudo abrir Cumpleaños: ' + e.message, 'error');
+  }
 }
 // Resumen de cumpleaños del equipo ("igual es interesante tenerlo", a
 // pedido del cliente) — mismo alcance de Obra activa/equipo del
