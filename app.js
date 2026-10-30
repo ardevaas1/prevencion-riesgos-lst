@@ -1643,6 +1643,9 @@ function renderModulosHome() {
       <div class="modulo-icon modulo-icon--${m.color}">${ICONS[m.key]}</div>
       <div class="modulo-info"><div class="modulo-nombre">${m.nombre}</div><div class="modulo-desc">${m.desc}</div></div>
     </div>`).join(''));
+  // Mismo criterio en el ítem de EPP del nav completo de escritorio.
+  const dtNavEpp = document.getElementById('dt-nav-epp');
+  if (dtNavEpp) dtNavEpp.classList.toggle('hidden', !!miSupervisorPerfil);
 }
 // Enlaces directos a la carpeta de Drive y al Google Sheet que usa la app
 // (Inicio, móvil y escritorio) — útiles para revisar archivos/datos crudos
