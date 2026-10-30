@@ -2330,8 +2330,8 @@ function renderAlertaCumpleanos(trabajadores) {
   const cumpleaneros = trabajadores
     .filter(t => t.estado === 'Activo' && t.fechaNacimiento)
     .filter(t => {
-      const nac = new Date(t.fechaNacimiento + 'T00:00:00');
-      return nac.getMonth() === mesHoy && nac.getDate() === diaHoy;
+      const nac = parsearFechaNacimiento(t.fechaNacimiento);
+      return nac && nac.getMonth() === mesHoy && nac.getDate() === diaHoy;
     })
     .map(t => t.nombre);
   if (cumpleaneros.length === 0) { setListHTML('alerta-cumpleanos', ''); return; }
@@ -2588,6 +2588,25 @@ function onBuscarTrabajadores(v) {
 // como ordena localeCompare('es')) para el índice lateral de Trabajadores.
 const LETRAS_INDICE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 const MESES_LARGOS = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+// Interpreta fechaNacimiento de forma tolerante al formato. El <input
+// type="date"> del formulario siempre guarda ISO (AAAA-MM-DD), pero un
+// valor cargado a mano directo en el Sheet puede quedar en formato
+// regional chileno (DD-MM-AAAA o DD/MM/AAAA) — new Date() de JS no
+// entiende ese formato y da una fecha inválida EN SILENCIO (NaN en
+// vez de un error), que recién explotaba más abajo al armar el
+// encabezado del mes ("Cannot read properties of undefined (reading
+// 'toUpperCase')", reportado por un usuario real). Devuelve null si de
+// verdad no se puede leer, para descartar esa fila en vez de romper
+// toda la lista.
+function parsearFechaNacimiento(valor) {
+  if (!valor) return null;
+  let m = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(valor);
+  if (m) return new Date(+m[1], +m[2] - 1, +m[3]);
+  m = /^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/.exec(valor);
+  if (m) return new Date(+m[3], +m[2] - 1, +m[1]);
+  const generico = new Date(valor);
+  return isNaN(generico) ? null : generico;
+}
 function abrirCumpleanosTrabajadores() {
   // El usuario reportó que el botón "no hace nada" al tocarlo — un
   // onclick="..." inline que tira una excepción no muestra NADA en
@@ -2615,7 +2634,8 @@ function renderCumpleanosTrabajadores() {
 
   const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
   const filas = lista.map(t => {
-    const nac = new Date(t.fechaNacimiento + 'T00:00:00');
+    const nac = parsearFechaNacimiento(t.fechaNacimiento);
+    if (!nac) return null;
     let proximo = new Date(hoy.getFullYear(), nac.getMonth(), nac.getDate());
     if (proximo < hoy) proximo = new Date(hoy.getFullYear() + 1, nac.getMonth(), nac.getDate());
     return {
@@ -2623,7 +2643,7 @@ function renderCumpleanosTrabajadores() {
       distancia: Math.round((proximo - hoy) / 86400000),
       edadQueCumple: proximo.getFullYear() - nac.getFullYear(),
     };
-  }).sort((a, b) => a.distancia - b.distancia);
+  }).filter(Boolean).sort((a, b) => a.distancia - b.distancia);
 
   const el = document.getElementById('lista-cumpleanos-trabajadores');
   if (filas.length === 0) {
