@@ -272,6 +272,18 @@ body.is-offline #app { padding-top: 30px; }
 @keyframes pageFade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 
 /* ── Stats ── */
+/* Alerta de cumpleaños: discreta a propósito — un chip chico, no un
+   banner grande ni un popup, y el contenedor queda vacío (sin alto, sin
+   borde) cuando nadie cumple años hoy, ver renderAlertaCumpleanos. */
+.alerta-cumple {
+  display: flex; align-items: center; gap: 8px;
+  background: #fdf2f8; border: 1px solid #fbcfe8; border-radius: 12px;
+  padding: 9px 12px; margin: 10px 0 0;
+  font-size: 12.5px; color: #9d174d; line-height: 1.3;
+}
+.alerta-cumple-ic { font-size: 16px; flex-shrink: 0; }
+.alerta-cumple strong { font-weight: 700; }
+
 .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 18px; }
 .stat { background: #fff; border-radius: 12px; padding: 12px 6px; text-align: center; border: 1px solid var(--line); cursor: pointer; transition: transform 0.1s, box-shadow 0.15s; }
 .stat:active { transform: scale(0.97); }

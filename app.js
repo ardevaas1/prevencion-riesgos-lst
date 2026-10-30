@@ -2308,6 +2308,29 @@ function renderDashboard() {
   setStat('incidentes', inc.filter(i => i.estado !== 'Cerrado').length);
   setStat('charlas', cha.filter(c => c.estado === 'Pendiente').length);
   renderEstadisticasSeguridad();
+  renderAlertaCumpleanos(trab);
+}
+
+// Alerta de cumpleaños: discreta (no interrumpe con un popup, no aparece
+// si no hay nadie de cumpleaños hoy — el contenedor queda vacío y sin
+// ocupar espacio) pero funcional (compara día y mes reales de
+// fechaNacimiento contra hoy, sobre los mismos trabajadores ya acotados
+// por Obra activa/equipo del supervisor que el resto de Inicio).
+function renderAlertaCumpleanos(trabajadores) {
+  const hoy = new Date();
+  const mesHoy = hoy.getMonth(), diaHoy = hoy.getDate();
+  const cumpleaneros = trabajadores
+    .filter(t => t.estado === 'Activo' && t.fechaNacimiento)
+    .filter(t => {
+      const nac = new Date(t.fechaNacimiento + 'T00:00:00');
+      return nac.getMonth() === mesHoy && nac.getDate() === diaHoy;
+    })
+    .map(t => t.nombre);
+  if (cumpleaneros.length === 0) { setListHTML('alerta-cumpleanos', ''); return; }
+  const texto = cumpleaneros.length === 1
+    ? `Hoy cumple años <strong>${esc(cumpleaneros[0])}</strong>`
+    : `Hoy cumplen años: <strong>${esc(cumpleaneros.join(', '))}</strong>`;
+  setListHTML('alerta-cumpleanos', `<div class="alerta-cumple"><span class="alerta-cumple-ic">🎂</span><span>${texto}</span></div>`);
 }
 
 // ── Obras (catálogo dinámico, mismo patrón que "Otro" en EPP) ──────────
