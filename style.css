@@ -1499,11 +1499,31 @@ a.action-btn { text-decoration: none; }
     border: none;
     cursor: pointer;
   }
-  .desktop-nav-item:hover  { background: var(--neutral-soft); color: var(--ink); }
-  .desktop-nav-item.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  /* Sidebar claro (mismo fondo blanco que el resto de la app, a pedido
+     del cliente tras probar varios tonos oscuros) con navegación
+     completa agrupada — a pedido del cliente, mostrando como
+     referencia otra app propia con este mismo lenguaje (logo arriba,
+     secciones en mayúscula, ítem activo en bloque sólido de color). */
+  .desktop-nav-group-label {
+    font-size: 10.5px; font-weight: 700; color: var(--ink-soft);
+    text-transform: uppercase; letter-spacing: 0.7px;
+    padding: 18px 20px 6px;
+  }
+  .desktop-nav-group-label:first-of-type { padding-top: 12px; }
+  .desktop-nav-item { border-radius: 11px; }
+  /* Ítem activo: relleno degradé sólido (mismo que .btn-add) en vez del
+     tinte suave que tenía antes — con una lista larga de módulos, el
+     activo necesita destacar con fuerza para encontrarse de un vistazo. */
+  .desktop-nav-item.active {
+    background: linear-gradient(145deg, var(--accent), var(--accent-dark));
+    color: #fff; font-weight: 600;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.2), 0 4px 12px rgba(var(--accent-rgb),0.35);
+  }
   .dn-ic { font-size: 18px; display: flex; align-items: center; justify-content: center; }
   .dn-ic .nav-svg { width: 18px; height: 18px; }
   .dn-lb { font-size: 14px; }
+  .desktop-sidebar .desktop-refresh-btn--salir { color: rgba(255,255,255,0.5); }
+  .desktop-sidebar .desktop-refresh-btn--salir:hover { background: rgba(255,255,255,0.09); }
   .dn-dot {
     width: 8px; height: 8px;
     background: #c62828; border-radius: 50%;

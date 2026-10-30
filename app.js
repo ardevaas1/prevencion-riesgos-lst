@@ -1603,30 +1603,49 @@ const MODULOS_COLOR = {
   subcontratistas: 'cont', programapersonalizado: 'mov', miper: 'and',
   capacitacionds44: 'inv',
 };
-
+// Descripción corta de cada módulo — fuente única compartida por la
+// grilla de Inicio (renderModulosHome) y el hero del sidebar de
+// escritorio (ver irPagina en index.html), para no repetir el mismo
+// texto en dos lugares.
+const MODULOS_DESC = {
+  inspecciones: 'Con foto y alerta de charla automática',
+  incidentes: 'Registro con evidencia fotográfica',
+  procedimientos: 'PTS vigentes de la obra',
+  epp: 'Con firma digital del trabajador',
+  trabajadores: 'Nómina de la obra',
+  charlas: 'Alertas generadas por inspecciones',
+  hcr: 'Registro diario por cuadrilla, antes de ejecutar el trabajo',
+  subcontratistas: 'Documentación y control por empresa',
+  programapersonalizado: 'Cumplimiento mensual por supervisor',
+  miper: 'Sube la Matriz de Riesgos (IPER DS44) de cada obra',
+  capacitacionds44: 'Curso obligatorio art.16 — vigencia 2 años',
+};
 function renderModulosHome() {
   const modulos = [
-    { key: 'inspecciones', nombre: 'Inspecciones', desc: 'Con foto y alerta de charla automática' },
-    { key: 'incidentes', nombre: 'Incidentes y Accidentes', desc: 'Registro con evidencia fotográfica' },
-    { key: 'procedimientos', nombre: 'Procedimientos de Trabajo Seguro', desc: 'PTS vigentes de la obra' },
-    { key: 'epp', nombre: 'Entrega de EPP', desc: 'Con firma digital del trabajador' },
-    { key: 'trabajadores', nombre: 'Trabajadores', desc: 'Nómina de la obra' },
-    { key: 'charlas', nombre: 'Charlas de Seguridad', desc: 'Alertas generadas por inspecciones' },
-    { key: 'hcr', nombre: 'Hoja de Control de Riesgos (HCR)', desc: 'Registro diario por cuadrilla, antes de ejecutar el trabajo' },
-    { key: 'subcontratistas', nombre: 'Subcontratistas', desc: 'Documentación y control por empresa' },
-    { key: 'programapersonalizado', nombre: 'Programa Personalizado', desc: 'Cumplimiento mensual por supervisor' },
-    { key: 'miper', nombre: 'Matriz de Riesgos (IPER)', desc: 'Sube la Matriz de Riesgos (IPER DS44) de cada obra' },
-    { key: 'capacitacionds44', nombre: 'Capacitación DS44 (8 hrs)', desc: 'Curso obligatorio art.16 — vigencia 2 años' },
+    { key: 'inspecciones', nombre: 'Inspecciones' },
+    { key: 'incidentes', nombre: 'Incidentes y Accidentes' },
+    { key: 'procedimientos', nombre: 'Procedimientos de Trabajo Seguro' },
+    { key: 'epp', nombre: 'Entrega de EPP' },
+    { key: 'trabajadores', nombre: 'Trabajadores' },
+    { key: 'charlas', nombre: 'Charlas de Seguridad' },
+    { key: 'hcr', nombre: 'Hoja de Control de Riesgos (HCR)' },
+    { key: 'subcontratistas', nombre: 'Subcontratistas' },
+    { key: 'programapersonalizado', nombre: 'Programa Personalizado' },
+    { key: 'miper', nombre: 'Matriz de Riesgos (IPER)' },
+    { key: 'capacitacionds44', nombre: 'Capacitación DS44 (8 hrs)' },
   ]
     // Un supervisor logueado (ver miSupervisorPerfil) no ve Entrega de EPP
     // en absoluto — a pedido explícito, ese módulo queda fuera de su vista.
     .filter(m => !(miSupervisorPerfil && m.key === 'epp'))
-    .map(m => ({ ...m, color: MODULOS_COLOR[m.key] }));
+    .map(m => ({ ...m, desc: MODULOS_DESC[m.key], color: MODULOS_COLOR[m.key] }));
   setListHTML('modulos-home', modulos.map(m => `
     <div class="modulo-card modulo-card--${m.color}" onclick="irPagina('${m.key}')">
       <div class="modulo-icon modulo-icon--${m.color}">${ICONS[m.key]}</div>
       <div class="modulo-info"><div class="modulo-nombre">${m.nombre}</div><div class="modulo-desc">${m.desc}</div></div>
     </div>`).join(''));
+  // Mismo criterio en el ítem de EPP del nav completo de escritorio.
+  const dtNavEpp = document.getElementById('dt-nav-epp');
+  if (dtNavEpp) dtNavEpp.classList.toggle('hidden', !!miSupervisorPerfil);
 }
 // Enlaces directos a la carpeta de Drive y al Google Sheet que usa la app
 // (Inicio, móvil y escritorio) — útiles para revisar archivos/datos crudos
