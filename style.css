@@ -1507,7 +1507,7 @@ a.action-btn { text-decoration: none; }
      no la paleta". */
   /* Oscuro derivado del propio --accent-dark de la marca (no un marrón
      genérico sin relación) — mismo matiz naranjo, muy oscurecido. */
-  .desktop-sidebar { background: linear-gradient(165deg, #2b1708 0%, #1c0f05 55%, #110a04 100%); }
+  .desktop-sidebar { background: linear-gradient(165deg, #4a2c14 0%, #35200e 55%, #241509 100%); }
   .desktop-sidebar-header {
     background: transparent; box-shadow: none;
     position: relative; padding-bottom: 17px;
