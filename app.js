@@ -2579,6 +2579,73 @@ function onBuscarTrabajadores(v) {
 // A-Z de las 26 letras del abecedario (sin Ñ aparte — se agrupa con N,
 // como ordena localeCompare('es')) para el índice lateral de Trabajadores.
 const LETRAS_INDICE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+const MESES_LARGOS = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+function abrirCumpleanosTrabajadores() {
+  renderCumpleanosTrabajadores();
+  openPanel('panel-cumpleanos-trabajadores');
+}
+// Resumen de cumpleaños del equipo ("igual es interesante tenerlo", a
+// pedido del cliente) — mismo alcance de Obra activa/equipo del
+// supervisor que el resto de Trabajadores, ordenado por el próximo en
+// llegar (hoy primero), dando la vuelta a enero si ya pasó en el año.
+function renderCumpleanosTrabajadores() {
+  const obraSel = obraFiltroActivo();
+  let lista = obraSel ? allTrabajadores.filter(t => t.obra === obraSel) : [...allTrabajadores];
+  const equipo = miEquipoActual();
+  if (equipo) lista = lista.filter(t => equipo.has(t.nombre) || t.nombre === miSupervisorPerfil.nombre);
+  lista = lista.filter(t => t.estado === 'Activo' && t.fechaNacimiento);
+
+  const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+  const filas = lista.map(t => {
+    const nac = new Date(t.fechaNacimiento + 'T00:00:00');
+    let proximo = new Date(hoy.getFullYear(), nac.getMonth(), nac.getDate());
+    if (proximo < hoy) proximo = new Date(hoy.getFullYear() + 1, nac.getMonth(), nac.getDate());
+    return {
+      nombre: t.nombre, cargo: t.cargo, mes: nac.getMonth(), dia: nac.getDate(),
+      distancia: Math.round((proximo - hoy) / 86400000),
+      edadQueCumple: proximo.getFullYear() - nac.getFullYear(),
+    };
+  }).sort((a, b) => a.distancia - b.distancia);
+
+  const el = document.getElementById('lista-cumpleanos-trabajadores');
+  if (filas.length === 0) {
+    el.innerHTML = emptyState('Sin fechas de nacimiento registradas', 'Agrégalas desde la ficha de cada trabajador');
+    return;
+  }
+
+  // Destacado del próximo en llegar — con pocos trabajadores la lista de
+  // abajo se veía muy vacía (solo texto chico, mucho espacio en blanco),
+  // así que arriba va una tarjeta grande en degradé, mismo lenguaje
+  // visual que .ficha-hero, con el nombre de quien cumple antes.
+  const prox = filas[0];
+  const proxEsHoy = prox.distancia === 0;
+  const destacado = `
+    <div class="cumple-destacado">
+      <div class="cumple-destacado-ic">🎂</div>
+      <div class="cumple-destacado-info">
+        <div class="cumple-destacado-label">${proxEsHoy ? 'Cumple hoy' : 'Próximo cumpleaños'}</div>
+        <div class="cumple-destacado-nombre">${esc(prox.nombre)}</div>
+        <div class="cumple-destacado-fecha">${proxEsHoy ? `Cumple ${prox.edadQueCumple} años` : `${prox.dia} de ${MESES_LARGOS[prox.mes]} · en ${prox.distancia} día${prox.distancia===1?'':'s'} · cumple ${prox.edadQueCumple}`}</div>
+      </div>
+    </div>`;
+
+  let mesAnterior = null;
+  el.innerHTML = destacado + filas.map(f => {
+    const header = f.mes !== mesAnterior ? `<div class="letra-header">${MESES_LARGOS[f.mes].toUpperCase()}</div>` : '';
+    mesAnterior = f.mes;
+    const esHoy = f.distancia === 0;
+    return header + `
+      <div class="card card--default" onclick="abrirFichaTrabajador('${esc(f.nombre).replace(/'/g,"\\'")}')">
+        <div class="card-icon modulo-icon--inv"><span style="font-size:17px;">🎂</span></div>
+        <div class="card-body">
+          <div class="card-title">${esc(f.nombre)}</div>
+          <div class="card-sub">${esc(f.cargo || '')} · cumple ${f.edadQueCumple}</div>
+        </div>
+        <span class="badge ${esHoy ? 'green' : 'gray'}">${esHoy ? '🎂 Hoy' : `${f.dia} de ${MESES_LARGOS[f.mes]}`}</span>
+      </div>`;
+  }).join('');
+}
+
 function renderTrabajadores() {
   const obraSel = obraFiltroActivo();
   let activos = obraSel ? allTrabajadores.filter(t => t.obra === obraSel) : [...allTrabajadores];

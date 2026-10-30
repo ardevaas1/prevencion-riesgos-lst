@@ -284,6 +284,27 @@ body.is-offline #app { padding-top: 30px; }
 .alerta-cumple-ic { font-size: 16px; flex-shrink: 0; }
 .alerta-cumple strong { font-weight: 700; }
 
+/* Tarjeta destacada del próximo cumpleaños, arriba del listado en el
+   panel de Trabajadores — con pocos trabajadores el listado se veía
+   muy vacío (solo texto chico); este banner en degradé llena ese
+   espacio con algo más vistoso, mismo lenguaje visual que .ficha-hero. */
+.cumple-destacado {
+  display: flex; align-items: center; gap: 14px;
+  background: linear-gradient(135deg, #f472b6, #db2777);
+  border-radius: 18px; padding: 18px 16px; margin-bottom: 16px;
+  box-shadow: 0 6px 18px rgba(219,39,119,0.3);
+  color: #fff;
+}
+.cumple-destacado-ic {
+  font-size: 34px; flex-shrink: 0; width: 56px; height: 56px;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(255,255,255,0.18); border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.3);
+}
+.cumple-destacado-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.85; }
+.cumple-destacado-nombre { font-size: 19px; font-weight: 700; margin: 2px 0; }
+.cumple-destacado-fecha { font-size: 12.5px; opacity: 0.9; }
+
 .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 18px; }
 .stat { background: #fff; border-radius: 12px; padding: 12px 6px; text-align: center; border: 1px solid var(--line); cursor: pointer; transition: transform 0.1s, box-shadow 0.15s; }
 .stat:active { transform: scale(0.97); }
