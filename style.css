@@ -1032,6 +1032,11 @@ a.action-btn { text-decoration: none; }
   content: ''; position: absolute; width: 10px; height: 10px; border-radius: 50%;
   background: #fff; top: 4.5px; left: 4.5px;
 }
+/* .chk-row usa var(--ink) (casi negro) pensado para fondos claros — dentro
+   del login oscuro (ver #rut-consentimiento-screen) el texto quedaba
+   prácticamente invisible (negro sobre negro). */
+.login-box .chk-row { border-bottom-color: #334155; }
+.login-box .chk-row-label { color: #f1f5f9; }
 .epp-item-qty { width: 60px; padding: 6px 8px; border: 1.5px solid var(--line); border-radius: 8px; font-size: 14px; text-align: center; font-family: inherit; }
 .epp-item-variantes { display: flex; gap: 8px; flex-wrap: wrap; width: 100%; margin: 2px 0 2px 34px; }
 .epp-item-tipo { flex: 1; min-width: 160px; padding: 6px 8px; border: 1.5px solid var(--line); border-radius: 8px; font-size: 13px; font-family: inherit; }
