@@ -20,6 +20,8 @@ const CONFIG = {
   SHEET_SUBCONTRATISTAS:      'SUBCONTRATISTAS',
   SHEET_SUBCONTRATISTAS_DOCS: 'SUBCONTRATISTAS_DOCS',
   SHEET_PROGRAMA_PERSONALIZADO: 'PROGRAMA_PERSONALIZADO',
+  SHEET_FISCALIZACION_ACCESOS: 'FISCALIZACION_ACCESOS',
+  SHEET_FISCALIZACION_FIRMAS: 'FISCALIZACION_FIRMAS',
 
   // Matriz IPER (DS44) — la matriz se arma en una app externa; acá solo se
   // sube el Excel ya terminado y queda una fila por obra con la matriz
@@ -31,6 +33,13 @@ const CONFIG = {
   SHEET_CAPACITACION_DS44: 'CAPACITACION_DS44',
 
   DRIVE_ROOT_FOLDER: '1evnqIfGtNCO_hQq9rwgBWMZgk647zMIe',
+
+  // Empresa mandante (la dueña de esta instancia de la app) — usada por el
+  // portal de fiscalización DT (Pilar 3, Ordinario 767) para que un
+  // fiscalizador pueda buscar también por el RUT de Constructora LST, no
+  // solo por el de sus subcontratistas. Completa el RUT real acá.
+  EMPRESA_PRINCIPAL_NOMBRE: 'Constructora LST',
+  EMPRESA_PRINCIPAL_RUT: '',
 
   SCOPES: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file',
 

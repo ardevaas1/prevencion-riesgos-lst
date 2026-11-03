@@ -764,6 +764,115 @@ function cerrarLoginRut() {
   if (rutFlowDesdeApp) { restaurarAppTrasRut(); return; }
   document.getElementById('login-screen').classList.remove('hidden');
 }
+
+// ============================================================
+// PORTAL DE FISCALIZACIÓN DT (Ordinario 767/2023, Pilar 3) — acceso
+// público, sin cuenta en la app, por RUT de la empresa inspeccionada. Ver
+// buscarDocumentosFiscalizacion/ratificarComoFiscalizador en
+// APPS_SCRIPT_WEBAPP_SUBCONTRATISTAS.js para el detalle de cómo se
+// resuelven los 5 requisitos del Ordinario.
+// ============================================================
+let fiscalizacionRutActual = null; // el propio RUT del fiscalizador — se reusa al ratificar, sin pedirlo de nuevo
+let fiscalizacionDocActual = null; // {tipo, idDocumento, titulo} del documento que se está ratificando
+function abrirFiscalizacion() {
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('fiscalizacion-hint').textContent = ' ';
+  // Mismo caso que abrirLoginRut/mostrarConsentimientoRut: el botón de
+  // submit puede haber quedado "Guardando..." de un intento anterior.
+  reactivarBotonesGuardar(document.getElementById('fiscalizacion-screen'));
+  document.getElementById('fiscalizacion-screen').classList.remove('hidden');
+}
+function cerrarFiscalizacion() {
+  document.getElementById('fiscalizacion-screen').classList.add('hidden');
+  document.getElementById('login-screen').classList.remove('hidden');
+}
+async function onBuscarFiscalizacion(ev) {
+  ev.preventDefault();
+  const f = ev.target;
+  const hint = document.getElementById('fiscalizacion-hint');
+  hint.textContent = '';
+  f.querySelector('button[type="submit"]').classList.add('hidden');
+  document.getElementById('fiscalizacion-spinner').classList.remove('hidden');
+  try {
+    fiscalizacionRutActual = f.rutFiscalizador.value.trim();
+    const resp = await llamarWebAppSubcontratista('buscarDocumentosFiscalizacion', {
+      rutFiscalizador: fiscalizacionRutActual,
+      rutEmpresa: f.rutEmpresa.value.trim(),
+      fechaDesde: f.fechaDesde.value || '',
+      fechaHasta: f.fechaHasta.value || '',
+    });
+    if (!resp.empresaEncontrada) {
+      hint.textContent = 'No se encontró ninguna empresa con ese RUT.';
+      return;
+    }
+    document.getElementById('fiscalizacion-screen').classList.add('hidden');
+    renderFiscalizacionResultados(resp.empresaEncontrada, resp.documentos || []);
+    document.getElementById('fiscalizacion-resultados-screen').classList.remove('hidden');
+  } catch (e) {
+    hint.textContent = e.message;
+  } finally {
+    f.querySelector('button[type="submit"]').classList.remove('hidden');
+    reactivarBotonesGuardar(f);
+    document.getElementById('fiscalizacion-spinner').classList.add('hidden');
+  }
+}
+function renderFiscalizacionResultados(empresa, documentos) {
+  document.getElementById('fiscalizacion-empresa-titulo').textContent = empresa;
+  document.getElementById('fiscalizacion-resultados-sub').textContent =
+    documentos.length ? documentos.length + ' documento(s) encontrado(s)' : 'Sin documentos en ese rango';
+  document.getElementById('fiscalizacion-resultados-lista').innerHTML = documentos.length ? documentos.map(d => `
+    <div class="rut-pendiente-card">
+      <div class="rut-pendiente-tema">${esc(d.titulo)}</div>
+      <div class="rut-pendiente-sub">${esc(d.fecha)}</div>
+      <div style="display:flex; gap:8px; margin-top:8px;">
+        ${d.pdfLink ? `<a href="${esc(d.pdfLink)}" target="_blank" rel="noopener" class="rut-pendiente-btn" style="text-decoration:none; text-align:center; display:block;">Ver / Imprimir</a>` : ''}
+        <button type="button" class="rut-pendiente-btn" style="background:transparent; box-shadow:none; border:1.5px solid var(--accent); color:var(--accent);" onclick="abrirRatificarFiscalizacion('${esc(d.tipo)}','${esc(d.idDocumento)}','${esc(d.titulo)}')">Ratificar</button>
+      </div>
+    </div>`).join('') : '<div class="rut-pendientes-vacio">No hay documentos de esta empresa en ese rango de fechas.</div>';
+}
+function volverABusquedaFiscalizacion() {
+  document.getElementById('fiscalizacion-resultados-screen').classList.add('hidden');
+  abrirFiscalizacion();
+}
+function abrirRatificarFiscalizacion(tipo, idDocumento, titulo) {
+  fiscalizacionDocActual = { tipo, idDocumento, titulo };
+  document.getElementById('fiscalizacion-firmar-titulo').textContent = titulo;
+  document.getElementById('fiscalizacion-firmar-nombre').value = '';
+  document.getElementById('fiscalizacion-firmar-hint').textContent = ' ';
+  document.getElementById('fiscalizacion-resultados-screen').classList.add('hidden');
+  document.getElementById('fiscalizacion-firmar-screen').classList.remove('hidden');
+  const btn = document.querySelector('#fiscalizacion-firmar-screen .login-btn');
+  btn.disabled = false; btn.textContent = 'Ratificar y firmar';
+  setTimeout(() => initFirmaPad('firma-canvas-fiscalizacion'), 80);
+}
+function cerrarFiscalizacionFirmar() {
+  document.getElementById('fiscalizacion-firmar-screen').classList.add('hidden');
+  document.getElementById('fiscalizacion-resultados-screen').classList.remove('hidden');
+}
+async function onRatificarFiscalizacion() {
+  const hint = document.getElementById('fiscalizacion-firmar-hint');
+  if (firmaEstaVacia('firma-canvas-fiscalizacion')) { hint.textContent = 'Falta la firma'; return; }
+  hint.textContent = '';
+  const btn = document.querySelector('#fiscalizacion-firmar-screen .login-btn');
+  const restaurar = marcarBotonCargando(btn, 'Enviando...');
+  try {
+    const firma = firmaCanvasADataURL('firma-canvas-fiscalizacion');
+    const nombre = document.getElementById('fiscalizacion-firmar-nombre').value.trim();
+    await llamarWebAppSubcontratista('ratificarComoFiscalizador', {
+      rutFiscalizador: fiscalizacionRutActual,
+      nombreFiscalizador: nombre,
+      tipoDocumento: fiscalizacionDocActual.tipo,
+      idDocumento: fiscalizacionDocActual.idDocumento,
+      tituloDocumento: fiscalizacionDocActual.titulo,
+      firmaBase64: firma,
+    });
+    toast('Documento ratificado ✓', 'ok');
+    cerrarFiscalizacionFirmar();
+  } catch (e) {
+    hint.textContent = e.message;
+  } finally { restaurar(); }
+}
+
 async function onLoginRut(ev) {
   ev.preventDefault();
   const f = ev.target;
@@ -2264,7 +2373,7 @@ function rowToUsuario(r, i) {
     nombre: r[2]||'', empresa: r[3]||'' };
 }
 function rowToSubcontratista(r, i) {
-  return { fila: i+2, empresa: r[0]||'', fechaAlta: r[1]||'' };
+  return { fila: i+2, empresa: r[0]||'', fechaAlta: r[1]||'', rut: r[2]||'' };
 }
 function rowToSubDoc(r, i) {
   return { fila: i+2, empresa: r[0]||'', categoria: r[1]||'', item: r[2]||'', periodo: r[3]||'',
@@ -5564,7 +5673,7 @@ async function guardarSubcontratista(ev) {
       return;
     }
     const correos = f.correos.value.split('\n').map(s => s.trim()).filter(Boolean);
-    await appendSheet(`'${CONFIG.SHEET_SUBCONTRATISTAS}'!A:B`, [[empresa, new Date().toLocaleString('es-CL')]]);
+    await appendSheet(`'${CONFIG.SHEET_SUBCONTRATISTAS}'!A:C`, [[empresa, new Date().toLocaleString('es-CL'), f.rutEmpresa.value.trim()]]);
     if (correos.length) {
       await appendSheet(`'${CONFIG.SHEET_USUARIOS}'!A:D`, correos.map(c => [c.toLowerCase(), 'subcontratista', '', empresa]));
       correos.forEach(c => notificarNuevoContacto(c.toLowerCase(), empresa));
@@ -5575,6 +5684,25 @@ async function guardarSubcontratista(ev) {
   } catch (e) { toast(e.message, 'error'); }
 }
 
+// El RUT de empresa se agregó después de que ya hubiera subcontratistas
+// dados de alta (ver SHEET_SUBCONTRATISTAS) — para esos, hay que poder
+// completarlo desde la ficha. Lo usa el portal de fiscalización (Pilar 3,
+// Ordinario 767) para buscar por RUT del empleador.
+async function editarRutSubcontratista(empresa) {
+  if (bloquearSiViewer()) return;
+  const sub = allSubcontratistas.find(s => normalizarEmpresa(s.empresa) === normalizarEmpresa(empresa));
+  if (!sub) return;
+  const nuevoRut = prompt('RUT de "' + empresa + '"', sub.rut || '');
+  if (nuevoRut === null) return;
+  const rut = nuevoRut.trim();
+  if (!rut) { toast('El RUT no puede quedar vacío', 'error'); return; }
+  try {
+    await actualizarRangoSheet(`'${CONFIG.SHEET_SUBCONTRATISTAS}'!C${sub.fila}`, [[rut]]);
+    toast('RUT actualizado ✓', 'ok');
+    await cargarTodo(true);
+    abrirDetalleSubcontratista(empresa);
+  } catch (e) { toast(e.message, 'error'); }
+}
 let empresaSubcontratistaActual = null;
 let mesControlSubcontratista = new Date().toISOString().slice(0,7);
 
@@ -5939,7 +6067,13 @@ function renderSubcontratistaDetalleHTML(empresa, esRestringido) {
   const subidosMensual = contarSubidosSubcontratista(empresa, 'mensual', SUBCONT_CONTROL_MENSUAL, mesControlSubcontratista);
   const trabajadoresEmpresa = allTrabajadores.filter(t => normalizarEmpresa(t.empresa) === normalizarEmpresa(empresa) && t.estado === 'Activo');
 
+  const sub = allSubcontratistas.find(s => normalizarEmpresa(s.empresa) === normalizarEmpresa(empresa));
   return `
+    ${esRestringido ? '' : `
+    <div class="subcont-rut-row">
+      <span>RUT empresa: <b>${sub && sub.rut ? esc(sub.rut) : 'Sin registrar'}</b></span>
+      <button type="button" class="action-btn" onclick="editarRutSubcontratista('${esc(empresa)}')">${sub && sub.rut ? 'Editar' : 'Agregar RUT'}</button>
+    </div>`}
     <div class="subcont-recordatorio">
       ${ic('alerta',16)}
       <div>Recordatorio: el Experto en Prevención debe realizar <b>dos visitas mensuales</b> a la obra, dentro de la jornada laboral, ingresando con todos sus EPP (casco blanco con nombre y logo de su empresa, chaleco geólogo naranjo, zapatos de seguridad, antiparras de seguridad, tapón auditivo y barbiquejo). Si la empresa realiza trabajos en altura, además debe portar arnés de seguridad con doble cabo de vida.</div>

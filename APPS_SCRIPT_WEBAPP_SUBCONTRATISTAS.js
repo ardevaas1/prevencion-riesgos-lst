@@ -61,6 +61,13 @@ const RAIZ_DRIVE_ID = '1evnqIfGtNCO_hQq9rwgBWMZgk647zMIe'; // mismo ID que DRIVE
 // notificarContacto). Si la dejas vacía, el correo se manda igual, solo que
 // sin el link directo.
 const APP_URL = '';
+// Empresa mandante — MISMOS valores que EMPRESA_PRINCIPAL_NOMBRE/RUT en
+// config.js (Apps Script no puede leer ese archivo, así que se duplica
+// acá). Usado por el portal de fiscalización (buscarDocumentosFiscalizacion)
+// para resolver el RUT que escriba el fiscalizador también cuando es el de
+// la empresa mandante, no solo el de un subcontratista.
+const EMPRESA_PRINCIPAL_NOMBRE = 'Constructora LST';
+const EMPRESA_PRINCIPAL_RUT = '';
 
 function doPost(e) {
   let body;
@@ -78,6 +85,10 @@ function doPost(e) {
     if (accion === 'firmarPendiente') return respuesta(firmarPendiente(body.idDocumento, body.rut, body.firmaBase64));
     if (accion === 'registrarConsentimientoRut') return respuesta(registrarConsentimientoRut(body.rut));
     if (accion === 'enviarComprobante') return respuesta(enviarComprobanteTrabajador(body.correoTrabajador, body.nombreArchivo, body.pdfBase64, body.asunto, body.cuerpo));
+    // Portal de fiscalización DT (Ordinario 767) — lo usa un fiscalizador
+    // externo, sin cuenta en la app, así que tampoco pasa por "correo".
+    if (accion === 'buscarDocumentosFiscalizacion') return respuesta(buscarDocumentosFiscalizacion(body.rutFiscalizador, body.rutEmpresa, body.fechaDesde, body.fechaHasta));
+    if (accion === 'ratificarComoFiscalizador') return respuesta(ratificarComoFiscalizador(body.rutFiscalizador, body.nombreFiscalizador, body.tipoDocumento, body.idDocumento, body.tituloDocumento, body.firmaBase64));
 
     const correo = (body.correo || '').toString().trim().toLowerCase();
     if (!correo) return respuesta({ error: 'Falta el correo' });
@@ -644,5 +655,162 @@ function firmarPendiente(idDocumento, rutEntrada, firmaBase64) {
   if (firmadoActual === 'sí' || firmadoActual === 'si') throw new Error('Ese documento ya estaba firmado');
 
   sh.getRange(filaEncontrada, 9, 1, 3).setValues([['Sí', firmaBase64.toString(), new Date().toLocaleString('es-CL')]]);
+  return { ok: true };
+}
+
+// ============================================================
+// PORTAL DE FISCALIZACIÓN DT (Ordinario 767/2023, Pilar 3)
+// ------------------------------------------------------------
+// Acceso público (sin cuenta de la app), por RUT de la empresa
+// inspeccionada — ver doPost más arriba. Letra (a): consulta directa por
+// RUT del empleador. Letra (b): la medida de seguridad acordada con el
+// empleador es el rate-limiting de verificarLimiteFiscalizacion, que NUNCA
+// bloquea una consulta puntual (solo frena ráfagas tipo scraping) — así no
+// se convierte en un "impedimento o restricción" al acceso, que la propia
+// Ordinario 767 prohíbe. Letra (c): es el mismo portal, no hay red ni
+// computador especial. Letra (d): cada resultado trae el link al PDF ya
+// firmado, listo para abrir/imprimir. Letra (e): ver
+// ratificarComoFiscalizador más abajo.
+// ============================================================
+function hojaSubcontratistas() { return SpreadsheetApp.getActiveSpreadsheet().getSheetByName('SUBCONTRATISTAS'); }
+function hojaCharlas() { return SpreadsheetApp.getActiveSpreadsheet().getSheetByName('CHARLAS'); }
+function hojaHcr() { return SpreadsheetApp.getActiveSpreadsheet().getSheetByName('HCR'); }
+function hojaEpp() { return SpreadsheetApp.getActiveSpreadsheet().getSheetByName('ENTREGA_EPP'); }
+function hojaFiscalizacionAccesos() { return SpreadsheetApp.getActiveSpreadsheet().getSheetByName('FISCALIZACION_ACCESOS'); }
+function hojaFiscalizacionFirmas() { return SpreadsheetApp.getActiveSpreadsheet().getSheetByName('FISCALIZACION_FIRMAS'); }
+
+// Como máximo 20 búsquedas por minuto por fiscalizador (identificado por su
+// propio RUT) — alcanza de sobra para uso humano normal, pero frena un
+// script intentando barrer RUTs de empresa uno por uno.
+function verificarLimiteFiscalizacion(rutFiscalizador) {
+  const cache = CacheService.getScriptCache();
+  const clave = 'fisc_' + rutFiscalizador;
+  const actual = Number(cache.get(clave) || '0');
+  if (actual >= 20) throw new Error('Demasiadas consultas seguidas — espera un minuto e intenta de nuevo.');
+  cache.put(clave, String(actual + 1), 60);
+}
+
+function rutsDeTrabajadoresDeEmpresa(empresa) {
+  const empresaNorm = normalizarEmpresa(empresa);
+  const datos = hojaTrabajadores().getDataRange().getValues();
+  const ruts = {};
+  for (let i = 1; i < datos.length; i++) {
+    if (normalizarEmpresa(datos[i][4]) === empresaNorm) ruts[normalizarRut(datos[i][2])] = true;
+  }
+  return ruts;
+}
+
+// Las Charlas/HCR no tienen una columna RUT por fila (son documentos
+// grupales): el RUT de cada asistente queda embebido en el texto
+// "Nombre (RUT); Nombre (RUT)" de la columna Asistentes — se extrae con
+// esta regex en vez de necesitar una columna aparte.
+function extraerRutsDeAsistentes(texto) {
+  const ruts = [];
+  const re = /\(([^)]+)\)/g;
+  let m;
+  while ((m = re.exec(texto || ''))) ruts.push(normalizarRut(m[1]));
+  return ruts;
+}
+
+function dentroDeRango(fecha, desde, hasta) {
+  if (!fecha) return false;
+  const f = fecha.toString();
+  if (desde && f < desde) return false;
+  if (hasta && f > hasta) return false;
+  return true;
+}
+
+// Un documento "pertenece" a una empresa si al menos uno de sus firmantes
+// trabaja para ella — Charla/HCR/EPP se organizan por Obra (pueden mezclar
+// trabajadores de varias empresas en una misma obra), no por empresa.
+function buscarEnEpp(rutsEmpresa, desde, hasta) {
+  const datos = hojaEpp().getDataRange().getValues();
+  const out = [];
+  for (let i = 1; i < datos.length; i++) {
+    const r = datos[i];
+    if (!rutsEmpresa[normalizarRut(r[3])]) continue;
+    if (!dentroDeRango(r[1], desde, hasta)) continue;
+    out.push({ tipo: 'epp', idDocumento: 'epp:' + (i + 1), titulo: 'Entrega de EPP — ' + (r[2] || ''), fecha: (r[1] || '').toString(), pdfLink: r[9] || '' });
+  }
+  return out;
+}
+function buscarEnCharlas(rutsEmpresa, desde, hasta) {
+  const datos = hojaCharlas().getDataRange().getValues();
+  const out = [];
+  for (let i = 1; i < datos.length; i++) {
+    const r = datos[i];
+    const ruts = extraerRutsDeAsistentes(r[12]);
+    if (!ruts.some(function (x) { return rutsEmpresa[x]; })) continue;
+    const fecha = (r[5] || r[1] || '').toString();
+    if (!dentroDeRango(fecha, desde, hasta)) continue;
+    out.push({ tipo: 'charla', idDocumento: 'charla:' + (i + 1), titulo: 'Charla — ' + (r[2] || ''), fecha: fecha, pdfLink: r[13] || '' });
+  }
+  return out;
+}
+function buscarEnHcr(rutsEmpresa, desde, hasta) {
+  const datos = hojaHcr().getDataRange().getValues();
+  const out = [];
+  for (let i = 1; i < datos.length; i++) {
+    const r = datos[i];
+    const ruts = extraerRutsDeAsistentes(r[18]);
+    if (!ruts.some(function (x) { return rutsEmpresa[x]; })) continue;
+    const fecha = (r[1] || '').toString();
+    if (!dentroDeRango(fecha, desde, hasta)) continue;
+    out.push({ tipo: 'hcr', idDocumento: 'hcr:' + (i + 1), titulo: 'HCR — ' + (r[3] || ''), fecha: fecha, pdfLink: r[19] || '' });
+  }
+  return out;
+}
+
+function registrarAccesoFiscalizacion(rutFiscalizador, rutEmpresaConsulta, empresaEncontrada, desde, hasta, cantidadResultados) {
+  try {
+    hojaFiscalizacionAccesos().appendRow([
+      new Date().toLocaleString('es-CL'), rutFiscalizador, rutEmpresaConsulta, empresaEncontrada || '',
+      desde || '', hasta || '', cantidadResultados
+    ]);
+  } catch (e) { /* nunca debe tumbar la búsqueda si el registro de auditoría falla */ }
+}
+
+function buscarDocumentosFiscalizacion(rutFiscalizadorEntrada, rutEmpresaEntrada, fechaDesde, fechaHasta) {
+  const rutFisc = normalizarRut(rutFiscalizadorEntrada);
+  const rutEmp = normalizarRut(rutEmpresaEntrada);
+  if (!rutFisc) throw new Error('Falta tu RUT');
+  if (!rutEmp) throw new Error('Falta el RUT de la empresa a consultar');
+  verificarLimiteFiscalizacion(rutFisc);
+
+  let empresaEncontrada = '';
+  if (EMPRESA_PRINCIPAL_RUT && normalizarRut(EMPRESA_PRINCIPAL_RUT) === rutEmp) {
+    empresaEncontrada = EMPRESA_PRINCIPAL_NOMBRE;
+  } else {
+    const datosSub = hojaSubcontratistas().getDataRange().getValues();
+    for (let i = 1; i < datosSub.length; i++) {
+      if (normalizarRut(datosSub[i][2]) === rutEmp) { empresaEncontrada = (datosSub[i][0] || '').toString(); break; }
+    }
+  }
+
+  let documentos = [];
+  if (empresaEncontrada) {
+    const rutsEmpresa = rutsDeTrabajadoresDeEmpresa(empresaEncontrada);
+    documentos = buscarEnEpp(rutsEmpresa, fechaDesde, fechaHasta)
+      .concat(buscarEnCharlas(rutsEmpresa, fechaDesde, fechaHasta))
+      .concat(buscarEnHcr(rutsEmpresa, fechaDesde, fechaHasta))
+      .sort(function (a, b) { return b.fecha < a.fecha ? -1 : 1; });
+  }
+
+  registrarAccesoFiscalizacion(rutFiscalizadorEntrada, rutEmpresaEntrada, empresaEncontrada, fechaDesde, fechaHasta, documentos.length);
+  return { empresaEncontrada: empresaEncontrada, documentos: documentos };
+}
+
+// Letra (e) del Ordinario 767: el fiscalizador ratifica lo revisado con su
+// propia firma electrónica, identificándose solo con su propio RUT (no
+// necesita clave del empleador ni cuenta en la app).
+function ratificarComoFiscalizador(rutFiscalizadorEntrada, nombreFiscalizador, tipoDocumento, idDocumento, tituloDocumento, firmaBase64) {
+  const rutFisc = normalizarRut(rutFiscalizadorEntrada);
+  if (!rutFisc) throw new Error('Falta tu RUT');
+  if (!firmaBase64) throw new Error('Falta la firma');
+  if (!idDocumento) throw new Error('Falta el documento a ratificar');
+  hojaFiscalizacionFirmas().appendRow([
+    new Date().toLocaleString('es-CL'), rutFiscalizadorEntrada, nombreFiscalizador || '',
+    tipoDocumento || '', idDocumento, tituloDocumento || '', firmaBase64.toString()
+  ]);
   return { ok: true };
 }

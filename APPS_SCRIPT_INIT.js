@@ -99,7 +99,7 @@ function inicializarPlanilla() {
   // cada una tiene 1+ correos autorizados en USUARIOS (Rol="subcontratista",
   // Empresa=este mismo nombre), que solo pueden entrar a su propio submódulo.
   crearHoja(ss, 'SUBCONTRATISTAS', [
-    'Empresa', 'Fecha Alta'
+    'Empresa', 'Fecha Alta', 'RUT'
   ]);
 
   // Registro de documentos subidos por cada subcontratista. Categoria:
@@ -156,6 +156,23 @@ function inicializarPlanilla() {
   crearHoja(ss, 'DOCUMENTOS_PENDIENTES', [
     'IdDocumento', 'Tipo', 'Obra', 'Fecha', 'Titulo', 'Responsable',
     'Rut Trabajador', 'Nombre Trabajador', 'Firmado', 'Firma', 'Fecha Firma'
+  ]);
+
+  // Portal de fiscalización DT (Pilar 3, Ordinario 767/2023) — acceso
+  // público sin login de Google, por RUT de la empresa inspeccionada.
+  // Registro de cada consulta (auditoría + base del rate-limiting en
+  // buscarDocumentosFiscalizacion, ver APPS_SCRIPT_WEBAPP_SUBCONTRATISTAS.js).
+  crearHoja(ss, 'FISCALIZACION_ACCESOS', [
+    'Fecha', 'Rut Fiscalizador', 'Rut Empresa Consultada', 'Empresa Encontrada',
+    'Fecha Desde', 'Fecha Hasta', 'Resultados'
+  ]);
+
+  // Ratificación del fiscalizador sobre un documento revisado (Ordinario
+  // 767, letra e: "el fiscalizador deberá ratificar... con su propia
+  // identificación"). Una fila por documento ratificado.
+  crearHoja(ss, 'FISCALIZACION_FIRMAS', [
+    'Fecha', 'Rut Fiscalizador', 'Nombre Fiscalizador', 'Tipo Documento',
+    'Id Documento', 'Titulo Documento', 'Firma'
   ]);
 
   // Elimina la hoja "Hoja 1" / "Sheet1" default si quedó vacía

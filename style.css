@@ -859,6 +859,11 @@ body.is-offline #app { padding-top: 30px; }
 /* .action-btn también se usa en enlaces <a> (ej. abrir Drive/Sheets). */
 a.action-btn { text-decoration: none; }
 
+.subcont-rut-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  font-size: 13px; color: var(--ink); margin-bottom: 10px;
+}
+
 /* ── Recordatorio compacto arriba del detalle de Subcontratistas ── */
 .subcont-recordatorio {
   display: flex; align-items: flex-start; gap: 8px;
