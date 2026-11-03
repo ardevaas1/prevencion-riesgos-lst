@@ -131,19 +131,21 @@
   <div class="login-box login-box--ancho">
     <div class="entry-logo-wrap"><img src="logo-white.png" alt="LST" class="login-logo"></div>
     <div class="login-title">Antes de continuar</div>
-    <div class="login-sub" style="text-align:left; line-height:1.5;">
+    <div class="rut-consentimiento-texto">
       Para firmar y recibir tus documentos de forma digital (charlas, EPP, HCR y otros), necesitamos tu autorización
       para tratar electrónicamente tu documentación laboral. Si prefieres, puedes pedir que se te entreguen en papel.
     </div>
     <form id="form-consentimiento-rut" onsubmit="onAceptarConsentimientoRut(event)">
-      <div class="chk-row" style="margin:14px 0;">
-        <label class="chk-row-label">
-          <span class="chk-row-checkbox-wrap">
-            <input type="checkbox" id="chk-consentimiento-rut" class="chk-row-input" required>
-            <span class="chk-row-checkbox"></span>
-          </span>
-          <span>Acepto que mis documentos laborales se procesen y firmen electrónicamente</span>
-        </label>
+      <div class="rut-consentimiento-card">
+        <div class="chk-row">
+          <label class="chk-row-label">
+            <span class="chk-row-checkbox-wrap">
+              <input type="checkbox" id="chk-consentimiento-rut" class="chk-row-input" required>
+              <span class="chk-row-checkbox"></span>
+            </span>
+            <span>Acepto que mis documentos laborales se procesen y firmen electrónicamente</span>
+          </label>
+        </div>
       </div>
       <button class="login-btn" type="submit">Aceptar y continuar</button>
     </form>
