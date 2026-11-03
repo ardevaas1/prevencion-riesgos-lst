@@ -25,7 +25,8 @@ function inicializarPlanilla() {
     'Fecha Vigencia Examen Altura', 'Archivo Examen Altura', 'Es Supervisor',
     'Fecha Nacimiento', 'Sexo', 'Nacionalidad', 'Dirección', 'Comuna', 'Teléfono',
     'Pueblo Originario', 'Tipo Contrato', 'Tipo Ingreso', 'Categoría Ocupacional',
-    'Correo', 'Especialidades Supervisor', 'Supervisor Asignado'
+    'Correo', 'Especialidades Supervisor', 'Supervisor Asignado',
+    'Sin Correo (declarado)', 'Consentimiento Firma Electrónica', 'Fecha Consentimiento'
   ]);
 
   crearHoja(ss, 'INSPECCIONES', [

@@ -76,6 +76,8 @@ function doPost(e) {
     if (accion === 'verificarTrabajadorPorRut') return respuesta(verificarTrabajadorPorRut(body.rut));
     if (accion === 'misPendientesFirmar') return respuesta(misPendientesFirmar(body.rut));
     if (accion === 'firmarPendiente') return respuesta(firmarPendiente(body.idDocumento, body.rut, body.firmaBase64));
+    if (accion === 'registrarConsentimientoRut') return respuesta(registrarConsentimientoRut(body.rut));
+    if (accion === 'enviarComprobante') return respuesta(enviarComprobanteTrabajador(body.correoTrabajador, body.nombreArchivo, body.pdfBase64, body.asunto, body.cuerpo));
 
     const correo = (body.correo || '').toString().trim().toLowerCase();
     if (!correo) return respuesta({ error: 'Falta el correo' });
@@ -395,7 +397,8 @@ function agregarTrabajador(correo, body) {
     body.fechaIngreso || '', 'Activo', fotoLink, new Date().toLocaleString('es-CL'),
     body.obra || '', '', '', '', '', '', '',
     '', '', '', '', '', '', '', '', '', '',
-    body.correo || '', '', ''
+    body.correo || '', '', '',
+    body.sinCorreo ? 'Sí' : '', '', ''
   ]);
   return { ok: true };
 }
@@ -536,9 +539,50 @@ function verificarTrabajadorPorRut(rutEntrada) {
   const datos = hojaTrabajadores().getDataRange().getValues();
   for (let i = 1; i < datos.length; i++) {
     const fila = datos[i];
-    if (normalizarRut(fila[2]) === rut) return { encontrado: true, nombre: (fila[1] || '').toString() };
+    if (normalizarRut(fila[2]) === rut) return {
+      encontrado: true, nombre: (fila[1] || '').toString(),
+      consentimiento: (fila[30] || '') === 'Sí'
+    };
   }
   return { encontrado: false };
+}
+
+// El trabajador acepta (desde la pantalla de consentimiento previa a ver
+// sus documentos pendientes) que su documentación laboral se procese de
+// forma electrónica — jurisprudencia DT exige este consentimiento expreso,
+// y que quede registrado con fecha (ver Dictamen 0789/15).
+function registrarConsentimientoRut(rutEntrada) {
+  const rut = normalizarRut(rutEntrada);
+  if (!rut) throw new Error('Falta el RUT');
+  const sh = hojaTrabajadores();
+  const datos = sh.getDataRange().getValues();
+  for (let i = 1; i < datos.length; i++) {
+    if (normalizarRut(datos[i][2]) === rut) {
+      sh.getRange(i + 1, 31).setValue('Sí'); // columna AE
+      sh.getRange(i + 1, 32).setValue(new Date().toLocaleString('es-CL')); // columna AF
+      return { ok: true };
+    }
+  }
+  throw new Error('No se encontró un trabajador con ese RUT');
+}
+
+// Envía por correo el comprobante/documento ya firmado al correo PERSONAL
+// del propio trabajador (nunca el institucional — ver Dictamen 0789/15: si
+// pierde el acceso corporativo al desvincularse, perdería también sus
+// documentos laborales). Se llama justo después de firmar, solo si el
+// trabajador tiene correo declarado y dio su consentimiento.
+function enviarComprobanteTrabajador(correoTrabajador, nombreArchivo, pdfBase64, asunto, cuerpo) {
+  const correo = (correoTrabajador || '').toString().trim();
+  if (!correo || !pdfBase64) throw new Error('Falta el correo del trabajador o el PDF');
+  const bytes = Utilities.base64Decode(pdfBase64);
+  const blob = Utilities.newBlob(bytes, 'application/pdf', nombreArchivo || 'comprobante.pdf');
+  MailApp.sendEmail({
+    to: correo,
+    subject: asunto || 'Comprobante firmado — Constructora LST',
+    body: cuerpo || 'Hola,\n\nAdjuntamos tu comprobante firmado.\n\nSaludos,\nConstructora LST',
+    attachments: [blob],
+  });
+  return { enviado: true };
 }
 
 // Todos los documentos en curso (de cualquier tipo — Charla, HCR, EPP...)

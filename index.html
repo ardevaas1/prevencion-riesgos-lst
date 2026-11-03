@@ -123,6 +123,36 @@
   </div>
 </div>
 
+<!-- CONSENTIMIENTO: se muestra una sola vez, antes de ver los documentos
+     pendientes, si el trabajador todavía no aceptó el procesamiento
+     electrónico de su documentación laboral (exigencia DT, Dictamen
+     0789/15) — ver mostrarConsentimientoRut/onAceptarConsentimientoRut. -->
+<div id="rut-consentimiento-screen" class="login-screen hidden">
+  <div class="login-box login-box--ancho">
+    <div class="entry-logo-wrap"><img src="logo-white.png" alt="LST" class="login-logo"></div>
+    <div class="login-title">Antes de continuar</div>
+    <div class="login-sub" style="text-align:left; line-height:1.5;">
+      Para firmar y recibir tus documentos de forma digital (charlas, EPP, HCR y otros), necesitamos tu autorización
+      para tratar electrónicamente tu documentación laboral. Si prefieres, puedes pedir que se te entreguen en papel.
+    </div>
+    <form id="form-consentimiento-rut" onsubmit="onAceptarConsentimientoRut(event)">
+      <div class="chk-row" style="margin:14px 0;">
+        <label class="chk-row-label">
+          <span class="chk-row-checkbox-wrap">
+            <input type="checkbox" id="chk-consentimiento-rut" class="chk-row-input" required>
+            <span class="chk-row-checkbox"></span>
+          </span>
+          <span>Acepto que mis documentos laborales se procesen y firmen electrónicamente</span>
+        </label>
+      </div>
+      <button class="login-btn" type="submit">Aceptar y continuar</button>
+    </form>
+    <div class="login-spinner hidden" id="consentimiento-rut-spinner"><div class="login-spinner-ring"></div></div>
+    <div class="login-hint" id="consentimiento-rut-hint">&nbsp;</div>
+    <div class="login-rut-link" onclick="cerrarSesionRut()">Salir</div>
+  </div>
+</div>
+
 <!-- MIS DOCUMENTOS PENDIENTES: única pantalla que ve un trabajador logueado
      por RUT — sin sidebar, sin módulos, sin acceso al resto de la app. -->
 <div id="rut-pendientes-screen" class="login-screen hidden">
@@ -510,7 +540,16 @@
         <label>Foto (opcional)</label>
         <label class="upload-label"><svg viewBox="0 0 24 24" fill="none" class="inline-ic"><path d="M4 8a1 1 0 0 1 1-1h2l1.2-2h7.6L17 7h2a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.4" stroke="currentColor" stroke-width="1.7"/></svg> <span class="upload-label-text">Tomar / subir foto</span><input type="file" name="foto" accept="image/*" capture="environment" style="display:none" onchange="marcarArchivoElegido(this)"></label>
       </div>
-      <div class="form-group"><label>Correo (opcional)</label><input type="email" name="correo" placeholder="Para notificaciones automáticas"></div>
+      <div class="form-group"><label>Correo personal</label><input type="email" name="correo" id="correo-trabajador" placeholder="Para el envío automático de sus documentos firmados"></div>
+      <div class="chk-row">
+        <label class="chk-row-label">
+          <span class="chk-row-checkbox-wrap">
+            <input type="checkbox" name="sinCorreo" class="chk-row-input" onchange="onToggleSinCorreo(this,'correo-trabajador')">
+            <span class="chk-row-checkbox"></span>
+          </span>
+          <span>El trabajador declara no poseer correo electrónico particular (sus documentos se le entregarán en papel)</span>
+        </label>
+      </div>
       <div class="chk-row">
         <label class="chk-row-label">
           <span class="chk-row-checkbox-wrap">
@@ -582,7 +621,16 @@
         <label>Foto (opcional)</label>
         <label class="upload-label"><svg viewBox="0 0 24 24" fill="none" class="inline-ic"><path d="M4 8a1 1 0 0 1 1-1h2l1.2-2h7.6L17 7h2a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.4" stroke="currentColor" stroke-width="1.7"/></svg> <span class="upload-label-text">Tomar / subir foto</span><input type="file" name="foto" accept="image/*" capture="environment" style="display:none" onchange="marcarArchivoElegido(this)"></label>
       </div>
-      <div class="form-group"><label>Correo (opcional)</label><input type="email" name="correo" placeholder="Para notificaciones automáticas"></div>
+      <div class="form-group"><label>Correo personal</label><input type="email" name="correo" id="correo-trabajador-subcont" placeholder="Para el envío automático de sus documentos firmados"></div>
+      <div class="chk-row">
+        <label class="chk-row-label">
+          <span class="chk-row-checkbox-wrap">
+            <input type="checkbox" name="sinCorreo" class="chk-row-input" onchange="onToggleSinCorreo(this,'correo-trabajador-subcont')">
+            <span class="chk-row-checkbox"></span>
+          </span>
+          <span>El trabajador declara no poseer correo electrónico particular (sus documentos se le entregarán en papel)</span>
+        </label>
+      </div>
       <div class="form-group">
         <label>Archivos (opcional, puedes elegir varios)</label>
         <label class="upload-label"><svg viewBox="0 0 24 24" fill="none" class="inline-ic"><path d="M7 3h7l4 4v14H7Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M14 3v4h4" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg> <span class="upload-label-text">Subir archivo</span><input type="file" name="respaldo" multiple style="display:none" onchange="marcarArchivoElegido(this)"></label>
