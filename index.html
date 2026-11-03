@@ -101,6 +101,62 @@
     <button class="login-btn hidden" id="login-btn-cerrar-sesion" onclick="reconocerCierreForzado()" style="margin-top:10px;">Cerrar sesión</button>
     <div class="login-spinner hidden" id="login-spinner"><div class="login-spinner-ring"></div></div>
     <div class="login-hint" id="login-hint">Usa tu cuenta corporativa autorizada</div>
+    <div class="login-rut-link" onclick="abrirFiscalizacion()">Portal de Fiscalización DT</div>
+  </div>
+</div>
+
+<!-- PORTAL DE FISCALIZACIÓN DT: acceso público para un fiscalizador externo
+     (sin cuenta en la app), por RUT de la empresa inspeccionada — cumple
+     los 5 requisitos del Ordinario 767/2023 (Pilar 3). Ver
+     buscarDocumentosFiscalizacion en APPS_SCRIPT_WEBAPP_SUBCONTRATISTAS.js. -->
+<div id="fiscalizacion-screen" class="login-screen hidden">
+  <div class="login-box login-box--ancho">
+    <div class="entry-logo-wrap"><img src="logo-white.png" alt="LST" class="login-logo"></div>
+    <div class="login-title">Portal de Fiscalización DT</div>
+    <div class="login-sub">Consulta de documentos por RUT de la empresa</div>
+    <form id="form-fiscalizacion" onsubmit="onBuscarFiscalizacion(event)">
+      <input type="text" name="rutFiscalizador" class="login-rut-input" placeholder="Tu RUT (fiscalizador)" required autocomplete="off" oninput="formatearRutInput(this)">
+      <input type="text" name="rutEmpresa" class="login-rut-input" placeholder="RUT de la empresa a consultar" required autocomplete="off" oninput="formatearRutInput(this)" style="margin-top:10px;">
+      <div style="display:flex; gap:10px; margin-top:10px;">
+        <input type="date" name="fechaDesde" class="login-rut-input" style="font-size:13px;">
+        <input type="date" name="fechaHasta" class="login-rut-input" style="font-size:13px;">
+      </div>
+      <button class="login-btn" type="submit" style="margin-top:14px;">Buscar</button>
+    </form>
+    <div class="login-spinner hidden" id="fiscalizacion-spinner"><div class="login-spinner-ring"></div></div>
+    <div class="login-hint" id="fiscalizacion-hint">&nbsp;</div>
+    <div class="login-rut-link" onclick="cerrarFiscalizacion()">‹ Volver</div>
+  </div>
+</div>
+
+<div id="fiscalizacion-resultados-screen" class="login-screen hidden">
+  <div class="login-box login-box--ancho">
+    <div class="entry-logo-wrap"><img src="logo-white.png" alt="LST" class="login-logo"></div>
+    <div class="login-title" id="fiscalizacion-empresa-titulo">Empresa</div>
+    <div class="login-sub" id="fiscalizacion-resultados-sub">Documentos encontrados</div>
+    <div id="fiscalizacion-resultados-lista" class="rut-pendientes-lista"></div>
+    <div class="login-rut-link" onclick="volverABusquedaFiscalizacion()">‹ Nueva búsqueda</div>
+  </div>
+</div>
+
+<div id="fiscalizacion-firmar-screen" class="login-screen hidden">
+  <div class="login-box login-box--ancho">
+    <div class="entry-logo-wrap"><img src="logo-white.png" alt="LST" class="login-logo"></div>
+    <div class="login-title">Ratificar documento</div>
+    <div class="login-sub" id="fiscalizacion-firmar-titulo" style="margin-bottom:18px;"></div>
+    <div style="width:100%; text-align:left; margin-bottom:14px;">
+      <label style="display:block; font-size:12px; color:#94a3b8; margin-bottom:6px;">Tu nombre (opcional)</label>
+      <input type="text" id="fiscalizacion-firmar-nombre" class="login-rut-input" style="text-align:left;" placeholder="Nombre completo">
+    </div>
+    <div style="width:100%; text-align:left;">
+      <label style="display:block; font-size:12px; color:#94a3b8; margin-bottom:6px;">Tu firma</label>
+      <div class="firma-box"><canvas id="firma-canvas-fiscalizacion"></canvas></div>
+      <div class="firma-actions"><button type="button" onclick="limpiarFirmaId('firma-canvas-fiscalizacion')">Borrar firma</button></div>
+    </div>
+    <button class="login-btn" type="button" onclick="onRatificarFiscalizacion()" style="margin-top:14px;">Ratificar y firmar</button>
+    <div class="login-spinner hidden" id="fiscalizacion-firmar-spinner"><div class="login-spinner-ring"></div></div>
+    <div class="login-hint" id="fiscalizacion-firmar-hint">&nbsp;</div>
+    <div class="login-rut-link" onclick="cerrarFiscalizacionFirmar()">‹ Volver</div>
   </div>
 </div>
 
@@ -784,6 +840,7 @@
   <div class="panel-body">
     <form id="form-subcontratista" onsubmit="guardarSubcontratista(event)">
       <div class="form-group"><label>Nombre de la empresa</label><input name="empresa" required></div>
+      <div class="form-group"><label>RUT de la empresa</label><input name="rutEmpresa" required placeholder="76.123.456-7" oninput="formatearRutInput(this)"></div>
       <div class="form-group"><label>Correos autorizados (uno por línea)</label><textarea name="correos" required placeholder="correo1@empresa.com&#10;correo2@empresa.com"></textarea></div>
       <button class="btn-add" type="submit">Guardar</button>
     </form>
