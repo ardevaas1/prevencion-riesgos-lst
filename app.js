@@ -6820,6 +6820,22 @@ function blobABase64(blob) {
     reader.readAsDataURL(blob);
   });
 }
+// Correo + consentimiento del trabajador, leídos AHORA MISMO del Sheet (no
+// de allTrabajadores, que puede estar desactualizado: el consentimiento
+// típicamente lo da el propio trabajador desde su celular, por RUT, en
+// una sesión de navegador aparte de la del admin/supervisor que firma el
+// documento — ese dato nuevo nunca llega al allTrabajadores ya cargado en
+// la pantalla del admin hasta el próximo refresh completo).
+async function datosFirmaVigentes(rut) {
+  try {
+    const resp = await llamarWebAppSubcontratista('verificarTrabajadorPorRut', { rut });
+    if (!resp.encontrado) return null;
+    return { correo: resp.correo || '', consentimiento: !!resp.consentimiento };
+  } catch (e) {
+    console.error('No se pudo consultar correo/consentimiento vigente para ' + rut + ':', e);
+    return null;
+  }
+}
 // Envía el mismo PDF ya firmado a cada firmante que declaró correo Y dio
 // su consentimiento — usado por Charlas y HCR (varios firmantes por
 // documento; EPP tiene su propio envío porque ahí el firmante es uno
@@ -6831,10 +6847,10 @@ async function enviarComprobantesAFirmantes(asistentes, pdfBlob, nombreArchivoBa
     const pdfBase64 = await blobABase64(pdfBlob);
     for (const a of asistentes) {
       try {
-        const trabajador = allTrabajadores.find(t => normalizarRutCliente(t.rut) === normalizarRutCliente(a.rut));
-        if (!trabajador || !trabajador.correo || !trabajador.consentimientoFirma) continue;
+        const datos = await datosFirmaVigentes(a.rut);
+        if (!datos || !datos.correo || !datos.consentimiento) continue;
         await llamarWebAppSubcontratista('enviarComprobante', {
-          correoTrabajador: trabajador.correo,
+          correoTrabajador: datos.correo,
           nombreArchivo: `${nombreArchivoBase}_${(a.nombre || '').replace(/\s+/g, '_')}.pdf`,
           pdfBase64,
           asunto,
@@ -6882,12 +6898,15 @@ async function finalizarEpp(datos) {
     // piloto de la Fase 1 de cumplimiento DT (Dictamen 0789/15): solo si
     // declaró un correo y ya dio su consentimiento para el tratamiento
     // electrónico de su documentación laboral. Nunca bloquea el registro.
+    // Se consulta fresco al servidor (no allTrabajadores, que puede estar
+    // desactualizado si el trabajador dio su consentimiento recién, desde
+    // su celular, en otra sesión de navegador que la de quien firma acá).
     try {
-      const trabajador = allTrabajadores.find(t => normalizarRutCliente(t.rut) === normalizarRutCliente(trabRut));
-      if (trabajador && trabajador.correo && trabajador.consentimientoFirma && pdfBlobGenerado) {
+      const datosTrabajador = await datosFirmaVigentes(trabRut);
+      if (datosTrabajador && datosTrabajador.correo && datosTrabajador.consentimiento && pdfBlobGenerado) {
         const pdfBase64 = await blobABase64(pdfBlobGenerado);
         await llamarWebAppSubcontratista('enviarComprobante', {
-          correoTrabajador: trabajador.correo,
+          correoTrabajador: datosTrabajador.correo,
           nombreArchivo: `Entrega_EPP_${trabNombre.replace(/\s+/g, '_')}_${fecha}.pdf`,
           pdfBase64,
           asunto: 'Comprobante de Entrega de EPP — Constructora LST',
