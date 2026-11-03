@@ -541,6 +541,7 @@ function verificarTrabajadorPorRut(rutEntrada) {
     const fila = datos[i];
     if (normalizarRut(fila[2]) === rut) return {
       encontrado: true, nombre: (fila[1] || '').toString(),
+      correo: (fila[26] || '').toString(),
       consentimiento: (fila[30] || '') === 'Sí'
     };
   }
