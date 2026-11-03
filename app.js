@@ -809,6 +809,12 @@ function mostrarConsentimientoRut() {
   const chk = document.getElementById('chk-consentimiento-rut');
   if (chk) chk.checked = false;
   document.getElementById('consentimiento-rut-hint').textContent = ' ';
+  // El botón "Aceptar y continuar" es type="submit" — el listener genérico
+  // anti-doble-clic (ver más arriba) lo deja "Guardando..." y deshabilitado
+  // después de cada intento, y como esta pantalla no se abre con openPanel()
+  // nadie lo reactivaba (mismo caso ya resuelto en abrirLoginRut). Se
+  // reactiva acá, cada vez que se vuelve a mostrar esta pantalla.
+  reactivarBotonesGuardar(document.getElementById('rut-consentimiento-screen'));
   document.getElementById('rut-consentimiento-screen').classList.remove('hidden');
 }
 async function onAceptarConsentimientoRut(ev) {
@@ -826,6 +832,12 @@ async function onAceptarConsentimientoRut(ev) {
     hint.textContent = e.message;
   } finally {
     f.querySelector('button[type="submit"]').classList.remove('hidden');
+    // El listener genérico anti-doble-clic deja el botón deshabilitado y
+    // con texto "Guardando..." apenas se envía el form (antes de que corra
+    // este handler) — si hubo un error, hay que reactivarlo acá mismo para
+    // que se pueda reintentar sin salir y volver a entrar. Antes quedaba
+    // pegado en "Guardando..." para siempre.
+    reactivarBotonesGuardar(f);
     document.getElementById('consentimiento-rut-spinner').classList.add('hidden');
   }
 }
