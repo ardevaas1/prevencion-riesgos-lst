@@ -784,6 +784,7 @@ async function onLoginRut(ev) {
       sessionStorage.setItem(RUT_SESION_KEY, rut);
       sessionStorage.setItem(RUT_SESION_NOMBRE_KEY, resp.nombre);
     }
+    if (!resp.consentimiento) { mostrarConsentimientoRut(); return; }
     await mostrarPendientesRut();
   } catch (e) {
     hint.textContent = e.message;
@@ -798,12 +799,40 @@ function cerrarSesionRut() {
   rutSesionActual = null;
   rutNombreActual = null;
   document.getElementById('rut-pendientes-screen').classList.add('hidden');
+  document.getElementById('rut-consentimiento-screen').classList.add('hidden');
   if (rutFlowDesdeApp) { restaurarAppTrasRut(); return; }
   document.getElementById('login-screen').classList.remove('hidden');
+}
+function mostrarConsentimientoRut() {
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('rut-login-screen').classList.add('hidden');
+  const chk = document.getElementById('chk-consentimiento-rut');
+  if (chk) chk.checked = false;
+  document.getElementById('consentimiento-rut-hint').textContent = ' ';
+  document.getElementById('rut-consentimiento-screen').classList.remove('hidden');
+}
+async function onAceptarConsentimientoRut(ev) {
+  ev.preventDefault();
+  const hint = document.getElementById('consentimiento-rut-hint');
+  hint.textContent = '';
+  const f = ev.target;
+  f.querySelector('button[type="submit"]').classList.add('hidden');
+  document.getElementById('consentimiento-rut-spinner').classList.remove('hidden');
+  try {
+    await llamarWebAppSubcontratista('registrarConsentimientoRut', { rut: rutSesionActual });
+    document.getElementById('rut-consentimiento-screen').classList.add('hidden');
+    await mostrarPendientesRut();
+  } catch (e) {
+    hint.textContent = e.message;
+  } finally {
+    f.querySelector('button[type="submit"]').classList.remove('hidden');
+    document.getElementById('consentimiento-rut-spinner').classList.add('hidden');
+  }
 }
 async function mostrarPendientesRut() {
   document.getElementById('login-screen').classList.add('hidden');
   document.getElementById('rut-login-screen').classList.add('hidden');
+  document.getElementById('rut-consentimiento-screen').classList.add('hidden');
   const nombre = rutNombreActual || '';
   document.getElementById('rut-pendientes-saludo').textContent = 'Hola, ' + (nombre.split(' ')[0] || nombre);
   document.getElementById('rut-pendientes-screen').classList.remove('hidden');
@@ -2028,7 +2057,7 @@ async function cargarTodo(silencioso) {
     // que esa cuenta de todas formas nunca va a ver en la interfaz).
     let usuarios;
     try {
-      usuarios = await fetchSheet(`'${CONFIG.SHEET_USUARIOS}'!A2:D2000`);
+      usuarios = await fetchSheet(`'${CONFIG.SHEET_USUARIOS}'!A2:D20000`);
     } catch (errAccesoDirecto) {
       // Sin acceso directo al Sheet: si hay una Web App configurada
       // (ver config.js SUBCONTRATISTAS_WEBAPP_URL), puede que esta cuenta
@@ -2073,9 +2102,9 @@ async function cargarTodo(silencioso) {
 
     if (miEmpresaSubcontratista) {
       const [subs, docs, trab] = await fetchSheetsBatch([
-        `'${CONFIG.SHEET_SUBCONTRATISTAS}'!A2:B2000`,
-        `'${CONFIG.SHEET_SUBCONTRATISTAS_DOCS}'!A2:J2000`,
-        `'${CONFIG.SHEET_TRABAJADORES}'!A2:AC2000`,
+        `'${CONFIG.SHEET_SUBCONTRATISTAS}'!A2:B20000`,
+        `'${CONFIG.SHEET_SUBCONTRATISTAS_DOCS}'!A2:J20000`,
+        `'${CONFIG.SHEET_TRABAJADORES}'!A2:AC20000`,
       ]);
       allSubcontratistas = subs.map((r,i) => rowToSubcontratista(r,i));
       allSubDocs = docs.map((r,i) => rowToSubDoc(r,i));
@@ -2090,21 +2119,21 @@ async function cargarTodo(silencioso) {
     }
 
     const [trab, insp, inc, proc, epp, charlas, docsPend, invest, hcr, diat, subs, docs, prog, miperArchivo, capDs44] = await fetchSheetsBatch([
-      `'${CONFIG.SHEET_TRABAJADORES}'!A2:AC2000`,
-      `'${CONFIG.SHEET_INSPECCIONES}'!A2:M2000`,
-      `'${CONFIG.SHEET_INCIDENTES}'!A2:V2000`,
-      `'${CONFIG.SHEET_PROCEDIMIENTOS}'!A2:I2000`,
-      `'${CONFIG.SHEET_EPP}'!A2:K2000`,
-      `'${CONFIG.SHEET_CHARLAS}'!A2:N2000`,
-      `'${CONFIG.SHEET_DOCUMENTOS_PENDIENTES}'!A2:K4000`,
-      `'${CONFIG.SHEET_INVESTIGACIONES}'!A2:AT2000`,
-      `'${CONFIG.SHEET_HCR}'!A2:V2000`,
-      `'${CONFIG.SHEET_DIAT}'!A2:BA2000`,
-      `'${CONFIG.SHEET_SUBCONTRATISTAS}'!A2:B2000`,
-      `'${CONFIG.SHEET_SUBCONTRATISTAS_DOCS}'!A2:J2000`,
-      `'${CONFIG.SHEET_PROGRAMA_PERSONALIZADO}'!A2:L4000`,
-      `'${CONFIG.SHEET_MIPER_ARCHIVO}'!A2:F500`,
-      `'${CONFIG.SHEET_CAPACITACION_DS44}'!A2:M3000`,
+      `'${CONFIG.SHEET_TRABAJADORES}'!A2:AC20000`,
+      `'${CONFIG.SHEET_INSPECCIONES}'!A2:M20000`,
+      `'${CONFIG.SHEET_INCIDENTES}'!A2:V20000`,
+      `'${CONFIG.SHEET_PROCEDIMIENTOS}'!A2:I20000`,
+      `'${CONFIG.SHEET_EPP}'!A2:K20000`,
+      `'${CONFIG.SHEET_CHARLAS}'!A2:N20000`,
+      `'${CONFIG.SHEET_DOCUMENTOS_PENDIENTES}'!A2:K40000`,
+      `'${CONFIG.SHEET_INVESTIGACIONES}'!A2:AT20000`,
+      `'${CONFIG.SHEET_HCR}'!A2:V20000`,
+      `'${CONFIG.SHEET_DIAT}'!A2:BA20000`,
+      `'${CONFIG.SHEET_SUBCONTRATISTAS}'!A2:B20000`,
+      `'${CONFIG.SHEET_SUBCONTRATISTAS_DOCS}'!A2:J20000`,
+      `'${CONFIG.SHEET_PROGRAMA_PERSONALIZADO}'!A2:L40000`,
+      `'${CONFIG.SHEET_MIPER_ARCHIVO}'!A2:F5000`,
+      `'${CONFIG.SHEET_CAPACITACION_DS44}'!A2:M30000`,
     ]);
     if (!silencioso) splash(85, 'Preparando la app...');
     allTrabajadores = trab.map((r,i) => rowToTrabajador(r,i));
@@ -2146,7 +2175,8 @@ function rowToTrabajador(r, i) {
     comuna: r[20]||'', telefono: r[21]||'', puebloOriginario: r[22]||'', tipoContrato: r[23]||'',
     tipoIngreso: r[24]||'', categoriaOcupacional: r[25]||'', correo: r[26]||'',
     especialidadesSupervisor: (r[27]||'').split(';').map(x=>x.trim()).filter(Boolean),
-    supervisorAsignado: r[28]||'' };
+    supervisorAsignado: r[28]||'',
+    sinCorreo: r[29]==='Sí', consentimientoFirma: r[30]==='Sí', fechaConsentimiento: r[31]||'' };
 }
 // Especialidades que puede cubrir un supervisor (mismo catálogo que Temas de
 // Charla/Inspección, para poder cruzarlas directamente). "Otro" no aplica
@@ -3074,14 +3104,15 @@ async function guardarTrabajador(ev) {
     const n = allTrabajadores.length + 1;
     const obra = valorObra(f.obra, 'input-trabajador-obra-otra');
     const especialidades = f.esSupervisor.checked ? recolectarEspecialidades('checklist-especialidades-trabajador').join('; ') : '';
-    await appendSheet(`'${CONFIG.SHEET_TRABAJADORES}'!A:AC`, [[
+    await appendSheet(`'${CONFIG.SHEET_TRABAJADORES}'!A:AF`, [[
       n, f.nombre.value, f.rut.value, f.cargo.value, f.empresa.value,
       f.fechaIngreso.value, f.estado.value, fotoLink, new Date().toLocaleString('es-CL'),
       obra, '', '', '', '', '', f.esSupervisor.checked ? 'Sí' : '',
       f.fechaNacimiento.value, f.sexo.value, f.nacionalidad.value, f.direccion.value,
       f.comuna.value, f.telefono.value, f.puebloOriginario.value, f.tipoContrato.value,
       f.tipoIngreso.value, f.categoriaOcupacional.value, f.correo.value, especialidades,
-      f.supervisorAsignado.value
+      f.supervisorAsignado.value,
+      f.sinCorreo.checked ? 'Sí' : '', '', ''
     ]]);
     toast('Trabajador agregado ✓', 'ok');
     closePanel('panel-form-trabajador');
@@ -3108,6 +3139,12 @@ function recolectarEspecialidades(contId) {
 }
 function onToggleEsSupervisorForm(chk, grupoId) {
   document.getElementById(grupoId).classList.toggle('hidden', !chk.checked);
+}
+function onToggleSinCorreo(chk, correoInputId) {
+  const input = document.getElementById(correoInputId);
+  if (!input) return;
+  input.disabled = chk.checked;
+  if (chk.checked) input.value = '';
 }
 function abrirEditarSupervisor(fila) {
   const t = allTrabajadores.find(x => x.fila === fila);
@@ -6296,6 +6333,7 @@ async function guardarTrabajadorSubcontratista(ev) {
       await llamarWebAppSubcontratista('agregarTrabajador', {
         empresa, nombre: f.nombre.value, rut: f.rut.value, cargo: f.cargo.value,
         obra: f.obra.value, fechaIngreso: f.fechaIngreso.value, correo: f.correo.value,
+        sinCorreo: f.sinCorreo.checked,
         fotoNombreArchivo, fotoMimeType, fotoBase64,
       });
     } else {
@@ -6305,12 +6343,13 @@ async function guardarTrabajadorSubcontratista(ev) {
         fotoLink = up.link;
       }
       const n = allTrabajadores.length + 1;
-      await appendSheet(`'${CONFIG.SHEET_TRABAJADORES}'!A:AC`, [[
+      await appendSheet(`'${CONFIG.SHEET_TRABAJADORES}'!A:AF`, [[
         n, f.nombre.value, f.rut.value, f.cargo.value, empresa,
         f.fechaIngreso.value, 'Activo', fotoLink, new Date().toLocaleString('es-CL'),
         f.obra.value, '', '', '', '', '', '',
         '', '', '', '', '', '', '', '', '', '',
-        f.correo.value, '', ''
+        f.correo.value, '', '',
+        f.sinCorreo.checked ? 'Sí' : '', '', ''
       ]]);
     }
     const archivosRespaldo = [...f.respaldo.files];
@@ -6749,6 +6788,14 @@ function cargarImagenDesdeDataUrl(dataUrl) {
 FINALIZADORES_DOCUMENTO_PENDIENTE.epp = async function (meta, filas) {
   await finalizarEpp({ ...meta, firma: filas[0].firma });
 };
+function blobABase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result.split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
 async function finalizarEpp(datos) {
   try {
     toast('Generando documento...');
@@ -6771,15 +6818,35 @@ async function finalizarEpp(datos) {
     // sin mezclarse con el resto de sus documentos. Si algo falla generando
     // el PDF, la entrega igual se guarda (no bloquea el registro).
     let documentoLink = '';
+    let pdfBlobGenerado = null;
     try {
       const pdfBlob = await generarPdfEntregaEpp({
         obra, trabajador: trabNombre, rut: trabRut, cargo,
         fecha, items: itemsEpp, firmaDataUrl: firma,
         responsable, fechaHoraRegistro: fechaRegistro,
       });
+      pdfBlobGenerado = pdfBlob;
       const upDoc = await uploadFileTrabajadorEnModulo(pdfBlob, 'Entrega de EPP', trabNombre, 'entrega_epp', 'pdf');
       documentoLink = upDoc.link;
     } catch (e) { console.error('No se pudo generar el documento de Entrega de EPP:', e); }
+
+    // Envío automático del comprobante al correo PERSONAL del trabajador —
+    // piloto de la Fase 1 de cumplimiento DT (Dictamen 0789/15): solo si
+    // declaró un correo y ya dio su consentimiento para el tratamiento
+    // electrónico de su documentación laboral. Nunca bloquea el registro.
+    try {
+      const trabajador = allTrabajadores.find(t => normalizarRutCliente(t.rut) === normalizarRutCliente(trabRut));
+      if (trabajador && trabajador.correo && trabajador.consentimientoFirma && pdfBlobGenerado) {
+        const pdfBase64 = await blobABase64(pdfBlobGenerado);
+        await llamarWebAppSubcontratista('enviarComprobante', {
+          correoTrabajador: trabajador.correo,
+          nombreArchivo: `Entrega_EPP_${trabNombre.replace(/\s+/g, '_')}_${fecha}.pdf`,
+          pdfBase64,
+          asunto: 'Comprobante de Entrega de EPP — Constructora LST',
+          cuerpo: `Hola ${trabNombre},\n\nAdjuntamos el comprobante firmado de tu entrega de EPP del ${fecha}.\n\nSaludos,\nConstructora LST`,
+        });
+      }
+    } catch (e) { console.error('No se pudo enviar el comprobante de EPP por correo:', e); }
 
     // Todos los ítems de una misma entrega van en UNA sola fila (columna
     // "EPP Entregado" combinada, ej. "Casco (1); Guantes (2)"), igual que
@@ -9315,7 +9382,9 @@ window.addEventListener('DOMContentLoaded', () => {
   if (sessionStorage.getItem(RUT_SESION_KEY)) {
     rutSesionActual = sessionStorage.getItem(RUT_SESION_KEY);
     rutNombreActual = sessionStorage.getItem(RUT_SESION_NOMBRE_KEY);
-    mostrarPendientesRut();
+    llamarWebAppSubcontratista('verificarTrabajadorPorRut', { rut: rutSesionActual })
+      .then(resp => { if (resp.encontrado && !resp.consentimiento) mostrarConsentimientoRut(); else mostrarPendientesRut(); })
+      .catch(() => mostrarPendientesRut());
     return;
   }
 
