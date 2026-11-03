@@ -3690,7 +3690,7 @@ FINALIZADORES_DOCUMENTO_PENDIENTE.charla = async function (meta, filas) {
 async function finalizarCharla() {
   try {
     toast('Generando documento...');
-    const pdfLink = charlaEnProceso.plantilla
+    const { link: pdfLink, blob: pdfBlobGenerado } = charlaEnProceso.plantilla
       ? await generarPdfCharlaSobrePlantilla(charlaEnProceso, charlaEnProceso.plantilla)
       : await generarYSubirPdfCharla(charlaEnProceso);
     const asistentesTxto = charlaEnProceso.asistentes.map(a => `${a.nombre} (${a.rut})`).join('; ');
@@ -3713,6 +3713,12 @@ async function finalizarCharla() {
       ]]);
     }
     toast('Charla registrada y documento generado ✓', 'ok');
+    await enviarComprobantesAFirmantes(
+      charlaEnProceso.asistentes, pdfBlobGenerado,
+      'Charla_' + (charlaEnProceso.obra || 'obra').replace(/\s+/g, '_') + '_' + hoyISO(),
+      'Comprobante de Charla firmada — Constructora LST',
+      'Hola {{nombre}},\n\nAdjuntamos el comprobante firmado de la charla de seguridad.\n\nSaludos,\nConstructora LST'
+    );
     charlaEnProceso = null;
     cargarTodo(true);
   } catch (e) { toast(e.message, 'error'); }
@@ -3800,7 +3806,7 @@ async function generarYSubirPdfCharla(datos) {
   const bytes = await pdfDoc.save();
   const blob = new Blob([bytes], { type: 'application/pdf' });
   const up = await uploadFile(blob, 'Charlas', 'charla_' + (datos.obra || 'obra').replace(/\s+/g,'_'), 'pdf');
-  return up.link;
+  return { link: up.link, blob };
 }
 
 // ── Charla sobre un archivo de la biblioteca (charlas reales del cliente,
@@ -4008,7 +4014,7 @@ async function generarPdfCharlaSobrePlantilla(datos, plantilla) {
   const outBytes = await pdfDoc.save();
   const blob = new Blob([outBytes], { type: 'application/pdf' });
   const up = await uploadFile(blob, 'Charlas', 'charla_' + (datos.obra || 'obra').replace(/\s+/g,'_'), 'pdf');
-  return up.link;
+  return { link: up.link, blob };
 }
 
 // ============================================================
@@ -5283,7 +5289,7 @@ FINALIZADORES_DOCUMENTO_PENDIENTE.hcr = async function (meta, filas) {
 async function finalizarHcr() {
   try {
     toast('Generando documento...');
-    const pdfLink = await generarYSubirPdfHcr(hcrEnProceso);
+    const { link: pdfLink, blob: pdfBlobGenerado } = await generarYSubirPdfHcr(hcrEnProceso);
     const n = allHcr.length + 1;
     await appendSheet(`'${CONFIG.SHEET_HCR}'!A:V`, [[
       n, hcrEnProceso.fecha, hcrEnProceso.obra, hcrEnProceso.actividad, hcrEnProceso.area, hcrEnProceso.hhCapacitacion,
@@ -5300,6 +5306,12 @@ async function finalizarHcr() {
       pdfLink, userEmail || '', new Date().toLocaleString('es-CL'),
     ]]);
     toast('HCR registrada y documento generado ✓', 'ok');
+    await enviarComprobantesAFirmantes(
+      hcrEnProceso.asistentes, pdfBlobGenerado,
+      'HCR_' + (hcrEnProceso.obra || 'obra').replace(/\s+/g, '_') + '_' + hcrEnProceso.fecha,
+      'Comprobante de Hoja de Control de Riesgos firmada — Constructora LST',
+      'Hola {{nombre}},\n\nAdjuntamos el comprobante firmado de la Hoja de Control de Riesgos (HCR).\n\nSaludos,\nConstructora LST'
+    );
     hcrEnProceso = null;
     cargarTodo(true);
   } catch (e) { toast(e.message, 'error'); }
@@ -5438,7 +5450,7 @@ async function generarYSubirPdfHcr(datos) {
   const bytes = await pdfDoc.save();
   const blob = new Blob([bytes], { type: 'application/pdf' });
   const up = await uploadFile(blob, 'HCR', 'hcr_' + (datos.obra || 'obra').replace(/\s+/g,'_'), 'pdf');
-  return up.link;
+  return { link: up.link, blob };
 }
 
 // ============================================================
@@ -6795,6 +6807,30 @@ function blobABase64(blob) {
     reader.onerror = reject;
     reader.readAsDataURL(blob);
   });
+}
+// Envía el mismo PDF ya firmado a cada firmante que declaró correo Y dio
+// su consentimiento — usado por Charlas y HCR (varios firmantes por
+// documento; EPP tiene su propio envío porque ahí el firmante es uno
+// solo). Nunca interrumpe el flujo si algo falla: cada envío va en su
+// propio try/catch, así una casilla con problemas no bloquea al resto.
+async function enviarComprobantesAFirmantes(asistentes, pdfBlob, nombreArchivoBase, asunto, cuerpoPlantilla) {
+  if (!pdfBlob || !asistentes || !asistentes.length) return;
+  try {
+    const pdfBase64 = await blobABase64(pdfBlob);
+    for (const a of asistentes) {
+      try {
+        const trabajador = allTrabajadores.find(t => normalizarRutCliente(t.rut) === normalizarRutCliente(a.rut));
+        if (!trabajador || !trabajador.correo || !trabajador.consentimientoFirma) continue;
+        await llamarWebAppSubcontratista('enviarComprobante', {
+          correoTrabajador: trabajador.correo,
+          nombreArchivo: `${nombreArchivoBase}_${(a.nombre || '').replace(/\s+/g, '_')}.pdf`,
+          pdfBase64,
+          asunto,
+          cuerpo: cuerpoPlantilla.replace('{{nombre}}', a.nombre || ''),
+        });
+      } catch (e) { console.error('No se pudo enviar el comprobante a ' + (a.nombre || a.rut) + ':', e); }
+    }
+  } catch (e) { console.error('No se pudo preparar el comprobante para enviar:', e); }
 }
 async function finalizarEpp(datos) {
   try {
