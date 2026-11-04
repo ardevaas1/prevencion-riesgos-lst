@@ -175,6 +175,18 @@ function inicializarPlanilla() {
     'Id Documento', 'Titulo Documento', 'Firma'
   ]);
 
+  // Registro de integridad: hash SHA-256 del PDF ya firmado, calculado en
+  // el navegador justo después de generarlo (ver calcularHashSHA256 en
+  // app.js) y guardado junto al link de Drive. Sirve como evidencia de que
+  // el documento no se alteró después de firmado — un control interno
+  // útil, pero esto NO es Firma Electrónica Avanzada (Ley 19.799): no
+  // reemplaza una FEA acreditada si en algún momento se necesita para
+  // contratos/finiquitos, solo refuerza la trazabilidad de los documentos
+  // operacionales (Charla, HCR, EPP).
+  crearHoja(ss, 'INTEGRIDAD_DOCUMENTOS', [
+    'Fecha', 'Tipo', 'Titulo', 'Link', 'Hash SHA-256'
+  ]);
+
   // Elimina la hoja "Hoja 1" / "Sheet1" default si quedó vacía
   const porDefecto = ss.getSheetByName('Hoja 1') || ss.getSheetByName('Sheet1');
   if (porDefecto && porDefecto.getLastRow() === 0 && ss.getSheets().length > 1) {

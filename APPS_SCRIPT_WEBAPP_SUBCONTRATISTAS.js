@@ -678,6 +678,24 @@ function hojaHcr() { return SpreadsheetApp.getActiveSpreadsheet().getSheetByName
 function hojaEpp() { return SpreadsheetApp.getActiveSpreadsheet().getSheetByName('ENTREGA_EPP'); }
 function hojaFiscalizacionAccesos() { return SpreadsheetApp.getActiveSpreadsheet().getSheetByName('FISCALIZACION_ACCESOS'); }
 function hojaFiscalizacionFirmas() { return SpreadsheetApp.getActiveSpreadsheet().getSheetByName('FISCALIZACION_FIRMAS'); }
+function hojaIntegridadDocumentos() { return SpreadsheetApp.getActiveSpreadsheet().getSheetByName('INTEGRIDAD_DOCUMENTOS'); }
+
+// Mapa Link → Hash SHA-256 (ver registrarIntegridadDocumento en app.js) —
+// se arma una sola vez por búsqueda y se cruza con cada documento por su
+// link de Drive, que es el identificador único ya disponible en ambos
+// lados. Documentos generados antes de este feature no tienen hash
+// (quedan con '' — no es un error, simplemente no se calculó entonces).
+function hashesPorLink() {
+  const sh = hojaIntegridadDocumentos();
+  if (!sh) return {};
+  const datos = sh.getDataRange().getValues();
+  const mapa = {};
+  for (let i = 1; i < datos.length; i++) {
+    const link = (datos[i][3] || '').toString();
+    if (link) mapa[link] = (datos[i][4] || '').toString();
+  }
+  return mapa;
+}
 
 // Como máximo 20 búsquedas por minuto por fiscalizador (identificado por su
 // propio RUT) — alcanza de sobra para uso humano normal, pero frena un
@@ -807,6 +825,8 @@ function buscarDocumentosFiscalizacion(rutFiscalizadorEntrada, rutEmpresaEntrada
       .concat(buscarEnCharlas(rutsEmpresa, fechaDesde, fechaHasta))
       .concat(buscarEnHcr(rutsEmpresa, fechaDesde, fechaHasta))
       .sort(function (a, b) { return b.fecha < a.fecha ? -1 : 1; });
+    const hashes = hashesPorLink();
+    documentos.forEach(function (d) { d.hash = (d.pdfLink && hashes[d.pdfLink]) || ''; });
   }
 
   registrarAccesoFiscalizacion(rutFiscalizadorEntrada, rutEmpresaEntrada, empresaEncontrada, fechaDesde, fechaHasta, documentos.length);
