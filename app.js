@@ -824,6 +824,7 @@ function renderFiscalizacionResultados(empresa, documentos) {
     <div class="rut-pendiente-card">
       <div class="rut-pendiente-tema">${esc(d.titulo)}</div>
       <div class="rut-pendiente-sub">${esc(d.fecha)}</div>
+      ${d.hash ? `<div class="rut-pendiente-sub" style="font-family:monospace; font-size:11px; word-break:break-all;" title="${esc(d.hash)}">SHA-256: ${esc(d.hash.slice(0,16))}…</div>` : ''}
       <div style="display:flex; gap:8px; margin-top:8px;">
         ${d.pdfLink ? `<a href="${esc(d.pdfLink)}" target="_blank" rel="noopener" class="rut-pendiente-btn" style="text-decoration:none; text-align:center; display:block;">Ver / Imprimir</a>` : ''}
         <button type="button" class="rut-pendiente-btn" style="background:transparent; box-shadow:none; border:1.5px solid var(--accent); color:var(--accent);" onclick="abrirRatificarFiscalizacion('${esc(d.tipo)}','${esc(d.idDocumento)}','${esc(d.titulo)}')">Ratificar</button>
@@ -3834,6 +3835,7 @@ async function finalizarCharla() {
       ]]);
     }
     toast('Charla registrada y documento generado ✓', 'ok');
+    await registrarIntegridadDocumento('charla', 'Charla — ' + (charlaEnProceso.tema || charlaEnProceso.obra || ''), pdfLink, pdfBlobGenerado);
     await enviarComprobantesAFirmantes(
       charlaEnProceso.asistentes, pdfBlobGenerado,
       'Charla_' + (charlaEnProceso.obra || 'obra').replace(/\s+/g, '_') + '_' + hoyISO(),
@@ -5427,6 +5429,7 @@ async function finalizarHcr() {
       pdfLink, userEmail || '', new Date().toLocaleString('es-CL'),
     ]]);
     toast('HCR registrada y documento generado ✓', 'ok');
+    await registrarIntegridadDocumento('hcr', 'HCR — ' + (hcrEnProceso.actividad || hcrEnProceso.obra || ''), pdfLink, pdfBlobGenerado);
     await enviarComprobantesAFirmantes(
       hcrEnProceso.asistentes, pdfBlobGenerado,
       'HCR_' + (hcrEnProceso.obra || 'obra').replace(/\s+/g, '_') + '_' + hcrEnProceso.fecha,
@@ -6954,6 +6957,29 @@ function blobABase64(blob) {
     reader.readAsDataURL(blob);
   });
 }
+// Hash SHA-256 del PDF ya firmado, calculado en el navegador (Web Crypto —
+// requiere contexto seguro: HTTPS o localhost, ambos cubiertos en
+// producción y en desarrollo). Es un control de integridad interno (si
+// alguien reemplaza el archivo en Drive después, el hash guardado ya no
+// coincide) — OJO: esto NO es Firma Electrónica Avanzada (Ley 19.799), no
+// reemplaza una FEA acreditada si en algún momento se necesita para
+// contratos/finiquitos.
+async function calcularHashSHA256(blob) {
+  const buffer = await blob.arrayBuffer();
+  const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+  return [...new Uint8Array(hashBuffer)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+// Nunca bloquea el flujo principal si falla — mismo criterio que el envío
+// automático de comprobante.
+async function registrarIntegridadDocumento(tipo, titulo, link, blob) {
+  if (!blob || !link) return;
+  try {
+    const hash = await calcularHashSHA256(blob);
+    await appendSheet(`'${CONFIG.SHEET_INTEGRIDAD_DOCUMENTOS}'!A:E`, [[
+      new Date().toLocaleString('es-CL'), tipo, titulo, link, hash
+    ]]);
+  } catch (e) { console.error('No se pudo registrar el hash de integridad:', e); }
+}
 // Correo + consentimiento del trabajador, leídos AHORA MISMO del Sheet (no
 // de allTrabajadores, que puede estar desactualizado: el consentimiento
 // típicamente lo da el propio trabajador desde su celular, por RUT, en
@@ -7026,6 +7052,7 @@ async function finalizarEpp(datos) {
       pdfBlobGenerado = pdfBlob;
       const upDoc = await uploadFileTrabajadorEnModulo(pdfBlob, 'Entrega de EPP', trabNombre, 'entrega_epp', 'pdf');
       documentoLink = upDoc.link;
+      await registrarIntegridadDocumento('epp', 'Entrega de EPP — ' + trabNombre, documentoLink, pdfBlobGenerado);
     } catch (e) { console.error('No se pudo generar el documento de Entrega de EPP:', e); }
 
     // Envío automático del comprobante al correo PERSONAL del trabajador —
