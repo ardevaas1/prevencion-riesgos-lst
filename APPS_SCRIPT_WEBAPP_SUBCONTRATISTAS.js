@@ -712,9 +712,21 @@ function extraerRutsDeAsistentes(texto) {
   return ruts;
 }
 
+// Una celda escrita como texto "AAAA-MM-DD" (ej. por hoyISO()) con
+// valueInputOption=USER_ENTERED queda guardada por Sheets como una fecha
+// de verdad, no como texto — así que getValues() la devuelve acá como un
+// objeto Date, no como el string original (mismo fenómeno ya documentado
+// para la columna Periodo, ver normalizarPeriodo). Sin esto, el filtro
+// por rango de fechas y lo que se le muestra al fiscalizador se rompían en
+// silencio apenas una fila tuviera la fecha en formato Date.
+function fechaComoTexto(valor) {
+  if (valor instanceof Date) return Utilities.formatDate(valor, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  return (valor || '').toString();
+}
+
 function dentroDeRango(fecha, desde, hasta) {
-  if (!fecha) return false;
-  const f = fecha.toString();
+  const f = fechaComoTexto(fecha);
+  if (!f) return false;
   if (desde && f < desde) return false;
   if (hasta && f > hasta) return false;
   return true;
@@ -729,8 +741,9 @@ function buscarEnEpp(rutsEmpresa, desde, hasta) {
   for (let i = 1; i < datos.length; i++) {
     const r = datos[i];
     if (!rutsEmpresa[normalizarRut(r[3])]) continue;
-    if (!dentroDeRango(r[1], desde, hasta)) continue;
-    out.push({ tipo: 'epp', idDocumento: 'epp:' + (i + 1), titulo: 'Entrega de EPP — ' + (r[2] || ''), fecha: (r[1] || '').toString(), pdfLink: r[9] || '' });
+    const fecha = fechaComoTexto(r[1]);
+    if (!dentroDeRango(fecha, desde, hasta)) continue;
+    out.push({ tipo: 'epp', idDocumento: 'epp:' + (i + 1), titulo: 'Entrega de EPP — ' + (r[2] || ''), fecha: fecha, pdfLink: r[9] || '' });
   }
   return out;
 }
@@ -741,7 +754,7 @@ function buscarEnCharlas(rutsEmpresa, desde, hasta) {
     const r = datos[i];
     const ruts = extraerRutsDeAsistentes(r[12]);
     if (!ruts.some(function (x) { return rutsEmpresa[x]; })) continue;
-    const fecha = (r[5] || r[1] || '').toString();
+    const fecha = fechaComoTexto(r[5] || r[1]);
     if (!dentroDeRango(fecha, desde, hasta)) continue;
     out.push({ tipo: 'charla', idDocumento: 'charla:' + (i + 1), titulo: 'Charla — ' + (r[2] || ''), fecha: fecha, pdfLink: r[13] || '' });
   }
@@ -754,7 +767,7 @@ function buscarEnHcr(rutsEmpresa, desde, hasta) {
     const r = datos[i];
     const ruts = extraerRutsDeAsistentes(r[18]);
     if (!ruts.some(function (x) { return rutsEmpresa[x]; })) continue;
-    const fecha = (r[1] || '').toString();
+    const fecha = fechaComoTexto(r[1]);
     if (!dentroDeRango(fecha, desde, hasta)) continue;
     out.push({ tipo: 'hcr', idDocumento: 'hcr:' + (i + 1), titulo: 'HCR — ' + (r[3] || ''), fecha: fecha, pdfLink: r[19] || '' });
   }
