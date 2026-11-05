@@ -148,10 +148,15 @@
       <label style="display:block; font-size:12px; color:#94a3b8; margin-bottom:6px;">Tu nombre (opcional)</label>
       <input type="text" id="fiscalizacion-firmar-nombre" class="login-rut-input" style="text-align:left;" placeholder="Nombre completo">
     </div>
-    <div style="width:100%; text-align:left;">
-      <label style="display:block; font-size:12px; color:#94a3b8; margin-bottom:6px;">Tu firma</label>
-      <div class="firma-box"><canvas id="firma-canvas-fiscalizacion"></canvas></div>
-      <div class="firma-actions"><button type="button" onclick="limpiarFirmaId('firma-canvas-fiscalizacion')">Borrar firma</button></div>
+    <div id="fiscalizacion-pin-crear-wrap" class="hidden" style="width:100%; text-align:left;">
+      <label style="display:block; font-size:12px; color:#94a3b8; margin-bottom:6px;">Crea tu PIN (lo vas a usar cada vez que ratifiques)</label>
+      <input type="password" id="fiscalizacion-pin-nuevo" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off">
+      <label style="display:block; font-size:12px; color:#94a3b8; margin:10px 0 6px;">Confirma tu PIN</label>
+      <input type="password" id="fiscalizacion-pin-nuevo-confirmar" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off">
+    </div>
+    <div id="fiscalizacion-pin-ingresar-wrap" class="hidden" style="width:100%; text-align:left;">
+      <label style="display:block; font-size:12px; color:#94a3b8; margin-bottom:6px;">Tu PIN</label>
+      <input type="password" id="fiscalizacion-pin-ingresar" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off">
     </div>
     <button class="login-btn" type="button" onclick="onRatificarFiscalizacion()" style="margin-top:14px;">Ratificar y firmar</button>
     <div class="login-spinner hidden" id="fiscalizacion-firmar-spinner"><div class="login-spinner-ring"></div></div>
@@ -211,6 +216,34 @@
   </div>
 </div>
 
+<!-- CREA TU PIN: se muestra una sola vez, después del consentimiento y
+     antes de ver pendientes, si el trabajador todavía no tiene un PIN de
+     firma (reemplaza el dibujo a mano — ver crearPinTrabajador en Apps
+     Script y mostrarCrearPinRut/onCrearPinRut en app.js). -->
+<div id="rut-crear-pin-screen" class="login-screen hidden">
+  <div class="login-box login-box--ancho">
+    <div class="entry-logo-wrap"><img src="logo-white.png" alt="LST" class="login-logo"></div>
+    <div class="login-title">Crea tu PIN de firma</div>
+    <div class="rut-consentimiento-texto">
+      De ahora en adelante vas a firmar tus documentos con este PIN, en vez de dibujar tu firma. Elige uno de 4 a 6 números y no lo compartas.
+    </div>
+    <form id="form-crear-pin-rut" onsubmit="onCrearPinRut(event)">
+      <div style="width:100%; text-align:left; margin-bottom:12px;">
+        <label style="display:block; font-size:12px; color:#94a3b8; margin-bottom:6px;">Tu PIN nuevo</label>
+        <input type="password" id="pin-rut-nuevo" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off" required>
+      </div>
+      <div style="width:100%; text-align:left;">
+        <label style="display:block; font-size:12px; color:#94a3b8; margin-bottom:6px;">Confírmalo</label>
+        <input type="password" id="pin-rut-nuevo-confirmar" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off" required>
+      </div>
+      <button class="login-btn" type="submit" style="margin-top:16px;">Crear PIN y continuar</button>
+    </form>
+    <div class="login-spinner hidden" id="crear-pin-rut-spinner"><div class="login-spinner-ring"></div></div>
+    <div class="login-hint" id="crear-pin-rut-hint">&nbsp;</div>
+    <div class="login-rut-link" onclick="cerrarSesionRut()">Salir</div>
+  </div>
+</div>
+
 <!-- MIS DOCUMENTOS PENDIENTES: única pantalla que ve un trabajador logueado
      por RUT — sin sidebar, sin módulos, sin acceso al resto de la app. -->
 <div id="rut-pendientes-screen" class="login-screen hidden">
@@ -228,9 +261,8 @@
   <div class="panel-bar"><div class="pnl-back" onclick="closePanel('panel-firmar-pendiente')">‹ Volver</div><div class="pnl-title">Firmar charla</div><div></div></div>
   <div class="panel-body">
     <div class="card-sub" id="firmar-pendiente-info" style="margin-bottom:14px;"></div>
-    <div class="form-group"><label>Tu firma</label>
-      <div class="firma-box"><canvas id="firma-canvas-pendiente"></canvas></div>
-      <div class="firma-actions"><button type="button" onclick="limpiarFirmaId('firma-canvas-pendiente')">Borrar firma</button></div>
+    <div class="form-group"><label>Tu PIN</label>
+      <input type="password" id="pin-firmar-pendiente" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off">
     </div>
     <button class="btn-add" type="button" onclick="onFirmarPendiente()">Firmar y enviar</button>
   </div>
@@ -1030,8 +1062,18 @@
       <div class="ficha-hero-name" style="font-size:20px;" id="firmar-asistente-nombre"></div>
       <div class="card-sub" id="firmar-asistente-rut"></div>
     </div>
-    <div class="firma-box"><canvas id="firma-canvas-asistente"></canvas></div>
-    <div class="firma-actions"><button type="button" onclick="limpiarFirma()">Borrar firma</button></div>
+    <div id="firmar-asistente-crear-pin-wrap" class="hidden">
+      <p class="card-sub" style="margin-bottom:10px;">Todavía no tienes un PIN — créalo ahora, lo vas a usar la próxima vez que firmes.</p>
+      <div class="form-group"><label>Crea tu PIN</label>
+        <input type="password" id="pin-firmar-asistente-nuevo" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off">
+      </div>
+      <div class="form-group"><label>Confírmalo</label>
+        <input type="password" id="pin-firmar-asistente-nuevo-confirmar" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off">
+      </div>
+    </div>
+    <div id="firmar-asistente-ingresar-pin-wrap" class="form-group hidden"><label>Tu PIN</label>
+      <input type="password" id="pin-firmar-asistente" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off">
+    </div>
     <button class="btn-add" type="button" onclick="confirmarFirmaAsistente()">Firmar</button>
   </div>
 </div>
