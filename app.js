@@ -3914,6 +3914,7 @@ async function guardarDatosCharla(ev) {
     ...charlaEnProceso,
     plantilla,
     relator: f.relator.value,
+    relatorRut,
     firmaRelator: 'PIN',
     obra: valorObra(f.obra, 'input-charla-obra-otra'),
     fecha: f.fecha.value,
@@ -3978,8 +3979,12 @@ async function finalizarCharla() {
     }
     toast('Charla registrada y documento generado ✓', 'ok');
     await registrarIntegridadDocumento('charla', 'Charla — ' + (charlaEnProceso.tema || charlaEnProceso.obra || ''), pdfLink, pdfBlobGenerado);
+    // El relator también firmó (con su PIN) — le llega el comprobante igual
+    // que a los asistentes, no solo a quienes escucharon la charla.
+    const destinatarios = [...charlaEnProceso.asistentes];
+    if (charlaEnProceso.relatorRut) destinatarios.push({ nombre: charlaEnProceso.relator, rut: charlaEnProceso.relatorRut });
     await enviarComprobantesAFirmantes(
-      charlaEnProceso.asistentes, pdfBlobGenerado,
+      destinatarios, pdfBlobGenerado,
       'Charla_' + (charlaEnProceso.obra || 'obra').replace(/\s+/g, '_') + '_' + hoyISO(),
       'Comprobante de Charla firmada — Constructora LST',
       'Hola {{nombre}},\n\nAdjuntamos el comprobante firmado de la charla de seguridad.\n\nSaludos,\nConstructora LST'
@@ -4024,7 +4029,12 @@ async function generarYSubirPdfCharla(datos) {
   }
   async function drawSig(page, dataUrl, x, top, w, h) {
     if (!dataUrl) return;
-    if (dataUrl === 'PIN') { text(page, 'PIN OK', x, top + 8, 7.5); return; }
+    if (dataUrl === 'PIN') {
+      let size = 7.5; const sello = 'Firmado con PIN';
+      while (size > 5 && font.widthOfTextAtSize(sello, size) > w) size -= 0.25;
+      text(page, sello, x, top + 8, size);
+      return;
+    }
     const bytes = Uint8Array.from(atob(dataUrl.split(',')[1]), c => c.charCodeAt(0));
     const img = await pdfDoc.embedPng(bytes);
     const dims = escalarFirmaCasillero(img, w, h);
@@ -4239,8 +4249,10 @@ async function generarPdfCharlaSobrePlantilla(datos, plantilla) {
   async function firmar(lista, dataUrl, w, h) {
     if (!dataUrl) return;
     if (dataUrl === 'PIN') {
+      let size = 7.5; const sello = 'Firmado con PIN';
+      while (size > 5 && font.widthOfTextAtSize(sello, size) > w) size -= 0.25;
       lista.forEach(pos => {
-        paginas[pos.page].drawText('PIN OK', { x: pos.x, y: pos.y, size: 7.5, font, color: rgb(0,0,0) });
+        paginas[pos.page].drawText(sello, { x: pos.x, y: pos.y, size, font, color: rgb(0,0,0) });
       });
       return;
     }
@@ -4274,7 +4286,9 @@ async function generarPdfCharlaSobrePlantilla(datos, plantilla) {
       p.drawText(a.nombre, { x: nombreX, y: fila.y, size: 9, font, color: rgb(0,0,0) });
       p.drawText(a.rut, { x: rutX, y: fila.y, size: 9, font, color: rgb(0,0,0) });
       if (a.firma === 'PIN') {
-        p.drawText('PIN OK', { x: firmaX, y: fila.y, size: 8, font, color: rgb(0.15,0.45,0.2) });
+        let size = 7.5; const sello = 'Firmado con PIN';
+        while (size > 5 && font.widthOfTextAtSize(sello, size) > 70) size -= 0.25;
+        p.drawText(sello, { x: firmaX, y: fila.y, size, font, color: rgb(0.15,0.45,0.2) });
       } else if (a.firma) {
         const imgBytes = Uint8Array.from(atob(a.firma.split(',')[1]), c => c.charCodeAt(0));
         const img = await pdfDoc.embedPng(imgBytes);
@@ -5633,7 +5647,12 @@ async function generarYSubirPdfHcr(datos) {
   }
   async function drawSig(page, H, dataUrl, x, top, w, h) {
     if (!dataUrl) return;
-    if (dataUrl === 'PIN') { text(page, H, 'PIN OK', x, top + 8, 7); return; }
+    if (dataUrl === 'PIN') {
+      let size = 7; const sello = 'Firmado con PIN';
+      while (size > 5 && font.widthOfTextAtSize(sello, size) > w) size -= 0.25;
+      text(page, H, sello, x, top + 8, size);
+      return;
+    }
     const bytes = Uint8Array.from(atob(dataUrl.split(',')[1]), c => c.charCodeAt(0));
     const img = await pdfDoc.embedPng(bytes);
     const dims = escalarFirmaCasillero(img, w, h);
