@@ -1355,20 +1355,46 @@
 
       <div class="sec-label" style="margin-top:18px;">Firmas jefatura</div>
       <div class="form-group"><label>Nombre del supervisor</label><input name="supervisorNombre" required></div>
-      <div class="form-group">
-        <label>Firma supervisor</label>
-        <div class="firma-box"><canvas id="firma-canvas-hcr-supervisor"></canvas></div>
-        <div class="firma-actions"><button type="button" onclick="limpiarFirmaId('firma-canvas-hcr-supervisor')">Borrar firma</button></div>
+      <div class="form-group"><label>RUT del supervisor</label><input name="supervisorRut" required placeholder="12.345.678-9" oninput="formatearRutInput(this)" onblur="onRutHcrChange(this,'supervisor')"></div>
+      <div id="hcr-pin-supervisor-crear-wrap" class="hidden">
+        <p class="card-sub" style="margin-bottom:10px;">El supervisor todavía no tiene un PIN — créalo ahora, lo va a usar la próxima vez que firme.</p>
+        <div class="form-group"><label>Crea el PIN</label>
+          <input type="password" id="pin-hcr-supervisor-nuevo" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off">
+        </div>
+        <div class="form-group"><label>Confírmalo</label>
+          <input type="password" id="pin-hcr-supervisor-nuevo-confirmar" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off">
+        </div>
       </div>
-      <div class="form-group">
-        <label>Firma jefe de obra / jefe terreno (opcional)</label>
-        <div class="firma-box"><canvas id="firma-canvas-hcr-jefeobra"></canvas></div>
-        <div class="firma-actions"><button type="button" onclick="limpiarFirmaId('firma-canvas-hcr-jefeobra')">Borrar firma</button></div>
+      <div id="hcr-pin-supervisor-ingresar-wrap" class="form-group hidden"><label>PIN del supervisor</label>
+        <input type="password" id="pin-hcr-supervisor" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off">
       </div>
-      <div class="form-group">
-        <label>Firma prevención de riesgos (opcional)</label>
-        <div class="firma-box"><canvas id="firma-canvas-hcr-prevencion"></canvas></div>
-        <div class="firma-actions"><button type="button" onclick="limpiarFirmaId('firma-canvas-hcr-prevencion')">Borrar firma</button></div>
+
+      <div class="form-group"><label>RUT jefe de obra / jefe terreno (opcional)</label><input name="jefeObraRut" placeholder="12.345.678-9" oninput="formatearRutInput(this)" onblur="onRutHcrChange(this,'jefeobra')"></div>
+      <div id="hcr-pin-jefeobra-crear-wrap" class="hidden">
+        <p class="card-sub" style="margin-bottom:10px;">Todavía no tiene un PIN — créalo ahora.</p>
+        <div class="form-group"><label>Crea el PIN</label>
+          <input type="password" id="pin-hcr-jefeobra-nuevo" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off">
+        </div>
+        <div class="form-group"><label>Confírmalo</label>
+          <input type="password" id="pin-hcr-jefeobra-nuevo-confirmar" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off">
+        </div>
+      </div>
+      <div id="hcr-pin-jefeobra-ingresar-wrap" class="form-group hidden"><label>PIN</label>
+        <input type="password" id="pin-hcr-jefeobra" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off">
+      </div>
+
+      <div class="form-group"><label>RUT prevención de riesgos (opcional)</label><input name="prevencionRut" placeholder="12.345.678-9" oninput="formatearRutInput(this)" onblur="onRutHcrChange(this,'prevencion')"></div>
+      <div id="hcr-pin-prevencion-crear-wrap" class="hidden">
+        <p class="card-sub" style="margin-bottom:10px;">Todavía no tiene un PIN — créalo ahora.</p>
+        <div class="form-group"><label>Crea el PIN</label>
+          <input type="password" id="pin-hcr-prevencion-nuevo" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off">
+        </div>
+        <div class="form-group"><label>Confírmalo</label>
+          <input type="password" id="pin-hcr-prevencion-nuevo-confirmar" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off">
+        </div>
+      </div>
+      <div id="hcr-pin-prevencion-ingresar-wrap" class="form-group hidden"><label>PIN</label>
+        <input type="password" id="pin-hcr-prevencion" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off">
       </div>
 
       <div class="sec-label" style="margin-top:18px;">Cuadrilla (registro de firmas)</div>
