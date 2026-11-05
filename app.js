@@ -3874,6 +3874,48 @@ async function onRutRelatorChange(input) {
   document.getElementById('relator-pin-crear-wrap').classList.toggle('hidden', tienePin);
   document.getElementById('relator-pin-ingresar-wrap').classList.toggle('hidden', !tienePin);
 }
+// Mismo mecanismo RUT+PIN de arriba, generalizado por "tipo" (id prefix:
+// 'hcr-pin-{tipo}-...') para no triplicar el bloque entre supervisor/jefe
+// de obra/prevención de HCR (ver guardarDatosHcr).
+function resetearPinFirmante(tipo) {
+  document.getElementById(`hcr-pin-${tipo}-crear-wrap`).classList.add('hidden');
+  document.getElementById(`hcr-pin-${tipo}-ingresar-wrap`).classList.add('hidden');
+  document.getElementById(`pin-hcr-${tipo}-nuevo`).value = '';
+  document.getElementById(`pin-hcr-${tipo}-nuevo-confirmar`).value = '';
+  document.getElementById(`pin-hcr-${tipo}`).value = '';
+}
+async function onRutHcrChange(input, tipo) {
+  const rut = input.value.trim();
+  if (!rut) { resetearPinFirmante(tipo); return; }
+  const datos = await datosFirmaVigentes(rut);
+  const tienePin = !!(datos && datos.tienePin);
+  document.getElementById(`hcr-pin-${tipo}-crear-wrap`).classList.toggle('hidden', tienePin);
+  document.getElementById(`hcr-pin-${tipo}-ingresar-wrap`).classList.toggle('hidden', !tienePin);
+}
+// Crea o verifica el PIN de un firmante de HCR (supervisor/jefe de obra/
+// prevención) según cuál de los 2 wraps esté visible. Si el RUT viene
+// vacío y la firma es opcional, no hace nada (sin contrafirma). Devuelve
+// 'PIN' si quedó firmado, '' si no — mismo marcador que usan los generadores
+// de PDF para dibujar el sello de texto en vez de una imagen.
+async function procesarFirmaPinHcr(tipo, rut, opcional) {
+  if (!rut) {
+    if (opcional) return '';
+    throw new Error('Falta el RUT del ' + tipo);
+  }
+  const creando = !document.getElementById(`hcr-pin-${tipo}-crear-wrap`).classList.contains('hidden');
+  if (creando) {
+    const nuevo = document.getElementById(`pin-hcr-${tipo}-nuevo`).value.trim();
+    const confirmar = document.getElementById(`pin-hcr-${tipo}-nuevo-confirmar`).value.trim();
+    if (!/^[0-9]{4,6}$/.test(nuevo)) throw new Error('El PIN debe tener entre 4 y 6 números');
+    if (nuevo !== confirmar) throw new Error('Los dos PIN no coinciden');
+    await llamarWebAppSubcontratista('crearPinTrabajador', { rut, pin: nuevo });
+  } else {
+    const pin = document.getElementById(`pin-hcr-${tipo}`).value.trim();
+    if (!/^[0-9]{4,6}$/.test(pin)) throw new Error('Ingresa el PIN');
+    await llamarWebAppSubcontratista('verificarPinTrabajador', { rut, pin });
+  }
+  return 'PIN';
+}
 async function guardarDatosCharla(ev) {
   if (bloquearSiViewer()) return;
   ev.preventDefault();
@@ -5504,12 +5546,10 @@ function abrirNuevoHcr() {
   onCambioObraSelect(selObraHcr, 'input-hcr-obra-otra');
   renderChecklistsHcr();
   renderChecklistTrabajadoresHcr();
+  resetearPinFirmante('supervisor');
+  resetearPinFirmante('jefeobra');
+  resetearPinFirmante('prevencion');
   openPanel('panel-form-hcr');
-  setTimeout(() => {
-    initFirmaPad('firma-canvas-hcr-supervisor');
-    initFirmaPad('firma-canvas-hcr-jefeobra');
-    initFirmaPad('firma-canvas-hcr-prevencion');
-  }, 80);
 }
 function seleccionadosHcrRadio(prefix, n) {
   const out = [];
@@ -5528,7 +5568,25 @@ async function guardarDatosHcr(ev) {
   if (bloquearSiViewer()) return;
   ev.preventDefault();
   const f = ev.target;
-  if (firmaEstaVacia('firma-canvas-hcr-supervisor')) { toast('Falta la firma del supervisor', 'error'); return; }
+  const supervisorRut = f.supervisorRut.value.trim();
+  const jefeObraRut = f.jefeObraRut.value.trim();
+  const prevencionRut = f.prevencionRut.value.trim();
+  let firmaSupervisor, firmaJefeObra, firmaPrevencion;
+  try {
+    if (!supervisorRut) { toast('Falta el RUT del supervisor', 'error'); return; }
+    firmaSupervisor = await procesarFirmaPinHcr('supervisor', supervisorRut, false);
+    firmaJefeObra = await procesarFirmaPinHcr('jefeobra', jefeObraRut, true);
+    firmaPrevencion = await procesarFirmaPinHcr('prevencion', prevencionRut, true);
+  } catch (e) {
+    toast(e.message, 'error');
+    return;
+  } finally {
+    // Botón type="submit" — el listener genérico ya lo dejó "Guardando...",
+    // hay que reactivarlo acá mismo si hubo un error (mismo patrón ya
+    // resuelto varias veces esta sesión).
+    reactivarBotonesGuardar(f);
+  }
+
   const asistentes = [...document.querySelectorAll('#checklist-trabajadores-hcr .chk-row')]
     .filter(row => row.querySelector('.chk-row-input').checked)
     .map(row => ({ nombre: row.dataset.nombre, rut: row.dataset.rut }));
@@ -5546,9 +5604,8 @@ async function guardarDatosHcr(ev) {
     registros: seleccionadosHcrRadio('reg', HCR_REGISTROS_ADIC.length),
     tareas: [1,2,3,4].map(i => ({ tarea: f['tarea'+i].value, riesgo: f['riesgo'+i].value, medida: f['medida'+i].value })),
     supervisorNombre: f.supervisorNombre.value,
-    firmaSupervisor: firmaCanvasADataURL('firma-canvas-hcr-supervisor'),
-    firmaJefeObra: firmaCanvasADataURL('firma-canvas-hcr-jefeobra'),
-    firmaPrevencion: firmaCanvasADataURL('firma-canvas-hcr-prevencion'),
+    supervisorRut, jefeObraRut, prevencionRut,
+    firmaSupervisor, firmaJefeObra, firmaPrevencion,
   };
   closePanel('panel-form-hcr');
 
@@ -5595,8 +5652,14 @@ async function finalizarHcr() {
     ]]);
     toast('HCR registrada y documento generado ✓', 'ok');
     await registrarIntegridadDocumento('hcr', 'HCR — ' + (hcrEnProceso.actividad || hcrEnProceso.obra || ''), pdfLink, pdfBlobGenerado);
+    // La jefatura (supervisor/jefe de obra/prevención) también firma con su
+    // propio RUT ahora — recibe el comprobante igual que la cuadrilla.
+    const destinatarios = [...hcrEnProceso.asistentes];
+    if (hcrEnProceso.supervisorRut) destinatarios.push({ nombre: hcrEnProceso.supervisorNombre, rut: hcrEnProceso.supervisorRut });
+    if (hcrEnProceso.jefeObraRut) destinatarios.push({ rut: hcrEnProceso.jefeObraRut });
+    if (hcrEnProceso.prevencionRut) destinatarios.push({ rut: hcrEnProceso.prevencionRut });
     await enviarComprobantesAFirmantes(
-      hcrEnProceso.asistentes, pdfBlobGenerado,
+      destinatarios, pdfBlobGenerado,
       'HCR_' + (hcrEnProceso.obra || 'obra').replace(/\s+/g, '_') + '_' + hcrEnProceso.fecha,
       'Comprobante de Hoja de Control de Riesgos firmada — Constructora LST',
       'Hola {{nombre}},\n\nAdjuntamos el comprobante firmado de la Hoja de Control de Riesgos (HCR).\n\nSaludos,\nConstructora LST'
@@ -7161,7 +7224,7 @@ async function datosFirmaVigentes(rut) {
   try {
     const resp = await llamarWebAppSubcontratista('verificarTrabajadorPorRut', { rut });
     if (!resp.encontrado) return null;
-    return { correo: resp.correo || '', consentimiento: !!resp.consentimiento, tienePin: !!resp.tienePin };
+    return { nombre: resp.nombre || '', correo: resp.correo || '', consentimiento: !!resp.consentimiento, tienePin: !!resp.tienePin };
   } catch (e) {
     console.error('No se pudo consultar correo/consentimiento vigente para ' + rut + ':', e);
     return null;
@@ -7180,12 +7243,15 @@ async function enviarComprobantesAFirmantes(asistentes, pdfBlob, nombreArchivoBa
       try {
         const datos = await datosFirmaVigentes(a.rut);
         if (!datos || !datos.correo || !datos.consentimiento) continue;
+        // a.nombre no siempre viene (ej. jefatura de HCR, que solo se
+        // identifica por RUT) — en ese caso se usa el nombre de su ficha.
+        const nombre = a.nombre || datos.nombre || '';
         await llamarWebAppSubcontratista('enviarComprobante', {
           correoTrabajador: datos.correo,
-          nombreArchivo: `${nombreArchivoBase}_${(a.nombre || '').replace(/\s+/g, '_')}.pdf`,
+          nombreArchivo: `${nombreArchivoBase}_${nombre.replace(/\s+/g, '_')}.pdf`,
           pdfBase64,
           asunto,
-          cuerpo: cuerpoPlantilla.replace('{{nombre}}', a.nombre || ''),
+          cuerpo: cuerpoPlantilla.replace('{{nombre}}', nombre),
         });
       } catch (e) { console.error('No se pudo enviar el comprobante a ' + (a.nombre || a.rut) + ':', e); }
     }
