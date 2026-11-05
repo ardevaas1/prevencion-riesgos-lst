@@ -651,7 +651,7 @@ function misPendientesFirmar(rutEntrada) {
       vistos[idDocumento] = true;
       pendientes.push({
         idDocumento: idDocumento, tipo: (fila[1] || '').toString(), obra: (fila[2] || '').toString(),
-        fecha: (fila[3] || '').toString(), titulo: (fila[4] || '').toString(), responsable: (fila[5] || '').toString(),
+        fecha: fechaComoTexto(fila[3]), titulo: (fila[4] || '').toString(), responsable: (fila[5] || '').toString(),
       });
     }
   }
