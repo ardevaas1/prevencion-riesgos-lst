@@ -918,6 +918,13 @@ async function onLoginRut(ev) {
     hint.textContent = e.message;
   } finally {
     f.querySelector('button[type="submit"]').classList.remove('hidden');
+    // El listener genérico anti-doble-clic deja el botón deshabilitado y
+    // con texto "Guardando..." apenas se envía el form — si el RUT no se
+    // encontró (o cualquier otro error) y la persona se queda en esta
+    // misma pantalla para corregirlo, hay que reactivarlo acá mismo.
+    // abrirLoginRut() solo lo reactivaba al volver a ABRIR la pantalla,
+    // no cuando el error pasa sin salir de ella — por eso quedaba pegado.
+    reactivarBotonesGuardar(f);
     document.getElementById('login-rut-spinner').classList.add('hidden');
   }
 }
