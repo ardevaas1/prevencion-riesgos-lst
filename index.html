@@ -983,10 +983,18 @@
   <div class="panel-body">
     <form id="form-realizar-charla" onsubmit="guardarDatosCharla(event)">
       <div class="form-group"><label>Relator</label><input name="relator" required placeholder="Nombre de quien dicta la charla"></div>
-      <div class="form-group">
-        <label>Firma del relator</label>
-        <div class="firma-box"><canvas id="firma-canvas-relator"></canvas></div>
-        <div class="firma-actions"><button type="button" onclick="limpiarFirma()">Borrar firma</button></div>
+      <div class="form-group"><label>RUT del relator</label><input name="relatorRut" required placeholder="12.345.678-9" oninput="formatearRutInput(this)" onblur="onRutRelatorChange(this)"></div>
+      <div id="relator-pin-crear-wrap" class="hidden">
+        <p class="card-sub" style="margin-bottom:10px;">El relator todavía no tiene un PIN — créalo ahora, lo va a usar la próxima vez que firme.</p>
+        <div class="form-group"><label>Crea el PIN</label>
+          <input type="password" id="pin-relator-nuevo" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off">
+        </div>
+        <div class="form-group"><label>Confírmalo</label>
+          <input type="password" id="pin-relator-nuevo-confirmar" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off">
+        </div>
+      </div>
+      <div id="relator-pin-ingresar-wrap" class="form-group hidden"><label>PIN del relator</label>
+        <input type="password" id="pin-relator" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off">
       </div>
       <div class="form-group">
         <label>Obra</label>

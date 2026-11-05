@@ -85,6 +85,7 @@ function doPost(e) {
     if (accion === 'firmarPendiente') return respuesta(firmarPendiente(body.idDocumento, body.rut, body.firmaBase64, body.pin));
     if (accion === 'registrarConsentimientoRut') return respuesta(registrarConsentimientoRut(body.rut));
     if (accion === 'crearPinTrabajador') return respuesta(crearPinTrabajador(body.rut, body.pin));
+    if (accion === 'verificarPinTrabajador') return respuesta(verificarPinTrabajador(body.rut, body.pin));
     if (accion === 'enviarComprobante') return respuesta(enviarComprobanteTrabajador(body.correoTrabajador, body.nombreArchivo, body.pdfBase64, body.asunto, body.cuerpo));
     // Portal de fiscalización DT (Ordinario 767) — lo usa un fiscalizador
     // externo, sin cuenta en la app, así que tampoco pasa por "correo".
@@ -607,6 +608,28 @@ function crearPinTrabajador(rutEntrada, pin) {
   for (let i = 1; i < datos.length; i++) {
     if (normalizarRut(datos[i][2]) === rut) {
       sh.getRange(i + 1, 33).setValue(hashPin(pin, rut)); // columna AG
+      return { ok: true };
+    }
+  }
+  throw new Error('No se encontró un trabajador con ese RUT');
+}
+
+// Verifica el PIN de un trabajador SIN marcar nada como firmado — para
+// firmas que no pasan por el mecanismo de DOCUMENTOS_PENDIENTES (ej. la
+// firma del relator al crear una Charla, capturada directo en el
+// formulario). firmarPendiente/ratificarComoFiscalizador hacen su propia
+// verificación porque además escriben el resultado; esta función es el
+// primitivo "solo verificar" para los demás casos.
+function verificarPinTrabajador(rutEntrada, pin) {
+  const rut = normalizarRut(rutEntrada);
+  if (!rut) throw new Error('Falta el RUT');
+  if (!pin) throw new Error('Falta el PIN');
+  const datos = hojaTrabajadores().getDataRange().getValues();
+  for (let i = 1; i < datos.length; i++) {
+    if (normalizarRut(datos[i][2]) === rut) {
+      const hashGuardado = (datos[i][32] || '').toString();
+      if (!hashGuardado) throw new Error('Todavía no se ha creado un PIN para ese RUT');
+      if (hashPin(pin, rut) !== hashGuardado) throw new Error('PIN incorrecto');
       return { ok: true };
     }
   }

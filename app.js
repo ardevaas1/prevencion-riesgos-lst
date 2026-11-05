@@ -3825,8 +3825,8 @@ function abrirRealizarCharla(fila) {
   renderChecklistAsistentesCharla();
   poblarSelectorPlantillaCharla();
   f.tema.value = c.tema;
+  resetearPinRelator();
   openPanel('panel-realizar-charla');
-  setTimeout(() => initFirmaPad('firma-canvas-relator'), 80);
 }
 // Charla hecha "porque sí" (recorrido rutinario, decisión del prevencionista,
 // etc.), sin que una Inspección o Incidente la haya generado como alerta.
@@ -3842,8 +3842,8 @@ function abrirNuevaCharla() {
   document.getElementById('panel-realizar-charla-titulo').textContent = 'Nueva charla';
   renderChecklistAsistentesCharla();
   poblarSelectorPlantillaCharla();
+  resetearPinRelator();
   openPanel('panel-realizar-charla');
-  setTimeout(() => initFirmaPad('firma-canvas-relator'), 80);
 }
 // A partir de acá la firma de los asistentes ya NO se pide una por una en
 // el momento (ver documentosEnCursoAgrupados más arriba): se crea la
@@ -3854,14 +3854,58 @@ function abrirNuevaCharla() {
 // abrirFirmarAquiPendiente). guardarDatosCharla solo junta los datos y
 // crea el documento en curso (tipo "charla"); quien la finaliza (genera el
 // PDF) es FINALIZADORES_DOCUMENTO_PENDIENTE.charla, registrado más abajo.
+// Firma del relator por PIN (reemplaza el dibujo a mano, a pedido del
+// cliente) — a diferencia de las firmas de asistentes, esta se captura
+// directo en este formulario (no pasa por DOCUMENTOS_PENDIENTES), así que
+// se verifica con verificarPinTrabajador (que solo verifica, no marca
+// nada como firmado) en vez de firmarPendiente.
+function resetearPinRelator() {
+  document.getElementById('relator-pin-crear-wrap').classList.add('hidden');
+  document.getElementById('relator-pin-ingresar-wrap').classList.add('hidden');
+  document.getElementById('pin-relator-nuevo').value = '';
+  document.getElementById('pin-relator-nuevo-confirmar').value = '';
+  document.getElementById('pin-relator').value = '';
+}
+async function onRutRelatorChange(input) {
+  const rut = input.value.trim();
+  if (!rut) { resetearPinRelator(); return; }
+  const datos = await datosFirmaVigentes(rut);
+  const tienePin = !!(datos && datos.tienePin);
+  document.getElementById('relator-pin-crear-wrap').classList.toggle('hidden', tienePin);
+  document.getElementById('relator-pin-ingresar-wrap').classList.toggle('hidden', !tienePin);
+}
 async function guardarDatosCharla(ev) {
   if (bloquearSiViewer()) return;
   ev.preventDefault();
   const f = ev.target;
-  if (firmaEstaVacia('firma-canvas-relator')) { toast('Falta la firma del relator', 'error'); return; }
   const sel = document.getElementById('sel-plantilla-charla');
   const plantilla = CHARLAS_BIBLIOTECA[sel.value] || null;
   if (!plantilla && !f.tema.value) { toast('Escribe el tema tratado', 'error'); return; }
+  const relatorRut = f.relatorRut.value.trim();
+  if (!relatorRut) { toast('Falta el RUT del relator', 'error'); return; }
+  const creandoPinRelator = !document.getElementById('relator-pin-crear-wrap').classList.contains('hidden');
+  try {
+    if (creandoPinRelator) {
+      const nuevo = document.getElementById('pin-relator-nuevo').value.trim();
+      const confirmarPin = document.getElementById('pin-relator-nuevo-confirmar').value.trim();
+      if (!/^[0-9]{4,6}$/.test(nuevo)) { toast('El PIN del relator debe tener entre 4 y 6 números', 'error'); return; }
+      if (nuevo !== confirmarPin) { toast('Los dos PIN del relator no coinciden', 'error'); return; }
+      await llamarWebAppSubcontratista('crearPinTrabajador', { rut: relatorRut, pin: nuevo });
+    } else {
+      const pin = document.getElementById('pin-relator').value.trim();
+      if (!/^[0-9]{4,6}$/.test(pin)) { toast('Ingresa el PIN del relator', 'error'); return; }
+      await llamarWebAppSubcontratista('verificarPinTrabajador', { rut: relatorRut, pin });
+    }
+  } catch (e) {
+    toast(e.message, 'error');
+    return;
+  } finally {
+    // Este botón es type="submit" — el listener genérico anti-doble-clic
+    // ya lo dejó "Guardando..." al enviarse el form, hay que reactivarlo
+    // acá mismo si hubo un error (mismo bug ya resuelto varias veces).
+    reactivarBotonesGuardar(f);
+  }
+
   const asistentes = [...document.querySelectorAll('#checklist-asistentes-charla .chk-row')]
     .filter(row => row.querySelector('.chk-row-input').checked)
     .map(row => ({ nombre: row.dataset.nombre, rut: row.dataset.rut }));
@@ -3870,7 +3914,7 @@ async function guardarDatosCharla(ev) {
     ...charlaEnProceso,
     plantilla,
     relator: f.relator.value,
-    firmaRelator: firmaCanvasADataURL('firma-canvas-relator'),
+    firmaRelator: 'PIN',
     obra: valorObra(f.obra, 'input-charla-obra-otra'),
     fecha: f.fecha.value,
     hora: plantilla ? '' : f.hora.value,
@@ -4194,6 +4238,12 @@ async function generarPdfCharlaSobrePlantilla(datos, plantilla) {
   }
   async function firmar(lista, dataUrl, w, h) {
     if (!dataUrl) return;
+    if (dataUrl === 'PIN') {
+      lista.forEach(pos => {
+        paginas[pos.page].drawText('PIN OK', { x: pos.x, y: pos.y, size: 7.5, font, color: rgb(0,0,0) });
+      });
+      return;
+    }
     const imgBytes = Uint8Array.from(atob(dataUrl.split(',')[1]), c => c.charCodeAt(0));
     const img = await pdfDoc.embedPng(imgBytes);
     const dims = escalarFirmaCasillero(img, w, h);
