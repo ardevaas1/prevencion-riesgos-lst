@@ -23,6 +23,7 @@ const CONFIG = {
   SHEET_FISCALIZACION_ACCESOS: 'FISCALIZACION_ACCESOS',
   SHEET_FISCALIZACION_FIRMAS: 'FISCALIZACION_FIRMAS',
   SHEET_INTEGRIDAD_DOCUMENTOS: 'INTEGRIDAD_DOCUMENTOS',
+  SHEET_FISCALIZADORES_PIN: 'FISCALIZADORES_PIN',
 
   // Matriz IPER (DS44) — la matriz se arma en una app externa; acá solo se
   // sube el Excel ya terminado y queda una fila por obra con la matriz

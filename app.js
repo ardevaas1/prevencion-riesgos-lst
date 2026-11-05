@@ -774,6 +774,7 @@ function cerrarLoginRut() {
 // ============================================================
 let fiscalizacionRutActual = null; // el propio RUT del fiscalizador — se reusa al ratificar, sin pedirlo de nuevo
 let fiscalizacionDocActual = null; // {tipo, idDocumento, titulo} del documento que se está ratificando
+let fiscalizacionTienePinActual = false; // si ese RUT de fiscalizador ya tiene un PIN creado (de la última búsqueda)
 function abrirFiscalizacion() {
   document.getElementById('login-screen').classList.add('hidden');
   document.getElementById('fiscalizacion-hint').textContent = ' ';
@@ -805,6 +806,7 @@ async function onBuscarFiscalizacion(ev) {
       hint.textContent = 'No se encontró ninguna empresa con ese RUT.';
       return;
     }
+    fiscalizacionTienePinActual = !!resp.tienePin;
     document.getElementById('fiscalizacion-screen').classList.add('hidden');
     renderFiscalizacionResultados(resp.empresaEncontrada, resp.documentos || []);
     document.getElementById('fiscalizacion-resultados-screen').classList.remove('hidden');
@@ -839,12 +841,16 @@ function abrirRatificarFiscalizacion(tipo, idDocumento, titulo) {
   fiscalizacionDocActual = { tipo, idDocumento, titulo };
   document.getElementById('fiscalizacion-firmar-titulo').textContent = titulo;
   document.getElementById('fiscalizacion-firmar-nombre').value = '';
+  document.getElementById('fiscalizacion-pin-nuevo').value = '';
+  document.getElementById('fiscalizacion-pin-nuevo-confirmar').value = '';
+  document.getElementById('fiscalizacion-pin-ingresar').value = '';
   document.getElementById('fiscalizacion-firmar-hint').textContent = ' ';
+  document.getElementById('fiscalizacion-pin-crear-wrap').classList.toggle('hidden', fiscalizacionTienePinActual);
+  document.getElementById('fiscalizacion-pin-ingresar-wrap').classList.toggle('hidden', !fiscalizacionTienePinActual);
   document.getElementById('fiscalizacion-resultados-screen').classList.add('hidden');
   document.getElementById('fiscalizacion-firmar-screen').classList.remove('hidden');
   const btn = document.querySelector('#fiscalizacion-firmar-screen .login-btn');
   btn.disabled = false; btn.textContent = 'Ratificar y firmar';
-  setTimeout(() => initFirmaPad('firma-canvas-fiscalizacion'), 80);
 }
 function cerrarFiscalizacionFirmar() {
   document.getElementById('fiscalizacion-firmar-screen').classList.add('hidden');
@@ -852,20 +858,31 @@ function cerrarFiscalizacionFirmar() {
 }
 async function onRatificarFiscalizacion() {
   const hint = document.getElementById('fiscalizacion-firmar-hint');
-  if (firmaEstaVacia('firma-canvas-fiscalizacion')) { hint.textContent = 'Falta la firma'; return; }
   hint.textContent = '';
   const btn = document.querySelector('#fiscalizacion-firmar-screen .login-btn');
   const restaurar = marcarBotonCargando(btn, 'Enviando...');
   try {
-    const firma = firmaCanvasADataURL('firma-canvas-fiscalizacion');
     const nombre = document.getElementById('fiscalizacion-firmar-nombre').value.trim();
+    let pin;
+    if (!fiscalizacionTienePinActual) {
+      const nuevo = document.getElementById('fiscalizacion-pin-nuevo').value.trim();
+      const confirmarPin = document.getElementById('fiscalizacion-pin-nuevo-confirmar').value.trim();
+      if (!/^[0-9]{4,6}$/.test(nuevo)) { hint.textContent = 'El PIN debe tener entre 4 y 6 números'; return; }
+      if (nuevo !== confirmarPin) { hint.textContent = 'Los dos PIN no coinciden'; return; }
+      await llamarWebAppSubcontratista('crearPinFiscalizador', { rutFiscalizador: fiscalizacionRutActual, nombreFiscalizador: nombre, pin: nuevo });
+      fiscalizacionTienePinActual = true;
+      pin = nuevo;
+    } else {
+      pin = document.getElementById('fiscalizacion-pin-ingresar').value.trim();
+      if (!/^[0-9]{4,6}$/.test(pin)) { hint.textContent = 'Ingresa tu PIN'; return; }
+    }
     await llamarWebAppSubcontratista('ratificarComoFiscalizador', {
       rutFiscalizador: fiscalizacionRutActual,
       nombreFiscalizador: nombre,
       tipoDocumento: fiscalizacionDocActual.tipo,
       idDocumento: fiscalizacionDocActual.idDocumento,
       tituloDocumento: fiscalizacionDocActual.titulo,
-      firmaBase64: firma,
+      pin,
     });
     toast('Documento ratificado ✓', 'ok');
     cerrarFiscalizacionFirmar();
@@ -895,6 +912,7 @@ async function onLoginRut(ev) {
       sessionStorage.setItem(RUT_SESION_NOMBRE_KEY, resp.nombre);
     }
     if (!resp.consentimiento) { mostrarConsentimientoRut(); return; }
+    if (!resp.tienePin) { mostrarCrearPinRut(); return; }
     await mostrarPendientesRut();
   } catch (e) {
     hint.textContent = e.message;
@@ -910,6 +928,7 @@ function cerrarSesionRut() {
   rutNombreActual = null;
   document.getElementById('rut-pendientes-screen').classList.add('hidden');
   document.getElementById('rut-consentimiento-screen').classList.add('hidden');
+  document.getElementById('rut-crear-pin-screen').classList.add('hidden');
   if (rutFlowDesdeApp) { restaurarAppTrasRut(); return; }
   document.getElementById('login-screen').classList.remove('hidden');
 }
@@ -937,6 +956,11 @@ async function onAceptarConsentimientoRut(ev) {
   try {
     await llamarWebAppSubcontratista('registrarConsentimientoRut', { rut: rutSesionActual });
     document.getElementById('rut-consentimiento-screen').classList.add('hidden');
+    // Se vuelve a consultar fresco si ya tiene PIN — no basta con lo que
+    // trajo la verificación de RUT original, porque esta misma pantalla de
+    // consentimiento puede haberse mostrado minutos después.
+    const resp = await llamarWebAppSubcontratista('verificarTrabajadorPorRut', { rut: rutSesionActual });
+    if (!resp.tienePin) { mostrarCrearPinRut(); return; }
     await mostrarPendientesRut();
   } catch (e) {
     hint.textContent = e.message;
@@ -951,10 +975,52 @@ async function onAceptarConsentimientoRut(ev) {
     document.getElementById('consentimiento-rut-spinner').classList.add('hidden');
   }
 }
+// Reemplaza el dibujo a mano por un PIN de 4-6 dígitos (a pedido del
+// cliente, mismo enfoque que la app de referencia que mandó) — se crea
+// una sola vez, acá, entre el consentimiento y ver los pendientes.
+function mostrarCrearPinRut() {
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('rut-login-screen').classList.add('hidden');
+  document.getElementById('rut-consentimiento-screen').classList.add('hidden');
+  document.getElementById('pin-rut-nuevo').value = '';
+  document.getElementById('pin-rut-nuevo-confirmar').value = '';
+  document.getElementById('crear-pin-rut-hint').textContent = ' ';
+  reactivarBotonesGuardar(document.getElementById('rut-crear-pin-screen'));
+  document.getElementById('rut-crear-pin-screen').classList.remove('hidden');
+}
+async function onCrearPinRut(ev) {
+  ev.preventDefault();
+  const hint = document.getElementById('crear-pin-rut-hint');
+  hint.textContent = '';
+  const f = ev.target;
+  // Las validaciones van DENTRO del try/finally (no antes, con un return
+  // suelto) — el listener genérico anti-doble-clic ya dejó el botón
+  // deshabilitado/"Guardando..." apenas se envió el form, y un return
+  // antes del finally lo habría dejado pegado así para siempre (mismo bug
+  // ya resuelto una vez en el consentimiento — ver reactivarBotonesGuardar).
+  f.querySelector('button[type="submit"]').classList.add('hidden');
+  document.getElementById('crear-pin-rut-spinner').classList.remove('hidden');
+  try {
+    const pin = document.getElementById('pin-rut-nuevo').value.trim();
+    const confirmar = document.getElementById('pin-rut-nuevo-confirmar').value.trim();
+    if (!/^[0-9]{4,6}$/.test(pin)) { hint.textContent = 'El PIN debe tener entre 4 y 6 números'; return; }
+    if (pin !== confirmar) { hint.textContent = 'Los dos PIN no coinciden'; return; }
+    await llamarWebAppSubcontratista('crearPinTrabajador', { rut: rutSesionActual, pin });
+    document.getElementById('rut-crear-pin-screen').classList.add('hidden');
+    await mostrarPendientesRut();
+  } catch (e) {
+    hint.textContent = e.message;
+  } finally {
+    f.querySelector('button[type="submit"]').classList.remove('hidden');
+    reactivarBotonesGuardar(f);
+    document.getElementById('crear-pin-rut-spinner').classList.add('hidden');
+  }
+}
 async function mostrarPendientesRut() {
   document.getElementById('login-screen').classList.add('hidden');
   document.getElementById('rut-login-screen').classList.add('hidden');
   document.getElementById('rut-consentimiento-screen').classList.add('hidden');
+  document.getElementById('rut-crear-pin-screen').classList.add('hidden');
   const nombre = rutNombreActual || '';
   document.getElementById('rut-pendientes-saludo').textContent = 'Hola, ' + (nombre.split(' ')[0] || nombre);
   document.getElementById('rut-pendientes-screen').classList.remove('hidden');
@@ -987,8 +1053,8 @@ function abrirFirmarPendiente(idDocumento) {
   pendienteFirmandoId = idDocumento;
   document.getElementById('firmar-pendiente-info').innerHTML =
     `<strong>${esc(p.titulo)}</strong><br>${esc(p.obra)}${p.fecha ? ' · ' + esc(p.fecha) : ''}`;
+  document.getElementById('pin-firmar-pendiente').value = '';
   openPanel('panel-firmar-pendiente');
-  setTimeout(() => initFirmaPad('firma-canvas-pendiente'), 80);
 }
 // Marca un botón suelto (type="button", no pasa por el listener genérico
 // anti-doble-clic de los submit — ver más arriba) como "cargando" mientras
@@ -1002,14 +1068,14 @@ function marcarBotonCargando(btn, textoCargando) {
   return () => { btn.disabled = false; btn.textContent = original; };
 }
 async function onFirmarPendiente() {
-  if (firmaEstaVacia('firma-canvas-pendiente')) { toast('Falta la firma', 'error'); return; }
+  const pin = document.getElementById('pin-firmar-pendiente').value.trim();
+  if (!/^[0-9]{4,6}$/.test(pin)) { toast('Ingresa tu PIN', 'error'); return; }
   const rut = rutSesionActual;
   const restaurar = marcarBotonCargando(document.querySelector('#panel-firmar-pendiente .btn-add'), 'Enviando...');
   try {
-    await llamarWebAppSubcontratista('firmarPendiente', {
-      idDocumento: pendienteFirmandoId, rut, firmaBase64: firmaCanvasADataURL('firma-canvas-pendiente'),
-    });
+    await llamarWebAppSubcontratista('firmarPendiente', { idDocumento: pendienteFirmandoId, rut, pin });
     toast('Firma enviada ✓', 'ok');
+    document.getElementById('pin-firmar-pendiente').value = '';
     closePanel('panel-firmar-pendiente');
     await cargarPendientesRut();
   } catch (e) { toast(e.message, 'error'); }
@@ -2226,7 +2292,7 @@ async function cargarTodo(silencioso) {
       const [subs, docs, trab] = await fetchSheetsBatch([
         `'${CONFIG.SHEET_SUBCONTRATISTAS}'!A2:B20000`,
         `'${CONFIG.SHEET_SUBCONTRATISTAS_DOCS}'!A2:J20000`,
-        `'${CONFIG.SHEET_TRABAJADORES}'!A2:AC20000`,
+        `'${CONFIG.SHEET_TRABAJADORES}'!A2:AG20000`,
       ]);
       allSubcontratistas = subs.map((r,i) => rowToSubcontratista(r,i));
       allSubDocs = docs.map((r,i) => rowToSubDoc(r,i));
@@ -2241,7 +2307,7 @@ async function cargarTodo(silencioso) {
     }
 
     const [trab, insp, inc, proc, epp, charlas, docsPend, invest, hcr, diat, subs, docs, prog, miperArchivo, capDs44] = await fetchSheetsBatch([
-      `'${CONFIG.SHEET_TRABAJADORES}'!A2:AC20000`,
+      `'${CONFIG.SHEET_TRABAJADORES}'!A2:AG20000`,
       `'${CONFIG.SHEET_INSPECCIONES}'!A2:M20000`,
       `'${CONFIG.SHEET_INCIDENTES}'!A2:V20000`,
       `'${CONFIG.SHEET_PROCEDIMIENTOS}'!A2:I20000`,
@@ -2298,7 +2364,8 @@ function rowToTrabajador(r, i) {
     tipoIngreso: r[24]||'', categoriaOcupacional: r[25]||'', correo: r[26]||'',
     especialidadesSupervisor: (r[27]||'').split(';').map(x=>x.trim()).filter(Boolean),
     supervisorAsignado: r[28]||'',
-    sinCorreo: r[29]==='Sí', consentimientoFirma: r[30]==='Sí', fechaConsentimiento: r[31]||'' };
+    sinCorreo: r[29]==='Sí', consentimientoFirma: r[30]==='Sí', fechaConsentimiento: r[31]||'',
+    tienePin: !!(r[32]||'') };
 }
 // Especialidades que puede cubrir un supervisor (mismo catálogo que Temas de
 // Charla/Inspección, para poder cruzarlas directamente). "Otro" no aplica
@@ -3571,26 +3638,50 @@ async function quitarTrabajadorPendiente(rut) {
 }
 // Firma en el momento, desde el dispositivo de quien está a cargo — para
 // quien no tenga cómo entrar a la app desde su propio celular con su RUT.
-function abrirFirmarAquiPendiente(rut) {
+async function abrirFirmarAquiPendiente(rut) {
   const f = allDocumentosPendientes.find(p => p.idDocumento === documentoEnCursoAbiertoId && p.rut === rut);
   if (!f) return;
   asistenteFirmandoAqui = f;
   document.getElementById('firmar-asistente-progreso').textContent = 'Firma en este dispositivo';
   document.getElementById('firmar-asistente-nombre').textContent = f.nombre;
   document.getElementById('firmar-asistente-rut').textContent = f.rut;
+  document.getElementById('pin-firmar-asistente').value = '';
+  document.getElementById('pin-firmar-asistente-nuevo').value = '';
+  document.getElementById('pin-firmar-asistente-nuevo-confirmar').value = '';
   openPanel('panel-firmar-asistente');
-  setTimeout(() => initFirmaPad('firma-canvas-asistente'), 80);
+  // Este flujo existe justo para quien no tiene cómo entrar solo con su
+  // RUT (sin celular a mano) — así que tampoco puede haber pasado antes
+  // por la pantalla de "crea tu PIN". Se consulta fresco (no allTrabajadores,
+  // que puede estar desactualizado) y, si no tiene, se le ofrece crearlo
+  // aquí mismo, en este mismo paso.
+  const datos = await datosFirmaVigentes(f.rut);
+  const yaTienePin = !!(datos && datos.tienePin);
+  document.getElementById('firmar-asistente-crear-pin-wrap').classList.toggle('hidden', yaTienePin);
+  document.getElementById('firmar-asistente-ingresar-pin-wrap').classList.toggle('hidden', !yaTienePin);
 }
 async function confirmarFirmaAsistente() {
   if (bloquearSiViewer()) return;
-  if (firmaEstaVacia('firma-canvas-asistente')) { toast('Falta la firma', 'error'); return; }
+  const creandoPin = !document.getElementById('firmar-asistente-crear-pin-wrap').classList.contains('hidden');
   const restaurar = marcarBotonCargando(document.querySelector('#panel-firmar-asistente .btn-add'), 'Enviando...');
   try {
-    await ensureToken();
-    const firma = firmaCanvasADataURL('firma-canvas-asistente');
-    const url = `${SHEETS_BASE}/${CONFIG.SHEET_ID}/values/${encodeURIComponent(`'${CONFIG.SHEET_DOCUMENTOS_PENDIENTES}'!I${asistenteFirmandoAqui.fila}:K${asistenteFirmandoAqui.fila}`)}?valueInputOption=USER_ENTERED`;
-    await fetch(url, { method:'PUT', headers:{ 'Content-Type':'application/json', ...authHeader() },
-      body: JSON.stringify({ values: [['Sí', firma, new Date().toLocaleString('es-CL')]] }) });
+    let pin;
+    if (creandoPin) {
+      const nuevo = document.getElementById('pin-firmar-asistente-nuevo').value.trim();
+      const confirmarPin = document.getElementById('pin-firmar-asistente-nuevo-confirmar').value.trim();
+      if (!/^[0-9]{4,6}$/.test(nuevo)) { toast('El PIN debe tener entre 4 y 6 números', 'error'); return; }
+      if (nuevo !== confirmarPin) { toast('Los dos PIN no coinciden', 'error'); return; }
+      await llamarWebAppSubcontratista('crearPinTrabajador', { rut: asistenteFirmandoAqui.rut, pin: nuevo });
+      pin = nuevo;
+    } else {
+      pin = document.getElementById('pin-firmar-asistente').value.trim();
+      if (!/^[0-9]{4,6}$/.test(pin)) { toast('Ingresa tu PIN', 'error'); return; }
+    }
+    // Antes esto escribía directo al Sheet con el token del admin — ahora
+    // pasa por firmarPendiente (Apps Script), que es el único lugar que
+    // conoce el hash del PIN guardado y puede verificarlo.
+    await llamarWebAppSubcontratista('firmarPendiente', {
+      idDocumento: asistenteFirmandoAqui.idDocumento, rut: asistenteFirmandoAqui.rut, pin,
+    });
     closePanel('panel-firmar-asistente');
     toast('Firma registrada ✓', 'ok');
     await actualizarProgresoDocumento();
@@ -3806,7 +3897,7 @@ async function guardarDatosCharla(ev) {
 // Genera el PDF/Excel con esas firmas (mismo generador de siempre —
 // finalizarCharla no cambió) cuando ya firmaron todos los asistentes.
 FINALIZADORES_DOCUMENTO_PENDIENTE.charla = async function (meta, filas) {
-  charlaEnProceso = { ...meta, asistentes: filas.map(f => ({ nombre: f.nombre, rut: f.rut, firma: f.firma })) };
+  charlaEnProceso = { ...meta, asistentes: filas.map(f => ({ nombre: f.nombre, rut: f.rut, firma: f.firma, fechaFirma: f.fechaFirma })) };
   await finalizarCharla();
 };
 async function finalizarCharla() {
@@ -3882,6 +3973,7 @@ async function generarYSubirPdfCharla(datos) {
   }
   async function drawSig(page, dataUrl, x, top, w, h) {
     if (!dataUrl) return;
+    if (dataUrl === 'PIN') { text(page, 'PIN OK', x, top + 8, 7.5); return; }
     const bytes = Uint8Array.from(atob(dataUrl.split(',')[1]), c => c.charCodeAt(0));
     const img = await pdfDoc.embedPng(bytes);
     const dims = escalarFirmaCasillero(img, w, h);
@@ -4124,7 +4216,9 @@ async function generarPdfCharlaSobrePlantilla(datos, plantilla) {
       const nombreX = fila.x + fila.ancho + 8;
       p.drawText(a.nombre, { x: nombreX, y: fila.y, size: 9, font, color: rgb(0,0,0) });
       p.drawText(a.rut, { x: rutX, y: fila.y, size: 9, font, color: rgb(0,0,0) });
-      if (a.firma) {
+      if (a.firma === 'PIN') {
+        p.drawText('PIN OK', { x: firmaX, y: fila.y, size: 8, font, color: rgb(0.15,0.45,0.2) });
+      } else if (a.firma) {
         const imgBytes = Uint8Array.from(atob(a.firma.split(',')[1]), c => c.charCodeAt(0));
         const img = await pdfDoc.embedPng(imgBytes);
         const dims = escalarFirmaCasillero(img, 70, 14);
@@ -5406,7 +5500,7 @@ async function guardarDatosHcr(ev) {
   } catch (e) { toast(e.message, 'error'); }
 }
 FINALIZADORES_DOCUMENTO_PENDIENTE.hcr = async function (meta, filas) {
-  hcrEnProceso = { ...meta, asistentes: filas.map(f => ({ nombre: f.nombre, rut: f.rut, firma: f.firma })) };
+  hcrEnProceso = { ...meta, asistentes: filas.map(f => ({ nombre: f.nombre, rut: f.rut, firma: f.firma, fechaFirma: f.fechaFirma })) };
   await finalizarHcr();
 };
 async function finalizarHcr() {
@@ -5482,6 +5576,7 @@ async function generarYSubirPdfHcr(datos) {
   }
   async function drawSig(page, H, dataUrl, x, top, w, h) {
     if (!dataUrl) return;
+    if (dataUrl === 'PIN') { text(page, H, 'PIN OK', x, top + 8, 7); return; }
     const bytes = Uint8Array.from(atob(dataUrl.split(',')[1]), c => c.charCodeAt(0));
     const img = await pdfDoc.embedPng(bytes);
     const dims = escalarFirmaCasillero(img, w, h);
@@ -6947,7 +7042,7 @@ function cargarImagenDesdeDataUrl(dataUrl) {
   });
 }
 FINALIZADORES_DOCUMENTO_PENDIENTE.epp = async function (meta, filas) {
-  await finalizarEpp({ ...meta, firma: filas[0].firma });
+  await finalizarEpp({ ...meta, firma: filas[0].firma, fechaFirma: filas[0].fechaFirma });
 };
 function blobABase64(blob) {
   return new Promise((resolve, reject) => {
@@ -6990,7 +7085,7 @@ async function datosFirmaVigentes(rut) {
   try {
     const resp = await llamarWebAppSubcontratista('verificarTrabajadorPorRut', { rut });
     if (!resp.encontrado) return null;
-    return { correo: resp.correo || '', consentimiento: !!resp.consentimiento };
+    return { correo: resp.correo || '', consentimiento: !!resp.consentimiento, tienePin: !!resp.tienePin };
   } catch (e) {
     console.error('No se pudo consultar correo/consentimiento vigente para ' + rut + ':', e);
     return null;
@@ -7025,13 +7120,19 @@ async function finalizarEpp(datos) {
     toast('Generando documento...');
     const { obra, fecha, trabNombre, trabRut, cargo, itemsEpp, responsable, fechaRegistro, horaRegistro, firma, fotos } = datos;
 
-    const imgFirma = await cargarImagenDesdeDataUrl(firma);
-    const canvasFirma = firmaConIdentificacion(imgFirma, trabNombre, trabRut, fecha, horaRegistro);
-    const blob = await new Promise(res => canvasFirma.toBlob(res, 'image/png'));
+    // La "firma suelta" (imagen aparte, de siempre) solo tiene sentido si
+    // hubo un dibujo real — si el trabajador firmó con PIN no hay imagen
+    // que recortar/guardar, la evidencia de esa firma queda en el sello de
+    // texto del documento completo y en el registro de DOCUMENTOS_PENDIENTES.
     let firmaLink = '';
-    if (blob) {
-      const up = await uploadFileTrabajadorEnModulo(blob, 'Entrega de EPP', trabNombre, 'firma', 'png');
-      firmaLink = up.link;
+    if (firma && firma !== 'PIN') {
+      const imgFirma = await cargarImagenDesdeDataUrl(firma);
+      const canvasFirma = firmaConIdentificacion(imgFirma, trabNombre, trabRut, fecha, horaRegistro);
+      const blob = await new Promise(res => canvasFirma.toBlob(res, 'image/png'));
+      if (blob) {
+        const up = await uploadFileTrabajadorEnModulo(blob, 'Entrega de EPP', trabNombre, 'firma', 'png');
+        firmaLink = up.link;
+      }
     }
 
     // Además de la firma suelta (de siempre), se genera el documento
@@ -7159,8 +7260,12 @@ async function generarPdfEntregaEpp(datos) {
     { w: colFirma, text: 'FIRMA RECIBIDO', bold: true, align: 'center', size: 8.5 },
   ], font, fontBold, 18, grisClaro, negro, borde);
 
+  // Si el trabajador firmó con PIN (ver Fase 2 de cumplimiento DT) en vez de
+  // dibujar, datos.firmaDataUrl trae el marcador 'PIN' en lugar de un
+  // dataURL — no hay imagen que dibujar, se estampa un texto en su lugar.
+  const firmadoConPin = datos.firmaDataUrl === 'PIN';
   let firmaImg = null;
-  if (datos.firmaDataUrl) {
+  if (datos.firmaDataUrl && !firmadoConPin) {
     const bytes = Uint8Array.from(atob(datos.firmaDataUrl.split(',')[1]), c => c.charCodeAt(0));
     firmaImg = await pdfDoc.embedPng(bytes);
   }
@@ -7181,6 +7286,11 @@ async function generarPdfEntregaEpp(datos) {
       const dims = escalarFirmaCasillero(firmaImg, colFirma - 14, rowH - 6);
       const xFirma = xIni + colItem + colDetalle + colCantidad + (colFirma - dims.width) / 2;
       page.drawImage(firmaImg, { x: xFirma, y: filaY - rowH + (rowH - dims.height) / 2, width: dims.width, height: dims.height });
+    } else if (firmadoConPin) {
+      const xCelda = xIni + colItem + colDetalle + colCantidad;
+      const tsello = 'Firmado con PIN';
+      const wsello = font.widthOfTextAtSize(tsello, 7.5);
+      page.drawText(tsello, { x: xCelda + (colFirma - wsello) / 2, y: filaY - rowH / 2 - 3, size: 7.5, font, color: rgb(0.15,0.45,0.2) });
     }
   });
 
@@ -9611,7 +9721,12 @@ window.addEventListener('DOMContentLoaded', () => {
     rutSesionActual = sessionStorage.getItem(RUT_SESION_KEY);
     rutNombreActual = sessionStorage.getItem(RUT_SESION_NOMBRE_KEY);
     llamarWebAppSubcontratista('verificarTrabajadorPorRut', { rut: rutSesionActual })
-      .then(resp => { if (resp.encontrado && !resp.consentimiento) mostrarConsentimientoRut(); else mostrarPendientesRut(); })
+      .then(resp => {
+        if (!resp.encontrado) { mostrarPendientesRut(); return; }
+        if (!resp.consentimiento) { mostrarConsentimientoRut(); return; }
+        if (!resp.tienePin) { mostrarCrearPinRut(); return; }
+        mostrarPendientesRut();
+      })
       .catch(() => mostrarPendientesRut());
     return;
   }

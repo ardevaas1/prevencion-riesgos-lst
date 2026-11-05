@@ -82,13 +82,15 @@ function doPost(e) {
     // antes de exigir "correo" porque estas no lo usan para nada.
     if (accion === 'verificarTrabajadorPorRut') return respuesta(verificarTrabajadorPorRut(body.rut));
     if (accion === 'misPendientesFirmar') return respuesta(misPendientesFirmar(body.rut));
-    if (accion === 'firmarPendiente') return respuesta(firmarPendiente(body.idDocumento, body.rut, body.firmaBase64));
+    if (accion === 'firmarPendiente') return respuesta(firmarPendiente(body.idDocumento, body.rut, body.firmaBase64, body.pin));
     if (accion === 'registrarConsentimientoRut') return respuesta(registrarConsentimientoRut(body.rut));
+    if (accion === 'crearPinTrabajador') return respuesta(crearPinTrabajador(body.rut, body.pin));
     if (accion === 'enviarComprobante') return respuesta(enviarComprobanteTrabajador(body.correoTrabajador, body.nombreArchivo, body.pdfBase64, body.asunto, body.cuerpo));
     // Portal de fiscalización DT (Ordinario 767) — lo usa un fiscalizador
     // externo, sin cuenta en la app, así que tampoco pasa por "correo".
     if (accion === 'buscarDocumentosFiscalizacion') return respuesta(buscarDocumentosFiscalizacion(body.rutFiscalizador, body.rutEmpresa, body.fechaDesde, body.fechaHasta));
-    if (accion === 'ratificarComoFiscalizador') return respuesta(ratificarComoFiscalizador(body.rutFiscalizador, body.nombreFiscalizador, body.tipoDocumento, body.idDocumento, body.tituloDocumento, body.firmaBase64));
+    if (accion === 'crearPinFiscalizador') return respuesta(crearPinFiscalizador(body.rutFiscalizador, body.nombreFiscalizador, body.pin));
+    if (accion === 'ratificarComoFiscalizador') return respuesta(ratificarComoFiscalizador(body.rutFiscalizador, body.nombreFiscalizador, body.tipoDocumento, body.idDocumento, body.tituloDocumento, body.pin));
 
     const correo = (body.correo || '').toString().trim().toLowerCase();
     if (!correo) return respuesta({ error: 'Falta el correo' });
@@ -544,6 +546,18 @@ function normalizarRut(rut) {
   return (rut || '').toString().toUpperCase().replace(/[^0-9K]/g, '');
 }
 
+// Hash del PIN (nunca se guarda en texto plano). Se usa el RUT normalizado
+// como "sal" — ya está disponible en la misma fila, no hace falta guardar
+// una sal aparte, y evita que dos personas con el mismo PIN tengan el
+// mismo hash guardado.
+function hashPin(pin, salRut) {
+  const bytes = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, pin + ':' + salRut);
+  return bytes.map(function (b) { return ((b < 0 ? b + 256 : b)).toString(16).padStart(2, '0'); }).join('');
+}
+function validarFormatoPin(pin) {
+  if (!/^[0-9]{4,6}$/.test(pin || '')) throw new Error('El PIN debe tener entre 4 y 6 números');
+}
+
 function verificarTrabajadorPorRut(rutEntrada) {
   const rut = normalizarRut(rutEntrada);
   if (!rut) throw new Error('Falta el RUT');
@@ -553,7 +567,8 @@ function verificarTrabajadorPorRut(rutEntrada) {
     if (normalizarRut(fila[2]) === rut) return {
       encontrado: true, nombre: (fila[1] || '').toString(),
       correo: (fila[26] || '').toString(),
-      consentimiento: (fila[30] || '') === 'Sí'
+      consentimiento: (fila[30] || '') === 'Sí',
+      tienePin: !!(fila[32] || '').toString()
     };
   }
   return { encontrado: false };
@@ -572,6 +587,26 @@ function registrarConsentimientoRut(rutEntrada) {
     if (normalizarRut(datos[i][2]) === rut) {
       sh.getRange(i + 1, 31).setValue('Sí'); // columna AE
       sh.getRange(i + 1, 32).setValue(new Date().toLocaleString('es-CL')); // columna AF
+      return { ok: true };
+    }
+  }
+  throw new Error('No se encontró un trabajador con ese RUT');
+}
+
+// Crea el PIN de firma del trabajador — reemplaza el dibujo a mano por un
+// PIN de 4-6 dígitos (igual al enfoque de la app de referencia que mandó
+// el cliente). Solo se guarda el hash (ver hashPin), nunca el PIN en
+// texto plano. Se puede llamar de nuevo para cambiarlo (no hay "ya tiene
+// uno, no se puede tocar" — si alguien lo olvida, puede rehacerlo).
+function crearPinTrabajador(rutEntrada, pin) {
+  const rut = normalizarRut(rutEntrada);
+  if (!rut) throw new Error('Falta el RUT');
+  validarFormatoPin(pin);
+  const sh = hojaTrabajadores();
+  const datos = sh.getDataRange().getValues();
+  for (let i = 1; i < datos.length; i++) {
+    if (normalizarRut(datos[i][2]) === rut) {
+      sh.getRange(i + 1, 33).setValue(hashPin(pin, rut)); // columna AG
       return { ok: true };
     }
   }
@@ -623,22 +658,33 @@ function misPendientesFirmar(rutEntrada) {
   return { pendientes: pendientes };
 }
 
-// Marca esa fila puntual de DOCUMENTOS_PENDIENTES como firmada, guardando
-// la firma tal cual (dataURL "data:image/png;base64,...") en la misma
-// celda — no como archivo aparte en Drive — porque los generadores de
-// PDF/Excel de cada módulo (generarYSubirPdfCharla, generarYSubirPdfHcr,
-// generarPdfEntregaEpp, etc. en app.js) necesitan esa firma en ese mismo
-// formato para incrustarla en el documento final, igual que cuando se
-// firma en persona en el dispositivo del admin. Una firma recortada (ver
-// recortarFirma en app.js) pesa unos pocos KB en base64, muy por debajo
-// del límite de 50.000 caracteres por celda de Sheets. Quien llama (la
-// app) es responsable de revisar después si con esta firma ya quedaron
-// todos los trabajadores de ese IdDocumento completos, para generar el
-// documento final — este endpoint solo registra UNA firma a la vez.
-function firmarPendiente(idDocumento, rutEntrada, firmaBase64) {
+// Marca esa fila puntual de DOCUMENTOS_PENDIENTES como firmada. Acepta DOS
+// formas de firmar, excluyentes:
+// - firmaBase64: el dibujo a mano de siempre (dataURL "data:image/...") —
+//   se sigue soportando para lo que no pasó a PIN (ver drawSig en app.js).
+// - pin: el PIN de 4-6 dígitos del trabajador (reemplaza el dibujo) — se
+//   verifica contra el hash guardado en TRABAJADORES (ver crearPinTrabajador)
+//   y, si coincide, queda guardado el literal 'PIN' en la celda de Firma
+//   en vez de una imagen — los generadores de PDF (ver drawSig en app.js)
+//   reconocen ese valor y estampan un sello de texto en su lugar.
+// Quien llama (la app) es responsable de revisar después si con esta
+// firma ya quedaron todos los trabajadores de ese IdDocumento completos,
+// para generar el documento final — este endpoint solo registra UNA
+// firma a la vez.
+function firmarPendiente(idDocumento, rutEntrada, firmaBase64, pin) {
   const rut = normalizarRut(rutEntrada);
   if (!idDocumento || !rut) throw new Error('Falta el documento o el RUT');
-  if (!firmaBase64) throw new Error('Falta la firma');
+  if (!firmaBase64 && !pin) throw new Error('Falta la firma');
+
+  if (pin) {
+    const datosTrab = hojaTrabajadores().getDataRange().getValues();
+    let hashGuardado = '';
+    for (let i = 1; i < datosTrab.length; i++) {
+      if (normalizarRut(datosTrab[i][2]) === rut) { hashGuardado = (datosTrab[i][32] || '').toString(); break; }
+    }
+    if (!hashGuardado) throw new Error('Todavía no has creado tu PIN');
+    if (hashPin(pin, rut) !== hashGuardado) throw new Error('PIN incorrecto');
+  }
 
   const sh = hojaDocumentosPendientes();
   const datos = sh.getDataRange().getValues();
@@ -653,8 +699,9 @@ function firmarPendiente(idDocumento, rutEntrada, firmaBase64) {
   if (filaEncontrada === -1) throw new Error('No se encontró una firma pendiente para ese RUT en ese documento');
   const firmadoActual = (sh.getRange(filaEncontrada, 9).getValue() || '').toString().trim().toLowerCase();
   if (firmadoActual === 'sí' || firmadoActual === 'si') throw new Error('Ese documento ya estaba firmado');
+  const valorFirma = pin ? 'PIN' : firmaBase64.toString();
 
-  sh.getRange(filaEncontrada, 9, 1, 3).setValues([['Sí', firmaBase64.toString(), new Date().toLocaleString('es-CL')]]);
+  sh.getRange(filaEncontrada, 9, 1, 3).setValues([['Sí', valorFirma, new Date().toLocaleString('es-CL')]]);
   return { ok: true };
 }
 
@@ -679,6 +726,35 @@ function hojaEpp() { return SpreadsheetApp.getActiveSpreadsheet().getSheetByName
 function hojaFiscalizacionAccesos() { return SpreadsheetApp.getActiveSpreadsheet().getSheetByName('FISCALIZACION_ACCESOS'); }
 function hojaFiscalizacionFirmas() { return SpreadsheetApp.getActiveSpreadsheet().getSheetByName('FISCALIZACION_FIRMAS'); }
 function hojaIntegridadDocumentos() { return SpreadsheetApp.getActiveSpreadsheet().getSheetByName('INTEGRIDAD_DOCUMENTOS'); }
+function hojaFiscalizadoresPin() { return SpreadsheetApp.getActiveSpreadsheet().getSheetByName('FISCALIZADORES_PIN'); }
+
+// El fiscalizador no tiene ficha previa en la app (es un visitante
+// externo) — su PIN se crea solo, la primera vez que lo necesita, en esta
+// misma hoja (distinta de TRABAJADORES).
+function tienePinFiscalizador(rutEntrada) {
+  const rut = normalizarRut(rutEntrada);
+  const datos = hojaFiscalizadoresPin().getDataRange().getValues();
+  for (let i = 1; i < datos.length; i++) {
+    if (normalizarRut(datos[i][0]) === rut) return true;
+  }
+  return false;
+}
+function crearPinFiscalizador(rutEntrada, nombre, pin) {
+  const rut = normalizarRut(rutEntrada);
+  if (!rut) throw new Error('Falta tu RUT');
+  validarFormatoPin(pin);
+  if (tienePinFiscalizador(rutEntrada)) throw new Error('Ya existe un PIN para este RUT');
+  hojaFiscalizadoresPin().appendRow([rutEntrada, nombre || '', hashPin(pin, rut), new Date().toLocaleString('es-CL')]);
+  return { ok: true };
+}
+function verificarPinFiscalizador(rutEntrada, pin) {
+  const rut = normalizarRut(rutEntrada);
+  const datos = hojaFiscalizadoresPin().getDataRange().getValues();
+  for (let i = 1; i < datos.length; i++) {
+    if (normalizarRut(datos[i][0]) === rut) return hashPin(pin, rut) === (datos[i][2] || '').toString();
+  }
+  return false;
+}
 
 // Mapa Link → Hash SHA-256 (ver registrarIntegridadDocumento en app.js) —
 // se arma una sola vez por búsqueda y se cruza con cada documento por su
@@ -830,20 +906,22 @@ function buscarDocumentosFiscalizacion(rutFiscalizadorEntrada, rutEmpresaEntrada
   }
 
   registrarAccesoFiscalizacion(rutFiscalizadorEntrada, rutEmpresaEntrada, empresaEncontrada, fechaDesde, fechaHasta, documentos.length);
-  return { empresaEncontrada: empresaEncontrada, documentos: documentos };
+  return { empresaEncontrada: empresaEncontrada, documentos: documentos, tienePin: tienePinFiscalizador(rutFiscalizadorEntrada) };
 }
 
 // Letra (e) del Ordinario 767: el fiscalizador ratifica lo revisado con su
 // propia firma electrónica, identificándose solo con su propio RUT (no
-// necesita clave del empleador ni cuenta en la app).
-function ratificarComoFiscalizador(rutFiscalizadorEntrada, nombreFiscalizador, tipoDocumento, idDocumento, tituloDocumento, firmaBase64) {
+// necesita clave del empleador ni cuenta en la app) — ahora vía PIN en vez
+// de dibujo, verificado contra el PIN que creó en FISCALIZADORES_PIN.
+function ratificarComoFiscalizador(rutFiscalizadorEntrada, nombreFiscalizador, tipoDocumento, idDocumento, tituloDocumento, pin) {
   const rutFisc = normalizarRut(rutFiscalizadorEntrada);
   if (!rutFisc) throw new Error('Falta tu RUT');
-  if (!firmaBase64) throw new Error('Falta la firma');
+  if (!pin) throw new Error('Falta tu PIN');
   if (!idDocumento) throw new Error('Falta el documento a ratificar');
+  if (!verificarPinFiscalizador(rutFiscalizadorEntrada, pin)) throw new Error('PIN incorrecto');
   hojaFiscalizacionFirmas().appendRow([
     new Date().toLocaleString('es-CL'), rutFiscalizadorEntrada, nombreFiscalizador || '',
-    tipoDocumento || '', idDocumento, tituloDocumento || '', firmaBase64.toString()
+    tipoDocumento || '', idDocumento, tituloDocumento || '', 'PIN'
   ]);
   return { ok: true };
 }

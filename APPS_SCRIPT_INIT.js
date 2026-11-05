@@ -26,7 +26,8 @@ function inicializarPlanilla() {
     'Fecha Nacimiento', 'Sexo', 'Nacionalidad', 'Dirección', 'Comuna', 'Teléfono',
     'Pueblo Originario', 'Tipo Contrato', 'Tipo Ingreso', 'Categoría Ocupacional',
     'Correo', 'Especialidades Supervisor', 'Supervisor Asignado',
-    'Sin Correo (declarado)', 'Consentimiento Firma Electrónica', 'Fecha Consentimiento'
+    'Sin Correo (declarado)', 'Consentimiento Firma Electrónica', 'Fecha Consentimiento',
+    'PIN Firma (hash)'
   ]);
 
   crearHoja(ss, 'INSPECCIONES', [
@@ -185,6 +186,14 @@ function inicializarPlanilla() {
   // operacionales (Charla, HCR, EPP).
   crearHoja(ss, 'INTEGRIDAD_DOCUMENTOS', [
     'Fecha', 'Tipo', 'Titulo', 'Link', 'Hash SHA-256'
+  ]);
+
+  // PIN de firma del fiscalizador — igual que el de TRABAJADORES, pero
+  // acá no hay una ficha previa del fiscalizador (es un visitante externo,
+  // sin cuenta en la app): el registro se crea solo la primera vez que
+  // ratifica algo desde el portal de fiscalización.
+  crearHoja(ss, 'FISCALIZADORES_PIN', [
+    'Rut Fiscalizador', 'Nombre', 'PIN (hash)', 'Fecha Creación'
   ]);
 
   // Elimina la hoja "Hoja 1" / "Sheet1" default si quedó vacía

@@ -1201,6 +1201,15 @@ a.action-btn { text-decoration: none; }
   font-size: 15px; text-align: center; letter-spacing: 0.3px;
 }
 .login-rut-input:focus { outline: none; border-color: var(--accent); }
+/* Reemplaza el canvas de dibujo en los flujos de firma de trabajador y
+   fiscalizador — mismo look que .login-rut-input, pero con más espaciado
+   entre números (se ve como un PIN, no como un campo de texto normal). */
+.pin-input {
+  width: 100%; padding: 13px 14px; border-radius: 10px; box-sizing: border-box;
+  border: 1.5px solid #334155; background: #0f172a; color: #f1f5f9;
+  font-size: 22px; text-align: center; letter-spacing: 10px;
+}
+.pin-input:focus { outline: none; border-color: var(--accent); }
 .login-box--ancho { max-width: 440px; }
 .rut-pendientes-lista { width: 100%; text-align: left; margin-top: 6px; }
 .rut-pendiente-card {
