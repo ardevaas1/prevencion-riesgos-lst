@@ -17,6 +17,13 @@
   --neutral-soft: #f0f4f8;
   --font-display: 'Inter', sans-serif;
   --font-body:    'Inter', sans-serif;
+  /* Segundo intento de rediseño (2026-11) — el primero (degradés, sombras
+     marcadas, botones tipo "pastilla") no convenció al cliente. Esta
+     versión va por lo opuesto: plano, sobrio, bordes finos en vez de
+     sombra, menos redondeado — más cercano a una herramienta de terreno
+     seria que a una app de consumo. */
+  --radius-md: 12px;
+  --radius-sm: 9px;
 }
 
 /* ── Tema por módulo ──────────────────────────────────────────
@@ -227,8 +234,38 @@ body.is-offline #app { padding-top: 30px; }
 .header-center { flex: 1; }
 .header-title { font-size: 16px; font-weight: 700; color: #fff; line-height: 1.2; }
 .header-sub { font-size: 11px; color: rgba(255,255,255,0.8); margin-top: 1px; }
-.header-btn { width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,0.18); color: #fff; font-size: 18px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+.header-btn { width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,0.18); color: #fff; font-size: 18px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .header-btn:active { background: rgba(255,255,255,0.3); }
+
+/* ── Menú móvil (drawer) — a pedido del cliente: poder cambiar de módulo
+   directo desde cualquier pantalla, sin pasar por Inicio primero (mismo
+   motivo que ya tiene el sidebar de escritorio siempre visible). Mismo
+   patrón de animación que .panel (ver openPanel/closePanel en app.js):
+   el JS fuerza la posición cerrada antes de quitar "hidden", para que
+   el navegador tenga de dónde animar. ── */
+.drawer-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 299;
+}
+.drawer-movil {
+  position: fixed; top: 0; left: 0; bottom: 0; width: 280px; max-width: 82vw;
+  background: #fff; z-index: 300; display: flex; flex-direction: column;
+  box-shadow: 6px 0 28px rgba(0,0,0,0.25);
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.drawer-movil-header {
+  flex-shrink: 0; display: flex; align-items: center; gap: 10px;
+  padding: 18px 16px; padding-top: max(18px, env(safe-area-inset-top));
+  background: linear-gradient(160deg, #262b33 0%, #1b1f26 100%);
+}
+.drawer-movil-header .logo-badge { width: 38px; height: 38px; border-radius: 11px; flex-shrink: 0; }
+.drawer-movil-header > div:nth-child(2) { flex: 1; min-width: 0; }
+.drawer-movil-cerrar {
+  width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+  background: rgba(255,255,255,0.15); color: #fff; font-size: 14px;
+  display: flex; align-items: center; justify-content: center;
+}
+.drawer-movil-cerrar:active { background: rgba(255,255,255,0.28); }
+.drawer-movil #drawer-movil-nav { flex: 1; overflow-y: auto; padding: 8px 0; }
 
 /* ── Barra de Obra activa: mucho más notoria que un botón chico en el
    header — franja completa, siempre visible debajo del header (o del hero
@@ -375,14 +412,15 @@ body.is-offline #app { padding-top: 30px; }
    que subirle el nivel acá se nota en casi todos los módulos de una. */
 @keyframes cardIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 .card {
-  background: #fff; border-radius: 18px; border: 1px solid var(--line);
-  padding: 13px 14px; margin-bottom: 10px; cursor: pointer;
+  background: #fff; border-radius: var(--radius-md); border: 1px solid var(--line);
+  padding: 14px 15px; margin-bottom: 9px; cursor: pointer;
   display: flex; align-items: center; gap: 12px;
-  border-left-width: 5px; /* sobreescrito por los modificadores de estado abajo */
-  box-shadow: 0 1px 2px rgba(0,0,0,.03), 0 8px 20px rgba(0,0,0,.06);
+  border-left-width: 4px; /* sobreescrito por los modificadores de estado abajo */
+  box-shadow: 0 1px 2px rgba(0,0,0,.03);
   animation: cardIn .3s cubic-bezier(.16,1,.3,1) backwards;
+  transition: background .1s;
 }
-.card:active { box-shadow: 0 1px 2px rgba(0,0,0,.03), 0 2px 6px rgba(0,0,0,.08); }
+.card:active { background: #fafafa; }
 /* Strip de color según estado */
 .card--op  { border-left-color: #43a047; }
 .card--obs { border-left-color: #f59e0b; }
@@ -401,6 +439,20 @@ body.is-offline #app { padding-top: 30px; }
 .card-body { flex: 1; min-width: 0; }
 .card-title { font-size: 14px; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .card-sub { font-size: 12px; color: #777; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* .card-sub trunca a una línea (pensado para el subtítulo de una tarjeta
+   de lista) — un párrafo explicativo largo reusando esa misma clase queda
+   cortado a mitad de frase con "...". Este modificador lo deja envolver
+   normal, para los pocos lugares donde .card-sub se usa sobre un <p> de
+   texto completo en vez de un subtítulo corto de una línea. */
+.card-sub--wrap { white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.45; }
+/* Contenedor plano para agrupar texto/datos sueltos (no es clickeable, a
+   diferencia de .card) — da un marco visual a bloques que antes flotaban
+   sueltos directo sobre el fondo gris del panel. */
+.surface-box {
+  background: #fff; border: 1px solid var(--line); border-radius: var(--radius-md, 14px);
+  padding: 16px; margin-bottom: 12px;
+}
+.surface-box > *:first-child { margin-top: 0; }
 .card-right { flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
 .card-arrow { color: #ccc; font-size: 20px; flex-shrink: 0; }
 
@@ -479,7 +531,7 @@ body.is-offline #app { padding-top: 30px; }
 .and-total-bar span:last-child { font-size: 20px; }
 
 /* ── Badges ── */
-.badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 20px; white-space: nowrap; }
+.badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: var(--radius-sm); white-space: nowrap; }
 .badge.green  { background: #e8f5e9; color: #2e7d32; }
 .badge.amber  { background: #fff3e0; color: #e65100; }
 .badge.red    { background: #ffebee; color: #c62828; }
@@ -522,8 +574,51 @@ body.is-offline #app { padding-top: 30px; }
 .chip--baja.active { background: #fde8e8; color: #c0392b; border-color: #f3b9b3; box-shadow: none; }
 .chip-ic { width: 14px; height: 14px; flex-shrink: 0; }
 
-/* ── Nav (escritorio, ver .desktop-nav-item más abajo) ── */
+/* ── Nav (sidebar de escritorio Y drawer móvil — mismo menú, clonado al
+   drawer vía clonarMenuMovil en index.html, así que este estilo no puede
+   quedar atrás del @media(min-width:900px): el drawer vive bajo los
+   900px). Navegación agrupada a pedido del cliente, mostrando como
+   referencia otra app propia con este mismo lenguaje (logo arriba,
+   secciones en mayúscula, ítem activo en bloque sólido de color). ── */
 .nav-svg { width: 22px; height: 22px; }
+.desktop-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 20px;
+  border-radius: 11px;
+  margin: 2px 10px;
+  font-size: 14px;
+  color: var(--ink-soft);
+  font-weight: 500;
+  transition: background 0.15s, color 0.15s;
+  position: relative;
+  text-align: left;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.desktop-nav-group-label {
+  font-size: 10.5px; font-weight: 700; color: var(--ink-soft);
+  text-transform: uppercase; letter-spacing: 0.7px;
+  padding: 18px 20px 6px;
+}
+.desktop-nav-group-label:first-of-type { padding-top: 12px; }
+/* Ítem activo: relleno degradé sólido (mismo que .btn-add) en vez del
+   tinte suave que tenía antes — con una lista larga de módulos, el
+   activo necesita destacar con fuerza para encontrarse de un vistazo. */
+.desktop-nav-item.active {
+  background: linear-gradient(145deg, var(--accent), var(--accent-dark));
+  color: #fff; font-weight: 600;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.2), 0 4px 12px rgba(var(--accent-rgb),0.35);
+}
+.dn-ic { font-size: 18px; display: flex; align-items: center; justify-content: center; }
+.dn-ic .nav-svg { width: 18px; height: 18px; }
+.dn-lb { font-size: 14px; }
+/* También reusado en .drawer-movil-header (ver arriba por qué no puede
+   quedar atrás del @media(min-width:900px)). */
+.desktop-sidebar-title { font-size: 13px; font-weight: 700; color: #fff; line-height: 1.2; }
+.desktop-sidebar-sub { font-size: 11px; color: rgba(255,255,255,0.8); margin-top: 1px; }
 
 /* ── Chevron SVG (reemplaza › unicode) ── */
 .card-chevron { display: flex; align-items: center; color: #d0d5db; flex-shrink: 0; }
@@ -843,19 +938,29 @@ body.is-offline #app { padding-top: 30px; }
    datos/Firmar documentos/Cerrar sesión) con relleno degradé se verían
    muy cargados, por eso acá se queda en un tinte plano. */
 .action-btn {
-  width: 100%; margin-top: 10px; padding: 10px; border-radius: 12px;
-  border: none; color: var(--accent-dark); background: var(--accent-soft);
+  width: 100%; margin-top: 10px; padding: 10px; border-radius: var(--radius-md);
+  border: 1px solid var(--line); color: var(--ink-soft); background: #fff;
   font-size: 13px; font-weight: 600;
   display: flex; align-items: center; justify-content: center; gap: 6px;
   cursor: pointer; box-sizing: border-box;
+  transition: background .1s;
 }
-.action-btn:active { background: #f0d4a8; }
+.action-btn:active { background: #f7f7f8; }
 /* Cerrar sesión es una acción distinta a "Actualizar datos"/Drive/Sheets
    (termina la sesión, no es un atajo de uso frecuente) — se distingue con
    un tono neutro en vez del mismo naranjo que el resto, para que no
    compitan visualmente por la misma atención. */
 .action-btn--salir { color: var(--ink-soft); background: var(--neutral-soft); }
 .action-btn--salir:active { background: #e4e4e7; }
+/* Variantes de jerarquía: antes TODA acción secundaria (confirmar,
+   cancelar, actualizar, quitar...) compartía el mismo botón sin distinguir
+   una acción principal de fila (ej. firmar) de una destructiva (ej.
+   quitar) junto a ella. Plano, sin degradé ni sombra — igual lenguaje que
+   el resto de este rediseño. */
+.action-btn--primary { color: #fff; background: var(--accent); border-color: var(--accent); }
+.action-btn--primary:active { background: var(--accent-dark); border-color: var(--accent-dark); }
+.action-btn--danger { color: #b42318; background: #fff; border-color: #f3d4d1; }
+.action-btn--danger:active { background: #fef2f2; }
 /* .action-btn también se usa en enlaces <a> (ej. abrir Drive/Sheets). */
 a.action-btn { text-decoration: none; }
 
@@ -1327,79 +1432,16 @@ a.action-btn { text-decoration: none; }
 /* ── Elementos desktop ocultos por defecto (JS los muestra) ── */
 .desktop-sidebar,
 .desktop-main,
-.desktop-detail,
-.desktop-home { display: none; }
+.desktop-detail { display: none; }
 
 @media (min-width: 900px) {
 
-  /* ── Inicio en escritorio: página completa (sin sidebar), igual que en
-     Flota — header centrado con logo, grilla de módulos en fila(s) y la
-     sesión al final. Al entrar a un módulo esto se oculta y aparece el
-     par sidebar + panel central (más abajo). ── */
-  .desktop-home:not(.dt-oculto) {
-    display: flex; flex-direction: column;
-    height: 100vh; width: 100%; overflow-y: auto;
-    background: var(--bg);
-    animation: pageFade 0.3s ease;
-  }
-  .desktop-home-header {
-    flex-shrink: 0;
-    padding: 44px 20px 36px;
-    display: flex; flex-direction: column; align-items: center; gap: 10px;
-    text-align: center;
-    border-radius: 0 0 28px 28px;
-    position: relative; overflow: hidden;
-    background: linear-gradient(160deg, #262b33 0%, #1b1f26 100%);
-    box-shadow: 0 2px 14px rgba(0,0,0,0.2);
-  }
-  .desktop-home-header::after {
-    content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 3px;
-    background: linear-gradient(90deg, var(--accent-dark), var(--accent) 50%, var(--accent-dark));
-  }
-  .desktop-home-header .logo-badge {
-    width: 64px; height: 64px; border-radius: 18px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-  }
-  .desktop-home-header .logo-badge img { width: 70%; height: 70%; }
-  .desktop-home-title { font-size: 22px; font-weight: 700; color: #fff; }
-  .desktop-home-sub { font-size: 13px; color: rgba(255,255,255,0.85); }
   .obra-bar--ancho { max-width: 1180px; margin: 0 auto; width: 100%; padding: 12px 24px; box-sizing: border-box; }
-  /* Body del home en dos columnas: menú de módulos fijo a la izquierda +
-     contenido (stats/gráficos/sesión) a la derecha — a pedido del
-     cliente, tomando como referencia un sidebar de navegación típico.
-     El menú NO es el mismo elemento que #desktop-sidebar (el que se ve
-     al entrar a un módulo) — ese sigue mostrando solo "Volver a
-     Inicio" a propósito (el cliente pidió explícitamente que no se
-     pueda saltar de un módulo a otro sin pasar por Inicio). Este es un
-     menú aparte que solo existe en la pantalla de Inicio. */
-  .desktop-home-body {
-    flex: 1; max-width: 1180px; margin: 0 auto; width: 100%;
-    padding: 32px 24px 60px;
-    display: flex; align-items: flex-start; gap: 24px;
-  }
-  .desktop-home-menu {
-    width: 250px; flex-shrink: 0;
-    position: sticky; top: 32px;
-  }
-  .desktop-home-main { flex: 1; min-width: 0; }
+  /* Grilla de stats de Inicio (dt-page-inicio) — 4 columnas iguales,
+     mismo criterio que .stats-row en móvil. */
   .desktop-home-stats {
     display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
   }
-  /* Mismo listado que .modulos-lista en móvil (ver más abajo), solo con
-     el padding más compacto que necesita el menú fijo del sidebar. */
-  .desktop-home .modulos-lista {
-    margin: 0;
-    padding: 6px;
-  }
-  .desktop-home .modulo-card {
-    padding: 13px 14px;
-  }
-  .desktop-home .modulo-card:hover { background: var(--neutral-soft); }
-  .desktop-home .modulo-icon svg { width: 20px; height: 20px; }
-  .desktop-home .modulo-nombre { font-size: 14.5px; }
-  .desktop-home .modulo-card:hover .modulo-icon { color: var(--accent); }
-  .desktop-home .modulo-card:hover .modulo-nombre { color: var(--accent); }
-  .desktop-home-session { margin-top: 36px; }
 
   /* ── Shell: ocultar todo lo móvil ── */
   #main  { display: none !important; }
@@ -1452,12 +1494,6 @@ a.action-btn { text-decoration: none; }
     width: 36px; height: 36px;
     object-fit: contain;
   }
-  .desktop-sidebar-title {
-    font-size: 13px; font-weight: 700; color: #fff; line-height: 1.2;
-  }
-  .desktop-sidebar-sub {
-    font-size: 11px; color: rgba(255,255,255,0.8); margin-top: 1px;
-  }
 
   /* Stats en sidebar */
   .desktop-stats {
@@ -1503,7 +1539,10 @@ a.action-btn { text-decoration: none; }
     font-size: 10px; color: var(--ink-soft); margin-top: 3px; font-weight: 500;
   }
 
-  /* Nav del sidebar */
+  /* Nav del sidebar — estilo de .desktop-nav-item/.dn-ic/.dn-lb/etc. ahora
+     vive fuera de este @media (ver más arriba, junto a .nav-svg): el
+     mismo menú se reusa clonado en el drawer móvil (ver #drawer-movil-nav
+     en index.html), que necesita el estilo también bajo los 900px. */
   .desktop-nav {
     flex: 1;
     display: flex;
@@ -1513,46 +1552,6 @@ a.action-btn { text-decoration: none; }
     scrollbar-width: none; -ms-overflow-style: none;
   }
   .desktop-nav::-webkit-scrollbar { display: none; }
-  .desktop-nav-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 11px 20px;
-    border-radius: 10px;
-    margin: 2px 10px;
-    font-size: 14px;
-    color: var(--ink-soft);
-    font-weight: 500;
-    transition: background 0.15s, color 0.15s;
-    position: relative;
-    text-align: left;
-    background: none;
-    border: none;
-    cursor: pointer;
-  }
-  /* Sidebar claro (mismo fondo blanco que el resto de la app, a pedido
-     del cliente tras probar varios tonos oscuros) con navegación
-     completa agrupada — a pedido del cliente, mostrando como
-     referencia otra app propia con este mismo lenguaje (logo arriba,
-     secciones en mayúscula, ítem activo en bloque sólido de color). */
-  .desktop-nav-group-label {
-    font-size: 10.5px; font-weight: 700; color: var(--ink-soft);
-    text-transform: uppercase; letter-spacing: 0.7px;
-    padding: 18px 20px 6px;
-  }
-  .desktop-nav-group-label:first-of-type { padding-top: 12px; }
-  .desktop-nav-item { border-radius: 11px; }
-  /* Ítem activo: relleno degradé sólido (mismo que .btn-add) en vez del
-     tinte suave que tenía antes — con una lista larga de módulos, el
-     activo necesita destacar con fuerza para encontrarse de un vistazo. */
-  .desktop-nav-item.active {
-    background: linear-gradient(145deg, var(--accent), var(--accent-dark));
-    color: #fff; font-weight: 600;
-    box-shadow: inset 0 1px 0 rgba(255,255,255,.2), 0 4px 12px rgba(var(--accent-rgb),0.35);
-  }
-  .dn-ic { font-size: 18px; display: flex; align-items: center; justify-content: center; }
-  .dn-ic .nav-svg { width: 18px; height: 18px; }
-  .dn-lb { font-size: 14px; }
   .desktop-sidebar .desktop-refresh-btn--salir { color: rgba(255,255,255,0.5); }
   .desktop-sidebar .desktop-refresh-btn--salir:hover { background: rgba(255,255,255,0.09); }
   .dn-dot {
