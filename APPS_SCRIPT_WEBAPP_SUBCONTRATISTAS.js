@@ -67,7 +67,7 @@ const APP_URL = '';
 // para resolver el RUT que escriba el fiscalizador también cuando es el de
 // la empresa mandante, no solo el de un subcontratista.
 const EMPRESA_PRINCIPAL_NOMBRE = 'Constructora LST';
-const EMPRESA_PRINCIPAL_RUT = '';
+const EMPRESA_PRINCIPAL_RUT = '8.571.343-4';
 
 function doPost(e) {
   let body;
