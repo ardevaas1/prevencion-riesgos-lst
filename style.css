@@ -1460,7 +1460,7 @@ a.action-btn { text-decoration: none; }
      SIDEBAR
   ══════════════════════════════════ */
   .desktop-sidebar {
-    width: 220px;
+    width: 262px;
     flex-shrink: 0;
     height: 100vh;
     background: #fff;
@@ -1552,8 +1552,6 @@ a.action-btn { text-decoration: none; }
     scrollbar-width: none; -ms-overflow-style: none;
   }
   .desktop-nav::-webkit-scrollbar { display: none; }
-  .desktop-sidebar .desktop-refresh-btn--salir { color: rgba(255,255,255,0.5); }
-  .desktop-sidebar .desktop-refresh-btn--salir:hover { background: rgba(255,255,255,0.09); }
   .dn-dot {
     width: 8px; height: 8px;
     background: #c62828; border-radius: 50%;
@@ -1561,19 +1559,26 @@ a.action-btn { text-decoration: none; }
     margin-left: auto;
   }
 
-  /* Footer sidebar */
+  /* Footer sidebar — a pedido del cliente, más discreto que el resto del
+     menú (nav items), que es lo que de verdad importa encontrar rápido. */
   .desktop-sidebar-footer {
-    padding: 12px;
+    padding: 10px 12px;
     border-top: 1px solid var(--line);
     flex-shrink: 0;
   }
+  .desktop-sidebar-footer .account-chip {
+    padding: 5px 10px;
+    margin-bottom: 7px;
+  }
+  .desktop-sidebar-footer .account-chip-avatar { width: 21px; height: 21px; font-size: 11px; }
+  .desktop-sidebar-footer .account-chip-email { font-size: 11.5px; }
   .desktop-refresh-btn {
     width: 100%;
-    padding: 9px;
-    border-radius: 8px;
+    padding: 6.5px;
+    border-radius: 7px;
     background: var(--neutral-soft);
     color: var(--accent);
-    font-size: 13px;
+    font-size: 11.5px;
     font-weight: 600;
     border: none;
     cursor: pointer;
@@ -1581,6 +1586,7 @@ a.action-btn { text-decoration: none; }
     box-sizing: border-box;
     transition: background 0.15s;
   }
+  .desktop-refresh-btn .inline-ic { width: 14px; height: 14px; }
   .desktop-refresh-btn:hover { background: #dce8f3; }
   /* Cerrar sesión: tono neutro en vez del mismo naranjo que Actualizar
      datos/Drive/Sheets — es una acción distinta (termina la sesión), no un
