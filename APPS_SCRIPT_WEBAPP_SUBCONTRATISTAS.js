@@ -779,9 +779,20 @@ function hojaFiscalizadoresPin() { return SpreadsheetApp.getActiveSpreadsheet().
 // El fiscalizador no tiene ficha previa en la app (es un visitante
 // externo) — su PIN se crea solo, la primera vez que lo necesita, en esta
 // misma hoja (distinta de TRABAJADORES).
+//
+// Si la hoja todavía no existe (falta correr inicializarPlanilla desde
+// APPS_SCRIPT_INIT.js después de agregar este pilar), hojaFiscalizadoresPin()
+// devuelve null y .getDataRange() sobre null tira un error genérico sin
+// pista de qué pasó ("Cannot read properties of null") — se cambia por un
+// mensaje que sí dice qué hacer.
+function hojaFiscalizadoresPinOExcepcion() {
+  const sh = hojaFiscalizadoresPin();
+  if (!sh) throw new Error('Falta la hoja FISCALIZADORES_PIN — corre inicializarPlanilla() desde APPS_SCRIPT_INIT.js para crearla.');
+  return sh;
+}
 function tienePinFiscalizador(rutEntrada) {
   const rut = normalizarRut(rutEntrada);
-  const datos = hojaFiscalizadoresPin().getDataRange().getValues();
+  const datos = hojaFiscalizadoresPinOExcepcion().getDataRange().getValues();
   for (let i = 1; i < datos.length; i++) {
     if (normalizarRut(datos[i][0]) === rut) return true;
   }
@@ -792,12 +803,12 @@ function crearPinFiscalizador(rutEntrada, nombre, pin) {
   if (!rut) throw new Error('Falta tu RUT');
   validarFormatoPin(pin);
   if (tienePinFiscalizador(rutEntrada)) throw new Error('Ya existe un PIN para este RUT');
-  hojaFiscalizadoresPin().appendRow([rutEntrada, nombre || '', hashPin(pin, rut), new Date().toLocaleString('es-CL')]);
+  hojaFiscalizadoresPinOExcepcion().appendRow([rutEntrada, nombre || '', hashPin(pin, rut), new Date().toLocaleString('es-CL')]);
   return { ok: true };
 }
 function verificarPinFiscalizador(rutEntrada, pin) {
   const rut = normalizarRut(rutEntrada);
-  const datos = hojaFiscalizadoresPin().getDataRange().getValues();
+  const datos = hojaFiscalizadoresPinOExcepcion().getDataRange().getValues();
   for (let i = 1; i < datos.length; i++) {
     if (normalizarRut(datos[i][0]) === rut) return hashPin(pin, rut) === (datos[i][2] || '').toString();
   }
@@ -967,7 +978,9 @@ function ratificarComoFiscalizador(rutFiscalizadorEntrada, nombreFiscalizador, t
   if (!pin) throw new Error('Falta tu PIN');
   if (!idDocumento) throw new Error('Falta el documento a ratificar');
   if (!verificarPinFiscalizador(rutFiscalizadorEntrada, pin)) throw new Error('PIN incorrecto');
-  hojaFiscalizacionFirmas().appendRow([
+  const shFirmas = hojaFiscalizacionFirmas();
+  if (!shFirmas) throw new Error('Falta la hoja FISCALIZACION_FIRMAS — corre inicializarPlanilla() desde APPS_SCRIPT_INIT.js para crearla.');
+  shFirmas.appendRow([
     new Date().toLocaleString('es-CL'), rutFiscalizadorEntrada, nombreFiscalizador || '',
     tipoDocumento || '', idDocumento, tituloDocumento || '', 'PIN'
   ]);
