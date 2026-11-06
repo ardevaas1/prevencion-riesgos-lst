@@ -84,6 +84,7 @@ function doPost(e) {
     if (accion === 'misPendientesFirmar') return respuesta(misPendientesFirmar(body.rut));
     if (accion === 'firmarPendiente') return respuesta(firmarPendiente(body.idDocumento, body.rut, body.firmaBase64, body.pin));
     if (accion === 'registrarConsentimientoRut') return respuesta(registrarConsentimientoRut(body.rut));
+    if (accion === 'registrarCorreoTrabajador') return respuesta(registrarCorreoTrabajador(body.rut, body.correo, body.sinCorreo));
     if (accion === 'crearPinTrabajador') return respuesta(crearPinTrabajador(body.rut, body.pin));
     if (accion === 'verificarPinTrabajador') return respuesta(verificarPinTrabajador(body.rut, body.pin));
     if (accion === 'enviarComprobante') return respuesta(enviarComprobanteTrabajador(body.correoTrabajador, body.nombreArchivo, body.pdfBase64, body.asunto, body.cuerpo));
@@ -568,6 +569,7 @@ function verificarTrabajadorPorRut(rutEntrada) {
     if (normalizarRut(fila[2]) === rut) return {
       encontrado: true, nombre: (fila[1] || '').toString(),
       correo: (fila[26] || '').toString(),
+      sinCorreo: (fila[29] || '') === 'Sí',
       consentimiento: (fila[30] || '') === 'Sí',
       tienePin: !!(fila[32] || '').toString()
     };
@@ -588,6 +590,29 @@ function registrarConsentimientoRut(rutEntrada) {
     if (normalizarRut(datos[i][2]) === rut) {
       sh.getRange(i + 1, 31).setValue('Sí'); // columna AE
       sh.getRange(i + 1, 32).setValue(new Date().toLocaleString('es-CL')); // columna AF
+      return { ok: true };
+    }
+  }
+  throw new Error('No se encontró un trabajador con ese RUT');
+}
+
+// Guarda el correo personal del trabajador (o declara que no posee uno) —
+// mismas 2 columnas que ya llena la ficha de trabajador (ver guardarTrabajador
+// en app.js), pero accesible por RUT: hace falta para completar el requisito
+// de Fase 1 (correo para el envío automático del comprobante firmado) en los
+// flujos donde el trabajador se identifica solo por su RUT (login por RUT,
+// "firmar aquí") y puede no haber pasado antes por esa ficha, o haberse
+// registrado antes de que existiera este campo.
+function registrarCorreoTrabajador(rutEntrada, correo, sinCorreo) {
+  const rut = normalizarRut(rutEntrada);
+  if (!rut) throw new Error('Falta el RUT');
+  if (!sinCorreo && !correo) throw new Error('Falta el correo (o marca que no tiene)');
+  const sh = hojaTrabajadores();
+  const datos = sh.getDataRange().getValues();
+  for (let i = 1; i < datos.length; i++) {
+    if (normalizarRut(datos[i][2]) === rut) {
+      sh.getRange(i + 1, 27).setValue(sinCorreo ? '' : (correo || '').toString()); // columna AA
+      sh.getRange(i + 1, 30).setValue(sinCorreo ? 'Sí' : ''); // columna AD
       return { ok: true };
     }
   }
