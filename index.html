@@ -244,6 +244,42 @@
   </div>
 </div>
 
+<!-- TU CORREO PERSONAL: se muestra una sola vez, después del consentimiento
+     y antes de "crea tu PIN"/ver pendientes, si el trabajador todavía no
+     tiene un correo registrado ni declaró que no posee uno (exigencia DT
+     Fase 1, para el envío automático de sus documentos firmados) — ver
+     mostrarCorreoRut/onGuardarCorreoRut en app.js. -->
+<div id="rut-correo-screen" class="login-screen hidden">
+  <div class="login-box login-box--ancho">
+    <div class="entry-logo-wrap"><img src="logo-white.png" alt="LST" class="login-logo"></div>
+    <div class="login-title">Tu correo personal</div>
+    <div class="rut-consentimiento-texto">
+      Lo usamos para enviarte automáticamente una copia de cada documento que firmes (charlas, EPP, HCR). Si no tienes, puedes declarar que no posees uno — tus documentos se te entregarán en papel.
+    </div>
+    <form id="form-correo-rut" onsubmit="onGuardarCorreoRut(event)">
+      <div style="width:100%; text-align:left; margin-bottom:12px;">
+        <label style="display:block; font-size:12px; color:#94a3b8; margin-bottom:6px;">Correo personal</label>
+        <input type="email" id="correo-rut-nuevo" class="login-rut-input" placeholder="tu@correo.cl" autocomplete="off">
+      </div>
+      <div class="rut-consentimiento-card" style="text-align:left;">
+        <div class="chk-row">
+          <label class="chk-row-label">
+            <span class="chk-row-checkbox-wrap">
+              <input type="checkbox" id="chk-sin-correo-rut" class="chk-row-input" onchange="onToggleSinCorreo(this,'correo-rut-nuevo')">
+              <span class="chk-row-checkbox"></span>
+            </span>
+            <span>Declaro no poseer correo electrónico particular</span>
+          </label>
+        </div>
+      </div>
+      <button class="login-btn" type="submit" style="margin-top:16px;">Continuar</button>
+    </form>
+    <div class="login-spinner hidden" id="correo-rut-spinner"><div class="login-spinner-ring"></div></div>
+    <div class="login-hint" id="correo-rut-hint">&nbsp;</div>
+    <div class="login-rut-link" onclick="cerrarSesionRut()">Salir</div>
+  </div>
+</div>
+
 <!-- MIS DOCUMENTOS PENDIENTES: única pantalla que ve un trabajador logueado
      por RUT — sin sidebar, sin módulos, sin acceso al resto de la app. -->
 <div id="rut-pendientes-screen" class="login-screen hidden">
@@ -1069,6 +1105,35 @@
     <div style="text-align:center;margin-bottom:16px;">
       <div class="ficha-hero-name" style="font-size:20px; color:var(--ink);" id="firmar-asistente-nombre"></div>
       <div class="card-sub" id="firmar-asistente-rut"></div>
+    </div>
+    <div id="firmar-asistente-consentimiento-wrap" class="hidden">
+      <div class="rut-consentimiento-texto" style="color:var(--ink); margin-bottom:10px;">
+        Para firmar y recibir tus documentos de forma digital (charlas, EPP, HCR y otros), necesitamos tu autorización
+        para tratar electrónicamente tu documentación laboral. Si prefieres, puedes pedir que se te entreguen en papel.
+      </div>
+      <div class="chk-row">
+        <label class="chk-row-label">
+          <span class="chk-row-checkbox-wrap">
+            <input type="checkbox" id="chk-consentimiento-firmar-asistente" class="chk-row-input">
+            <span class="chk-row-checkbox"></span>
+          </span>
+          <span>Acepto que mis documentos laborales se procesen y firmen electrónicamente</span>
+        </label>
+      </div>
+    </div>
+    <div id="firmar-asistente-correo-wrap" class="hidden">
+      <div class="form-group"><label>Correo personal</label>
+        <input type="email" id="correo-firmar-asistente" placeholder="Para el envío automático de tus documentos firmados">
+      </div>
+      <div class="chk-row">
+        <label class="chk-row-label">
+          <span class="chk-row-checkbox-wrap">
+            <input type="checkbox" id="chk-sin-correo-firmar-asistente" class="chk-row-input" onchange="onToggleSinCorreo(this,'correo-firmar-asistente')">
+            <span class="chk-row-checkbox"></span>
+          </span>
+          <span>Declaro no poseer correo electrónico particular (mis documentos se me entregarán en papel)</span>
+        </label>
+      </div>
     </div>
     <div id="firmar-asistente-crear-pin-wrap" class="hidden">
       <p class="card-sub" style="margin-bottom:10px;">Todavía no tienes un PIN — créalo ahora, lo vas a usar la próxima vez que firmes.</p>

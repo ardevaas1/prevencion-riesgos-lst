@@ -912,8 +912,7 @@ async function onLoginRut(ev) {
       sessionStorage.setItem(RUT_SESION_NOMBRE_KEY, resp.nombre);
     }
     if (!resp.consentimiento) { mostrarConsentimientoRut(); return; }
-    if (!resp.tienePin) { mostrarCrearPinRut(); return; }
-    await mostrarPendientesRut();
+    await continuarTrasConsentimiento(resp);
   } catch (e) {
     hint.textContent = e.message;
   } finally {
@@ -935,6 +934,7 @@ function cerrarSesionRut() {
   rutNombreActual = null;
   document.getElementById('rut-pendientes-screen').classList.add('hidden');
   document.getElementById('rut-consentimiento-screen').classList.add('hidden');
+  document.getElementById('rut-correo-screen').classList.add('hidden');
   document.getElementById('rut-crear-pin-screen').classList.add('hidden');
   if (rutFlowDesdeApp) { restaurarAppTrasRut(); return; }
   document.getElementById('login-screen').classList.remove('hidden');
@@ -953,6 +953,15 @@ function mostrarConsentimientoRut() {
   reactivarBotonesGuardar(document.getElementById('rut-consentimiento-screen'));
   document.getElementById('rut-consentimiento-screen').classList.remove('hidden');
 }
+// Después del consentimiento (recién aceptado o ya dado antes), decide cuál
+// de las 2 pantallas que faltan mostrar — correo personal (si no tiene ni
+// declaró "sin correo": exigencia DT Fase 1, para el envío automático del
+// comprobante) o crear PIN — o, si ya tiene todo, los pendientes directo.
+async function continuarTrasConsentimiento(resp) {
+  if (!resp.correo && !resp.sinCorreo) { mostrarCorreoRut(); return; }
+  if (!resp.tienePin) { mostrarCrearPinRut(); return; }
+  await mostrarPendientesRut();
+}
 async function onAceptarConsentimientoRut(ev) {
   ev.preventDefault();
   const hint = document.getElementById('consentimiento-rut-hint');
@@ -963,12 +972,11 @@ async function onAceptarConsentimientoRut(ev) {
   try {
     await llamarWebAppSubcontratista('registrarConsentimientoRut', { rut: rutSesionActual });
     document.getElementById('rut-consentimiento-screen').classList.add('hidden');
-    // Se vuelve a consultar fresco si ya tiene PIN — no basta con lo que
-    // trajo la verificación de RUT original, porque esta misma pantalla de
-    // consentimiento puede haberse mostrado minutos después.
+    // Se vuelve a consultar fresco si ya tiene correo/PIN — no basta con lo
+    // que trajo la verificación de RUT original, porque esta misma pantalla
+    // de consentimiento puede haberse mostrado minutos después.
     const resp = await llamarWebAppSubcontratista('verificarTrabajadorPorRut', { rut: rutSesionActual });
-    if (!resp.tienePin) { mostrarCrearPinRut(); return; }
-    await mostrarPendientesRut();
+    await continuarTrasConsentimiento(resp);
   } catch (e) {
     hint.textContent = e.message;
   } finally {
@@ -982,6 +990,44 @@ async function onAceptarConsentimientoRut(ev) {
     document.getElementById('consentimiento-rut-spinner').classList.add('hidden');
   }
 }
+// Correo personal: se pide una sola vez, entre el consentimiento y crear el
+// PIN, si el trabajador no tiene uno registrado ni declaró "sin correo"
+// (exigencia DT Fase 1 — sin esto nunca le llegaría el comprobante firmado).
+function mostrarCorreoRut() {
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('rut-login-screen').classList.add('hidden');
+  document.getElementById('rut-consentimiento-screen').classList.add('hidden');
+  document.getElementById('correo-rut-nuevo').value = '';
+  document.getElementById('correo-rut-nuevo').disabled = false;
+  document.getElementById('chk-sin-correo-rut').checked = false;
+  document.getElementById('correo-rut-hint').textContent = ' ';
+  reactivarBotonesGuardar(document.getElementById('rut-correo-screen'));
+  document.getElementById('rut-correo-screen').classList.remove('hidden');
+}
+async function onGuardarCorreoRut(ev) {
+  ev.preventDefault();
+  const hint = document.getElementById('correo-rut-hint');
+  hint.textContent = '';
+  const f = ev.target;
+  f.querySelector('button[type="submit"]').classList.add('hidden');
+  document.getElementById('correo-rut-spinner').classList.remove('hidden');
+  try {
+    const correo = document.getElementById('correo-rut-nuevo').value.trim();
+    const sinCorreo = document.getElementById('chk-sin-correo-rut').checked;
+    if (!sinCorreo && !correo) { hint.textContent = 'Ingresa tu correo (o marca que no tienes)'; return; }
+    await llamarWebAppSubcontratista('registrarCorreoTrabajador', { rut: rutSesionActual, correo, sinCorreo });
+    document.getElementById('rut-correo-screen').classList.add('hidden');
+    const resp = await llamarWebAppSubcontratista('verificarTrabajadorPorRut', { rut: rutSesionActual });
+    if (!resp.tienePin) { mostrarCrearPinRut(); return; }
+    await mostrarPendientesRut();
+  } catch (e) {
+    hint.textContent = e.message;
+  } finally {
+    f.querySelector('button[type="submit"]').classList.remove('hidden');
+    reactivarBotonesGuardar(f);
+    document.getElementById('correo-rut-spinner').classList.add('hidden');
+  }
+}
 // Reemplaza el dibujo a mano por un PIN de 4-6 dígitos (a pedido del
 // cliente, mismo enfoque que la app de referencia que mandó) — se crea
 // una sola vez, acá, entre el consentimiento y ver los pendientes.
@@ -989,6 +1035,7 @@ function mostrarCrearPinRut() {
   document.getElementById('login-screen').classList.add('hidden');
   document.getElementById('rut-login-screen').classList.add('hidden');
   document.getElementById('rut-consentimiento-screen').classList.add('hidden');
+  document.getElementById('rut-correo-screen').classList.add('hidden');
   document.getElementById('pin-rut-nuevo').value = '';
   document.getElementById('pin-rut-nuevo-confirmar').value = '';
   document.getElementById('crear-pin-rut-hint').textContent = ' ';
@@ -1027,6 +1074,7 @@ async function mostrarPendientesRut() {
   document.getElementById('login-screen').classList.add('hidden');
   document.getElementById('rut-login-screen').classList.add('hidden');
   document.getElementById('rut-consentimiento-screen').classList.add('hidden');
+  document.getElementById('rut-correo-screen').classList.add('hidden');
   document.getElementById('rut-crear-pin-screen').classList.add('hidden');
   const nombre = rutNombreActual || '';
   document.getElementById('rut-pendientes-saludo').textContent = 'Hola, ' + (nombre.split(' ')[0] || nombre);
@@ -3652,32 +3700,56 @@ async function abrirFirmarAquiPendiente(rut) {
   document.getElementById('firmar-asistente-progreso').textContent = 'Firma en este dispositivo';
   document.getElementById('firmar-asistente-nombre').textContent = f.nombre;
   document.getElementById('firmar-asistente-rut').textContent = f.rut;
+  document.getElementById('chk-consentimiento-firmar-asistente').checked = false;
+  document.getElementById('correo-firmar-asistente').value = '';
+  document.getElementById('correo-firmar-asistente').disabled = false;
+  document.getElementById('chk-sin-correo-firmar-asistente').checked = false;
   document.getElementById('pin-firmar-asistente').value = '';
   document.getElementById('pin-firmar-asistente-nuevo').value = '';
   document.getElementById('pin-firmar-asistente-nuevo-confirmar').value = '';
   openPanel('panel-firmar-asistente');
   // Este flujo existe justo para quien no tiene cómo entrar solo con su
-  // RUT (sin celular a mano) — así que tampoco puede haber pasado antes
-  // por la pantalla de "crea tu PIN". Se consulta fresco (no allTrabajadores,
-  // que puede estar desactualizado) y, si no tiene, se le ofrece crearlo
-  // aquí mismo, en este mismo paso.
+  // RUT (sin celular a mano) — así que tampoco puede haber pasado antes por
+  // la pantalla de consentimiento, la de correo personal ni la de "crea tu
+  // PIN" (las 3 son parte del mismo requisito DT, ver Fase 1). Se consulta
+  // fresco (no allTrabajadores, que puede estar desactualizado) y se piden
+  // acá mismo, en este mismo paso, las que todavía falten.
   const datos = await datosFirmaVigentes(f.rut);
+  const faltaConsentimiento = !(datos && datos.consentimiento);
+  const faltaCorreo = !(datos && (datos.correo || datos.sinCorreo));
   const yaTienePin = !!(datos && datos.tienePin);
+  document.getElementById('firmar-asistente-consentimiento-wrap').classList.toggle('hidden', !faltaConsentimiento);
+  document.getElementById('firmar-asistente-correo-wrap').classList.toggle('hidden', !faltaCorreo);
   document.getElementById('firmar-asistente-crear-pin-wrap').classList.toggle('hidden', yaTienePin);
   document.getElementById('firmar-asistente-ingresar-pin-wrap').classList.toggle('hidden', !yaTienePin);
 }
 async function confirmarFirmaAsistente() {
   if (bloquearSiViewer()) return;
+  const rut = asistenteFirmandoAqui.rut;
+  const pidiendoConsentimiento = !document.getElementById('firmar-asistente-consentimiento-wrap').classList.contains('hidden');
+  const pidiendoCorreo = !document.getElementById('firmar-asistente-correo-wrap').classList.contains('hidden');
   const creandoPin = !document.getElementById('firmar-asistente-crear-pin-wrap').classList.contains('hidden');
   const restaurar = marcarBotonCargando(document.querySelector('#panel-firmar-asistente .btn-add'), 'Enviando...');
   try {
+    if (pidiendoConsentimiento) {
+      if (!document.getElementById('chk-consentimiento-firmar-asistente').checked) {
+        toast('Falta aceptar el tratamiento electrónico de tus documentos', 'error'); return;
+      }
+      await llamarWebAppSubcontratista('registrarConsentimientoRut', { rut });
+    }
+    if (pidiendoCorreo) {
+      const correo = document.getElementById('correo-firmar-asistente').value.trim();
+      const sinCorreo = document.getElementById('chk-sin-correo-firmar-asistente').checked;
+      if (!sinCorreo && !correo) { toast('Falta el correo (o marca que no tiene)', 'error'); return; }
+      await llamarWebAppSubcontratista('registrarCorreoTrabajador', { rut, correo, sinCorreo });
+    }
     let pin;
     if (creandoPin) {
       const nuevo = document.getElementById('pin-firmar-asistente-nuevo').value.trim();
       const confirmarPin = document.getElementById('pin-firmar-asistente-nuevo-confirmar').value.trim();
       if (!/^[0-9]{4,6}$/.test(nuevo)) { toast('El PIN debe tener entre 4 y 6 números', 'error'); return; }
       if (nuevo !== confirmarPin) { toast('Los dos PIN no coinciden', 'error'); return; }
-      await llamarWebAppSubcontratista('crearPinTrabajador', { rut: asistenteFirmandoAqui.rut, pin: nuevo });
+      await llamarWebAppSubcontratista('crearPinTrabajador', { rut, pin: nuevo });
       pin = nuevo;
     } else {
       pin = document.getElementById('pin-firmar-asistente').value.trim();
@@ -3687,7 +3759,7 @@ async function confirmarFirmaAsistente() {
     // pasa por firmarPendiente (Apps Script), que es el único lugar que
     // conoce el hash del PIN guardado y puede verificarlo.
     await llamarWebAppSubcontratista('firmarPendiente', {
-      idDocumento: asistenteFirmandoAqui.idDocumento, rut: asistenteFirmandoAqui.rut, pin,
+      idDocumento: asistenteFirmandoAqui.idDocumento, rut, pin,
     });
     closePanel('panel-firmar-asistente');
     toast('Firma registrada ✓', 'ok');
@@ -7224,7 +7296,7 @@ async function datosFirmaVigentes(rut) {
   try {
     const resp = await llamarWebAppSubcontratista('verificarTrabajadorPorRut', { rut });
     if (!resp.encontrado) return null;
-    return { nombre: resp.nombre || '', correo: resp.correo || '', consentimiento: !!resp.consentimiento, tienePin: !!resp.tienePin };
+    return { nombre: resp.nombre || '', correo: resp.correo || '', sinCorreo: !!resp.sinCorreo, consentimiento: !!resp.consentimiento, tienePin: !!resp.tienePin };
   } catch (e) {
     console.error('No se pudo consultar correo/consentimiento vigente para ' + rut + ':', e);
     return null;
@@ -9866,8 +9938,7 @@ window.addEventListener('DOMContentLoaded', () => {
       .then(resp => {
         if (!resp.encontrado) { mostrarPendientesRut(); return; }
         if (!resp.consentimiento) { mostrarConsentimientoRut(); return; }
-        if (!resp.tienePin) { mostrarCrearPinRut(); return; }
-        mostrarPendientesRut();
+        continuarTrasConsentimiento(resp);
       })
       .catch(() => mostrarPendientesRut());
     return;
