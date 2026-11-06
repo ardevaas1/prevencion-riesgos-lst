@@ -17,6 +17,17 @@
   --neutral-soft: #f0f4f8;
   --font-display: 'Inter', sans-serif;
   --font-body:    'Inter', sans-serif;
+  /* Escala de radios/sombras centralizada — rediseño "moderno y suave"
+     (2026-11): antes cada componente definía su propio radio/sombra suelto,
+     con valores parecidos pero no idénticos (18px acá, 14px allá...). Ahora
+     los componentes nuevos/retocados usan estas variables para quedar
+     consistentes entre sí; los que no se tocaron siguen con su valor
+     original (no se migró TODO el archivo de una sola vez, por riesgo). */
+  --radius-lg: 20px;
+  --radius-md: 14px;
+  --radius-sm: 10px;
+  --shadow-card: 0 1px 2px rgba(0,0,0,.04), 0 10px 26px rgba(0,0,0,.07);
+  --shadow-card-active: 0 1px 2px rgba(0,0,0,.04), 0 3px 9px rgba(0,0,0,.08);
 }
 
 /* ── Tema por módulo ──────────────────────────────────────────
@@ -375,14 +386,15 @@ body.is-offline #app { padding-top: 30px; }
    que subirle el nivel acá se nota en casi todos los módulos de una. */
 @keyframes cardIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 .card {
-  background: #fff; border-radius: 18px; border: 1px solid var(--line);
-  padding: 13px 14px; margin-bottom: 10px; cursor: pointer;
+  background: #fff; border-radius: var(--radius-lg); border: 1px solid var(--line);
+  padding: 14px 16px; margin-bottom: 10px; cursor: pointer;
   display: flex; align-items: center; gap: 12px;
   border-left-width: 5px; /* sobreescrito por los modificadores de estado abajo */
-  box-shadow: 0 1px 2px rgba(0,0,0,.03), 0 8px 20px rgba(0,0,0,.06);
+  box-shadow: var(--shadow-card);
   animation: cardIn .3s cubic-bezier(.16,1,.3,1) backwards;
+  transition: transform .1s, box-shadow .15s;
 }
-.card:active { box-shadow: 0 1px 2px rgba(0,0,0,.03), 0 2px 6px rgba(0,0,0,.08); }
+.card:active { box-shadow: var(--shadow-card-active); transform: scale(.985); }
 /* Strip de color según estado */
 .card--op  { border-left-color: #43a047; }
 .card--obs { border-left-color: #f59e0b; }
@@ -479,7 +491,7 @@ body.is-offline #app { padding-top: 30px; }
 .and-total-bar span:last-child { font-size: 20px; }
 
 /* ── Badges ── */
-.badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 20px; white-space: nowrap; }
+.badge { display: inline-block; font-size: 11.5px; font-weight: 700; padding: 4px 10px; border-radius: 20px; white-space: nowrap; letter-spacing: .1px; }
 .badge.green  { background: #e8f5e9; color: #2e7d32; }
 .badge.amber  { background: #fff3e0; color: #e65100; }
 .badge.red    { background: #ffebee; color: #c62828; }
@@ -843,19 +855,33 @@ body.is-offline #app { padding-top: 30px; }
    datos/Firmar documentos/Cerrar sesión) con relleno degradé se verían
    muy cargados, por eso acá se queda en un tinte plano. */
 .action-btn {
-  width: 100%; margin-top: 10px; padding: 10px; border-radius: 12px;
+  width: 100%; margin-top: 10px; padding: 11px 14px; border-radius: var(--radius-md);
   border: none; color: var(--accent-dark); background: var(--accent-soft);
-  font-size: 13px; font-weight: 600;
+  font-size: 13.5px; font-weight: 700;
   display: flex; align-items: center; justify-content: center; gap: 6px;
   cursor: pointer; box-sizing: border-box;
+  box-shadow: 0 1px 2px rgba(0,0,0,.04);
+  transition: transform .08s, box-shadow .15s, background .15s;
 }
-.action-btn:active { background: #f0d4a8; }
+.action-btn:active { background: #f0d4a8; transform: scale(.97); }
 /* Cerrar sesión es una acción distinta a "Actualizar datos"/Drive/Sheets
    (termina la sesión, no es un atajo de uso frecuente) — se distingue con
    un tono neutro en vez del mismo naranjo que el resto, para que no
    compitan visualmente por la misma atención. */
 .action-btn--salir { color: var(--ink-soft); background: var(--neutral-soft); }
 .action-btn--salir:active { background: #e4e4e7; }
+/* Variantes de jerarquía (rediseño 2026-11) — antes TODA acción secundaria
+   (confirmar, cancelar, actualizar, quitar...) compartía el mismo tono
+   tenue, sin distinguir una acción "principal" de fila (ej. firmar) de una
+   destructiva (ej. quitar) junto a ella. Opcionales: sin modificador, el
+   botón se ve igual que antes. */
+.action-btn--primary {
+  color: #fff; background: linear-gradient(145deg, var(--accent), var(--accent-dark));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.25), 0 4px 12px rgba(var(--accent-rgb),0.32);
+}
+.action-btn--primary:active { box-shadow: inset 0 1px 0 rgba(255,255,255,.2), 0 2px 6px rgba(var(--accent-rgb),0.3); }
+.action-btn--danger { color: #b42318; background: #fef2f2; }
+.action-btn--danger:active { background: #fee2e2; }
 /* .action-btn también se usa en enlaces <a> (ej. abrir Drive/Sheets). */
 a.action-btn { text-decoration: none; }
 
@@ -1008,7 +1034,7 @@ a.action-btn { text-decoration: none; }
 .epp-checklist { display: flex; flex-direction: column; }
 .chk-row {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
-  padding: 9px 2px; border-bottom: 1px solid #f0f0f0; flex-wrap: wrap;
+  padding: 11px 2px; border-bottom: 1px solid #f0f0f0; flex-wrap: wrap;
 }
 .chk-row:last-child { border-bottom: none; }
 .chk-row-label { display: flex; align-items: center; gap: 12px; flex: 1; font-size: 14px; color: var(--ink); cursor: pointer; padding: 4px 0; }

@@ -3666,8 +3666,8 @@ function renderProgresoDocumento() {
       ${firmado
         ? '<span class="badge green">Firmado</span>'
         : `<span style="display:flex;gap:6px;">
-             <button class="action-btn" type="button" onclick="abrirFirmarAquiPendiente('${esc(f.rut)}')">Firmar aquí</button>
-             <button class="action-btn" type="button" onclick="quitarTrabajadorPendiente('${esc(f.rut)}')">Quitar</button>
+             <button class="action-btn action-btn--primary" type="button" onclick="abrirFirmarAquiPendiente('${esc(f.rut)}')">Firmar aquí</button>
+             <button class="action-btn action-btn--danger" type="button" onclick="quitarTrabajadorPendiente('${esc(f.rut)}')">Quitar</button>
            </span>`}
     </div>`;
   }).join('');
