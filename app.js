@@ -672,7 +672,6 @@ function forzarCierreSesion(mensaje, noAutorizada) {
   userEmail = null; userRole = null; miEmpresaSubcontratista = null; subcontratistaUsaProxy = false;
   obraActiva = null;
   document.getElementById('main').classList.add('hidden');
-  document.getElementById('desktop-home').classList.add('dt-oculto');
   document.getElementById('desktop-sidebar').classList.add('dt-oculto');
   document.getElementById('desktop-main').classList.add('dt-oculto');
   document.getElementById('subcontratista-root').classList.add('hidden');
@@ -736,13 +735,11 @@ function abrirLoginRutDesdeApp() {
   rutFlowDesdeApp = true;
   estadoAppAntesDeRut = {
     main: !document.getElementById('main').classList.contains('hidden'),
-    desktopHome: !document.getElementById('desktop-home').classList.contains('dt-oculto'),
     desktopSidebar: !document.getElementById('desktop-sidebar').classList.contains('dt-oculto'),
     desktopMain: !document.getElementById('desktop-main').classList.contains('dt-oculto'),
     subcontratistaRoot: !document.getElementById('subcontratista-root').classList.contains('hidden'),
   };
   document.getElementById('main').classList.add('hidden');
-  document.getElementById('desktop-home').classList.add('dt-oculto');
   document.getElementById('desktop-sidebar').classList.add('dt-oculto');
   document.getElementById('desktop-main').classList.add('dt-oculto');
   document.getElementById('subcontratista-root').classList.add('hidden');
@@ -751,7 +748,6 @@ function abrirLoginRutDesdeApp() {
 function restaurarAppTrasRut() {
   if (estadoAppAntesDeRut) {
     document.getElementById('main').classList.toggle('hidden', !estadoAppAntesDeRut.main);
-    document.getElementById('desktop-home').classList.toggle('dt-oculto', !estadoAppAntesDeRut.desktopHome);
     document.getElementById('desktop-sidebar').classList.toggle('dt-oculto', !estadoAppAntesDeRut.desktopSidebar);
     document.getElementById('desktop-main').classList.toggle('dt-oculto', !estadoAppAntesDeRut.desktopMain);
     document.getElementById('subcontratista-root').classList.toggle('hidden', !estadoAppAntesDeRut.subcontratistaRoot);
@@ -2727,11 +2723,12 @@ function seleccionarObraActiva(obra) {
   // aparición en los dos casos, para que se sienta como un "entrar" y no un
   // simple refresco silencioso de datos.
   const main = document.getElementById('main');
-  const dtHome = document.getElementById('desktop-home');
+  const dtSidebar = document.getElementById('desktop-sidebar');
+  const dtMain = document.getElementById('desktop-main');
   irPagina('inicio');
   main.classList.remove('hidden');
-  [main, dtHome].forEach(el => el.classList.add('app-enter'));
-  setTimeout(() => [main, dtHome].forEach(el => el.classList.remove('app-enter')), 500);
+  [main, dtSidebar, dtMain].forEach(el => el.classList.add('app-enter'));
+  setTimeout(() => [main, dtSidebar, dtMain].forEach(el => el.classList.remove('app-enter')), 500);
 }
 // Al elegir la Obra en el formulario de Charla, si esa obra tiene un
 // supervisor asignado se sugiere su nombre como Relator (solo si el campo
@@ -3082,7 +3079,7 @@ function abrirFichaTrabajador(nombre) {
     const incidentesEquipo = allIncidentes.filter(i => equipo.some(w => w.nombre === i.trabajador));
     equipoHtml = `
     <div class="sec-label" style="margin-top:20px;">Trabajadores a cargo (${equipo.length})</div>
-    ${equipo.length === 0 ? '<div class="card-sub" style="padding:6px 2px;">Todavía no le has asignado trabajadores. Usa el botón de abajo para armar su equipo.</div>' : equipo.map(w => {
+    ${equipo.length === 0 ? '<div class="card-sub card-sub--wrap" style="padding:6px 2px;">Todavía no le has asignado trabajadores. Usa el botón de abajo para armar su equipo.</div>' : equipo.map(w => {
       const incW = allIncidentes.filter(i => i.trabajador === w.nombre && i.estado !== 'Cerrado');
       return `<div class="field-row" style="cursor:pointer;" onclick="closePanel('panel-ficha-trabajador'); abrirFichaTrabajador('${esc(w.nombre).replace(/'/g,"\\'")}')">
         <span>${esc(w.nombre)}<br><span style="color:#888;font-size:12px;">${esc(w.cargo)}</span></span>
@@ -3134,7 +3131,7 @@ function abrirFichaTrabajador(nombre) {
              <span class="fl" style="flex-shrink:1;white-space:normal;">Plantilla según su cargo (${esc(t.cargo)})</span>
              <a href="${esc(plantillaIrl.archivo)}" target="_blank" class="badge blue">${ic('documento',12)} Descargar</a>
            </div>`
-        : `<div class="card-sub" style="padding:6px 2px;">No hay una plantilla de IRL asociada al cargo "${esc(t.cargo || 'sin especificar')}".</div>`}
+        : `<div class="card-sub card-sub--wrap" style="padding:6px 2px;">No hay una plantilla de IRL asociada al cargo "${esc(t.cargo || 'sin especificar')}".</div>`}
     </div>
 
     <div class="ficha-section">
@@ -8604,7 +8601,7 @@ function htmlFormularioInspeccionEpp(a) {
   const filasHtml = Array.from({length: c.filasTrabajador}, (_, i) => filaTrabajadorHtml(i)).join('');
   return `
     <div class="sec-label">Trabajadores inspeccionados</div>
-    <div class="card-sub" style="padding:6px 2px;">Deja el nombre en blanco en los trabajadores que no correspondan — se omiten al generar el documento.</div>
+    <div class="card-sub card-sub--wrap" style="padding:6px 2px;">Deja el nombre en blanco en los trabajadores que no correspondan — se omiten al generar el documento.</div>
     ${filasHtml}
     <div class="sec-label" style="margin-top:18px;">Realizada por</div>
     <div class="form-group"><label>Nombre</label><input name="realizadaPor_nombre"></div>
@@ -8935,7 +8932,7 @@ function htmlFormularioAutorizacionAltura(a) {
     <div class="form-group"><label>Fecha de validez</label><input name="fechaValidez" type="date" value="${esc(a.__fechaDia)}"></div>
     <div class="form-group"><label>Periodo de validez</label><input name="periodoValidez" placeholder="Ej: turno día, 8 horas"></div>
     <div class="sec-label" style="margin-top:18px;">Registro del personal autorizado (hasta ${c.trabajadores.filas} trabajadores)</div>
-    <div class="card-sub" style="padding:6px 2px;">Deja el nombre en blanco en los trabajadores que no correspondan — se omiten al generar el documento.</div>
+    <div class="card-sub card-sub--wrap" style="padding:6px 2px;">Deja el nombre en blanco en los trabajadores que no correspondan — se omiten al generar el documento.</div>
     ${trabHtml}
     <button class="btn-add" style="margin-top:16px;" onclick="guardarFormatoPrograma()">Generar documento y marcar día</button>`;
 }
@@ -9214,13 +9211,13 @@ function htmlChecklistMensual(a, datos) {
     <div class="sec-label" style="margin-top:14px;">Observaciones</div>
     <div class="form-group"><textarea name="cm_observaciones" rows="3">${esc(datos.observaciones || '')}</textarea></div>
     <div class="sec-label" style="margin-top:18px;">Firma del supervisor</div>
-    ${datos.firmaSupervisor ? '<div class="card-sub">Ya hay una firma guardada — dibuja una nueva solo si quieres reemplazarla.</div>' : ''}
+    ${datos.firmaSupervisor ? '<div class="card-sub card-sub--wrap">Ya hay una firma guardada — dibuja una nueva solo si quieres reemplazarla.</div>' : ''}
     <div class="form-group">
       <div class="firma-box"><canvas id="firma-mensual-supervisor"></canvas></div>
       <div class="firma-actions"><button type="button" onclick="limpiarFirmaId('firma-mensual-supervisor')">Borrar firma</button></div>
     </div>
     <div class="sec-label" style="margin-top:18px;">Firma de asesor prevención</div>
-    ${datos.firmaAsesor ? '<div class="card-sub">Ya hay una firma guardada — dibuja una nueva solo si quieres reemplazarla.</div>' : ''}
+    ${datos.firmaAsesor ? '<div class="card-sub card-sub--wrap">Ya hay una firma guardada — dibuja una nueva solo si quieres reemplazarla.</div>' : ''}
     <div class="form-group">
       <div class="firma-box"><canvas id="firma-mensual-asesor"></canvas></div>
       <div class="firma-actions"><button type="button" onclick="limpiarFirmaId('firma-mensual-asesor')">Borrar firma</button></div>
@@ -9848,7 +9845,6 @@ async function arrancarApp() {
   document.getElementById('dt-chip-email').textContent = userEmail || '';
   document.getElementById('chip-footer-email').textContent = userEmail || '';
   document.getElementById('dt-footer-email').textContent = userEmail || '';
-  document.getElementById('dt-home-email').textContent = userEmail || '';
   renderModulosHome();
   configurarAccesosDirectos();
   actualizarContadorPlantillasCharla();
@@ -9890,7 +9886,8 @@ async function arrancarApp() {
   // Inicio ni el resto de los módulos — cargarTodo() ya detectó esto y dejó
   // el nombre de su empresa en miEmpresaSubcontratista. Se le muestra
   // directamente su pantalla fija (#subcontratista-root) en vez de #main/
-  // #desktop-home, que quedan ocultos igual que si nunca hubieran existido.
+  // #desktop-sidebar/#desktop-main, que quedan ocultos igual que si nunca
+  // hubieran existido.
   // Un supervisor logueado (ver miSupervisorPerfil) está fijo a la Obra de
   // su propia ficha — no elige obra ni la puede cambiar (el botón "Cambiar
   // obra" queda oculto, ver actualizarChipObraActiva).
@@ -9913,15 +9910,15 @@ async function arrancarApp() {
     actualizarChipObraActiva();
     // Revela la app con una pequeña animación de aparición, en vez de
     // que todo salte de golpe apenas termina de cargar. Siempre arranca en
-    // Inicio: en escritorio esa es la página completa sin sidebar
-    // (desktop-home); el sidebar + panel central solo aparecen al entrar
-    // a un módulo (ver irPagina en index.html).
+    // Inicio — en escritorio es un dt-page más dentro del sidebar + panel
+    // central, que ya están siempre visibles (ver irPagina en index.html).
     const main = document.getElementById('main');
-    const dtHome = document.getElementById('desktop-home');
+    const dtSidebar = document.getElementById('desktop-sidebar');
+    const dtMain = document.getElementById('desktop-main');
     irPagina('inicio');
     main.classList.remove('hidden');
-    [main, dtHome].forEach(el => el.classList.add('app-enter'));
-    setTimeout(() => [main, dtHome].forEach(el => el.classList.remove('app-enter')), 500);
+    [main, dtSidebar, dtMain].forEach(el => el.classList.add('app-enter'));
+    setTimeout(() => [main, dtSidebar, dtMain].forEach(el => el.classList.remove('app-enter')), 500);
   }
 
   splashEl.style.opacity = '0';
@@ -10071,7 +10068,7 @@ function abrirFormMiperArchivo() {
   if (!obra) { toast('Elige una obra primero', 'error'); return; }
   const existente = matrizArchivoDeObra(obra);
   document.getElementById('miper-archivo-body').innerHTML = `
-    ${existente ? `<div class="card-sub" style="margin-bottom:10px;">Ya hay una matriz subida para esta obra (${esc(existente.nombreArchivo)}, ${esc(existente.fechaSubida)}) — al subir una nueva, la reemplaza.</div>` : ''}
+    ${existente ? `<div class="card-sub card-sub--wrap" style="margin-bottom:10px;">Ya hay una matriz subida para esta obra (${esc(existente.nombreArchivo)}, ${esc(existente.fechaSubida)}) — al subir una nueva, la reemplaza.</div>` : ''}
     <form id="form-miper-archivo" onsubmit="guardarArchivoMatrizIper(event)">
       <div class="form-group">
         <label class="upload-label"><svg viewBox="0 0 24 24" fill="none" class="inline-ic"><path d="M7 3h7l4 4v14H7Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M14 3v4h4" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg> <span class="upload-label-text">Subir Excel</span><input type="file" name="archivo" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required style="display:none" onchange="marcarArchivoElegido(this)"></label>
@@ -10160,7 +10157,7 @@ function renderCapacitacionDs44() {
       <div class="card-icon modulo-icon--inv">${ic('capacitacion',18)}</div>
       <div class="card-body">
         <div class="card-title">Capacitación DS44 art.16 — 8 horas obligatorias</div>
-        <div class="card-sub">Vigencia 2 años. Elige un trabajador para subir o actualizar su certificado.</div>
+        <div class="card-sub card-sub--wrap">Vigencia 2 años. Elige un trabajador para subir o actualizar su certificado.</div>
       </div>
     </div>
     ${trabajadores.length === 0 ? emptyState('Sin trabajadores activos', 'No hay trabajadores activos en esta obra') :

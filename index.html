@@ -341,6 +341,7 @@
       <div class="header-title" id="header-title">Prevención de Riesgos</div>
       <div class="header-sub" id="chip-email"></div>
     </div>
+    <div class="header-btn" onclick="toggleMenuMovil()" aria-label="Menú"><svg viewBox="0 0 24 24" fill="none" style="width:19px;height:19px"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></div>
     <div class="header-btn" onclick="cargarTodo(true)">↻</div>
   </div>
 
@@ -474,54 +475,8 @@
   <div class="fab-btn hidden" id="fab-add">+</div>
 </div>
 
-<!-- ===== INICIO ESCRITORIO (página completa, sin sidebar) ===== -->
-<div class="desktop-home dt-oculto" id="desktop-home">
-  <div class="desktop-home-header">
-    <div class="logo-badge"><img src="logo.png" alt="LST"></div>
-    <div class="desktop-home-title">Prevención de Riesgos</div>
-    <div class="desktop-home-sub">Constructora LST</div>
-  </div>
-  <div class="obra-bar obra-bar--ancho btn-obra-activa" onclick="abrirSelectorObraActiva()" title="Volver a seleccionar obra">
-    <div class="obra-bar-icon"><svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px"><path d="M4 21V8l6-4 6 4v13" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M14 21v-7h6v7" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></div>
-    <div class="obra-bar-texto">
-      <div class="obra-bar-label">Obra activa</div>
-      <div class="obra-bar-nombre-actual">Todas las obras</div>
-    </div>
-    <div class="obra-bar-accion">Cambiar ›</div>
-  </div>
-  <div class="desktop-home-body">
-    <div class="desktop-home-menu">
-      <div class="modulos-lista" data-list="modulos-home"></div>
-    </div>
-    <div class="desktop-home-main">
-      <div class="desktop-home-stats">
-        <div class="desktop-stat blue" onclick="irPagina('trabajadores')"><div class="desktop-stat-icon"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="7.5" r="3.5" stroke="currentColor" stroke-width="1.8"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div><div class="desktop-stat-n" data-stat="trabajadores">0</div><div class="desktop-stat-l">Trabajadores</div></div>
-        <div class="desktop-stat amber" onclick="irPagina('inspecciones')"><div class="desktop-stat-icon"><svg viewBox="0 0 24 24" fill="none"><rect x="6" y="4" width="12" height="17" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M9 12.5l1.8 1.8L15 10.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 17h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div><div class="desktop-stat-n" data-stat="inspecciones">0</div><div class="desktop-stat-l">Inspecc. abiertas</div></div>
-        <div class="desktop-stat red" onclick="irPagina('incidentes')"><div class="desktop-stat-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3 2 20h20L12 3Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 9.5v4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="17" r="1" fill="currentColor"/></svg></div><div class="desktop-stat-n" data-stat="incidentes">0</div><div class="desktop-stat-l">Incidentes abiertos</div></div>
-        <div class="desktop-stat green" onclick="irPagina('charlas')"><div class="desktop-stat-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M4 5h16v11H9l-4 4v-4H4Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 9h8M8 12.3h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div><div class="desktop-stat-n" data-stat="charlas">0</div><div class="desktop-stat-l">Charlas pendientes</div></div>
-      </div>
-
-      <div data-list="alerta-cumpleanos"></div>
-
-      <div class="sec-label" style="margin-top:28px;">Estadísticas de seguridad</div>
-      <div data-list="stats-seguridad"></div>
-
-      <div class="desktop-home-session">
-        <div class="sec-label">Accesos directos</div>
-        <a class="desktop-refresh-btn" id="dt-link-drive" href="#" target="_blank" rel="noopener"></a>
-        <a class="desktop-refresh-btn" id="dt-link-sheets" style="margin-top:8px;" href="#" target="_blank" rel="noopener"></a>
-
-        <div class="sec-label" style="margin-top:18px;">Sesión</div>
-        <div class="account-chip"><span class="account-chip-avatar">G</span><span class="account-chip-email" id="dt-home-email"></span></div>
-        <button class="desktop-refresh-btn" onclick="cargarTodo(true)"><svg viewBox="0 0 24 24" fill="none" class="inline-ic"><path d="M4 12a8 8 0 0 1 13.66-5.66M20 12a8 8 0 0 1-13.66 5.66" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M17 3v4h-4M7 21v-4h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg> Actualizar datos</button>
-        <button class="desktop-refresh-btn" style="margin-top:8px;" onclick="abrirLoginRutDesdeApp()"><svg viewBox="0 0 24 24" fill="none" class="inline-ic"><path d="M9 12h6M9 16h6M9 8h1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M7 3h10a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg> Firmar documentos</button>
-        <button class="desktop-refresh-btn desktop-refresh-btn--salir" style="margin-top:8px;" onclick="signOut()"><svg viewBox="0 0 24 24" fill="none" class="inline-ic"><path d="M9 21H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 17l5-5-5-5M21 12H9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg> Cerrar sesión</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ===== SIDEBAR ESCRITORIO (dentro de un módulo) ===== -->
+<!-- ===== SIDEBAR ESCRITORIO (siempre visible en escritorio — Inicio es
+     solo otro ítem del menú, dt-page-inicio, igual que cualquier módulo) ===== -->
 <div class="desktop-sidebar dt-oculto" id="desktop-sidebar">
   <div class="desktop-sidebar-header" id="desktop-sidebar-header">
     <div class="header-bg"></div>
@@ -547,7 +502,7 @@
        resaltado del ítem activo (data-pag) ya estaba soportado en
        irPagina desde antes, solo faltaban los ítems. -->
   <div class="desktop-nav">
-    <button class="desktop-nav-item desktop-nav-back" onclick="irPagina('inicio')" data-pag="inicio"><span class="dn-ic">‹</span><span class="dn-lb">Volver a Inicio</span></button>
+    <button class="desktop-nav-item" onclick="irPagina('inicio')" data-pag="inicio"><span class="dn-ic"><svg viewBox="0 0 24 24" fill="none" class="nav-svg"><path d="M4 11.5 12 4l8 7.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 10v9a1 1 0 0 0 1 1h3v-5h4v5h3a1 1 0 0 0 1-1v-9" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></span><span class="dn-lb">Inicio</span></button>
 
     <div class="desktop-nav-group-label">Prevención</div>
     <button class="desktop-nav-item" data-pag="inspecciones" onclick="irPagina('inspecciones')"><span class="dn-ic"><svg viewBox="0 0 24 24" fill="none" class="nav-svg"><rect x="6" y="4" width="12" height="17" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M9 4V3.5A1.5 1.5 0 0 1 10.5 2h3A1.5 1.5 0 0 1 15 3.5V4" stroke="currentColor" stroke-width="1.7"/><path d="M9 12.5l1.8 1.8L15 10.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 17h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span><span class="dn-lb">Inspecciones</span></button>
@@ -579,6 +534,24 @@
   <div class="desktop-main-header">
     <div class="desktop-main-title" id="dt-page-title">Inicio</div>
     <button class="btn-add hidden" id="dt-fab-add">+ Agregar</button>
+  </div>
+
+  <div class="dt-page" id="dt-page-inicio">
+    <div class="desktop-home-stats">
+      <div class="desktop-stat blue" onclick="irPagina('trabajadores')"><div class="desktop-stat-icon"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="7.5" r="3.5" stroke="currentColor" stroke-width="1.8"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div><div class="desktop-stat-n" data-stat="trabajadores">0</div><div class="desktop-stat-l">Trabajadores</div></div>
+      <div class="desktop-stat amber" onclick="irPagina('inspecciones')"><div class="desktop-stat-icon"><svg viewBox="0 0 24 24" fill="none"><rect x="6" y="4" width="12" height="17" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M9 12.5l1.8 1.8L15 10.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 17h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div><div class="desktop-stat-n" data-stat="inspecciones">0</div><div class="desktop-stat-l">Inspecc. abiertas</div></div>
+      <div class="desktop-stat red" onclick="irPagina('incidentes')"><div class="desktop-stat-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3 2 20h20L12 3Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 9.5v4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="17" r="1" fill="currentColor"/></svg></div><div class="desktop-stat-n" data-stat="incidentes">0</div><div class="desktop-stat-l">Incidentes abiertos</div></div>
+      <div class="desktop-stat green" onclick="irPagina('charlas')"><div class="desktop-stat-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M4 5h16v11H9l-4 4v-4H4Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 9h8M8 12.3h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div><div class="desktop-stat-n" data-stat="charlas">0</div><div class="desktop-stat-l">Charlas pendientes</div></div>
+    </div>
+
+    <div data-list="alerta-cumpleanos"></div>
+
+    <div class="sec-label" style="margin-top:28px;">Estadísticas de seguridad</div>
+    <div data-list="stats-seguridad"></div>
+
+    <div class="sec-label" style="margin-top:24px;">Accesos directos</div>
+    <a class="action-btn" id="dt-link-drive" href="#" target="_blank" rel="noopener"></a>
+    <a class="action-btn" id="dt-link-sheets" style="margin-top:8px;" href="#" target="_blank" rel="noopener"></a>
   </div>
 
   <div class="dt-page" id="dt-page-inspecciones"><div data-list="inspecciones"></div></div>
@@ -618,10 +591,31 @@
 
 </div><!-- /#app -->
 
+<!-- ===== MENÚ MÓVIL (drawer) ═════════════════════════════════
+     A pedido del cliente: poder cambiar de módulo directo, sin tener que
+     volver a Inicio primero (en escritorio esto ya existía vía el sidebar
+     siempre visible — acá es el equivalente para celular). La lista de
+     navegación (#drawer-movil-nav) se clona UNA vez, al cargar, desde el
+     .desktop-nav del sidebar de escritorio — así no hay que mantener los
+     mismos ~12 botones + SVG duplicados a mano en dos lugares distintos
+     (ver clonarMenuMovil más abajo). ===== -->
+<div class="drawer-overlay hidden" id="drawer-overlay" onclick="cerrarMenuMovil()"></div>
+<div class="drawer-movil hidden" id="drawer-movil">
+  <div class="drawer-movil-header">
+    <div class="logo-badge"><img src="logo.png" alt="LST"></div>
+    <div>
+      <div class="desktop-sidebar-title">Prevención de Riesgos</div>
+      <div class="desktop-sidebar-sub" id="drawer-movil-email"></div>
+    </div>
+    <button class="drawer-movil-cerrar" onclick="cerrarMenuMovil()" aria-label="Cerrar menú">✕</button>
+  </div>
+  <div class="desktop-nav" id="drawer-movil-nav"></div>
+</div>
+
 <!-- ===== MODO SUBCONTRATISTA ═════════════════════════════════
      Pantalla fija e independiente del resto de la app: una cuenta
      autorizada solo como subcontratista (USUARIOS.Rol="subcontratista")
-     nunca ve #main/#desktop-home/#desktop-sidebar — arrancarApp() la trae
+     nunca ve #main/#desktop-sidebar/#desktop-main — arrancarApp() la trae
      acá directo y esta es su única pantalla mientras dure la sesión. ===== -->
 <div id="subcontratista-root" class="subcontratista-root hidden">
   <div class="header">
@@ -946,7 +940,7 @@
 
       <div class="sec-label" style="margin-top:18px;">Responsable</div>
       <div class="form-group"><label>Responsable de la entrega</label><input name="responsable" placeholder="Se usará tu correo si lo dejas vacío"></div>
-      <p class="card-sub">Después de guardar, el trabajador firma la recepción desde su celular con su RUT — o desde este dispositivo si no tiene cómo.</p>
+      <p class="card-sub card-sub--wrap">Después de guardar, el trabajador firma la recepción desde su celular con su RUT — o desde este dispositivo si no tiene cómo.</p>
       <button class="btn-add" type="submit">Guardar y esperar firma</button>
     </form>
   </div>
@@ -1671,6 +1665,49 @@
     headerEl.__bgFront = back;
   }
 
+  // Menú móvil (drawer): clona UNA vez la navegación del sidebar de
+  // escritorio (mismos ítems, mismos onclick — ver irPagina más abajo)
+  // para no mantener los ~12 botones duplicados a mano. El script corre al
+  // final del <body>, así que el sidebar ya existe en el DOM acá.
+  function clonarMenuMovil() {
+    const origen = document.querySelector('#desktop-sidebar .desktop-nav');
+    const destino = document.getElementById('drawer-movil-nav');
+    if (!origen || !destino) return;
+    destino.innerHTML = origen.innerHTML;
+  }
+  clonarMenuMovil();
+  function toggleMenuMovil() {
+    const abierto = !document.getElementById('drawer-movil').classList.contains('hidden');
+    if (abierto) cerrarMenuMovil(); else abrirMenuMovil();
+  }
+  // Mismo patrón que openPanel/closePanel (ver app.js): fuerza la posición
+  // cerrada ANTES de quitar "hidden" para que el navegador tenga un punto
+  // de partida real desde el cual animar el deslizamiento.
+  function abrirMenuMovil() {
+    document.getElementById('drawer-movil-email').textContent = (typeof userEmail !== 'undefined' ? userEmail : '') || '';
+    const drawer = document.getElementById('drawer-movil');
+    document.getElementById('drawer-overlay').classList.remove('hidden');
+    drawer.style.transform = 'translateX(-100%)';
+    drawer.classList.remove('hidden');
+    requestAnimationFrame(() => requestAnimationFrame(() => { drawer.style.transform = 'translateX(0)'; }));
+  }
+  function cerrarMenuMovil() {
+    const drawer = document.getElementById('drawer-movil');
+    const overlay = document.getElementById('drawer-overlay');
+    if (drawer.classList.contains('hidden')) return;
+    drawer.style.transform = 'translateX(-100%)';
+    overlay.classList.add('hidden');
+    let cerrado = false;
+    const onEnd = () => {
+      if (cerrado) return;
+      cerrado = true;
+      drawer.removeEventListener('transitionend', onEnd);
+      drawer.classList.add('hidden');
+    };
+    drawer.addEventListener('transitionend', onEnd);
+    setTimeout(onEnd, 300);
+  }
+
   function irPagina(nombre) {
     if (!TITULOS_PAGINA[nombre]) nombre = 'inicio';
     // Entrega de EPP queda fuera de la vista de un supervisor restringido
@@ -1683,7 +1720,6 @@
     // se queda con el scroll donde haya quedado la navegación anterior (ej.
     // venir de más abajo en Trabajadores) en vez de mostrar el principio.
     document.getElementById('pages').scrollTop = 0;
-    document.getElementById('desktop-home').scrollTop = 0;
 
     // ── Móvil ──
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -1704,27 +1740,28 @@
     aplicarColorHeader(document.getElementById('header-movil'), nombre);
 
     // ── Escritorio ──
-    // Inicio es una página completa sin sidebar (igual que en Flota); al
-    // entrar a un módulo aparece el par sidebar + panel central, con el
-    // header del sidebar coloreado según el módulo activo.
-    const esInicioDt = nombre === 'inicio';
-    document.getElementById('desktop-home').classList.toggle('dt-oculto', !esInicioDt);
-    document.getElementById('desktop-sidebar').classList.toggle('dt-oculto', esInicioDt);
-    document.getElementById('desktop-main').classList.toggle('dt-oculto', esInicioDt);
+    // Sidebar + panel central siempre visibles (a pedido del cliente: que
+    // no haya una pantalla de Inicio separada del resto — Inicio es solo
+    // otro dt-page más, como cualquier módulo). Antes esto solo se mostraba
+    // al entrar a un módulo; dt-oculto ahora solo lo usan el login por RUT
+    // y el cierre de sesión (ver forzarCierreSesion/abrirLoginRutDesdeApp).
+    document.getElementById('desktop-sidebar').classList.remove('dt-oculto');
+    document.getElementById('desktop-main').classList.remove('dt-oculto');
 
-    if (!esInicioDt) {
-      document.querySelectorAll('.dt-page').forEach(p => { p.classList.remove('active'); p.style.display = 'none'; });
-      const dtPage = document.getElementById('dt-page-' + nombre);
-      if (dtPage) { dtPage.classList.add('active'); dtPage.style.display = 'flex'; }
-      const dtTitle = document.getElementById('dt-page-title');
-      if (dtTitle) dtTitle.textContent = TITULOS_PAGINA[nombre];
+    document.querySelectorAll('.dt-page').forEach(p => { p.classList.remove('active'); p.style.display = 'none'; });
+    const dtPage = document.getElementById('dt-page-' + nombre);
+    if (dtPage) { dtPage.classList.add('active'); dtPage.style.display = 'flex'; dtPage.scrollTop = 0; }
+    const dtTitle = document.getElementById('dt-page-title');
+    if (dtTitle) dtTitle.textContent = TITULOS_PAGINA[nombre];
 
-      aplicarColorHeader(document.getElementById('desktop-sidebar-header'), nombre);
-    }
+    aplicarColorHeader(document.getElementById('desktop-sidebar-header'), nombre);
 
     document.querySelectorAll('.desktop-nav-item').forEach(n => n.classList.remove('active'));
-    const dtNavEl = document.querySelector(`.desktop-nav-item[data-pag="${nombre}"]`);
-    if (dtNavEl) dtNavEl.classList.add('active');
+    document.querySelectorAll(`.desktop-nav-item[data-pag="${nombre}"]`).forEach(n => n.classList.add('active'));
+
+    // ── Menú móvil (drawer): cualquier navegación lo cierra, tanto si se
+    // eligió un ítem ahí mismo como si se navegó por otro medio. ──
+    cerrarMenuMovil();
 
     // ── Botón agregar (ambos layouts) ──
     const acciones = {
