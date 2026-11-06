@@ -1754,7 +1754,13 @@
     const dtTitle = document.getElementById('dt-page-title');
     if (dtTitle) dtTitle.textContent = TITULOS_PAGINA[nombre];
 
-    aplicarColorHeader(document.getElementById('desktop-sidebar-header'), nombre);
+    // El header del sidebar ya NO cambia de color por módulo (a pedido del
+    // cliente: "no es necesario que cambien de color, con que se note bien
+    // en qué módulo estamos es suficiente" — ahora que el sidebar queda
+    // siempre visible, recolorearlo en cada clic se sentía excesivo). Queda
+    // fijo en el navy de marca; el resaltado naranjo del ítem activo (más
+    // abajo) ya deja clarísimo en qué módulo se está.
+    aplicarColorHeader(document.getElementById('desktop-sidebar-header'), 'inicio');
 
     document.querySelectorAll('.desktop-nav-item').forEach(n => n.classList.remove('active'));
     document.querySelectorAll(`.desktop-nav-item[data-pag="${nombre}"]`).forEach(n => n.classList.add('active'));
