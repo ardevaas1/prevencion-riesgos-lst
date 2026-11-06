@@ -41,7 +41,7 @@ const CONFIG = {
   // fiscalizador pueda buscar también por el RUT de Constructora LST, no
   // solo por el de sus subcontratistas. Completa el RUT real acá.
   EMPRESA_PRINCIPAL_NOMBRE: 'Constructora LST',
-  EMPRESA_PRINCIPAL_RUT: '',
+  EMPRESA_PRINCIPAL_RUT: '8.571.343-4',
 
   SCOPES: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file',
 
