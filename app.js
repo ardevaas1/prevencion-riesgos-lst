@@ -3662,12 +3662,12 @@ function renderProgresoDocumento() {
   document.getElementById('documento-en-curso-lista').innerHTML = filas.map(f => {
     const firmado = (f.firmado||'').toLowerCase().startsWith('s');
     return `<div class="chk-row">
-      <span>${esc(f.nombre)} <span style="color:#888;">· ${esc(f.rut)}</span></span>
+      <span>${esc(capitalizarNombre(f.nombre))} <span style="color:#888;">· ${esc(f.rut)}</span></span>
       ${firmado
         ? '<span class="badge green">Firmado</span>'
-        : `<span style="display:flex;gap:6px;">
-             <button class="action-btn" type="button" onclick="abrirFirmarAquiPendiente('${esc(f.rut)}')">Firmar aquí</button>
-             <button class="action-btn" type="button" onclick="quitarTrabajadorPendiente('${esc(f.rut)}')">Quitar</button>
+        : `<span style="display:flex;gap:6px;width:100%;">
+             <button class="action-btn action-btn--primary" type="button" style="flex:1;" onclick="abrirFirmarAquiPendiente('${esc(f.rut)}')">Firmar aquí</button>
+             <button class="action-btn action-btn--danger" type="button" style="flex:1;" onclick="quitarTrabajadorPendiente('${esc(f.rut)}')">Quitar</button>
            </span>`}
     </div>`;
   }).join('');
@@ -9828,6 +9828,13 @@ function emptyState(title, sub) {
   return `<div class="empty"><div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" style="width:30px;height:30px"><rect x="6" y="4" width="12" height="17" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M9 4V3.5A1.5 1.5 0 0 1 10.5 2h3A1.5 1.5 0 0 1 15 3.5V4" stroke="currentColor" stroke-width="1.6"/><path d="M9 12h6M9 15.5h6M9 8.5h3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></div><div class="empty-title">${esc(title)}</div><div class="empty-sub">${esc(sub)}</div></div>`;
 }
 function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+// Los nombres suelen venir guardados en MAYÚSCULAS en el Sheet — text-transform:
+// capitalize (CSS) no sirve acá porque solo toca la primera letra de cada
+// palabra y deja el resto tal cual (sigue en mayúscula); hay que bajar todo
+// a minúscula primero y recién ahí subir la primera letra de cada palabra.
+function capitalizarNombre(s) {
+  return String(s ?? '').toLowerCase().replace(/(^|[\s.'-])(\p{L})/gu, (m, sep, letra) => sep + letra.toUpperCase());
+}
 
 // ============================================================
 // ARRANQUE
