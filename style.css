@@ -1102,7 +1102,13 @@ a.action-btn { text-decoration: none; }
   position: absolute; bottom: 85px; left: 50%; transform: translateX(-50%);
   background: var(--ink); color: #fff; padding: 10px 20px;
   border-radius: 24px; font-size: 13px; font-weight: 500;
-  white-space: nowrap; z-index: 200;
+  white-space: nowrap;
+  /* Bug real encontrado probando el portal de fiscalización: z-index 200
+     quedaba DEBAJO de .login-screen (998, ver más abajo) — el toast
+     "Documento ratificado ✓" sí se disparaba, solo que quedaba tapado
+     por la pantalla oscura de fiscalización y nunca se veía. Por eso
+     ratificar "no hacía nada" aunque sí escribía en el Sheet. */
+  z-index: 1000;
   animation: fadeup 0.25s ease;
 }
 .toast.error { background: #c62828; }
