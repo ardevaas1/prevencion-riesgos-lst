@@ -5249,14 +5249,48 @@ function abrirInvestigacion(filaIncidente) {
     if (antiguedad) f.trabajadorAntiguedadEmpresa.value = `${antiguedad.valor} ${antiguedad.unidad.toLowerCase()}`;
   }
   renderChecklistsInvestigacion();
+  resetearPinInvestigador();
   openPanel('panel-form-investigacion');
-  setTimeout(() => initFirmaPad('firma-canvas-investigador'), 80);
+}
+// Firma de quien investiga por PIN (reemplaza el dibujo a mano, a pedido
+// del cliente tras revisar que no hay ninguna norma que exija firma
+// avanzada para este documento — ver conversación) — mismo mecanismo ya
+// usado en el resto de la app.
+function resetearPinInvestigador() {
+  document.getElementById('investigador-pin-crear-wrap').classList.add('hidden');
+  document.getElementById('investigador-pin-ingresar-wrap').classList.add('hidden');
+  document.getElementById('pin-investigador-nuevo').value = '';
+  document.getElementById('pin-investigador-nuevo-confirmar').value = '';
+  document.getElementById('pin-investigador').value = '';
+}
+async function onRutInvestigadorChange(input) {
+  const rut = input.value.trim();
+  if (!rut) { resetearPinInvestigador(); return; }
+  const datos = await datosFirmaVigentes(rut);
+  const tienePin = !!(datos && datos.tienePin);
+  document.getElementById('investigador-pin-crear-wrap').classList.toggle('hidden', tienePin);
+  document.getElementById('investigador-pin-ingresar-wrap').classList.toggle('hidden', !tienePin);
 }
 async function guardarInvestigacion(ev) {
   if (bloquearSiViewer()) return;
   ev.preventDefault();
   const f = ev.target;
-  if (firmaEstaVacia('firma-canvas-investigador')) { toast('Falta la firma de quien investiga', 'error'); return; }
+  const investigadorRut = f.investigadorRut.value.trim();
+  if (!investigadorRut) { toast('Falta el RUT de quien investiga', 'error'); return; }
+  const creandoPinInvestigador = !document.getElementById('investigador-pin-crear-wrap').classList.contains('hidden');
+  try {
+    if (creandoPinInvestigador) {
+      const nuevo = document.getElementById('pin-investigador-nuevo').value.trim();
+      const confirmarPin = document.getElementById('pin-investigador-nuevo-confirmar').value.trim();
+      if (!/^[0-9]{4,6}$/.test(nuevo)) { toast('El PIN debe tener entre 4 y 6 números', 'error'); return; }
+      if (nuevo !== confirmarPin) { toast('Los dos PIN no coinciden', 'error'); return; }
+      await llamarWebAppSubcontratista('crearPinTrabajador', { rut: investigadorRut, pin: nuevo });
+    } else {
+      const pin = document.getElementById('pin-investigador').value.trim();
+      if (!/^[0-9]{4,6}$/.test(pin)) { toast('Ingresa tu PIN', 'error'); return; }
+      await llamarWebAppSubcontratista('verificarPinTrabajador', { rut: investigadorRut, pin });
+    }
+  } catch (e) { toast(e.message, 'error'); return; }
   try {
     toast('Generando informe...');
     const datos = {
@@ -5283,7 +5317,7 @@ async function guardarInvestigacion(ev) {
       medida3: f.medida3.value, responsable3: f.responsable3.value, fechaImpl3: f.fechaImpl3.value,
       observaciones: f.observaciones.value,
       investigadorNombreRut: f.investigadorNombreRut.value, investigadorCargo: f.investigadorCargo.value,
-      firmaInvestigador: firmaCanvasADataURL('firma-canvas-investigador'),
+      firmaInvestigador: 'PIN',
     };
     const pdfLink = await generarYSubirPdfInvestigacion(datos);
 
@@ -5363,6 +5397,12 @@ async function generarYSubirPdfInvestigacion(datos) {
   }
   async function drawSig(page, dataUrl, x, top, w, h) {
     if (!dataUrl) return;
+    if (dataUrl === 'PIN') {
+      let size = 7.5; const sello = 'Firmado con PIN';
+      while (size > 5 && font.widthOfTextAtSize(sello, size) > w) size -= 0.25;
+      text(page, sello, x, top + 8, size);
+      return;
+    }
     const bytes = Uint8Array.from(atob(dataUrl.split(',')[1]), c => c.charCodeAt(0));
     const img = await pdfDoc.embedPng(bytes);
     const dims = escalarFirmaCasillero(img, w, h);

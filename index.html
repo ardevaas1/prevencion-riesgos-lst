@@ -1345,10 +1345,18 @@
       <div class="sec-label" style="margin-top:18px;">Quien investiga</div>
       <div class="form-group"><label>Nombre y Rut</label><input name="investigadorNombreRut" required></div>
       <div class="form-group"><label>Cargo</label><input name="investigadorCargo"></div>
-      <div class="form-group">
-        <label>Firma</label>
-        <div class="firma-box"><canvas id="firma-canvas-investigador"></canvas></div>
-        <div class="firma-actions"><button type="button" onclick="limpiarFirma()">Borrar firma</button></div>
+      <div class="form-group"><label>RUT del investigador (para firmar)</label><input name="investigadorRut" required placeholder="12.345.678-9" oninput="formatearRutInput(this)" onblur="onRutInvestigadorChange(this)"></div>
+      <div id="investigador-pin-crear-wrap" class="hidden">
+        <p class="card-sub" style="margin-bottom:10px;">Todavía no tienes un PIN — créalo ahora, lo vas a usar la próxima vez que firmes.</p>
+        <div class="form-group"><label>Crea el PIN</label>
+          <input type="text" id="pin-investigador-nuevo" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off">
+        </div>
+        <div class="form-group"><label>Confírmalo</label>
+          <input type="text" id="pin-investigador-nuevo-confirmar" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off">
+        </div>
+      </div>
+      <div id="investigador-pin-ingresar-wrap" class="form-group hidden"><label>Tu PIN</label>
+        <input type="text" id="pin-investigador" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off">
       </div>
 
       <button class="btn-add" type="submit" style="margin-top:14px;">Generar informe de investigación</button>
