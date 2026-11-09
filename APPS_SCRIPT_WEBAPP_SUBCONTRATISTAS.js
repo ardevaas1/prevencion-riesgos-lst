@@ -85,6 +85,8 @@ function doPost(e) {
     if (accion === 'firmarPendiente') return respuesta(firmarPendiente(body.idDocumento, body.rut, body.firmaBase64, body.pin));
     if (accion === 'registrarConsentimientoRut') return respuesta(registrarConsentimientoRut(body.rut));
     if (accion === 'registrarCorreoTrabajador') return respuesta(registrarCorreoTrabajador(body.rut, body.correo, body.sinCorreo));
+    if (accion === 'enviarCodigoPin') return respuesta(enviarCodigoPin(body.rut));
+    if (accion === 'verificarCodigoPin') return respuesta(verificarCodigoPin(body.rut, body.codigo));
     if (accion === 'crearPinTrabajador') return respuesta(crearPinTrabajador(body.rut, body.pin));
     if (accion === 'verificarPinTrabajador') return respuesta(verificarPinTrabajador(body.rut, body.pin));
     if (accion === 'enviarComprobante') return respuesta(enviarComprobanteTrabajador(body.correoTrabajador, body.nombreArchivo, body.pdfBase64, body.asunto, body.cuerpo));
@@ -617,6 +619,50 @@ function registrarCorreoTrabajador(rutEntrada, correo, sinCorreo) {
     }
   }
   throw new Error('No se encontró un trabajador con ese RUT');
+}
+
+// Código de verificación por correo antes de CREAR un PIN por primera vez
+// (no hace falta para firmar con uno ya existente) — ver Ordinario
+// 767/2023 de la DT: exige evitar que cualquiera que sepa el RUT de un
+// trabajador pueda "enrolarlo" (crearle un PIN a su nombre) sin que esa
+// persona esté de verdad ahí. El código vive en CacheService — vence solo
+// (10 min) y se borra al primer uso, así que no hace falta guardarlo en
+// ninguna hoja ni limpiarlo después.
+function enviarCodigoPin(rutEntrada) {
+  const rut = normalizarRut(rutEntrada);
+  if (!rut) throw new Error('Falta el RUT');
+  const datos = hojaTrabajadores().getDataRange().getValues();
+  for (let i = 1; i < datos.length; i++) {
+    if (normalizarRut(datos[i][2]) === rut) {
+      const correo = (datos[i][26] || '').toString().trim(); // columna AA
+      const sinCorreo = !!(datos[i][29] || '').toString().trim(); // columna AD
+      // El cliente detecta este mensaje exacto para ofrecer registrar el
+      // correo primero, en vez de mostrar un error genérico sin salida.
+      if (!correo || sinCorreo) throw new Error('SIN_CORREO');
+      const codigo = Math.floor(100000 + Math.random() * 900000).toString();
+      CacheService.getScriptCache().put('otppin_' + rut, codigo, 600);
+      MailApp.sendEmail({
+        to: correo,
+        subject: 'Tu código para crear tu PIN — Constructora LST',
+        body: 'Hola,\n\nTu código para crear tu PIN de firma es: ' + codigo + '\n\n'
+          + 'Vence en 10 minutos. Si no fuiste tú quien lo pidió, ignora este correo.\n\n'
+          + 'Saludos,\nConstructora LST',
+      });
+      return { ok: true, correo: correo };
+    }
+  }
+  throw new Error('No se encontró un trabajador con ese RUT');
+}
+function verificarCodigoPin(rutEntrada, codigo) {
+  const rut = normalizarRut(rutEntrada);
+  if (!rut) throw new Error('Falta el RUT');
+  if (!/^[0-9]{6}$/.test(codigo || '')) throw new Error('Código incorrecto o vencido');
+  const cache = CacheService.getScriptCache();
+  const key = 'otppin_' + rut;
+  const guardado = cache.get(key);
+  if (!guardado || guardado !== codigo) throw new Error('Código incorrecto o vencido');
+  cache.remove(key); // un solo uso
+  return { ok: true };
 }
 
 // Crea el PIN de firma del trabajador — reemplaza el dibujo a mano por un
