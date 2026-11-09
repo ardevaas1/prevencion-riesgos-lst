@@ -1440,6 +1440,27 @@ a.action-btn { text-decoration: none; }
 .elegir-obra-item--todas { border-color: rgba(47,138,77,0.35); }
 .elegir-obra-item--todas .elegir-obra-nombre { font-weight: 700; }
 .elegir-obra-divider { height: 1px; background: var(--line); margin: 6px 4px 8px; flex-shrink: 0; }
+.elegir-obra-buscar {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  background: #fff; border: 1.5px solid var(--line); border-radius: 10px;
+  padding: 9px 14px; margin-bottom: 12px; box-sizing: border-box;
+}
+.elegir-obra-buscar input {
+  flex: 1; border: none; outline: none; font-size: 14px;
+  font-family: inherit; color: var(--ink); background: transparent;
+}
+@media (min-width: 900px) {
+  /* En una pantalla grande, la caja angosta de 420px (pensada para
+     celular) queda perdida en medio de todo ese espacio vacío. Se
+     ensancha y la lista pasa a grilla — "Todas las obras" y el divisor
+     ocupan el ancho completo, las obras se acomodan en columnas. */
+  .elegir-obra-box { max-width: 720px; }
+  .elegir-obra-lista {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
+    max-height: 60vh;
+  }
+  .elegir-obra-item--todas, .elegir-obra-divider { grid-column: 1 / -1; }
+}
 
 /* ── Doc open button ── */
 .doc-open-btn {
@@ -2227,6 +2248,20 @@ a.action-btn { text-decoration: none; }
 }
 @media (min-width: 900px) {
   .modulos-footer { padding-bottom: 36px; }
+  /* En escritorio sobra ancho para una lista angosta de una columna (se ve
+     igual de vacía que el resto de Inicio antes de este pulido) — pasa a
+     grilla de tarjetas con borde propio, mismo lenguaje que .elegir-obra-item
+     y las demás tarjetas de escritorio. */
+  .modulos-lista {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 10px; background: none; border: none; padding: 0; margin: 0;
+  }
+  .modulo-card {
+    background: #fff; border: 1px solid var(--line); border-radius: 12px;
+    padding: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    transition: box-shadow 0.15s;
+  }
+  .modulo-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
 }
 
 /* ══ INVENTARIO TABS ══ */
