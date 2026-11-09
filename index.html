@@ -7,7 +7,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-512.png">
-<meta name="theme-color" content="#9b570c">
+<meta name="theme-color" content="#1b1f26">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -324,6 +324,10 @@
     <div class="entry-logo-wrap entry-logo-wrap--claro"><img src="logo.png" alt="LST" class="login-logo"></div>
     <div class="elegir-obra-titulo">¿En qué obra estás?</div>
     <div class="elegir-obra-sub">Vas a ver solo la información de esa obra (Subcontratistas no se filtra)</div>
+    <div class="elegir-obra-buscar hidden" id="elegir-obra-buscar-wrap">
+      <svg viewBox="0 0 24 24" fill="none" style="width:16px;height:16px;color:var(--ink-soft)"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <input type="text" id="input-filtro-obra" placeholder="Buscar obra..." oninput="onFiltrarListaObra(this.value)">
+    </div>
     <div id="lista-elegir-obra" class="elegir-obra-lista"></div>
   </div>
 </div>
@@ -370,8 +374,7 @@
       <div class="sec-label" style="margin-top:20px;">Estadísticas de seguridad</div>
       <div data-list="stats-seguridad"></div>
 
-      <div class="sec-label">Módulos</div>
-      <div class="modulos-lista" data-list="modulos-home"></div>
+      <div data-list="modulos-home"></div>
 
       <div class="sec-label" style="margin-top:24px;">Accesos directos</div>
       <a class="action-btn" id="link-drive" href="#" target="_blank" rel="noopener"></a>
@@ -548,6 +551,8 @@
 
     <div class="sec-label" style="margin-top:28px;">Estadísticas de seguridad</div>
     <div data-list="stats-seguridad"></div>
+
+    <div data-list="modulos-home"></div>
 
     <div class="sec-label" style="margin-top:24px;">Accesos directos</div>
     <a class="action-btn" id="dt-link-drive" href="#" target="_blank" rel="noopener"></a>
@@ -1739,13 +1744,17 @@
 
     // Header móvil: en Inicio muestra el logo (color naranjo de marca);
     // en las demás páginas muestra un botón "‹ Volver a Inicio" con el
-    // título y el color del módulo activo (Inicio con su grilla de
-    // módulos es ahora la única forma de navegar).
+    // título (Inicio con su grilla de módulos es ahora la única forma de
+    // navegar). El color del header se mantiene fijo en el navy de marca
+    // en todas las páginas — igual que el sidebar de escritorio (ver
+    // aplicarColorHeader más abajo): que cambiara de color en cada módulo
+    // se sentía excesivo/anticuado, y además chocaba contra el color fijo
+    // de la barra de estado del celular (theme-color).
     const esInicio = nombre === 'inicio';
     document.getElementById('header-logo-badge').classList.toggle('hidden', !esInicio);
     document.getElementById('header-back').classList.toggle('hidden', esInicio);
     document.getElementById('header-title').textContent = esInicio ? 'Prevención de Riesgos' : TITULOS_PAGINA[nombre];
-    aplicarColorHeader(document.getElementById('header-movil'), nombre);
+    aplicarColorHeader(document.getElementById('header-movil'), 'inicio');
 
     // ── Escritorio ──
     // Sidebar + panel central siempre visibles (a pedido del cliente: que

@@ -1908,29 +1908,41 @@ const MODULOS_DESC = {
   miper: 'Sube la Matriz de Riesgos (IPER DS44) de cada obra',
   capacitacionds44: 'Curso obligatorio art.16 — vigencia 2 años',
 };
+// Mismas 3 categorías y mismo orden que el sidebar de escritorio (ver
+// .desktop-nav-group-label en index.html) — así Inicio (celular y, desde
+// este pulido, también escritorio) se organiza igual que la navegación
+// completa, en vez de ser una lista plana de 11 módulos sin agrupar.
 function renderModulosHome() {
   const modulos = [
-    { key: 'inspecciones', nombre: 'Inspecciones' },
-    { key: 'incidentes', nombre: 'Incidentes y Accidentes' },
-    { key: 'procedimientos', nombre: 'Procedimientos de Trabajo Seguro' },
-    { key: 'epp', nombre: 'Entrega de EPP' },
-    { key: 'trabajadores', nombre: 'Trabajadores' },
-    { key: 'charlas', nombre: 'Charlas de Seguridad' },
-    { key: 'hcr', nombre: 'Hoja de Control de Riesgos (HCR)' },
-    { key: 'subcontratistas', nombre: 'Subcontratistas' },
-    { key: 'programapersonalizado', nombre: 'Programa Personalizado' },
-    { key: 'miper', nombre: 'Matriz de Riesgos (IPER)' },
-    { key: 'capacitacionds44', nombre: 'Capacitación DS44 (8 hrs)' },
+    { key: 'inspecciones', nombre: 'Inspecciones', categoria: 'Prevención' },
+    { key: 'incidentes', nombre: 'Incidentes y Accidentes', categoria: 'Prevención' },
+    { key: 'charlas', nombre: 'Charlas de Seguridad', categoria: 'Prevención' },
+    { key: 'hcr', nombre: 'Hoja de Control de Riesgos (HCR)', categoria: 'Prevención' },
+    { key: 'procedimientos', nombre: 'Procedimientos de Trabajo Seguro', categoria: 'Prevención' },
+    { key: 'trabajadores', nombre: 'Trabajadores', categoria: 'Personal' },
+    { key: 'epp', nombre: 'Entrega de EPP', categoria: 'Personal' },
+    { key: 'capacitacionds44', nombre: 'Capacitación DS44 (8 hrs)', categoria: 'Personal' },
+    { key: 'subcontratistas', nombre: 'Subcontratistas', categoria: 'Gestión' },
+    { key: 'programapersonalizado', nombre: 'Programa Personalizado', categoria: 'Gestión' },
+    { key: 'miper', nombre: 'Matriz de Riesgos (IPER)', categoria: 'Gestión' },
   ]
     // Un supervisor logueado (ver miSupervisorPerfil) no ve Entrega de EPP
     // en absoluto — a pedido explícito, ese módulo queda fuera de su vista.
     .filter(m => !(miSupervisorPerfil && m.key === 'epp'))
-    .map(m => ({ ...m, desc: MODULOS_DESC[m.key], color: MODULOS_COLOR[m.key] }));
-  setListHTML('modulos-home', modulos.map(m => `
-    <div class="modulo-card modulo-card--${m.color}" onclick="irPagina('${m.key}')">
-      <div class="modulo-icon modulo-icon--${m.color}">${ICONS[m.key]}</div>
-      <div class="modulo-info"><div class="modulo-nombre">${m.nombre}</div><div class="modulo-desc">${m.desc}</div></div>
-    </div>`).join(''));
+    .map(m => ({ ...m, desc: MODULOS_DESC[m.key] }));
+  const categorias = ['Prevención', 'Personal', 'Gestión'];
+  const html = categorias.map(cat => {
+    const items = modulos.filter(m => m.categoria === cat);
+    if (!items.length) return '';
+    return `
+      <div class="sec-label" style="margin-top:20px;">${cat}</div>
+      <div class="modulos-lista">${items.map(m => `
+        <div class="modulo-card" onclick="irPagina('${m.key}')">
+          <div class="modulo-icon">${ICONS[m.key]}</div>
+          <div class="modulo-info"><div class="modulo-nombre">${m.nombre}</div><div class="modulo-desc">${m.desc}</div></div>
+        </div>`).join('')}</div>`;
+  }).join('');
+  setListHTML('modulos-home', html);
   // Mismo criterio en el ítem de EPP del nav completo de escritorio.
   const dtNavEpp = document.getElementById('dt-nav-epp');
   if (dtNavEpp) dtNavEpp.classList.toggle('hidden', !!miSupervisorPerfil);
@@ -2721,10 +2733,26 @@ function renderSelectorObraActiva(permiteCancelar) {
       <div class="card-arrow">›</div>
     </button>`).join('')}
   `;
+  // La caja de búsqueda solo vale la pena si hay varias obras — con 1 o 2
+  // solo ocuparía espacio sin ayudar en nada.
+  const buscarWrap = document.getElementById('elegir-obra-buscar-wrap');
+  buscarWrap.classList.toggle('hidden', obras.length <= 6);
+  document.getElementById('input-filtro-obra').value = '';
   const pantalla = document.getElementById('pantalla-elegir-obra');
   pantalla.classList.remove('hidden');
   pantalla.classList.add('app-enter');
   setTimeout(() => pantalla.classList.remove('app-enter'), 500);
+}
+// Filtro en vivo de la lista de obras (solo se muestra cuando hay varias —
+// ver renderSelectorObraActiva). Oculta/muestra ítems ya renderizados en
+// vez de volver a pedir los datos: es solo texto visible, no hace falta
+// tocar el servidor para esto.
+function onFiltrarListaObra(valor) {
+  const q = sinTildes((valor || '').trim().toLowerCase());
+  document.querySelectorAll('#lista-elegir-obra .elegir-obra-item:not(.elegir-obra-item--todas)').forEach(item => {
+    const nombre = sinTildes(item.querySelector('.elegir-obra-nombre').textContent.toLowerCase());
+    item.classList.toggle('hidden', !!q && !nombre.includes(q));
+  });
 }
 function abrirSelectorObraActiva() {
   if (miSupervisorPerfil) { toast('Tu cuenta está fija a la obra ' + miSupervisorPerfil.obra, 'ok'); return; }
