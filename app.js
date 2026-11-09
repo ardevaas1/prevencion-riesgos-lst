@@ -3987,21 +3987,24 @@ async function onRutHcrChange(input, tipo) {
 // 'PIN' si quedó firmado, '' si no — mismo marcador que usan los generadores
 // de PDF para dibujar el sello de texto en vez de una imagen.
 async function procesarFirmaPinHcr(tipo, rut, opcional) {
+  const etiqueta = { supervisor: 'supervisor', jefeobra: 'jefe de obra', prevencion: 'prevencionista' }[tipo] || tipo;
   if (!rut) {
     if (opcional) return '';
-    throw new Error('Falta el RUT del ' + tipo);
+    throw new Error('Falta el RUT del ' + etiqueta);
   }
   const creando = !document.getElementById(`hcr-pin-${tipo}-crear-wrap`).classList.contains('hidden');
   if (creando) {
     const nuevo = document.getElementById(`pin-hcr-${tipo}-nuevo`).value.trim();
     const confirmar = document.getElementById(`pin-hcr-${tipo}-nuevo-confirmar`).value.trim();
-    if (!/^[0-9]{4,6}$/.test(nuevo)) throw new Error('El PIN debe tener entre 4 y 6 números');
-    if (nuevo !== confirmar) throw new Error('Los dos PIN no coinciden');
-    await llamarWebAppSubcontratista('crearPinTrabajador', { rut, pin: nuevo });
+    if (!/^[0-9]{4,6}$/.test(nuevo)) throw new Error(`El PIN del ${etiqueta} debe tener entre 4 y 6 números`);
+    if (nuevo !== confirmar) throw new Error(`Los dos PIN del ${etiqueta} no coinciden`);
+    try { await llamarWebAppSubcontratista('crearPinTrabajador', { rut, pin: nuevo }); }
+    catch (e) { throw new Error(`${etiqueta}: ${e.message}`); }
   } else {
     const pin = document.getElementById(`pin-hcr-${tipo}`).value.trim();
-    if (!/^[0-9]{4,6}$/.test(pin)) throw new Error('Ingresa el PIN');
-    await llamarWebAppSubcontratista('verificarPinTrabajador', { rut, pin });
+    if (!/^[0-9]{4,6}$/.test(pin)) throw new Error(`Ingresa el PIN del ${etiqueta}`);
+    try { await llamarWebAppSubcontratista('verificarPinTrabajador', { rut, pin }); }
+    catch (e) { throw new Error(`${etiqueta}: ${e.message}`); }
   }
   return 'PIN';
 }
