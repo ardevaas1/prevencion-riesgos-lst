@@ -150,13 +150,13 @@
     </div>
     <div id="fiscalizacion-pin-crear-wrap" class="hidden" style="width:100%; text-align:left;">
       <label style="display:block; font-size:12px; color:#94a3b8; margin-bottom:6px;">Crea tu PIN (lo vas a usar cada vez que ratifiques)</label>
-      <input type="password" id="fiscalizacion-pin-nuevo" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off">
+      <input type="text" id="fiscalizacion-pin-nuevo" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off">
       <label style="display:block; font-size:12px; color:#94a3b8; margin:10px 0 6px;">Confirma tu PIN</label>
-      <input type="password" id="fiscalizacion-pin-nuevo-confirmar" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off">
+      <input type="text" id="fiscalizacion-pin-nuevo-confirmar" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off">
     </div>
     <div id="fiscalizacion-pin-ingresar-wrap" class="hidden" style="width:100%; text-align:left;">
       <label style="display:block; font-size:12px; color:#94a3b8; margin-bottom:6px;">Tu PIN</label>
-      <input type="password" id="fiscalizacion-pin-ingresar" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off">
+      <input type="text" id="fiscalizacion-pin-ingresar" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off">
     </div>
     <button class="login-btn" type="button" onclick="onRatificarFiscalizacion()" style="margin-top:14px;">Ratificar y firmar</button>
     <div class="login-spinner hidden" id="fiscalizacion-firmar-spinner"><div class="login-spinner-ring"></div></div>
@@ -230,11 +230,11 @@
     <form id="form-crear-pin-rut" onsubmit="onCrearPinRut(event)">
       <div style="width:100%; text-align:left; margin-bottom:12px;">
         <label style="display:block; font-size:12px; color:#94a3b8; margin-bottom:6px;">Tu PIN nuevo</label>
-        <input type="password" id="pin-rut-nuevo" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off" required>
+        <input type="text" id="pin-rut-nuevo" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off" required>
       </div>
       <div style="width:100%; text-align:left;">
         <label style="display:block; font-size:12px; color:#94a3b8; margin-bottom:6px;">Confírmalo</label>
-        <input type="password" id="pin-rut-nuevo-confirmar" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off" required>
+        <input type="text" id="pin-rut-nuevo-confirmar" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off" required>
       </div>
       <button class="login-btn" type="submit" style="margin-top:16px;">Crear PIN y continuar</button>
     </form>
@@ -298,7 +298,7 @@
   <div class="panel-body">
     <div class="card-sub" id="firmar-pendiente-info" style="margin-bottom:14px;"></div>
     <div class="form-group"><label>Tu PIN</label>
-      <input type="password" id="pin-firmar-pendiente" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off">
+      <input type="text" id="pin-firmar-pendiente" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off">
     </div>
     <button class="btn-add" type="button" onclick="onFirmarPendiente()">Firmar y enviar</button>
   </div>
@@ -1017,14 +1017,14 @@
       <div id="relator-pin-crear-wrap" class="hidden">
         <p class="card-sub" style="margin-bottom:10px;">El relator todavía no tiene un PIN — créalo ahora, lo va a usar la próxima vez que firme.</p>
         <div class="form-group"><label>Crea el PIN</label>
-          <input type="password" id="pin-relator-nuevo" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off">
+          <input type="text" id="pin-relator-nuevo" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off">
         </div>
         <div class="form-group"><label>Confírmalo</label>
-          <input type="password" id="pin-relator-nuevo-confirmar" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off">
+          <input type="text" id="pin-relator-nuevo-confirmar" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off">
         </div>
       </div>
       <div id="relator-pin-ingresar-wrap" class="form-group hidden"><label>PIN del relator</label>
-        <input type="password" id="pin-relator" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off">
+        <input type="text" id="pin-relator" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off">
       </div>
       <div class="form-group">
         <label>Obra</label>
@@ -1134,14 +1134,14 @@
     <div id="firmar-asistente-crear-pin-wrap" class="hidden">
       <p class="card-sub" style="margin-bottom:10px;">Todavía no tienes un PIN — créalo ahora, lo vas a usar la próxima vez que firmes.</p>
       <div class="form-group"><label>Crea tu PIN</label>
-        <input type="password" id="pin-firmar-asistente-nuevo" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off">
+        <input type="text" id="pin-firmar-asistente-nuevo" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off">
       </div>
       <div class="form-group"><label>Confírmalo</label>
-        <input type="password" id="pin-firmar-asistente-nuevo-confirmar" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off">
+        <input type="text" id="pin-firmar-asistente-nuevo-confirmar" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off">
       </div>
     </div>
     <div id="firmar-asistente-ingresar-pin-wrap" class="form-group hidden"><label>Tu PIN</label>
-      <input type="password" id="pin-firmar-asistente" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off">
+      <input type="text" id="pin-firmar-asistente" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off">
     </div>
     <button class="btn-add" type="button" onclick="confirmarFirmaAsistente()">Firmar</button>
   </div>
@@ -1420,42 +1420,42 @@
       <div id="hcr-pin-supervisor-crear-wrap" class="hidden">
         <p class="card-sub" style="margin-bottom:10px;">El supervisor todavía no tiene un PIN — créalo ahora, lo va a usar la próxima vez que firme.</p>
         <div class="form-group"><label>Crea el PIN</label>
-          <input type="password" id="pin-hcr-supervisor-nuevo" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off">
+          <input type="text" id="pin-hcr-supervisor-nuevo" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off">
         </div>
         <div class="form-group"><label>Confírmalo</label>
-          <input type="password" id="pin-hcr-supervisor-nuevo-confirmar" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off">
+          <input type="text" id="pin-hcr-supervisor-nuevo-confirmar" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off">
         </div>
       </div>
       <div id="hcr-pin-supervisor-ingresar-wrap" class="form-group hidden"><label>PIN del supervisor</label>
-        <input type="password" id="pin-hcr-supervisor" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off">
+        <input type="text" id="pin-hcr-supervisor" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off">
       </div>
 
       <div class="form-group"><label>RUT jefe de obra / jefe terreno (opcional)</label><input name="jefeObraRut" placeholder="12.345.678-9" oninput="formatearRutInput(this)" onblur="onRutHcrChange(this,'jefeobra')"></div>
       <div id="hcr-pin-jefeobra-crear-wrap" class="hidden">
         <p class="card-sub" style="margin-bottom:10px;">Todavía no tiene un PIN — créalo ahora.</p>
         <div class="form-group"><label>Crea el PIN</label>
-          <input type="password" id="pin-hcr-jefeobra-nuevo" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off">
+          <input type="text" id="pin-hcr-jefeobra-nuevo" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off">
         </div>
         <div class="form-group"><label>Confírmalo</label>
-          <input type="password" id="pin-hcr-jefeobra-nuevo-confirmar" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off">
+          <input type="text" id="pin-hcr-jefeobra-nuevo-confirmar" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off">
         </div>
       </div>
       <div id="hcr-pin-jefeobra-ingresar-wrap" class="form-group hidden"><label>PIN</label>
-        <input type="password" id="pin-hcr-jefeobra" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off">
+        <input type="text" id="pin-hcr-jefeobra" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off">
       </div>
 
       <div class="form-group"><label>RUT prevención de riesgos (opcional)</label><input name="prevencionRut" placeholder="12.345.678-9" oninput="formatearRutInput(this)" onblur="onRutHcrChange(this,'prevencion')"></div>
       <div id="hcr-pin-prevencion-crear-wrap" class="hidden">
         <p class="card-sub" style="margin-bottom:10px;">Todavía no tiene un PIN — créalo ahora.</p>
         <div class="form-group"><label>Crea el PIN</label>
-          <input type="password" id="pin-hcr-prevencion-nuevo" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off">
+          <input type="text" id="pin-hcr-prevencion-nuevo" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off">
         </div>
         <div class="form-group"><label>Confírmalo</label>
-          <input type="password" id="pin-hcr-prevencion-nuevo-confirmar" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off">
+          <input type="text" id="pin-hcr-prevencion-nuevo-confirmar" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off">
         </div>
       </div>
       <div id="hcr-pin-prevencion-ingresar-wrap" class="form-group hidden"><label>PIN</label>
-        <input type="password" id="pin-hcr-prevencion" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off">
+        <input type="text" id="pin-hcr-prevencion" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••" autocomplete="off">
       </div>
 
       <div class="sec-label" style="margin-top:18px;">Cuadrilla (registro de firmas)</div>

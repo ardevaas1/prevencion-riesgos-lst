@@ -1313,6 +1313,14 @@ a.action-btn { text-decoration: none; }
   width: 100%; padding: 13px 14px; border-radius: 10px; box-sizing: border-box;
   border: 1.5px solid #334155; background: #0f172a; color: #f1f5f9;
   font-size: 22px; text-align: center; letter-spacing: 10px;
+  /* type="text" (no "password") a propósito — Chrome ignora autocomplete="off"
+     en inputs type="password" y siempre ofrece "¿Quieres guardar la
+     contraseña?" (molesto para un PIN de 4-6 dígitos, que no es una
+     contraseña de verdad). Se enmascara visualmente acá en vez de con el
+     tipo nativo — soportado en Chrome/Safari/Edge; en Firefox (sin soporte
+     para -webkit-text-security) el PIN queda a la vista, degradación
+     aceptable para no repetir el molesto diálogo en el resto. */
+  -webkit-text-security: disc;
 }
 .pin-input:focus { outline: none; border-color: var(--accent); }
 .login-box--ancho { max-width: 440px; }
