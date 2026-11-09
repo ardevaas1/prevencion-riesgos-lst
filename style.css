@@ -1269,15 +1269,27 @@ a.action-btn { text-decoration: none; }
 #panel-form-trabajador-subcont { z-index: 600; }
 
 /* ── Login screen ── */
+/* Bug real encontrado probando el portal de fiscalización: con una lista
+   de resultados larga, el contenido de .login-box se pasaba de la
+   pantalla y no había forma de llegar al resto (ni scroll, ni hacia
+   arriba ni hacia abajo) — align-items:center en un contenedor flex SIN
+   overflow-y recorta el contenido que no entra, en vez de dejarlo
+   alcanzable. overflow-y:auto arregla el scroll, pero si se dejara
+   align-items:center en .login-screen el "centrado" seguiría recortando
+   el principio del contenido al hacer scroll (comportamiento conocido de
+   flexbox con centrado "unsafe") — por eso el centrado vertical pasa a
+   margin:auto en .login-box, que sí se comporta bien con scroll. */
 .login-screen {
   position: fixed; inset: 0;
   background: linear-gradient(165deg, #0f172a 0%, #0b1220 55%, #070b12 100%);
-  display: flex; align-items: center; justify-content: center;
+  display: flex; justify-content: center;
+  overflow-y: auto;
   z-index: 998;
 }
 .login-box {
   display: flex; flex-direction: column; align-items: center;
   padding: 40px 32px; text-align: center; max-width: 320px; width: 100%;
+  margin: auto 0;
 }
 .login-logo { width: 100%; height: 100%; }
 .login-title { font-size: 21px; font-weight: 700; color: #f1f5f9; letter-spacing: -0.3px; margin-bottom: 4px; }
@@ -1293,7 +1305,16 @@ a.action-btn { text-decoration: none; }
 }
 .login-btn:active { transform: scale(0.97); box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
 .login-btn--firmar { background: var(--accent); color: #fff; }
-.login-hint { font-size: 12px; color: #475569; margin-top: 16px; }
+/* Bug real encontrado probando el portal de fiscalización: #475569 es un
+   gris OSCURO pensado para fondo claro, pero .login-hint se usa dentro de
+   pantallas de fondo oscuro (login-screen) — quedaba casi invisible
+   (gris oscuro sobre navy oscuro), así que cualquier error ("PIN
+   incorrecto", "No se encontró...", etc.) parecía que "no pasaba nada".
+   Mismo patrón de bug de contraste ya encontrado antes (blanco sobre
+   blanco en paneles claros) pero al revés. Gris claro neutro (no rojo):
+   #login-hint también se usa para el mensaje normal, no solo errores
+   ("Usa tu cuenta corporativa autorizada" en el login principal). */
+.login-hint { font-size: 12px; color: #cbd5e1; margin-top: 16px; }
 .login-rut-link {
   font-size: 12.5px; color: #94a3b8; margin-top: 18px; cursor: pointer;
   text-decoration: underline; text-underline-offset: 2px;
