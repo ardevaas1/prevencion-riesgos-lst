@@ -975,7 +975,7 @@ function mostrarConsentimientoRut() {
 // comprobante) o crear PIN — o, si ya tiene todo, los pendientes directo.
 async function continuarTrasConsentimiento(resp) {
   if (!resp.correo && !resp.sinCorreo) { mostrarCorreoRut(); return; }
-  if (!resp.tienePin) { mostrarCrearPinRut(); return; }
+  if (!resp.tienePin) { await mostrarCodigoPinRut(); return; }
   await mostrarPendientesRut();
 }
 async function onAceptarConsentimientoRut(ev) {
@@ -1034,7 +1034,7 @@ async function onGuardarCorreoRut(ev) {
     await llamarWebAppSubcontratista('registrarCorreoTrabajador', { rut: rutSesionActual, correo, sinCorreo });
     document.getElementById('rut-correo-screen').classList.add('hidden');
     const resp = await llamarWebAppSubcontratista('verificarTrabajadorPorRut', { rut: rutSesionActual });
-    if (!resp.tienePin) { mostrarCrearPinRut(); return; }
+    if (!resp.tienePin) { await mostrarCodigoPinRut(); return; }
     await mostrarPendientesRut();
   } catch (e) {
     hint.textContent = e.message;
@@ -1042,6 +1042,53 @@ async function onGuardarCorreoRut(ev) {
     f.querySelector('button[type="submit"]').classList.remove('hidden');
     reactivarBotonesGuardar(f);
     document.getElementById('correo-rut-spinner').classList.add('hidden');
+  }
+}
+// Código de verificación por correo, entre el correo y crear el PIN —
+// exigencia del Ordinario 767/2023 DT (ver enviarCodigoPin/verificarCodigoPin
+// en Apps Script): sin esto, cualquiera que supiera el RUT de un trabajador
+// podría "enrolarlo" (crearle un PIN a su nombre) sin que esa persona esté
+// de verdad ahí.
+async function mostrarCodigoPinRut() {
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('rut-login-screen').classList.add('hidden');
+  document.getElementById('rut-consentimiento-screen').classList.add('hidden');
+  document.getElementById('rut-correo-screen').classList.add('hidden');
+  document.getElementById('codigo-pin-rut').value = '';
+  document.getElementById('codigo-pin-rut-hint').textContent = ' ';
+  reactivarBotonesGuardar(document.getElementById('codigo-pin-rut-screen'));
+  document.getElementById('codigo-pin-rut-screen').classList.remove('hidden');
+  await reenviarCodigoPinRut();
+}
+async function reenviarCodigoPinRut() {
+  const hint = document.getElementById('codigo-pin-rut-hint');
+  hint.textContent = 'Enviando código...';
+  try {
+    const resp = await llamarWebAppSubcontratista('enviarCodigoPin', { rut: rutSesionActual });
+    hint.textContent = 'Te enviamos un código a ' + resp.correo;
+  } catch (e) {
+    hint.textContent = e.message === 'SIN_CORREO'
+      ? 'No tienes un correo registrado — vuelve a entrar con tu RUT para registrarlo.'
+      : e.message;
+  }
+}
+async function onVerificarCodigoPinRut(ev) {
+  ev.preventDefault();
+  const hint = document.getElementById('codigo-pin-rut-hint');
+  const f = ev.target;
+  f.querySelector('button[type="submit"]').classList.add('hidden');
+  document.getElementById('codigo-pin-rut-spinner').classList.remove('hidden');
+  try {
+    const codigo = document.getElementById('codigo-pin-rut').value.trim();
+    await llamarWebAppSubcontratista('verificarCodigoPin', { rut: rutSesionActual, codigo });
+    document.getElementById('codigo-pin-rut-screen').classList.add('hidden');
+    mostrarCrearPinRut();
+  } catch (e) {
+    hint.textContent = e.message;
+  } finally {
+    f.querySelector('button[type="submit"]').classList.remove('hidden');
+    reactivarBotonesGuardar(f);
+    document.getElementById('codigo-pin-rut-spinner').classList.add('hidden');
   }
 }
 // Reemplaza el dibujo a mano por un PIN de 4-6 dígitos (a pedido del
@@ -3691,6 +3738,8 @@ async function crearDocumentoEnCurso(tipo, { obra, fecha, titulo, responsable, a
 
 let documentoEnCursoAbiertoId = null;
 let asistenteFirmandoAqui = null;
+let firmarAsistentePaso = 'datos'; // 'datos' | 'codigo' | 'pin' — ver confirmarFirmaAsistente
+let firmarAsistenteYaTienePin = false;
 function abrirProgresoDocumento(idDocumento) {
   documentoEnCursoAbiertoId = idDocumento;
   renderProgresoDocumento();
@@ -3752,6 +3801,8 @@ async function abrirFirmarAquiPendiente(rut) {
   document.getElementById('pin-firmar-asistente').value = '';
   document.getElementById('pin-firmar-asistente-nuevo').value = '';
   document.getElementById('pin-firmar-asistente-nuevo-confirmar').value = '';
+  document.getElementById('codigo-firmar-asistente').value = '';
+  document.getElementById('firmar-asistente-codigo-wrap').classList.add('hidden');
   openPanel('panel-firmar-asistente');
   // Este flujo existe justo para quien no tiene cómo entrar solo con su
   // RUT (sin celular a mano) — así que tampoco puede haber pasado antes por
@@ -3763,54 +3814,105 @@ async function abrirFirmarAquiPendiente(rut) {
   const faltaConsentimiento = !(datos && datos.consentimiento);
   const faltaCorreo = !(datos && (datos.correo || datos.sinCorreo));
   const yaTienePin = !!(datos && datos.tienePin);
+  firmarAsistenteYaTienePin = yaTienePin;
+  firmarAsistentePaso = 'datos';
   document.getElementById('firmar-asistente-consentimiento-wrap').classList.toggle('hidden', !faltaConsentimiento);
   document.getElementById('firmar-asistente-correo-wrap').classList.toggle('hidden', !faltaCorreo);
-  document.getElementById('firmar-asistente-crear-pin-wrap').classList.toggle('hidden', yaTienePin);
+  // Si va a crear un PIN por primera vez, el campo para escribirlo recién
+  // aparece DESPUÉS de verificar el código (ver confirmarFirmaAsistente) —
+  // acá empieza oculto aunque corresponda crear uno nuevo.
+  document.getElementById('firmar-asistente-crear-pin-wrap').classList.add('hidden');
   document.getElementById('firmar-asistente-ingresar-pin-wrap').classList.toggle('hidden', !yaTienePin);
 }
+// 3 pasos cuando hay que crear un PIN por primera vez (datos → código →
+// pin), o 1 solo paso si ya tiene PIN (datos, derecho a firmar) — ver
+// abrirFirmarAquiPendiente. El botón cambia de texto y de acción en cada
+// paso; por eso acá se maneja el estado del botón a mano en vez de con
+// marcarBotonCargando (que solo sabe volver al texto de ANTES del click,
+// no al del paso en el que quedó la pantalla).
 async function confirmarFirmaAsistente() {
   if (bloquearSiViewer()) return;
   const rut = asistenteFirmandoAqui.rut;
-  const pidiendoConsentimiento = !document.getElementById('firmar-asistente-consentimiento-wrap').classList.contains('hidden');
-  const pidiendoCorreo = !document.getElementById('firmar-asistente-correo-wrap').classList.contains('hidden');
-  const creandoPin = !document.getElementById('firmar-asistente-crear-pin-wrap').classList.contains('hidden');
-  const restaurar = marcarBotonCargando(document.querySelector('#panel-firmar-asistente .btn-add'), 'Enviando...');
+  const btn = document.querySelector('#panel-firmar-asistente .btn-add');
+  const textoAntes = btn.textContent;
+  btn.disabled = true;
   try {
-    if (pidiendoConsentimiento) {
-      if (!document.getElementById('chk-consentimiento-firmar-asistente').checked) {
-        toast('Falta aceptar el tratamiento electrónico de tus documentos', 'error'); return;
+    if (firmarAsistentePaso === 'datos') {
+      const pidiendoConsentimiento = !document.getElementById('firmar-asistente-consentimiento-wrap').classList.contains('hidden');
+      const pidiendoCorreo = !document.getElementById('firmar-asistente-correo-wrap').classList.contains('hidden');
+      btn.textContent = 'Enviando...';
+      if (pidiendoConsentimiento) {
+        if (!document.getElementById('chk-consentimiento-firmar-asistente').checked) {
+          toast('Falta aceptar el tratamiento electrónico de tus documentos', 'error'); return;
+        }
+        await llamarWebAppSubcontratista('registrarConsentimientoRut', { rut });
       }
-      await llamarWebAppSubcontratista('registrarConsentimientoRut', { rut });
+      if (pidiendoCorreo) {
+        const correo = document.getElementById('correo-firmar-asistente').value.trim();
+        const sinCorreo = document.getElementById('chk-sin-correo-firmar-asistente').checked;
+        if (!sinCorreo && !correo) { toast('Falta el correo (o marca que no tiene)', 'error'); return; }
+        await llamarWebAppSubcontratista('registrarCorreoTrabajador', { rut, correo, sinCorreo });
+      }
+      if (!firmarAsistenteYaTienePin) {
+        // Primer PIN: antes de dejar crearlo, verificamos que quien está
+        // frente al dispositivo de verdad tenga acceso al correo del
+        // trabajador (Ordinario 767/2023 DT — ver enviarCodigoPin).
+        const resp = await llamarWebAppSubcontratista('enviarCodigoPin', { rut });
+        document.getElementById('firmar-asistente-consentimiento-wrap').classList.add('hidden');
+        document.getElementById('firmar-asistente-correo-wrap').classList.add('hidden');
+        document.getElementById('firmar-asistente-codigo-hint').textContent = 'Te enviamos un código a ' + resp.correo;
+        document.getElementById('firmar-asistente-codigo-wrap').classList.remove('hidden');
+        firmarAsistentePaso = 'codigo';
+        btn.textContent = 'Verificar código';
+        btn.disabled = false;
+        return;
+      }
+      // Ya tenía PIN — firma directo, sin pasos extra.
+      btn.textContent = 'Firmando...';
+      const pin = document.getElementById('pin-firmar-asistente').value.trim();
+      if (!/^[0-9]{4,6}$/.test(pin)) { toast('Ingresa tu PIN', 'error'); return; }
+      await llamarWebAppSubcontratista('firmarPendiente', { idDocumento: asistenteFirmandoAqui.idDocumento, rut, pin });
+      closePanel('panel-firmar-asistente');
+      toast('Firma registrada ✓', 'ok');
+      await actualizarProgresoDocumento();
+      return;
     }
-    if (pidiendoCorreo) {
-      const correo = document.getElementById('correo-firmar-asistente').value.trim();
-      const sinCorreo = document.getElementById('chk-sin-correo-firmar-asistente').checked;
-      if (!sinCorreo && !correo) { toast('Falta el correo (o marca que no tiene)', 'error'); return; }
-      await llamarWebAppSubcontratista('registrarCorreoTrabajador', { rut, correo, sinCorreo });
+    if (firmarAsistentePaso === 'codigo') {
+      btn.textContent = 'Verificando...';
+      const codigo = document.getElementById('codigo-firmar-asistente').value.trim();
+      await llamarWebAppSubcontratista('verificarCodigoPin', { rut, codigo });
+      document.getElementById('firmar-asistente-codigo-wrap').classList.add('hidden');
+      document.getElementById('firmar-asistente-crear-pin-wrap').classList.remove('hidden');
+      firmarAsistentePaso = 'pin';
+      btn.textContent = 'Crear PIN y firmar';
+      btn.disabled = false;
+      return;
     }
-    let pin;
-    if (creandoPin) {
+    if (firmarAsistentePaso === 'pin') {
+      btn.textContent = 'Firmando...';
       const nuevo = document.getElementById('pin-firmar-asistente-nuevo').value.trim();
       const confirmarPin = document.getElementById('pin-firmar-asistente-nuevo-confirmar').value.trim();
       if (!/^[0-9]{4,6}$/.test(nuevo)) { toast('El PIN debe tener entre 4 y 6 números', 'error'); return; }
       if (nuevo !== confirmarPin) { toast('Los dos PIN no coinciden', 'error'); return; }
       await llamarWebAppSubcontratista('crearPinTrabajador', { rut, pin: nuevo });
-      pin = nuevo;
-    } else {
-      pin = document.getElementById('pin-firmar-asistente').value.trim();
-      if (!/^[0-9]{4,6}$/.test(pin)) { toast('Ingresa tu PIN', 'error'); return; }
+      // Antes esto escribía directo al Sheet con el token del admin — ahora
+      // pasa por firmarPendiente (Apps Script), que es el único lugar que
+      // conoce el hash del PIN guardado y puede verificarlo.
+      await llamarWebAppSubcontratista('firmarPendiente', { idDocumento: asistenteFirmandoAqui.idDocumento, rut, pin: nuevo });
+      closePanel('panel-firmar-asistente');
+      toast('Firma registrada ✓', 'ok');
+      await actualizarProgresoDocumento();
+      return;
     }
-    // Antes esto escribía directo al Sheet con el token del admin — ahora
-    // pasa por firmarPendiente (Apps Script), que es el único lugar que
-    // conoce el hash del PIN guardado y puede verificarlo.
-    await llamarWebAppSubcontratista('firmarPendiente', {
-      idDocumento: asistenteFirmandoAqui.idDocumento, rut, pin,
-    });
-    closePanel('panel-firmar-asistente');
-    toast('Firma registrada ✓', 'ok');
-    await actualizarProgresoDocumento();
-  } catch (e) { toast(e.message, 'error'); }
-  finally { restaurar(); }
+  } catch (e) {
+    toast(e.message, 'error');
+  } finally {
+    // Si el paso avanzó con éxito ya se dejó el botón listo arriba (con su
+    // texto nuevo y disabled=false) y se salió con return antes de llegar
+    // acá — este finally solo corre tras un error o una validación fallida,
+    // así que sí corresponde volver al texto de antes del click.
+    if (btn.disabled) { btn.disabled = false; btn.textContent = textoAntes; }
+  }
 }
 function cancelarFirmaAsistentes() { closePanel('panel-firmar-asistente'); }
 // Ya firmaron todos: llama al finalizador registrado para ese tipo (ver
@@ -3976,20 +4078,86 @@ function abrirNuevaCharla() {
 // directo en este formulario (no pasa por DOCUMENTOS_PENDIENTES), así que
 // se verifica con verificarPinTrabajador (que solo verifica, no marca
 // nada como firmado) en vez de firmarPendiente.
+// Código de verificación por correo antes de CREAR un PIN por primera vez
+// (Ordinario 767/2023 DT) — compartido por relator, investigador y los 3
+// roles de HCR (`base` es el prefijo exacto de sus wraps existentes:
+// 'relator-pin', 'investigador-pin', 'hcr-pin-{tipo}'). Estos 3 formularios
+// no piden correo de nuevo como sí hace "firmar aquí" (asumen que ya está
+// registrado desde el login por RUT) — si no lo está, se bloquea con un
+// mensaje en vez de dejar crear el PIN sin ninguna verificación.
+const otpPinVerificado = new Set();
+const rutActualParaOtpPin = {};
+function resetearOtpPin(base) {
+  otpPinVerificado.delete(base);
+  const wrap = document.getElementById(`${base}-otp-wrap`);
+  if (wrap) {
+    wrap.classList.add('hidden');
+    document.getElementById(`${base}-otp-enviar`).classList.remove('hidden');
+    document.getElementById(`${base}-otp-verificar`).classList.add('hidden');
+    document.getElementById(`${base}-codigo`).value = '';
+    document.getElementById(`${base}-otp-hint`).textContent = '';
+  }
+  const sinCorreo = document.getElementById(`${base}-sin-correo-wrap`);
+  if (sinCorreo) sinCorreo.classList.add('hidden');
+}
+function mostrarPasoPinNuevo(base, rut, datos) {
+  rutActualParaOtpPin[base] = rut;
+  resetearOtpPin(base);
+  document.getElementById(`${base}-crear-wrap`).classList.add('hidden');
+  const tieneCorreo = !!(datos && datos.correo && !datos.sinCorreo);
+  if (tieneCorreo) {
+    document.getElementById(`${base}-otp-wrap`).classList.remove('hidden');
+  } else {
+    const sinCorreo = document.getElementById(`${base}-sin-correo-wrap`);
+    if (sinCorreo) sinCorreo.classList.remove('hidden');
+  }
+}
+async function onEnviarCodigoPinUI(base) {
+  const rut = rutActualParaOtpPin[base];
+  const btn = document.querySelector(`#${base}-otp-enviar button`);
+  const hint = document.getElementById(`${base}-otp-hint`);
+  const restaurar = marcarBotonCargando(btn, 'Enviando...');
+  try {
+    const resp = await llamarWebAppSubcontratista('enviarCodigoPin', { rut });
+    hint.textContent = 'Te enviamos un código a ' + resp.correo;
+    document.getElementById(`${base}-otp-enviar`).classList.add('hidden');
+    document.getElementById(`${base}-otp-verificar`).classList.remove('hidden');
+  } catch (e) { toast(e.message, 'error'); }
+  finally { restaurar(); }
+}
+async function onVerificarCodigoPinUI(base) {
+  const rut = rutActualParaOtpPin[base];
+  const codigo = document.getElementById(`${base}-codigo`).value.trim();
+  const btn = document.querySelector(`#${base}-otp-verificar button`);
+  const restaurar = marcarBotonCargando(btn, 'Verificando...');
+  try {
+    await llamarWebAppSubcontratista('verificarCodigoPin', { rut, codigo });
+    otpPinVerificado.add(base);
+    document.getElementById(`${base}-otp-wrap`).classList.add('hidden');
+    document.getElementById(`${base}-crear-wrap`).classList.remove('hidden');
+  } catch (e) { toast(e.message, 'error'); }
+  finally { restaurar(); }
+}
 function resetearPinRelator() {
   document.getElementById('relator-pin-crear-wrap').classList.add('hidden');
   document.getElementById('relator-pin-ingresar-wrap').classList.add('hidden');
   document.getElementById('pin-relator-nuevo').value = '';
   document.getElementById('pin-relator-nuevo-confirmar').value = '';
   document.getElementById('pin-relator').value = '';
+  resetearOtpPin('relator-pin');
 }
 async function onRutRelatorChange(input) {
   const rut = input.value.trim();
   if (!rut) { resetearPinRelator(); return; }
   const datos = await datosFirmaVigentes(rut);
   const tienePin = !!(datos && datos.tienePin);
-  document.getElementById('relator-pin-crear-wrap').classList.toggle('hidden', tienePin);
   document.getElementById('relator-pin-ingresar-wrap').classList.toggle('hidden', !tienePin);
+  if (tienePin) {
+    document.getElementById('relator-pin-crear-wrap').classList.add('hidden');
+    resetearOtpPin('relator-pin');
+  } else {
+    mostrarPasoPinNuevo('relator-pin', rut, datos);
+  }
 }
 // Mismo mecanismo RUT+PIN de arriba, generalizado por "tipo" (id prefix:
 // 'hcr-pin-{tipo}-...') para no triplicar el bloque entre supervisor/jefe
@@ -4000,14 +4168,20 @@ function resetearPinFirmante(tipo) {
   document.getElementById(`pin-hcr-${tipo}-nuevo`).value = '';
   document.getElementById(`pin-hcr-${tipo}-nuevo-confirmar`).value = '';
   document.getElementById(`pin-hcr-${tipo}`).value = '';
+  resetearOtpPin(`hcr-pin-${tipo}`);
 }
 async function onRutHcrChange(input, tipo) {
   const rut = input.value.trim();
   if (!rut) { resetearPinFirmante(tipo); return; }
   const datos = await datosFirmaVigentes(rut);
   const tienePin = !!(datos && datos.tienePin);
-  document.getElementById(`hcr-pin-${tipo}-crear-wrap`).classList.toggle('hidden', tienePin);
   document.getElementById(`hcr-pin-${tipo}-ingresar-wrap`).classList.toggle('hidden', !tienePin);
+  if (tienePin) {
+    document.getElementById(`hcr-pin-${tipo}-crear-wrap`).classList.add('hidden');
+    resetearOtpPin(`hcr-pin-${tipo}`);
+  } else {
+    mostrarPasoPinNuevo(`hcr-pin-${tipo}`, rut, datos);
+  }
 }
 // Crea o verifica el PIN de un firmante de HCR (supervisor/jefe de obra/
 // prevención) según cuál de los 2 wraps esté visible. Si el RUT viene
@@ -4022,6 +4196,7 @@ async function procesarFirmaPinHcr(tipo, rut, opcional) {
   }
   const creando = !document.getElementById(`hcr-pin-${tipo}-crear-wrap`).classList.contains('hidden');
   if (creando) {
+    if (!otpPinVerificado.has(`hcr-pin-${tipo}`)) throw new Error(`${etiqueta}: verifica el código enviado a tu correo primero`);
     const nuevo = document.getElementById(`pin-hcr-${tipo}-nuevo`).value.trim();
     const confirmar = document.getElementById(`pin-hcr-${tipo}-nuevo-confirmar`).value.trim();
     if (!/^[0-9]{4,6}$/.test(nuevo)) throw new Error(`El PIN del ${etiqueta} debe tener entre 4 y 6 números`);
@@ -4048,6 +4223,7 @@ async function guardarDatosCharla(ev) {
   const creandoPinRelator = !document.getElementById('relator-pin-crear-wrap').classList.contains('hidden');
   try {
     if (creandoPinRelator) {
+      if (!otpPinVerificado.has('relator-pin')) { toast('Verifica el código enviado al correo del relator primero', 'error'); return; }
       const nuevo = document.getElementById('pin-relator-nuevo').value.trim();
       const confirmarPin = document.getElementById('pin-relator-nuevo-confirmar').value.trim();
       if (!/^[0-9]{4,6}$/.test(nuevo)) { toast('El PIN del relator debe tener entre 4 y 6 números', 'error'); return; }
@@ -5293,14 +5469,20 @@ function resetearPinInvestigador() {
   document.getElementById('pin-investigador-nuevo').value = '';
   document.getElementById('pin-investigador-nuevo-confirmar').value = '';
   document.getElementById('pin-investigador').value = '';
+  resetearOtpPin('investigador-pin');
 }
 async function onRutInvestigadorChange(input) {
   const rut = input.value.trim();
   if (!rut) { resetearPinInvestigador(); return; }
   const datos = await datosFirmaVigentes(rut);
   const tienePin = !!(datos && datos.tienePin);
-  document.getElementById('investigador-pin-crear-wrap').classList.toggle('hidden', tienePin);
   document.getElementById('investigador-pin-ingresar-wrap').classList.toggle('hidden', !tienePin);
+  if (tienePin) {
+    document.getElementById('investigador-pin-crear-wrap').classList.add('hidden');
+    resetearOtpPin('investigador-pin');
+  } else {
+    mostrarPasoPinNuevo('investigador-pin', rut, datos);
+  }
 }
 async function guardarInvestigacion(ev) {
   if (bloquearSiViewer()) return;
@@ -5311,6 +5493,7 @@ async function guardarInvestigacion(ev) {
   const creandoPinInvestigador = !document.getElementById('investigador-pin-crear-wrap').classList.contains('hidden');
   try {
     if (creandoPinInvestigador) {
+      if (!otpPinVerificado.has('investigador-pin')) { toast('Verifica el código enviado al correo del investigador primero', 'error'); return; }
       const nuevo = document.getElementById('pin-investigador-nuevo').value.trim();
       const confirmarPin = document.getElementById('pin-investigador-nuevo-confirmar').value.trim();
       if (!/^[0-9]{4,6}$/.test(nuevo)) { toast('El PIN debe tener entre 4 y 6 números', 'error'); return; }

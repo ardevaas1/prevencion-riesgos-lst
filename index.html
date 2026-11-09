@@ -216,6 +216,33 @@
   </div>
 </div>
 
+<!-- VERIFICA TU CORREO: paso previo a crear el PIN por primera vez — pide
+     el código de 6 dígitos que se manda al correo del trabajador (ver
+     enviarCodigoPin/verificarCodigoPin en Apps Script y
+     mostrarCodigoPinRut/onVerificarCodigoPinRut en app.js). Exigencia del
+     Ordinario 767/2023 DT: evitar que cualquiera que sepa el RUT de un
+     trabajador pueda crearle un PIN a su nombre sin que esté de verdad ahí. -->
+<div id="codigo-pin-rut-screen" class="login-screen hidden">
+  <div class="login-box login-box--ancho">
+    <div class="entry-logo-wrap"><img src="logo-white.png" alt="LST" class="login-logo"></div>
+    <div class="login-title">Verifica tu correo</div>
+    <div class="rut-consentimiento-texto">
+      Te enviamos un código de 6 dígitos a tu correo — ingrésalo para crear tu PIN. Así nos aseguramos de que seas tú.
+    </div>
+    <form id="form-codigo-pin-rut" onsubmit="onVerificarCodigoPinRut(event)">
+      <div style="width:100%; text-align:left; margin-bottom:12px;">
+        <label style="display:block; font-size:12px; color:#94a3b8; margin-bottom:6px;">Código de 6 dígitos</label>
+        <input type="text" id="codigo-pin-rut" class="login-rut-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="123456" autocomplete="off" required>
+      </div>
+      <button class="login-btn" type="submit" style="margin-top:4px;">Verificar código</button>
+    </form>
+    <div class="login-spinner hidden" id="codigo-pin-rut-spinner"><div class="login-spinner-ring"></div></div>
+    <div class="login-hint" id="codigo-pin-rut-hint">&nbsp;</div>
+    <div class="login-rut-link" onclick="reenviarCodigoPinRut()">Reenviar código</div>
+    <div class="login-rut-link" onclick="cerrarSesionRut()">Salir</div>
+  </div>
+</div>
+
 <!-- CREA TU PIN: se muestra una sola vez, después del consentimiento y
      antes de ver pendientes, si el trabajador todavía no tiene un PIN de
      firma (reemplaza el dibujo a mano — ver crearPinTrabajador en Apps
@@ -1019,6 +1046,22 @@
     <form id="form-realizar-charla" onsubmit="guardarDatosCharla(event)">
       <div class="form-group"><label>Relator</label><input name="relator" required placeholder="Nombre de quien dicta la charla"></div>
       <div class="form-group"><label>RUT del relator</label><input name="relatorRut" required placeholder="12.345.678-9" oninput="formatearRutInput(this)" onblur="onRutRelatorChange(this)"></div>
+      <div id="relator-pin-otp-wrap" class="hidden">
+        <p class="card-sub card-sub--wrap" style="margin-bottom:10px;">Para crear tu PIN primero verificamos tu correo.</p>
+        <div id="relator-pin-otp-enviar">
+          <button type="button" class="action-btn action-btn--primary" onclick="onEnviarCodigoPinUI('relator-pin')">Enviar código a mi correo</button>
+        </div>
+        <div id="relator-pin-otp-verificar" class="hidden">
+          <p class="card-sub card-sub--wrap" id="relator-pin-otp-hint" style="margin-bottom:8px;"></p>
+          <div class="form-group"><label>Código de 6 dígitos</label>
+            <input type="text" id="relator-pin-codigo" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="123456" autocomplete="off">
+          </div>
+          <button type="button" class="action-btn action-btn--primary" onclick="onVerificarCodigoPinUI('relator-pin')">Verificar código</button>
+        </div>
+      </div>
+      <div id="relator-pin-sin-correo-wrap" class="hidden">
+        <p class="card-sub card-sub--wrap" style="margin-bottom:0;">El relator no tiene un correo registrado — para crear su PIN, primero debe entrar a "Firmar documentos" con su RUT y registrarlo ahí.</p>
+      </div>
       <div id="relator-pin-crear-wrap" class="hidden">
         <p class="card-sub card-sub--wrap" style="margin-bottom:10px;">El relator todavía no tiene un PIN — créalo ahora, lo va a usar la próxima vez que firme.</p>
         <div class="form-group"><label>Crea tu PIN</label>
@@ -1134,6 +1177,12 @@
           </span>
           <span>Declaro no poseer correo electrónico particular (mis documentos se me entregarán en papel)</span>
         </label>
+      </div>
+    </div>
+    <div id="firmar-asistente-codigo-wrap" class="hidden">
+      <p class="card-sub card-sub--wrap" id="firmar-asistente-codigo-hint" style="margin-bottom:10px;">Te enviamos un código a tu correo.</p>
+      <div class="form-group"><label>Código de 6 dígitos</label>
+        <input type="text" id="codigo-firmar-asistente" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="123456" autocomplete="off">
       </div>
     </div>
     <div id="firmar-asistente-crear-pin-wrap" class="hidden">
@@ -1351,6 +1400,22 @@
       <div class="form-group"><label>Nombre y Rut</label><input name="investigadorNombreRut" required></div>
       <div class="form-group"><label>Cargo</label><input name="investigadorCargo"></div>
       <div class="form-group"><label>RUT del investigador (para firmar)</label><input name="investigadorRut" required placeholder="12.345.678-9" oninput="formatearRutInput(this)" onblur="onRutInvestigadorChange(this)"></div>
+      <div id="investigador-pin-otp-wrap" class="hidden">
+        <p class="card-sub card-sub--wrap" style="margin-bottom:10px;">Para crear tu PIN primero verificamos tu correo.</p>
+        <div id="investigador-pin-otp-enviar">
+          <button type="button" class="action-btn action-btn--primary" onclick="onEnviarCodigoPinUI('investigador-pin')">Enviar código a mi correo</button>
+        </div>
+        <div id="investigador-pin-otp-verificar" class="hidden">
+          <p class="card-sub card-sub--wrap" id="investigador-pin-otp-hint" style="margin-bottom:8px;"></p>
+          <div class="form-group"><label>Código de 6 dígitos</label>
+            <input type="text" id="investigador-pin-codigo" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="123456" autocomplete="off">
+          </div>
+          <button type="button" class="action-btn action-btn--primary" onclick="onVerificarCodigoPinUI('investigador-pin')">Verificar código</button>
+        </div>
+      </div>
+      <div id="investigador-pin-sin-correo-wrap" class="hidden">
+        <p class="card-sub card-sub--wrap" style="margin-bottom:0;">El investigador no tiene un correo registrado — para crear su PIN, primero debe entrar a "Firmar documentos" con su RUT y registrarlo ahí.</p>
+      </div>
       <div id="investigador-pin-crear-wrap" class="hidden">
         <p class="card-sub card-sub--wrap" style="margin-bottom:10px;">Todavía no tienes un PIN — créalo ahora, lo vas a usar la próxima vez que firmes.</p>
         <div class="form-group"><label>Crea tu PIN</label>
@@ -1430,6 +1495,22 @@
       <div class="sec-label" style="margin-top:18px;">Firmas jefatura</div>
       <div class="form-group"><label>Nombre del supervisor</label><input name="supervisorNombre" required></div>
       <div class="form-group"><label>RUT del supervisor</label><input name="supervisorRut" required placeholder="12.345.678-9" oninput="formatearRutInput(this)" onblur="onRutHcrChange(this,'supervisor')"></div>
+      <div id="hcr-pin-supervisor-otp-wrap" class="hidden">
+        <p class="card-sub card-sub--wrap" style="margin-bottom:10px;">Para crear tu PIN primero verificamos tu correo.</p>
+        <div id="hcr-pin-supervisor-otp-enviar">
+          <button type="button" class="action-btn action-btn--primary" onclick="onEnviarCodigoPinUI('hcr-pin-supervisor')">Enviar código a mi correo</button>
+        </div>
+        <div id="hcr-pin-supervisor-otp-verificar" class="hidden">
+          <p class="card-sub card-sub--wrap" id="hcr-pin-supervisor-otp-hint" style="margin-bottom:8px;"></p>
+          <div class="form-group"><label>Código de 6 dígitos</label>
+            <input type="text" id="hcr-pin-supervisor-codigo" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="123456" autocomplete="off">
+          </div>
+          <button type="button" class="action-btn action-btn--primary" onclick="onVerificarCodigoPinUI('hcr-pin-supervisor')">Verificar código</button>
+        </div>
+      </div>
+      <div id="hcr-pin-supervisor-sin-correo-wrap" class="hidden">
+        <p class="card-sub card-sub--wrap" style="margin-bottom:0;">El supervisor no tiene un correo registrado — para crear su PIN, primero debe entrar a "Firmar documentos" con su RUT y registrarlo ahí.</p>
+      </div>
       <div id="hcr-pin-supervisor-crear-wrap" class="hidden">
         <p class="card-sub card-sub--wrap" style="margin-bottom:10px;">El supervisor todavía no tiene un PIN — créalo ahora, lo va a usar la próxima vez que firme.</p>
         <div class="form-group"><label>Crea tu PIN</label>
@@ -1444,6 +1525,22 @@
       </div>
 
       <div class="form-group"><label>RUT jefe de obra / jefe terreno (opcional)</label><input name="jefeObraRut" placeholder="12.345.678-9" oninput="formatearRutInput(this)" onblur="onRutHcrChange(this,'jefeobra')"></div>
+      <div id="hcr-pin-jefeobra-otp-wrap" class="hidden">
+        <p class="card-sub card-sub--wrap" style="margin-bottom:10px;">Para crear tu PIN primero verificamos tu correo.</p>
+        <div id="hcr-pin-jefeobra-otp-enviar">
+          <button type="button" class="action-btn action-btn--primary" onclick="onEnviarCodigoPinUI('hcr-pin-jefeobra')">Enviar código a mi correo</button>
+        </div>
+        <div id="hcr-pin-jefeobra-otp-verificar" class="hidden">
+          <p class="card-sub card-sub--wrap" id="hcr-pin-jefeobra-otp-hint" style="margin-bottom:8px;"></p>
+          <div class="form-group"><label>Código de 6 dígitos</label>
+            <input type="text" id="hcr-pin-jefeobra-codigo" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="123456" autocomplete="off">
+          </div>
+          <button type="button" class="action-btn action-btn--primary" onclick="onVerificarCodigoPinUI('hcr-pin-jefeobra')">Verificar código</button>
+        </div>
+      </div>
+      <div id="hcr-pin-jefeobra-sin-correo-wrap" class="hidden">
+        <p class="card-sub card-sub--wrap" style="margin-bottom:0;">El jefe de obra no tiene un correo registrado — para crear su PIN, primero debe entrar a "Firmar documentos" con su RUT y registrarlo ahí.</p>
+      </div>
       <div id="hcr-pin-jefeobra-crear-wrap" class="hidden">
         <p class="card-sub card-sub--wrap" style="margin-bottom:10px;">Todavía no tiene un PIN — créalo ahora.</p>
         <div class="form-group"><label>Crea tu PIN</label>
@@ -1458,6 +1555,22 @@
       </div>
 
       <div class="form-group"><label>RUT prevención de riesgos (opcional)</label><input name="prevencionRut" placeholder="12.345.678-9" oninput="formatearRutInput(this)" onblur="onRutHcrChange(this,'prevencion')"></div>
+      <div id="hcr-pin-prevencion-otp-wrap" class="hidden">
+        <p class="card-sub card-sub--wrap" style="margin-bottom:10px;">Para crear tu PIN primero verificamos tu correo.</p>
+        <div id="hcr-pin-prevencion-otp-enviar">
+          <button type="button" class="action-btn action-btn--primary" onclick="onEnviarCodigoPinUI('hcr-pin-prevencion')">Enviar código a mi correo</button>
+        </div>
+        <div id="hcr-pin-prevencion-otp-verificar" class="hidden">
+          <p class="card-sub card-sub--wrap" id="hcr-pin-prevencion-otp-hint" style="margin-bottom:8px;"></p>
+          <div class="form-group"><label>Código de 6 dígitos</label>
+            <input type="text" id="hcr-pin-prevencion-codigo" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="123456" autocomplete="off">
+          </div>
+          <button type="button" class="action-btn action-btn--primary" onclick="onVerificarCodigoPinUI('hcr-pin-prevencion')">Verificar código</button>
+        </div>
+      </div>
+      <div id="hcr-pin-prevencion-sin-correo-wrap" class="hidden">
+        <p class="card-sub card-sub--wrap" style="margin-bottom:0;">El prevencionista no tiene un correo registrado — para crear su PIN, primero debe entrar a "Firmar documentos" con su RUT y registrarlo ahí.</p>
+      </div>
       <div id="hcr-pin-prevencion-crear-wrap" class="hidden">
         <p class="card-sub card-sub--wrap" style="margin-bottom:10px;">Todavía no tiene un PIN — créalo ahora.</p>
         <div class="form-group"><label>Crea tu PIN</label>
