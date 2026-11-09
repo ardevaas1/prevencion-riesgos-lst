@@ -771,6 +771,16 @@ function cerrarLoginRut() {
 let fiscalizacionRutActual = null; // el propio RUT del fiscalizador — se reusa al ratificar, sin pedirlo de nuevo
 let fiscalizacionDocActual = null; // {tipo, idDocumento, titulo} del documento que se está ratificando
 let fiscalizacionTienePinActual = false; // si ese RUT de fiscalizador ya tiene un PIN creado (de la última búsqueda)
+// El toast de éxito dura unos segundos y, si justo coincide con la vuelta a
+// esta pantalla, es fácil no alcanzar a verlo — sin ninguna marca
+// persistente, ratificar se sentía como que "no hacía nada" aunque sí
+// quedaba guardado (confirmado por el cliente revisando el Sheet). Se deja
+// un check visible en la tarjeta de cada documento ya ratificado EN ESTA
+// BÚSQUEDA (se resetea en cada búsqueda nueva — no hace falta pedirle al
+// servidor el historial completo de ratificaciones para esto).
+let fiscalizacionEmpresaActual = '';
+let fiscalizacionDocumentosActuales = [];
+let fiscalizacionRatificadosSet = new Set();
 function abrirFiscalizacion() {
   document.getElementById('login-screen').classList.add('hidden');
   document.getElementById('fiscalizacion-hint').textContent = ' ';
@@ -803,8 +813,11 @@ async function onBuscarFiscalizacion(ev) {
       return;
     }
     fiscalizacionTienePinActual = !!resp.tienePin;
+    fiscalizacionEmpresaActual = resp.empresaEncontrada;
+    fiscalizacionDocumentosActuales = resp.documentos || [];
+    fiscalizacionRatificadosSet = new Set();
     document.getElementById('fiscalizacion-screen').classList.add('hidden');
-    renderFiscalizacionResultados(resp.empresaEncontrada, resp.documentos || []);
+    renderFiscalizacionResultados(fiscalizacionEmpresaActual, fiscalizacionDocumentosActuales);
     document.getElementById('fiscalizacion-resultados-screen').classList.remove('hidden');
   } catch (e) {
     hint.textContent = e.message;
@@ -818,16 +831,21 @@ function renderFiscalizacionResultados(empresa, documentos) {
   document.getElementById('fiscalizacion-empresa-titulo').textContent = empresa;
   document.getElementById('fiscalizacion-resultados-sub').textContent =
     documentos.length ? documentos.length + ' documento(s) encontrado(s)' : 'Sin documentos en ese rango';
-  document.getElementById('fiscalizacion-resultados-lista').innerHTML = documentos.length ? documentos.map(d => `
+  document.getElementById('fiscalizacion-resultados-lista').innerHTML = documentos.length ? documentos.map(d => {
+    const yaRatificado = fiscalizacionRatificadosSet.has(d.idDocumento);
+    return `
     <div class="rut-pendiente-card">
       <div class="rut-pendiente-tema">${esc(d.titulo)}</div>
       <div class="rut-pendiente-sub">${esc(d.fecha)}</div>
       ${d.hash ? `<div class="rut-pendiente-sub" style="font-family:monospace; font-size:11px; word-break:break-all;" title="${esc(d.hash)}">SHA-256: ${esc(d.hash.slice(0,16))}…</div>` : ''}
       <div style="display:flex; gap:8px; margin-top:8px;">
         ${d.pdfLink ? `<a href="${esc(d.pdfLink)}" target="_blank" rel="noopener" class="rut-pendiente-btn" style="text-decoration:none; text-align:center; display:block;">Ver / Imprimir</a>` : ''}
-        <button type="button" class="rut-pendiente-btn" style="background:transparent; box-shadow:none; border:1.5px solid var(--accent); color:var(--accent);" onclick="abrirRatificarFiscalizacion('${esc(d.tipo)}','${esc(d.idDocumento)}','${esc(d.titulo)}')">Ratificar</button>
+        ${yaRatificado
+          ? '<span class="badge green" style="align-self:center;">✓ Ratificado por ti</span>'
+          : `<button type="button" class="rut-pendiente-btn" style="background:transparent; box-shadow:none; border:1.5px solid var(--accent); color:var(--accent);" onclick="abrirRatificarFiscalizacion('${esc(d.tipo)}','${esc(d.idDocumento)}','${esc(d.titulo)}')">Ratificar</button>`}
       </div>
-    </div>`).join('') : '<div class="rut-pendientes-vacio">No hay documentos de esta empresa en ese rango de fechas.</div>';
+    </div>`;
+  }).join('') : '<div class="rut-pendientes-vacio">No hay documentos de esta empresa en ese rango de fechas.</div>';
 }
 function volverABusquedaFiscalizacion() {
   document.getElementById('fiscalizacion-resultados-screen').classList.add('hidden');
@@ -880,6 +898,8 @@ async function onRatificarFiscalizacion() {
       tituloDocumento: fiscalizacionDocActual.titulo,
       pin,
     });
+    fiscalizacionRatificadosSet.add(fiscalizacionDocActual.idDocumento);
+    renderFiscalizacionResultados(fiscalizacionEmpresaActual, fiscalizacionDocumentosActuales);
     toast('Documento ratificado ✓', 'ok');
     cerrarFiscalizacionFirmar();
   } catch (e) {
