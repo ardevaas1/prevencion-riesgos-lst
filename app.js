@@ -4003,26 +4003,43 @@ function renderChecklistAsistentesCharla() {
     <div class="chk-row" data-nombre="${esc(t.nombre)}" data-rut="${esc(t.rut)}">
       <label class="chk-row-label">
         <span class="chk-row-checkbox-wrap">
-          <input type="checkbox" class="chk-row-input" onchange="actualizarContadorAsistentesCharla()">
+          <input type="checkbox" class="chk-row-input" onchange="onCambioAsistenteCharla()">
           <span class="chk-row-checkbox"></span>
         </span>
         <span>${esc(t.nombre)} <span style="color:#888;">· ${esc(t.rut)}</span></span>
       </label>
     </div>`).join('');
   // Con pocos trabajadores da lo mismo, pero con una nómina grande (ej.
-  // 150+) una lista plana sin filtro es imposible de revisar a mano — el
-  // buscador se resetea cada vez que se abre el formulario, y el contador
-  // de marcados no depende de poder verlos todos en pantalla a la vez.
+  // 150+) una lista plana es imposible de revisar a mano — y ni siquiera
+  // ayuda mostrarla toda de entrada con un buscador encima, sigue siendo
+  // la misma lista larga hasta que escribís algo. Por eso acá NUNCA se
+  // dibuja la nómina completa: sin buscar, solo se ven los ya marcados
+  // (para revisar quién quedó); al buscar, se ven los que calzan (para
+  // agregar). El buscador se resetea cada vez que se abre el formulario.
   const buscador = cont.previousElementSibling?.querySelector('input');
   if (buscador) buscador.value = '';
-  actualizarContadorAsistentesCharla();
+  onFiltrarAsistentesCharla('');
 }
 function onFiltrarAsistentesCharla(valor) {
   const q = sinTildes((valor || '').trim().toLowerCase());
+  let visibles = 0;
   document.querySelectorAll('#checklist-asistentes-charla .chk-row').forEach(row => {
-    const texto = sinTildes((row.dataset.nombre + ' ' + row.dataset.rut).toLowerCase());
-    row.classList.toggle('hidden', !!q && !texto.includes(q));
+    const marcado = row.querySelector('.chk-row-input').checked;
+    const coincide = !q || sinTildes((row.dataset.nombre + ' ' + row.dataset.rut).toLowerCase()).includes(q);
+    const mostrar = q ? coincide : marcado;
+    row.classList.toggle('hidden', !mostrar);
+    if (mostrar) visibles++;
   });
+  const vacio = document.getElementById('asistentes-charla-vacio');
+  if (vacio) {
+    vacio.classList.toggle('hidden', visibles > 0);
+    vacio.textContent = q ? 'Sin resultados para esa búsqueda' : 'Busca un nombre o RUT para marcar asistentes';
+  }
+  actualizarContadorAsistentesCharla();
+}
+function onCambioAsistenteCharla() {
+  const buscador = document.getElementById('checklist-asistentes-charla').previousElementSibling?.querySelector('input');
+  onFiltrarAsistentesCharla(buscador ? buscador.value : '');
 }
 function actualizarContadorAsistentesCharla() {
   const marcados = document.querySelectorAll('#checklist-asistentes-charla .chk-row-input:checked').length;
