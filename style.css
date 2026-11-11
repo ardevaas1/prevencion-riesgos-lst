@@ -1823,25 +1823,35 @@ a.action-btn { text-decoration: none; }
   .desktop-detail-empty-icon svg { width: 48px; height: 48px; }
 
   /* ══════════════════════════════════
-     PANELS (drawer) — solo en desktop
+     PANELS (modal centrado) — solo en escritorio. A pedido del cliente,
+     tras ver una captura de otra app: antes era un cajón pegado al borde
+     derecho (480px, esquinas cuadradas) — ahora flota centrado, con
+     esquinas redondeadas en toda la vuelta, igual que esa referencia.
+     En celular .panel sigue siendo pantalla completa (ver la regla base,
+     fuera de este @media) — ahí sí corresponde, no se toca.
   ══════════════════════════════════ */
   .panel {
     position: fixed;
-    top: 0; right: 0; bottom: 0;
-    left: auto;
-    width: 480px;
+    inset: 0;
+    margin: auto;
+    width: 560px;
+    max-width: calc(100vw - 48px);
+    max-height: 85vh;
+    height: auto;
     z-index: 200;
-    box-shadow: -4px 0 24px rgba(0,0,0,0.12);
+    border-radius: 20px;
+    overflow: hidden; /* recorta el header/body al borde redondeado */
+    box-shadow: 0 24px 60px rgba(0,0,0,0.28);
     transform: translateX(100%);
-    border-radius: 0;
   }
   .panel:not(.hidden) { transform: translateX(0); }
   .panel-bar {
-    padding: 16px 20px;
-    height: 60px;
+    padding: 18px 24px;
+    height: auto;
     align-items: center;
+    border-bottom: 1px solid var(--line);
   }
-  .panel-body { padding: 20px 24px 40px; }
+  .panel-body { padding: 22px 24px 28px; }
 
   /* ── Toast sin nav bottom ── */
   .toast { bottom: 28px; }
@@ -1868,7 +1878,7 @@ a.action-btn { text-decoration: none; }
   /* ── Overlay panel ── */
   .panel-overlay {
     position: fixed; inset: 0;
-    background: rgba(0,0,0,0.18);
+    background: rgba(17,24,39,0.45);
     z-index: 199;
     animation: fadeIn 0.2s ease;
   }
