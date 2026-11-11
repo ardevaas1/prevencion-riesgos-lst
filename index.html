@@ -1098,7 +1098,8 @@
         <div class="form-group"><label>Duración</label><input name="duracion" placeholder="Ej: 15 min"></div>
       </div>
 
-      <div class="sec-label" style="margin-top:18px;">Asistentes</div>
+      <div class="sec-label" style="margin-top:18px; justify-content:space-between;">Asistentes <span id="contador-asistentes-charla" style="text-transform:none; letter-spacing:normal; font-weight:600; color:var(--accent);"></span></div>
+      <div class="search-area"><div class="searchbox"><span class="search-ic"><svg viewBox="0 0 24 24" fill="none" style="width:16px;height:16px"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span><input type="text" placeholder="Buscar por nombre o RUT..." oninput="onFiltrarAsistentesCharla(this.value)"></div></div>
       <div id="checklist-asistentes-charla"></div>
 
       <button class="btn-add" type="submit" style="margin-top:14px;">Continuar a firmas de asistentes</button>

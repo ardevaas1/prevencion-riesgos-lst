@@ -3998,16 +3998,36 @@ let charlaEnProceso = null;
 function renderChecklistAsistentesCharla() {
   const obraSel = obraFiltroActivo();
   const activos = allTrabajadores.filter(t => t.estado === 'Activo' && (!obraSel || t.obra === obraSel));
-  document.getElementById('checklist-asistentes-charla').innerHTML = activos.map(t => `
+  const cont = document.getElementById('checklist-asistentes-charla');
+  cont.innerHTML = activos.map(t => `
     <div class="chk-row" data-nombre="${esc(t.nombre)}" data-rut="${esc(t.rut)}">
       <label class="chk-row-label">
         <span class="chk-row-checkbox-wrap">
-          <input type="checkbox" class="chk-row-input">
+          <input type="checkbox" class="chk-row-input" onchange="actualizarContadorAsistentesCharla()">
           <span class="chk-row-checkbox"></span>
         </span>
         <span>${esc(t.nombre)} <span style="color:#888;">· ${esc(t.rut)}</span></span>
       </label>
     </div>`).join('');
+  // Con pocos trabajadores da lo mismo, pero con una nómina grande (ej.
+  // 150+) una lista plana sin filtro es imposible de revisar a mano — el
+  // buscador se resetea cada vez que se abre el formulario, y el contador
+  // de marcados no depende de poder verlos todos en pantalla a la vez.
+  const buscador = cont.previousElementSibling?.querySelector('input');
+  if (buscador) buscador.value = '';
+  actualizarContadorAsistentesCharla();
+}
+function onFiltrarAsistentesCharla(valor) {
+  const q = sinTildes((valor || '').trim().toLowerCase());
+  document.querySelectorAll('#checklist-asistentes-charla .chk-row').forEach(row => {
+    const texto = sinTildes((row.dataset.nombre + ' ' + row.dataset.rut).toLowerCase());
+    row.classList.toggle('hidden', !!q && !texto.includes(q));
+  });
+}
+function actualizarContadorAsistentesCharla() {
+  const marcados = document.querySelectorAll('#checklist-asistentes-charla .chk-row-input:checked').length;
+  const el = document.getElementById('contador-asistentes-charla');
+  if (el) el.textContent = marcados ? `${marcados} marcado${marcados === 1 ? '' : 's'}` : '';
 }
 // Selector opcional para elegir una de las charlas ya subidas (ver arriba).
 // Esas charlas ya traen el Tema/Riesgos/Medidas escritos dentro del propio

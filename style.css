@@ -1852,6 +1852,29 @@ a.action-btn { text-decoration: none; }
     border-bottom: 1px solid var(--line);
   }
   .panel-body { padding: 22px 24px 28px; }
+  /* Campos de formulario en 2 columnas — a pedido del cliente, misma
+     referencia que el modal centrado de arriba. Sin tocar el HTML de
+     cada formulario: todo ocupa el ancho completo por defecto, y
+     .form-group (los campos cortos — texto, fecha, select) vuelve a
+     media columna; el auto-flow de grid los empareja solo de a 2, y
+     cualquier elemento de ancho completo entre medio (un sec-label, una
+     casilla, un botón) corta el emparejamiento y empieza fila nueva. Un
+     .form-group con textarea, select múltiple o un campo marcado
+     data-ancho-completo sigue ocupando las 2 columnas (una pregunta
+     larga no cabe bien a media columna). */
+  .panel-body form {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 16px;
+    align-items: start;
+  }
+  .panel-body form > * { grid-column: 1 / -1; }
+  .panel-body form > .form-group { grid-column: span 1; }
+  .panel-body form > .form-group:has(textarea),
+  .panel-body form > .form-group:has(select[multiple]),
+  .panel-body form > .form-group[data-ancho-completo] {
+    grid-column: 1 / -1;
+  }
 
   /* ── Toast sin nav bottom ── */
   .toast { bottom: 28px; }
