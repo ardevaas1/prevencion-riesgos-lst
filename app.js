@@ -2375,7 +2375,7 @@ async function cargarTodo(silencioso) {
     // que esa cuenta de todas formas nunca va a ver en la interfaz).
     let usuarios;
     try {
-      usuarios = await fetchSheet(`'${CONFIG.SHEET_USUARIOS}'!A2:D20000`);
+      usuarios = await fetchSheet(`'${CONFIG.SHEET_USUARIOS}'!A2:E20000`);
     } catch (errAccesoDirecto) {
       // Sin acceso directo al Sheet: si hay una Web App configurada
       // (ver config.js SUBCONTRATISTAS_WEBAPP_URL), puede que esta cuenta
@@ -2415,6 +2415,16 @@ async function cargarTodo(silencioso) {
     }
     miEmpresaSubcontratista = (cuenta.rol === 'subcontratista') ? cuenta.empresa : null;
     userRole = cuenta.rol;
+    // Deja registro de cuándo se conectó por última vez esta cuenta
+    // subcontratista — lo usa el admin en "Correos autorizados" para ver
+    // actividad por contacto (ver renderSubcontratistaDetalleHTML). Sin
+    // await y sin bloquear si falla: es solo informativo, nunca debe
+    // frenar ni romper el inicio de sesión de nadie. Las cuentas que entran
+    // por la Web App (sin acceso directo) quedan registradas aparte, ver
+    // cargarInicial/verificarAcceso en APPS_SCRIPT_WEBAPP_SUBCONTRATISTAS.js.
+    if (miEmpresaSubcontratista) {
+      actualizarRangoSheet(`'${CONFIG.SHEET_USUARIOS}'!E${cuenta.fila}`, [[new Date().toLocaleString('es-CL')]]).catch(() => {});
+    }
 
     if (!silencioso) splash(40, 'Cargando información...');
 
@@ -2568,7 +2578,7 @@ function rowToEpp(r, i) {
 }
 function rowToUsuario(r, i) {
   return { fila: i+2, correo: (r[0]||'').trim().toLowerCase(), rol: (r[1]||'').trim().toLowerCase(),
-    nombre: r[2]||'', empresa: r[3]||'' };
+    nombre: r[2]||'', empresa: r[3]||'', conexion: r[4]||'' };
 }
 function rowToSubcontratista(r, i) {
   return { fila: i+2, empresa: r[0]||'', fechaAlta: r[1]||'', rut: r[2]||'' };
@@ -6255,6 +6265,20 @@ async function guardarProcedimiento(ev) {
 //    mostrarModoSubcontratista(), una pantalla fija aparte (#subcontratista-root)
 //    con SOLO la empresa que le corresponde.
 // ============================================================
+// Último documento que subió ESE correo puntual (no la empresa entera) —
+// allSubDocs queda en el mismo orden en que se fueron agregando las filas
+// (appendSheet siempre suma al final), así que el último que calza con el
+// filtro es directamente el más reciente, sin necesidad de ordenar por
+// fecha (la columna Fecha es un texto con formato local, no comparable con
+// < />). Se usa en "Correos autorizados" para mostrar actividad por
+// contacto (ver registrarConexion en APPS_SCRIPT_WEBAPP_SUBCONTRATISTAS.js
+// para la otra mitad del dato, "Última conexión"). Nombre distinto a
+// ultimoDocSubcontratista(lista) de más abajo (toma una lista YA filtrada
+// por ítem) para no pisarla — son casos distintos.
+function ultimoDocDeCorreoSubcontratista(empresa, correo) {
+  const propios = allSubDocs.filter(d => normalizarEmpresa(d.empresa) === normalizarEmpresa(empresa) && (d.subidoPor || '').toLowerCase() === correo);
+  return propios.length ? propios[propios.length - 1] : null;
+}
 function renderSubcontratistas() {
   if (allSubcontratistas.length === 0) {
     setListHTML('subcontratistas', emptyState('Sin subcontratistas', 'Agrega el primero con el botón +'));
@@ -6795,7 +6819,16 @@ function renderSubcontratistaDetalleHTML(empresa, esRestringido) {
     ${!esRestringido ? `
     <div class="subcont-section">
       <div class="subcont-section-head">${chipSeccionSubcontratista('correo')}<div class="subcont-section-title">Correos autorizados</div></div>
-      ${correos.map(c => `<div class="doc-row"><span>${esc(c.correo)}</span></div>`).join('') || '<div class="empty-sub">Sin correos asignados todavía</div>'}
+      ${correos.map(c => {
+        const ultimo = ultimoDocDeCorreoSubcontratista(empresa, c.correo);
+        return `<div class="doc-row" style="display:block;">
+          <span>${esc(c.correo)}</span>
+          <div style="font-size:12px;color:var(--ink-soft);margin-top:2px;">
+            Última conexión: ${c.conexion ? esc(c.conexion) : 'nunca'}
+            ${ultimo ? ` · Último subido: ${esc(ultimo.item || ultimo.categoria)} (${esc((ultimo.fecha||'').split(',')[0] || ultimo.fecha)})` : ' · Sin documentos subidos'}
+          </div>
+        </div>`;
+      }).join('') || '<div class="empty-sub">Sin correos asignados todavía</div>'}
       ${!esViewer() ? `<form onsubmit="onAgregarCorreoSubcontratista(event,'${esc(empresa)}')" style="display:flex;gap:8px;margin-top:10px;">
         <input name="correo" type="email" placeholder="correo@empresa.com" required style="flex:1;padding:10px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit;">
         <button class="btn-add" type="submit" style="width:auto;padding:10px 16px;">+ Agregar</button>

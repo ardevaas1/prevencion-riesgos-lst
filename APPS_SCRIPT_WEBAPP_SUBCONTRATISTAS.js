@@ -152,7 +152,8 @@ function normalizarPeriodo(v) {
 }
 
 // Busca la fila de USUARIOS para ese correo y confirma que su Rol es
-// "subcontratista". Devuelve su Empresa (columna D) o null si no calza.
+// "subcontratista". Devuelve su Empresa (columna D) y el número de fila
+// (1-based, igual que lo usa setValue más abajo) o null si no calza.
 function buscarUsuarioSubcontratista(correo) {
   const datos = hojaUsuarios().getDataRange().getValues();
   for (let i = 1; i < datos.length; i++) {
@@ -160,15 +161,38 @@ function buscarUsuarioSubcontratista(correo) {
     const filaCorreo = (fila[0] || '').toString().trim().toLowerCase();
     const filaRol = (fila[1] || '').toString().trim().toLowerCase();
     if (filaCorreo === correo && filaRol === 'subcontratista') {
-      return { empresa: (fila[3] || '').toString() };
+      return { empresa: (fila[3] || '').toString(), numeroFila: i + 1 };
     }
   }
   return null;
 }
 
+// Deja registro de la última vez que esta cuenta se conectó (columna E de
+// USUARIOS) — lo usa el admin en "Correos autorizados" para ver actividad
+// por contacto (ver renderSubcontratistaDetalleHTML en app.js; el camino de
+// acceso directo registra lo mismo desde cargarTodo en app.js). Se llama
+// desde verificarAcceso/cargarInicial, que son las dos acciones que la app
+// invoca una sola vez al abrir/recargar (no desde cada acción puntual como
+// subirDocumento, para no escribir de más). Nunca debe romper la respuesta
+// real si falla (ej. choque de cuota de Sheets), por eso va en su propio
+// try/catch.
+function registrarConexion(numeroFila) {
+  // Se guarda como TEXTO ya formateado (no un valor de fecha real) a
+  // propósito — mismo criterio que el resto de las columnas de fecha de
+  // esta planilla (ver normalizarPeriodo más arriba): un valor de fecha
+  // real queda sujeto al locale/formato de columna de la planilla, que
+  // puede no ser el chileno, mientras que un texto se ve igual siempre.
+  try {
+    const texto = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd-MM-yyyy HH:mm");
+    hojaUsuarios().getRange(numeroFila, 5).setValue(texto);
+  } catch (err) { /* informativo nomás — no debe tumbar la acción real */ }
+}
+
 function verificarAcceso(correo) {
   const u = buscarUsuarioSubcontratista(correo);
-  return u ? { subcontratista: true, empresa: u.empresa } : { subcontratista: false };
+  if (!u) return { subcontratista: false };
+  registrarConexion(u.numeroFila);
+  return { subcontratista: true, empresa: u.empresa };
 }
 
 // Confirma que el correo realmente pertenece a la empresa que está
@@ -220,6 +244,7 @@ function listarTrabajadores(correo, empresa) {
 function cargarInicial(correo) {
   const u = buscarUsuarioSubcontratista(correo);
   if (!u) return { subcontratista: false };
+  registrarConexion(u.numeroFila);
   const empresa = u.empresa;
 
   const datosDocs = hojaSubDocs().getDataRange().getValues();
