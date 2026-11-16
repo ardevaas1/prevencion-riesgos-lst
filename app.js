@@ -6292,7 +6292,13 @@ async function guardarSubcontratista(ev) {
     const correos = f.correos.value.split('\n').map(s => s.trim()).filter(Boolean);
     await appendSheet(`'${CONFIG.SHEET_SUBCONTRATISTAS}'!A:C`, [[empresa, new Date().toLocaleString('es-CL'), f.rutEmpresa.value.trim()]]);
     if (correos.length) {
-      await appendSheet(`'${CONFIG.SHEET_USUARIOS}'!A:D`, correos.map(c => [c.toLowerCase(), 'subcontratista', '', empresa]));
+      // Rango acotado (A2:D20000), NO "A:D" abierto — con un rango de solo
+      // columnas sin límite de fila, la API de Sheets puede "adivinar" el
+      // ancho de la tabla mirando toda la fila, y una leyenda/nota pegada
+      // más a la derecha (columnas F/G en USUARIOS) la hace creer que la
+      // tabla es más ancha, corriendo la fila nueva varias columnas a la
+      // derecha de donde corresponde.
+      await appendSheet(`'${CONFIG.SHEET_USUARIOS}'!A2:D20000`, correos.map(c => [c.toLowerCase(), 'subcontratista', '', empresa]));
       correos.forEach(c => notificarNuevoContacto(c.toLowerCase(), empresa));
     }
     toast('Subcontratista agregado ✓', 'ok');
@@ -7194,7 +7200,7 @@ async function onAgregarCorreoSubcontratista(ev, empresa) {
   ev.preventDefault();
   const correo = ev.target.correo.value.trim().toLowerCase();
   try {
-    await appendSheet(`'${CONFIG.SHEET_USUARIOS}'!A:D`, [[correo, 'subcontratista', '', empresa]]);
+    await appendSheet(`'${CONFIG.SHEET_USUARIOS}'!A2:D20000`, [[correo, 'subcontratista', '', empresa]]);
     notificarNuevoContacto(correo, empresa);
     toast('Correo agregado ✓', 'ok');
     await cargarTodo(true);
