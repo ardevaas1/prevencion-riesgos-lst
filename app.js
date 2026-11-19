@@ -6820,14 +6820,19 @@ function renderSubcontratistaDetalleHTML(empresa, esRestringido) {
     <div class="subcont-section">
       <div class="subcont-section-head">${chipSeccionSubcontratista('correo')}<div class="subcont-section-title">Correos autorizados</div></div>
       ${correos.map(c => {
-        const ultimo = ultimoDocDeCorreoSubcontratista(empresa, c.correo);
-        return `<div class="doc-row" style="display:block;">
-          <span>${esc(c.correo)}</span>
-          <div style="font-size:12px;color:var(--ink-soft);margin-top:2px;">
+        // Actividad por contacto (última conexión / último documento) solo
+        // para admin — a un "viewer" (solo lectura) le basta con ver qué
+        // correos están autorizados, no hace falta que vea cuándo se
+        // conectó cada uno.
+        let actividad = '';
+        if (userRole === 'admin') {
+          const ultimo = ultimoDocDeCorreoSubcontratista(empresa, c.correo);
+          actividad = `<div style="font-size:12px;color:var(--ink-soft);margin-top:2px;">
             Última conexión: ${c.conexion ? esc(c.conexion) : 'nunca'}
             ${ultimo ? ` · Último subido: ${esc(ultimo.item || ultimo.categoria)} (${esc((ultimo.fecha||'').split(',')[0] || ultimo.fecha)})` : ' · Sin documentos subidos'}
-          </div>
-        </div>`;
+          </div>`;
+        }
+        return `<div class="doc-row" style="display:block;"><span>${esc(c.correo)}</span>${actividad}</div>`;
       }).join('') || '<div class="empty-sub">Sin correos asignados todavía</div>'}
       ${!esViewer() ? `<form onsubmit="onAgregarCorreoSubcontratista(event,'${esc(empresa)}')" style="display:flex;gap:8px;margin-top:10px;">
         <input name="correo" type="email" placeholder="correo@empresa.com" required style="flex:1;padding:10px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit;">
