@@ -739,6 +739,13 @@ body.is-offline #app { padding-top: 30px; }
   background: var(--bg); color: var(--ink-soft);
   font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px;
   padding: 5px 8px; margin-top: 6px;
+  /* Promueve el encabezado a su propia capa GPU de entrada, en vez de que
+     el navegador la cree recién al toparse con el scroll — sin esto, en
+     celular (WebKit/Chrome) esta capa puede ir un frame atrasada respecto
+     al contenido que se desplaza detrás, dejando ver por un instante el
+     borde de la tarjeta anterior antes de taparla del todo. */
+  transform: translateZ(0);
+  will-change: transform;
 }
 .az-index {
   position: fixed; right: 6px; top: 50%; transform: translateY(-50%);
