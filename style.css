@@ -822,6 +822,13 @@ body.is-offline #app { padding-top: 30px; }
   background: linear-gradient(145deg, #4caf50, #2e7d32); color: #fff;
   box-shadow: 0 2px 6px rgba(46,125,50,.35);
 }
+/* Un documento Rechazado necesita acción — antes el ícono quedaba igual de
+   verde que uno Aprobado con tal de tener algún archivo subido, lo que
+   escondía justo lo que más urge que se note (ver iconoEstadoDoc). */
+.subcont-row-icon.rechazado {
+  background: linear-gradient(145deg, #ef5350, #c62828); color: #fff;
+  box-shadow: 0 2px 6px rgba(198,40,40,.35);
+}
 .subcont-row-body { flex: 1; min-width: 0; }
 .subcont-row-nombre { font-weight: 500; font-size: 14px; color: var(--ink); }
 .subcont-row-fecha { font-size: 11px; color: #999; margin-top: 1px; }

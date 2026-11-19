@@ -6437,7 +6437,15 @@ function ultimoDocSubcontratista(lista) { return lista.length ? lista[lista.leng
 // Círculo de estado (check verde si ya se subió algo, vacío si no) — mismo
 // lenguaje visual en todos los ítems de checklist del módulo, para que se
 // note de un vistazo qué falta sin tener que leer cada fila.
-function iconoEstadoDoc(subido) {
+// hayRechazo: antes el ícono quedaba igual de verde con tal de tener algún
+// archivo subido, aunque ESE archivo estuviera Rechazado — justo el caso
+// que más urge que se note de un vistazo (sin tener que leer el texto
+// chico "rechazado, revisar" al lado). Con un rechazo pendiente, el ícono
+// pasa a rojo con una X en vez del check verde.
+function iconoEstadoDoc(subido, hayRechazo) {
+  if (hayRechazo) {
+    return `<div class="subcont-row-icon rechazado"><svg viewBox="0 0 24 24" fill="none" style="width:14px;height:14px"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg></div>`;
+  }
   return `<div class="subcont-row-icon${subido ? ' ok' : ''}">${subido
     ? '<svg viewBox="0 0 24 24" fill="none" style="width:14px;height:14px"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>'
     : '<svg viewBox="0 0 24 24" fill="none" style="width:8px;height:8px"><circle cx="12" cy="12" r="8" fill="currentColor"/></svg>'}</div>`;
@@ -6551,7 +6559,7 @@ function filaChecklistSubcontratista(empresa, categoria, item, periodo, nombreTr
     <div class="subcont-doctrab">
       <div class="subcont-doctrab-head" onclick="this.parentElement.classList.toggle('abierto')">
         <div class="subcont-doctrab-chevron"><svg viewBox="0 0 24 24" fill="none" style="width:14px;height:14px"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-        ${iconoEstadoDoc(docs.length > 0)}
+        ${iconoEstadoDoc(docs.length > 0, hayRechazo)}
         <div class="subcont-row-body">
           <div class="subcont-row-nombre">${esc(item)}</div>
           <div class="subcont-row-fecha">${docs.length ? docs.length + (docs.length === 1 ? ' archivo' : ' archivos') : 'Pendiente'}${hayRechazo ? ' · <span style="color:#c62828;">rechazado, revisar</span>' : ''}</div>
@@ -6614,7 +6622,7 @@ function bloqueProtocolosMinsalTrabajador(empresa, categoriaMinsal, nombreTrabaj
     <div class="subcont-doctrab">
       <div class="subcont-doctrab-head" onclick="this.parentElement.classList.toggle('abierto')">
         <div class="subcont-doctrab-chevron"><svg viewBox="0 0 24 24" fill="none" style="width:14px;height:14px"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-        ${iconoEstadoDoc(docs.length > 0)}
+        ${iconoEstadoDoc(docs.length > 0, hayRechazo)}
         <div class="subcont-row-body">
           <div class="subcont-row-nombre">${esc(ITEM_PROTOCOLOS_MINSAL_TRABAJADOR)}</div>
           <div class="subcont-row-fecha">${docs.length ? docs.length + (docs.length === 1 ? ' protocolo' : ' protocolos') : 'Pendiente'}${hayRechazo ? ' · <span style="color:#c62828;">rechazado, revisar</span>' : ''}</div>
@@ -6692,7 +6700,7 @@ function filaGlobalSubcontratista(item, esRestringido, empresaEnPantalla) {
     <div class="subcont-doctrab">
       <div class="subcont-doctrab-head" onclick="this.parentElement.classList.toggle('abierto')">
         <div class="subcont-doctrab-chevron"><svg viewBox="0 0 24 24" fill="none" style="width:14px;height:14px"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-        ${iconoEstadoDoc(docs.length > 0)}
+        ${iconoEstadoDoc(docs.length > 0, hayRechazo)}
         <div class="subcont-row-body">
           <div class="subcont-row-nombre">${esc(item)}</div>
           <div class="subcont-row-fecha">${docs.length ? docs.length + (docs.length === 1 ? ' archivo' : ' archivos') : 'Pendiente'}${hayRechazo ? ' · <span style="color:#c62828;">rechazado, revisar</span>' : ''}</div>
