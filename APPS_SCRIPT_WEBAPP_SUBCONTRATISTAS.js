@@ -101,6 +101,7 @@ function doPost(e) {
 
     if (accion === 'verificarAcceso') return respuesta(verificarAcceso(correo));
     if (accion === 'cargarInicial') return respuesta(cargarInicial(correo));
+    if (accion === 'registrarConexion') return respuesta(registrarConexionPorCorreo(correo));
     if (accion === 'listarDocumentos') return respuesta(listarDocumentos(correo, body.empresa));
     if (accion === 'listarTrabajadores') return respuesta(listarTrabajadores(correo, body.empresa));
     if (accion === 'subirDocumento') return respuesta(subirDocumento(correo, body));
@@ -108,6 +109,7 @@ function doPost(e) {
     if (accion === 'importarListadoTrabajadores') return respuesta(importarListadoTrabajadores(correo, body));
     if (accion === 'notificarContacto') return respuesta(notificarContacto(body.correoDestino, body.empresa));
     if (accion === 'notificarRechazoDocumento') return respuesta(notificarRechazoDocumento(body.empresa, body.item, body.motivo));
+    if (accion === 'notificarAprobacionDocumento') return respuesta(notificarAprobacionDocumento(body.empresa, body.item));
     return respuesta({ error: 'Acción desconocida: ' + accion });
   } catch (err) {
     return respuesta({ error: String(err.message || err) });
@@ -193,6 +195,19 @@ function verificarAcceso(correo) {
   if (!u) return { subcontratista: false };
   registrarConexion(u.numeroFila);
   return { subcontratista: true, empresa: u.empresa };
+}
+
+// Llamada aparte, liviana, desde CUALQUIER clic dentro de la app mientras
+// dure la sesión (no solo al cargar los datos) — ver
+// registrarActividadSubcontratista en app.js. Es su propia acción (no
+// reusa cargarInicial/verificarAcceso) para no traer de vuelta todos los
+// documentos/trabajadores en cada clic, sería mucho más lento y pesado de
+// lo que hace falta para solo dejar la marca de tiempo.
+function registrarConexionPorCorreo(correo) {
+  const u = buscarUsuarioSubcontratista(correo);
+  if (!u) return { ok: false };
+  registrarConexion(u.numeroFila);
+  return { ok: true };
 }
 
 // Confirma que el correo realmente pertenece a la empresa que está
@@ -317,6 +332,27 @@ function notificarContacto(correoDestino, empresa) {
 // listarDocumentos/subirDocumento. Si la empresa no tiene ningún correo
 // registrado todavía, no manda nada (no es un error, solo no hay a quién
 // avisarle).
+// Mismo criterio que notificarRechazoDocumento (correo a todas las cuentas
+// subcontratista de esa empresa), pero para avisar que un documento SÍ
+// quedó aprobado — a pedido del cliente, para que quede clara constancia
+// por correo además del badge verde "Aprobado" que ya se ve en la app.
+function notificarAprobacionDocumento(empresa, item) {
+  if (!empresa) throw new Error('Falta la empresa');
+  const destinatarios = correosSubcontratistaDeEmpresa(empresa);
+  if (!destinatarios.length) return { enviado: false };
+
+  const asunto = 'Documento aprobado — ' + (item || 'Subcontratistas') + ' (' + empresa + ')';
+  const cuerpo = 'Hola,\n\n' +
+    'El documento "' + (item || 'sin nombre') + '" de "' + empresa + '" fue APROBADO por Constructora LST.\n\n' +
+    'No necesitas hacer nada más con este documento.\n\n' +
+    (APP_URL ? 'Puedes revisarlo en la app: ' + APP_URL + '\n\n' : '') +
+    'Saludos,\nConstructora LST';
+  destinatarios.forEach(function (correoDestino) {
+    try { MailApp.sendEmail(correoDestino, asunto, cuerpo); } catch (e) { /* best-effort */ }
+  });
+  return { enviado: true };
+}
+
 function notificarRechazoDocumento(empresa, item, motivo) {
   if (!empresa || !motivo) throw new Error('Falta la empresa o el motivo');
   const destinatarios = correosSubcontratistaDeEmpresa(empresa);

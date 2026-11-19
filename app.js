@@ -513,6 +513,10 @@ function bloquearSiViewer() {
 // la app muestra únicamente la pantalla fija de esa empresa (mostrarModoSubcontratista),
 // sin sidebar, sin Inicio y sin acceso a ningún otro módulo (ver arrancarApp).
 let miEmpresaSubcontratista = null;
+// Fila (1-based) de la cuenta subcontratista actual en USUARIOS — solo se
+// usa para registrarActividadSubcontratista (acceso directo). Ver
+// cargarTodo, donde queda asignada junto con miEmpresaSubcontratista.
+let miFilaEnUsuarios = null;
 // true cuando esta cuenta no tiene acceso directo de Editor al Sheet/Drive
 // y en vez de eso se está usando la Web App de Apps Script como proxy
 // (ver llamarWebAppSubcontratista) — se detecta solo, no hay que
@@ -1870,6 +1874,29 @@ async function cargarDatosProxySubcontratista() {
   return { subcontratista: true, empresa: chequeo.empresa, documentosFilas: docs.filas, trabajadoresFilas: trab.filas };
 }
 
+// Registra "actividad" de una cuenta subcontratista — a pedido del cliente,
+// que quiere que la "Última conexión" que ve el admin (ver
+// renderSubcontratistaDetalleHTML) sea lo más fiel posible a uso real, no
+// solo al momento exacto de iniciar sesión. Se llama tanto al cargar datos
+// (cargarTodo) como con CUALQUIER clic dentro de la app mientras la cuenta
+// esté en modo subcontratista (ver el listener global más abajo), con un
+// mínimo de 5 minutos entre registros para no escribir en el Sheet en cada
+// toque de pantalla. Nunca usa await desde quien la llama ni bloquea nada
+// si falla — es puramente informativo.
+let ultimaActividadSubcontratistaRegistrada = 0;
+function registrarActividadSubcontratista() {
+  if (!miEmpresaSubcontratista) return;
+  const ahora = Date.now();
+  if (ahora - ultimaActividadSubcontratistaRegistrada < 5 * 60 * 1000) return;
+  ultimaActividadSubcontratistaRegistrada = ahora;
+  if (subcontratistaUsaProxy) {
+    llamarWebAppSubcontratista('registrarConexion', {}).catch(() => {});
+  } else if (miFilaEnUsuarios) {
+    actualizarRangoSheet(`'${CONFIG.SHEET_USUARIOS}'!E${miFilaEnUsuarios}`, [[new Date().toLocaleString('es-CL')]]).catch(() => {});
+  }
+}
+document.addEventListener('click', registrarActividadSubcontratista, { capture: true });
+
 // ── UI helpers ───────────────────────────────────────────────
 function splash(pct, hint) {
   const fill = document.getElementById('splash-progress');
@@ -2414,17 +2441,15 @@ async function cargarTodo(silencioso) {
       return;
     }
     miEmpresaSubcontratista = (cuenta.rol === 'subcontratista') ? cuenta.empresa : null;
+    miFilaEnUsuarios = cuenta.fila;
     userRole = cuenta.rol;
-    // Deja registro de cuándo se conectó por última vez esta cuenta
-    // subcontratista — lo usa el admin en "Correos autorizados" para ver
-    // actividad por contacto (ver renderSubcontratistaDetalleHTML). Sin
-    // await y sin bloquear si falla: es solo informativo, nunca debe
-    // frenar ni romper el inicio de sesión de nadie. Las cuentas que entran
-    // por la Web App (sin acceso directo) quedan registradas aparte, ver
-    // cargarInicial/verificarAcceso en APPS_SCRIPT_WEBAPP_SUBCONTRATISTAS.js.
-    if (miEmpresaSubcontratista) {
-      actualizarRangoSheet(`'${CONFIG.SHEET_USUARIOS}'!E${cuenta.fila}`, [[new Date().toLocaleString('es-CL')]]).catch(() => {});
-    }
+    // "Última conexión" (ver registrarActividadSubcontratista más abajo) se
+    // registra en cada carga de datos Y además con cualquier clic dentro de
+    // la app (ver el listener global al final del archivo) — así queda lo
+    // más fiel posible a actividad real, no solo al instante de iniciar
+    // sesión. Acá se deja un primer registro inmediato para no depender de
+    // que la cuenta llegue a hacer clic en algo.
+    if (miEmpresaSubcontratista) registrarActividadSubcontratista();
 
     if (!silencioso) splash(40, 'Cargando información...');
 
@@ -6448,9 +6473,11 @@ function accionesRevisionDocSubcontratista(doc) {
 }
 async function aprobarDocSubcontratista(fila) {
   if (userRole !== 'admin') { toast('Solo un administrador puede aprobar documentos', 'error'); return; }
+  const doc = allSubDocs.find(d => d.fila === fila);
   try {
     await actualizarRangoSheet(`'${CONFIG.SHEET_SUBCONTRATISTAS_DOCS}'!I${fila}:J${fila}`, [['Aprobado', '']]);
-    toast('Documento aprobado ✓', 'ok');
+    if (doc) await notificarAprobacionDocumento(doc.empresa, descripcionDocSubcontratista(doc));
+    toast('Documento aprobado ✓ — se avisó por correo a la empresa', 'ok');
     await cargarTodo(true);
     if (empresaSubcontratistaActual) abrirDetalleSubcontratista(empresaSubcontratistaActual);
   } catch (e) { toast(e.message, 'error'); }
@@ -6493,6 +6520,14 @@ async function notificarRechazoDocumento(empresa, descripcion, motivo) {
   if (!CONFIG.SUBCONTRATISTAS_WEBAPP_URL) return;
   try { await llamarWebAppSubcontratista('notificarRechazoDocumento', { empresa, item: descripcion, motivo }); }
   catch (e) { console.warn('No se pudo notificar el rechazo a ' + empresa, e); }
+}
+// Mismo criterio que notificarRechazoDocumento, para avisar por correo que
+// un documento quedó aprobado (a pedido del cliente, además del badge
+// verde "Aprobado" que ya se ve en la app) — ver aprobarDocSubcontratista.
+async function notificarAprobacionDocumento(empresa, descripcion) {
+  if (!CONFIG.SUBCONTRATISTAS_WEBAPP_URL) return;
+  try { await llamarWebAppSubcontratista('notificarAprobacionDocumento', { empresa, item: descripcion }); }
+  catch (e) { console.warn('No se pudo notificar la aprobación a ' + empresa, e); }
 }
 // Cada ítem del checklist admite más de un archivo (ya no "uno vigente que
 // reemplaza al anterior"), pero mostrar todos los archivos y botones
