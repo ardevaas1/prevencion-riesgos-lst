@@ -7000,7 +7000,7 @@ async function onSubirDocSubcontratista(inputEl, empresa, categoria, item, perio
         const up = nombreTrabajador
           ? await uploadFileSubcontratistaTrabajadorItem(file, empresa, nombreTrabajador, item || 'Herramientas', prefix)
           : await uploadFileSubcontratista(file, empresa, prefix, item || 'Herramientas');
-        await appendSheet(`'${CONFIG.SHEET_SUBCONTRATISTAS_DOCS}'!A2:J20000`, [[
+        await appendSheetDeterministico(CONFIG.SHEET_SUBCONTRATISTAS_DOCS, 'J', [[
           empresa, categoria, item || '', periodo || '', up.name, up.link,
           new Date().toLocaleString('es-CL'), userEmail || '', '', ''
         ]]);
@@ -7069,7 +7069,7 @@ async function onSubirProcedimientoCritico(ev, empresa) {
         });
       } else {
         const up = await uploadFileSubcontratista(file, empresa, prefix, 'Procedimientos de trabajo seguro riesgos críticos');
-        await appendSheet(`'${CONFIG.SHEET_SUBCONTRATISTAS_DOCS}'!A2:J20000`, [[
+        await appendSheetDeterministico(CONFIG.SHEET_SUBCONTRATISTAS_DOCS, 'J', [[
           empresa, 'procedimientos_criticos', nombre, '', up.name, up.link,
           new Date().toLocaleString('es-CL'), userEmail || '', '', ''
         ]]);
@@ -7117,7 +7117,7 @@ async function onSubirProtocoloMinsalTrabajador(ev, empresa, categoriaMinsal, no
         });
       } else {
         const up = await uploadFileSubcontratistaTrabajadorItem(file, empresa, nombreTrabajador, 'Protocolos Minsal', prefix);
-        await appendSheet(`'${CONFIG.SHEET_SUBCONTRATISTAS_DOCS}'!A2:J20000`, [[
+        await appendSheetDeterministico(CONFIG.SHEET_SUBCONTRATISTAS_DOCS, 'J', [[
           empresa, categoriaMinsal, nombre, '', up.name, up.link,
           new Date().toLocaleString('es-CL'), userEmail || '', '', ''
         ]]);
@@ -7158,7 +7158,7 @@ async function subirRespaldoTrabajadorArchivo(empresa, categoria, nombreTrabajad
     });
   } else {
     const up = await uploadFileSubcontratistaTrabajador(file, empresa, nombreTrabajador, prefix);
-    await appendSheet(`'${CONFIG.SHEET_SUBCONTRATISTAS_DOCS}'!A2:J20000`, [[
+    await appendSheetDeterministico(CONFIG.SHEET_SUBCONTRATISTAS_DOCS, 'J', [[
       empresa, categoria, '', '', up.name, up.link,
       new Date().toLocaleString('es-CL'), userEmail || '', '', ''
     ]]);
@@ -7265,7 +7265,7 @@ async function onSubirDocGlobalSubcontratista(inputEl, item) {
   try {
     for (const file of files) {
       const up = await uploadFileSubcontratista(file, '__GLOBAL__', item.replace(/\s+/g, '-'), item);
-      await appendSheet(`'${CONFIG.SHEET_SUBCONTRATISTAS_DOCS}'!A2:J20000`, [[
+      await appendSheetDeterministico(CONFIG.SHEET_SUBCONTRATISTAS_DOCS, 'J', [[
         '__GLOBAL__', 'global', item, '', up.name, up.link,
         new Date().toLocaleString('es-CL'), userEmail || '', '', ''
       ]]);
