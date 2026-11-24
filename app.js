@@ -6468,7 +6468,25 @@ function badgeEstadoDocSubcontratista(doc) {
 }
 function motivoRechazoHtml(doc) {
   if (!doc || doc.estado !== 'Rechazado' || !doc.motivoRechazo) return '';
-  return `<div class="subcont-motivo-rechazo">Motivo del rechazo: ${esc(doc.motivoRechazo)}</div>`;
+  return `<div class="subcont-motivo-rechazo">Motivo del rechazo: ${esc(doc.motivoRechazo)}
+    ${userRole === 'admin' ? ` <a href="javascript:void(0)" onclick="editarMotivoRechazoDocSubcontratista(${doc.fila},'${esc(doc.motivoRechazo).replace(/'/g, "\\'")}')" style="font-size:11px;">Editar</a>` : ''}</div>`;
+}
+// Corrige el motivo de un rechazo YA hecho (ej. un error de tipeo) sin
+// tener que rechazar el documento de nuevo — eso reenviaría el correo de
+// aviso otra vez. Mismo criterio de acceso que rechazarDocSubcontratista
+// (solo admin); escribe directo en la columna J, sin tocar el Estado
+// (columna I, que ya es "Rechazado").
+async function editarMotivoRechazoDocSubcontratista(fila, motivoActual) {
+  if (userRole !== 'admin') { toast('Solo un administrador puede editar el motivo', 'error'); return; }
+  const motivo = prompt('Editar motivo del rechazo:', motivoActual || '');
+  if (motivo === null) return;
+  if (!motivo.trim()) { toast('Escribe un motivo', 'error'); return; }
+  try {
+    await actualizarRangoSheet(`'${CONFIG.SHEET_SUBCONTRATISTAS_DOCS}'!J${fila}`, [[motivo.trim()]]);
+    toast('Motivo actualizado ✓', 'ok');
+    await cargarTodo(true);
+    if (empresaSubcontratistaActual) abrirDetalleSubcontratista(empresaSubcontratistaActual);
+  } catch (e) { toast(e.message, 'error'); }
 }
 // Aprobar/Rechazar un documento — SOLO lo ve un admin, mismo criterio que
 // botonEliminarDocSubcontratista. Nunca pasa por la Web App/proxy (ver
