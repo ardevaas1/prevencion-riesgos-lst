@@ -69,12 +69,37 @@ const APP_URL = '';
 const EMPRESA_PRINCIPAL_NOMBRE = 'Constructora LST';
 const EMPRESA_PRINCIPAL_RUT = '8.571.343-4';
 
+// Evita repetir una escritura (subir un documento, agregar un trabajador,
+// mandar un correo de aviso, etc.) cuando el navegador reintenta
+// automáticamente después de un "Failed to fetch" (ver
+// llamarWebAppSubcontratista en app.js) — si el corte de conexión pasó
+// DESPUÉS de que el servidor ya había terminado de guardar, el reintento
+// llega con la MISMA idemKey, y acá se reconoce que ya se procesó en vez
+// de hacerlo de nuevo. CacheService (no una hoja) porque es información
+// de corta duración (10 min bastan de sobra para cualquier reintento) que
+// no hace falta que quede guardada para siempre.
+function yaProcesado(idemKey) {
+  if (!idemKey) return false;
+  const cache = CacheService.getScriptCache();
+  const clave = 'idem_' + idemKey;
+  if (cache.get(clave)) return true;
+  cache.put(clave, '1', 600);
+  return false;
+}
+
 function doPost(e) {
   let body;
   try { body = JSON.parse(e.postData.contents); }
   catch (err) { return respuesta({ error: 'Cuerpo de la petición inválido' }); }
 
   const accion = body.accion;
+  // Respuesta neutra que cubre los campos que lee cualquier acción (ver
+  // importarListadoTrabajadores en app.js, el único caller que de verdad
+  // usa el contenido de la respuesta) — para las demás, que solo esperan
+  // que la llamada no falle, esto también les sirve tal cual.
+  if (yaProcesado(body.idemKey)) {
+    return respuesta({ ok: true, duplicado: true, creados: 0, omitidos: 0, sinLeer: false, enviado: false });
+  }
 
   try {
     // Acciones para trabajadores que entran solo con su RUT (sin cuenta de

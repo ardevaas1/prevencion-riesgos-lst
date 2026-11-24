@@ -1824,6 +1824,16 @@ async function importarListadoTrabajadores(fileOrBlob, empresa) {
 // el error de CORS.
 async function llamarWebAppSubcontratista(accion, datos, _esReintento) {
   if (!CONFIG.SUBCONTRATISTAS_WEBAPP_URL) throw new Error('Falta configurar SUBCONTRATISTAS_WEBAPP_URL en config.js');
+  // Clave de idempotencia: se genera UNA sola vez por llamada (si el
+  // reintento de abajo se dispara, "datos" es el MISMO objeto, así que
+  // viaja la misma clave) — permite que el servidor reconozca "esto ya lo
+  // procesé" si el corte de conexión pasó DESPUÉS de que el archivo/fila
+  // ya había quedado guardado, evitando que el reintento automático lo
+  // suba/agregue por segunda vez. Ver yaProcesado en
+  // APPS_SCRIPT_WEBAPP_SUBCONTRATISTAS.js.
+  if (!datos.idemKey) {
+    datos.idemKey = (crypto.randomUUID ? crypto.randomUUID() : (Date.now() + '_' + Math.random().toString(36).slice(2)));
+  }
   // Sin timeout, un archivo grande (ej. el Excel de "Listado de
   // trabajadores") o un cold-start lento de Apps Script podían dejar este
   // fetch colgado indefinidamente: no hay error, el botón se queda en
