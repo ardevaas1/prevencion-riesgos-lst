@@ -1307,6 +1307,23 @@ async function appendSheet(range, values) {
   return data;
 }
 
+// Alternativa a appendSheet para hojas donde una fila corrida de columna
+// sale particularmente cara (ej. USUARIOS: una fila corrida deja a esa
+// cuenta sin acceso, o peor, filtrando datos de otra empresa). appendSheet
+// le pide a la API que ADIVINE en qué fila/columna insertar según el
+// contenido de la hoja — visto en la práctica, esa adivinanza a veces
+// falla y la fila nueva queda corrida varias columnas (caso real: filas de
+// USUARIOS con el Email en la columna D en vez de A). Acá, en cambio, se
+// calcula la fila exacta leyendo solo la columna A (rápido, una sola
+// columna) y se escribe ahí con actualizarRangoSheet (PUT a un rango
+// explícito, sin nada que adivinar).
+async function appendSheetDeterministico(hoja, columnaFinalLetra, filas) {
+  const colA = await fetchSheet(`'${hoja}'!A:A`);
+  const filaInicio = colA.length + 1;
+  const filaFin = filaInicio + filas.length - 1;
+  await actualizarRangoSheet(`'${hoja}'!A${filaInicio}:${columnaFinalLetra}${filaFin}`, filas);
+}
+
 // Actualiza un rango ya existente en el lugar (en vez de agregar una fila
 // nueva) — para datos donde solo debe quedar UN registro vigente por algo
 // (ej. la matriz IPER vigente de una obra, ver guardarArchivoMatrizIper),
@@ -6338,17 +6355,14 @@ async function guardarSubcontratista(ev) {
       toast('Ya existe un subcontratista con ese nombre', 'error');
       return;
     }
-    const correos = f.correos.value.split('\n').map(s => s.trim()).filter(Boolean);
+    // dedup: si el admin pegó/escribió el mismo correo dos veces en el
+    // textarea (o, más raro, alcanzó a enviar el form dos veces), acá no
+    // debería quedar duplicado en USUARIOS.
+    const correos = [...new Set(f.correos.value.split('\n').map(s => s.trim().toLowerCase()).filter(Boolean))];
     await appendSheet(`'${CONFIG.SHEET_SUBCONTRATISTAS}'!A:C`, [[empresa, new Date().toLocaleString('es-CL'), f.rutEmpresa.value.trim()]]);
     if (correos.length) {
-      // Rango acotado (A2:D20000), NO "A:D" abierto — con un rango de solo
-      // columnas sin límite de fila, la API de Sheets puede "adivinar" el
-      // ancho de la tabla mirando toda la fila, y una leyenda/nota pegada
-      // más a la derecha (columnas F/G en USUARIOS) la hace creer que la
-      // tabla es más ancha, corriendo la fila nueva varias columnas a la
-      // derecha de donde corresponde.
-      await appendSheet(`'${CONFIG.SHEET_USUARIOS}'!A2:D20000`, correos.map(c => [c.toLowerCase(), 'subcontratista', '', empresa]));
-      correos.forEach(c => notificarNuevoContacto(c.toLowerCase(), empresa));
+      await appendSheetDeterministico(CONFIG.SHEET_USUARIOS, 'D', correos.map(c => [c, 'subcontratista', '', empresa]));
+      correos.forEach(c => notificarNuevoContacto(c, empresa));
     }
     toast('Subcontratista agregado ✓', 'ok');
     closePanel('panel-form-subcontratista');
@@ -7298,8 +7312,9 @@ async function onAgregarCorreoSubcontratista(ev, empresa) {
   if (bloquearSiViewer()) return;
   ev.preventDefault();
   const correo = ev.target.correo.value.trim().toLowerCase();
+  if (allUsuarios.some(u => u.correo === correo)) { toast('Ese correo ya está registrado', 'error'); return; }
   try {
-    await appendSheet(`'${CONFIG.SHEET_USUARIOS}'!A2:D20000`, [[correo, 'subcontratista', '', empresa]]);
+    await appendSheetDeterministico(CONFIG.SHEET_USUARIOS, 'D', [[correo, 'subcontratista', '', empresa]]);
     notificarNuevoContacto(correo, empresa);
     toast('Correo agregado ✓', 'ok');
     await cargarTodo(true);
