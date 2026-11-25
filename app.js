@@ -254,6 +254,50 @@ const SUBCONT_CONTROL_MENSUAL = [
   'AST', 'Cronograma', 'Certificados', 'Exámenes ocupacionales',
   'Informe Mensual', ITEM_LISTADO_TRABAJADORES,
 ];
+
+// ── Módulo "Documentación laboral" — aparte de Prevención (ver
+// renderDocumentacionLaboralHTML/cambiarPestanaSubcontratista), con su
+// propio checklist a pedido del cliente: documentación administrativa y de
+// RRHH de la empresa subcontratista, no de prevención de riesgos. Reusa la
+// misma hoja SUBCONTRATISTAS_DOCS (categorías propias, "laboral_..." —
+// nunca chocan con las de Prevención) y el mismo mecanismo de
+// aprobar/rechazar/nota que el resto del módulo Subcontratistas.
+// A. Documentación de ingreso — se sube una sola vez (sin período), igual
+// criterio que SUBCONT_CARPETA_EMPRESA. "Contabilidad y administración" y
+// el único ítem de RRHH que es a nivel empresa (no por trabajador) van
+// juntos en la misma categoría "laboral_empresa" — no hace falta separarlos
+// en el Sheet, cada ítem ya se distingue por su propio nombre.
+const LABORAL_INGRESO_CONTABILIDAD = [
+  'Escritura de constitución, modificaciones y certificado de vigencia, con poderes del representante legal',
+  'RUT de la empresa, inicio de actividades en el SII y cédula del representante legal',
+  'Certificado F30 de la Dirección del Trabajo, vigente',
+  'Certificado de adhesión a la mutualidad (ACHS, IST, Mutual) o ISL, sin deudas',
+];
+const LABORAL_INGRESO_RRHH_EMPRESA = [
+  'Nómina completa del personal (nombre, cargo y RUT) que ingresará a la obra',
+];
+// RRHH de ingreso que SÍ es por cada trabajador (ver
+// categoriaLaboralTrabajador/bloqueDocLaboralTrabajador) — mismo criterio
+// que DOCS_TRABAJADOR, pero en su propia categoría ("laboraltrab_...") para
+// no mezclarse con el checklist de Prevención de cada trabajador.
+const LABORAL_DOCS_TRABAJADOR = [
+  'Certificado de antecedentes vigentes',
+  'Cédula de identidad (si es extranjero, visa o permiso de trabajo vigente)',
+  'Contrato de trabajo y anexos firmados',
+];
+// B. Documentación mensual — se repite mes a mes (mismo ítem, distinto
+// Período "AAAA-MM"), igual criterio que SUBCONT_CONTROL_MENSUAL. Comparte
+// el mes elegido con el Control Mensual de Prevención (mesControlSubcontratista)
+// para no duplicar el selector de mes en la pantalla.
+const LABORAL_MENSUAL = [
+  'Certificado F30-1 de cumplimiento de obligaciones laborales y previsionales, junto con el F30 vigente',
+  'Liquidaciones de sueldo del mes, firmadas por los trabajadores',
+  'Control de asistencia del período',
+  'Altas y bajas (contratos nuevos y finiquitos firmados y ratificados)',
+  'Nómina actualizada del personal en obra',
+  'Planillas de pago de cotizaciones (Previred) del mes anterior',
+  'Libro de remuneraciones electrónico o planilla de remuneraciones',
+];
 // Checklist fijo de documentos por CADA trabajador de una empresa
 // subcontratista (ver bloqueDocTrabajador) — mismo listado para todos los
 // trabajadores, igual criterio que SUBCONT_CARPETA_EMPRESA. "Documentación
@@ -274,10 +318,6 @@ const PROTOCOLOS_MINSAL_SUGERIDOS = ['Radiación UV', 'MMC', 'PLANESI', 'TMRT', 
 // aparte para no repetir el string literal (ver IRL_POR_CARGO más abajo).
 const ITEM_IRL_ACTIVIDADES_TRABAJADOR = 'IRL — Actividades a desarrollar';
 const DOCS_TRABAJADOR = [
-  'Contrato de trabajo',
-  'Anexo de contrato (si corresponde)',
-  'Pacto de horas extraordinarias (si corresponde)',
-  'Liquidaciones de sueldo',
   'Exámenes ocupacionales (altura física sobre 1,8 m o espacios confinados, según corresponda)',
   'Registro difusión Plan de gestión del riesgo y desastre',
   'Difusión Política SSO',
@@ -1888,11 +1928,22 @@ async function llamarWebAppSubcontratista(accion, datos, _esReintento) {
 // ("Acción desconocida"), cae sola al camino anterior — pero con las dos
 // llamadas de datos en PARALELO (no dependen una de la otra) en vez de
 // seguidas, así igual mejora mientras no se redespliegue el script.
+// Reconstruye la única fila de SUBCONTRATISTAS que le compete a una cuenta
+// proxy (no tiene acceso directo al Sheet para traerlas todas) — ver
+// subInfo en cargarInicial/APPS_SCRIPT_WEBAPP_SUBCONTRATISTAS.js. "fila"
+// queda null a propósito: nada en el camino proxy escribe por número de
+// fila (ver actualizarContactoLaboral, que resuelve la fila del lado del
+// servidor por nombre de empresa), a diferencia del camino directo (ver
+// rowToSubcontratista) donde sí hace falta para editarRutSubcontratista.
+function allSubcontratistasDesdeProxy(empresa, subInfo) {
+  return [{ fila: null, empresa, fechaAlta: '', rut: (subInfo && subInfo.rut) || '',
+    correoContacto: (subInfo && subInfo.correoContacto) || '', telefonoContacto: (subInfo && subInfo.telefonoContacto) || '' }];
+}
 async function cargarDatosProxySubcontratista() {
   try {
     const r = await llamarWebAppSubcontratista('cargarInicial', {});
     if (!r.subcontratista) return { subcontratista: false };
-    return { subcontratista: true, empresa: r.empresa, documentosFilas: r.documentos || [], trabajadoresFilas: r.trabajadores || [] };
+    return { subcontratista: true, empresa: r.empresa, documentosFilas: r.documentos || [], trabajadoresFilas: r.trabajadores || [], subInfo: r.subInfo || null };
   } catch (e) {
     if (!/Acci[oó]n desconocida/i.test(e.message || '')) throw e;
   }
@@ -1902,7 +1953,10 @@ async function cargarDatosProxySubcontratista() {
     llamarWebAppSubcontratista('listarDocumentos', { empresa: chequeo.empresa }),
     llamarWebAppSubcontratista('listarTrabajadores', { empresa: chequeo.empresa }),
   ]);
-  return { subcontratista: true, empresa: chequeo.empresa, documentosFilas: docs.filas, trabajadoresFilas: trab.filas };
+  // Versión vieja de la Web App (sin redesplegar todavía), sin "subInfo": el
+  // contacto laboral simplemente queda "Sin registrar" hasta que se
+  // redespliegue — no bloquea el resto.
+  return { subcontratista: true, empresa: chequeo.empresa, documentosFilas: docs.filas, trabajadoresFilas: trab.filas, subInfo: null };
 }
 
 // Registra "actividad" de una cuenta subcontratista — a pedido del cliente,
@@ -2421,6 +2475,7 @@ async function cargarTodo(silencioso) {
       // ocupacionales por trabajador) — el proxy ya filtra server-side, así
       // que esta cuenta nunca recibe datos de otras empresas.
       allTrabajadores = r.trabajadoresFilas.map((fila,i) => rowToTrabajador(fila,i));
+      allSubcontratistas = allSubcontratistasDesdeProxy(r.empresa, r.subInfo);
       accesoDeterminado = true;
       if (!silencioso) splash(100, '¡Listo!'); else toast('Datos actualizados ✓', 'ok');
       return;
@@ -2452,6 +2507,7 @@ async function cargarTodo(silencioso) {
       userRole = 'subcontratista';
       allSubDocs = r.documentosFilas.map((fila,i) => rowToSubDoc(fila,i));
       allTrabajadores = r.trabajadoresFilas.map((fila,i) => rowToTrabajador(fila,i));
+      allSubcontratistas = allSubcontratistasDesdeProxy(r.empresa, r.subInfo);
       accesoDeterminado = true;
       if (!silencioso) splash(100, '¡Listo!'); else toast('Datos actualizados ✓', 'ok');
       return;
@@ -2486,7 +2542,7 @@ async function cargarTodo(silencioso) {
 
     if (miEmpresaSubcontratista) {
       const [subs, docs, trab] = await fetchSheetsBatch([
-        `'${CONFIG.SHEET_SUBCONTRATISTAS}'!A2:B20000`,
+        `'${CONFIG.SHEET_SUBCONTRATISTAS}'!A2:E20000`,
         `'${CONFIG.SHEET_SUBCONTRATISTAS_DOCS}'!A2:K20000`,
         `'${CONFIG.SHEET_TRABAJADORES}'!A2:AG20000`,
       ]);
@@ -2513,7 +2569,7 @@ async function cargarTodo(silencioso) {
       `'${CONFIG.SHEET_INVESTIGACIONES}'!A2:AT20000`,
       `'${CONFIG.SHEET_HCR}'!A2:V20000`,
       `'${CONFIG.SHEET_DIAT}'!A2:BA20000`,
-      `'${CONFIG.SHEET_SUBCONTRATISTAS}'!A2:B20000`,
+      `'${CONFIG.SHEET_SUBCONTRATISTAS}'!A2:E20000`,
       `'${CONFIG.SHEET_SUBCONTRATISTAS_DOCS}'!A2:K20000`,
       `'${CONFIG.SHEET_PROGRAMA_PERSONALIZADO}'!A2:L40000`,
       `'${CONFIG.SHEET_MIPER_ARCHIVO}'!A2:F5000`,
@@ -2637,7 +2693,8 @@ function rowToUsuario(r, i) {
     nombre: r[2]||'', empresa: r[3]||'', conexion: r[4]||'' };
 }
 function rowToSubcontratista(r, i) {
-  return { fila: i+2, empresa: r[0]||'', fechaAlta: r[1]||'', rut: r[2]||'' };
+  return { fila: i+2, empresa: r[0]||'', fechaAlta: r[1]||'', rut: r[2]||'',
+    correoContacto: r[3]||'', telefonoContacto: r[4]||'' };
 }
 function rowToSubDoc(r, i) {
   return { fila: i+2, empresa: r[0]||'', categoria: r[1]||'', item: r[2]||'', periodo: r[3]||'',
@@ -6403,8 +6460,46 @@ async function editarRutSubcontratista(empresa) {
     abrirDetalleSubcontratista(empresa);
   } catch (e) { toast(e.message, 'error'); }
 }
+// Correo y teléfono de contacto para la documentación laboral (no es un
+// correo de acceso a la app, solo un dato de contacto) — a diferencia del
+// RUT, lo puede editar tanto el admin como la propia cuenta subcontratista.
+// Columnas D/E de SUBCONTRATISTAS (ver rowToSubcontratista).
+async function editarContactoLaboralSubcontratista(empresa) {
+  if (bloquearSiViewer()) return;
+  const sub = allSubcontratistas.find(s => normalizarEmpresa(s.empresa) === normalizarEmpresa(empresa));
+  if (!sub) return;
+  const correo = prompt('Correo de contacto (empresa o área encargada):', sub.correoContacto || '');
+  if (correo === null) return;
+  const telefono = prompt('Teléfono de contacto:', sub.telefonoContacto || '');
+  if (telefono === null) return;
+  try {
+    if (subcontratistaUsaProxy) {
+      // Sin acceso directo al Sheet: la propia cuenta subcontratista pide a
+      // la Web App que resuelva la fila por nombre de empresa (ver
+      // actualizarContactoLaboral en APPS_SCRIPT_WEBAPP_SUBCONTRATISTAS.js).
+      await llamarWebAppSubcontratista('actualizarContactoLaboral', { empresa, correo: correo.trim(), telefono: telefono.trim() });
+    } else {
+      await actualizarRangoSheet(`'${CONFIG.SHEET_SUBCONTRATISTAS}'!D${sub.fila}:E${sub.fila}`, [[correo.trim(), telefono.trim()]]);
+    }
+    toast('Contacto actualizado ✓', 'ok');
+    await cargarTodo(true);
+    if (miEmpresaSubcontratista) mostrarModoSubcontratista(empresa); else abrirDetalleSubcontratista(empresa);
+  } catch (e) { toast(e.message, 'error'); }
+}
 let empresaSubcontratistaActual = null;
 let mesControlSubcontratista = new Date().toISOString().slice(0,7);
+// Qué pestaña del detalle de Subcontratistas está visible — "prevencion"
+// (todo lo de siempre) o "laboral" (ver renderDocumentacionLaboralHTML),
+// dos módulos aparte a pedido del cliente (documentación de prevención de
+// riesgos vs. documentación administrativa/RRHH de la empresa
+// subcontratista). Una sola variable global, no por empresa — mismo
+// criterio que mesControlSubcontratista: no hace falta que recuerde una
+// pestaña distinta por cada empresa, alcanza con la última elegida.
+let pestanaSubcontratista = 'prevencion';
+function cambiarPestanaSubcontratista(pestana, empresa, esRestringido) {
+  pestanaSubcontratista = pestana;
+  if (esRestringido) mostrarModoSubcontratista(empresa); else abrirDetalleSubcontratista(empresa);
+}
 
 // Cada vez que se sube un documento, se agrega un trabajador, etc., la
 // pantalla de Subcontratistas se vuelve a pintar ENTERA desde cero (para
@@ -6671,6 +6766,35 @@ function filaChecklistSubcontratista(empresa, categoria, item, periodo, nombreTr
 // trabajadores. Se muestra colapsado por trabajador.
 function claveDocTrabajador(t) { return t.rut || t.nombre; }
 function categoriaDocTrabajador(t) { return 'doctrab_' + claveDocTrabajador(t); }
+// Mismo criterio que categoriaDocTrabajador, para el checklist por
+// trabajador del módulo "Documentación laboral" (ver LABORAL_DOCS_TRABAJADOR)
+// — prefijo distinto para que nunca choque con el de Prevención.
+function categoriaLaboralTrabajador(t) { return 'laboraltrab_' + claveDocTrabajador(t); }
+// Checklist por trabajador del módulo "Documentación laboral" (ver
+// LABORAL_DOCS_TRABAJADOR/renderDocumentacionLaboralHTML) — mismo criterio
+// visual que bloqueDocTrabajador, pero más simple: acá no hay un ítem tipo
+// "carpeta" (como Protocolos Minsal) ni un espacio de "Otros documentos",
+// porque esta categoría es nueva (no hereda archivos viejos con Item vacío).
+function bloqueDocLaboralTrabajador(empresa, t) {
+  const categoria = categoriaLaboralTrabajador(t);
+  const subidos = contarSubidosSubcontratista(empresa, categoria, LABORAL_DOCS_TRABAJADOR, null);
+  return `
+    <div class="subcont-doctrab">
+      <div class="subcont-doctrab-head" onclick="this.parentElement.classList.toggle('abierto')">
+        <div class="subcont-doctrab-chevron"><svg viewBox="0 0 24 24" fill="none" style="width:14px;height:14px"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div class="subcont-row-body">
+          <div class="subcont-row-nombre">${esc(t.nombre)}</div>
+          <div class="subcont-row-fecha">${t.rut ? esc(t.rut) : ''}</div>
+        </div>
+        ${progresoBadgeSubcontratista(subidos, LABORAL_DOCS_TRABAJADOR.length)}
+      </div>
+      <div class="subcont-doctrab-body">
+        <div class="subcont-doctrab-inner">
+          ${LABORAL_DOCS_TRABAJADOR.map(item => filaChecklistSubcontratista(empresa, categoria, item, null, t.nombre)).join('')}
+        </div>
+      </div>
+    </div>`;
+}
 // Categoría propia (no "doctrab_<rut>" normal) para los protocolos Minsal
 // de este trabajador — así un protocolo escrito a mano nunca puede chocar
 // por nombre con alguno de los otros 17 ítems fijos del checklist.
@@ -6822,7 +6946,78 @@ function chipSeccionSubcontratista(icono) {
   return `<div class="subcont-section-icon">${ic(icono, 16)}</div>`;
 }
 
+// Dos módulos aparte dentro del mismo detalle de empresa, a pedido del
+// cliente: "Prevención" (todo lo de siempre, sin cambios) y "Documentación
+// laboral" (ver renderDocumentacionLaboralHTML) — administrativa/RRHH de la
+// empresa subcontratista, no de prevención de riesgos. Una sola pestaña
+// visible a la vez (ver pestanaSubcontratista) para no mezclar ambos
+// checklists en una sola pantalla larguísima.
+function tabsSubcontratista(empresa, esRestringido) {
+  return `
+    <div class="subcont-tabs">
+      <button type="button" class="subcont-tab${pestanaSubcontratista !== 'laboral' ? ' active' : ''}" onclick="cambiarPestanaSubcontratista('prevencion','${esc(empresa)}',${esRestringido})">Prevención</button>
+      <button type="button" class="subcont-tab${pestanaSubcontratista === 'laboral' ? ' active' : ''}" onclick="cambiarPestanaSubcontratista('laboral','${esc(empresa)}',${esRestringido})">Documentación laboral</button>
+    </div>`;
+}
+// A. Documentación de ingreso (una sola vez, sin período — ver
+// LABORAL_INGRESO_CONTABILIDAD/LABORAL_INGRESO_RRHH_EMPRESA/
+// LABORAL_DOCS_TRABAJADOR) + B. Documentación mensual (se repite por
+// período, ver LABORAL_MENSUAL) — mismas categorías/checklist que el resto
+// del módulo Subcontratistas (filaChecklistSubcontratista,
+// progresoBadgeSubcontratista), solo que en categorías "laboral_..." propias
+// para no mezclarse nunca con el checklist de Prevención.
+function renderDocumentacionLaboralHTML(empresa, esRestringido) {
+  const sub = allSubcontratistas.find(s => normalizarEmpresa(s.empresa) === normalizarEmpresa(empresa));
+  const subidosContabilidad = contarSubidosSubcontratista(empresa, 'laboral_empresa', LABORAL_INGRESO_CONTABILIDAD, null);
+  const subidosRrhhEmpresa = contarSubidosSubcontratista(empresa, 'laboral_empresa', LABORAL_INGRESO_RRHH_EMPRESA, null);
+  const subidosMensualLaboral = contarSubidosSubcontratista(empresa, 'laboral_mensual', LABORAL_MENSUAL, mesControlSubcontratista);
+  const trabajadoresEmpresa = allTrabajadores.filter(t => normalizarEmpresa(t.empresa) === normalizarEmpresa(empresa) && t.estado === 'Activo');
+  return `
+    <div class="subcont-section">
+      <div class="subcont-section-head">
+        ${chipSeccionSubcontratista('carpeta')}
+        <div class="subcont-section-title">A. Documentación de ingreso — Contabilidad y administración</div>
+        ${progresoBadgeSubcontratista(subidosContabilidad, LABORAL_INGRESO_CONTABILIDAD.length)}
+      </div>
+      ${LABORAL_INGRESO_CONTABILIDAD.map(item => filaChecklistSubcontratista(empresa, 'laboral_empresa', item, null)).join('')}
+      <div class="subcont-rut-row" style="margin-top:12px;margin-bottom:0;">
+        <span>Correo y teléfono de contacto (empresa o área encargada): <b>${sub && (sub.correoContacto || sub.telefonoContacto) ? `${esc(sub.correoContacto || '—')}${sub.telefonoContacto ? ' · ' + esc(sub.telefonoContacto) : ''}` : 'Sin registrar'}</b></span>
+        ${!esViewer() ? `<button type="button" class="action-btn" style="width:auto;margin:0;" onclick="editarContactoLaboralSubcontratista('${esc(empresa)}')">${sub && (sub.correoContacto || sub.telefonoContacto) ? 'Editar' : 'Agregar'}</button>` : ''}
+      </div>
+    </div>
+
+    <div class="subcont-section">
+      <div class="subcont-section-head">
+        ${chipSeccionSubcontratista('trabajadores')}
+        <div class="subcont-section-title">A. Documentación de ingreso — RRHH</div>
+        ${progresoBadgeSubcontratista(subidosRrhhEmpresa, LABORAL_INGRESO_RRHH_EMPRESA.length)}
+      </div>
+      ${LABORAL_INGRESO_RRHH_EMPRESA.map(item => filaChecklistSubcontratista(empresa, 'laboral_empresa', item, null)).join('')}
+      <div class="subcont-row-nombre" style="margin-top:16px;font-size:12px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.02em;">Por trabajador</div>
+      ${trabajadoresEmpresa.length
+        ? trabajadoresEmpresa.map(t => bloqueDocLaboralTrabajador(empresa, t)).join('')
+        : '<div class="empty-sub" style="padding:8px 0;">Sin trabajadores asociados a esta empresa todavía</div>'}
+    </div>
+
+    <div class="subcont-section">
+      <div class="subcont-section-head">
+        ${chipSeccionSubcontratista('inspecciones')}
+        <div class="subcont-section-title">B. Documentación mensual — RRHH</div>
+        ${progresoBadgeSubcontratista(subidosMensualLaboral, LABORAL_MENSUAL.length)}
+      </div>
+      <div class="subcont-mes-picker">
+        <svg viewBox="0 0 24 24" fill="none" style="width:16px;height:16px;color:var(--ink-soft);flex-shrink:0"><path d="M4 21V8l8-5 8 5v13" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M4 11h16" stroke="currentColor" stroke-width="1.5"/></svg>
+        <input type="month" value="${mesControlSubcontratista}" onchange="onCambioMesSubcontratista(this.value,'${esc(empresa)}',${esRestringido})">
+      </div>
+      ${LABORAL_MENSUAL.map(item => filaChecklistSubcontratista(empresa, 'laboral_mensual', item, mesControlSubcontratista)).join('')}
+    </div>
+  `;
+}
+
 function renderSubcontratistaDetalleHTML(empresa, esRestringido) {
+  const tabs = tabsSubcontratista(empresa, esRestringido);
+  if (pestanaSubcontratista === 'laboral') return tabs + renderDocumentacionLaboralHTML(empresa, esRestringido);
+
   const correos = allUsuarios.filter(u => normalizarEmpresa(u.empresa) === normalizarEmpresa(empresa) && u.rol === 'subcontratista');
   const herramientas = docsSubcontratista(empresa, 'herramientas').slice().reverse();
   const procedimientosCriticos = docsProcedimientosCriticos(empresa);
@@ -6831,7 +7026,7 @@ function renderSubcontratistaDetalleHTML(empresa, esRestringido) {
   const trabajadoresEmpresa = allTrabajadores.filter(t => normalizarEmpresa(t.empresa) === normalizarEmpresa(empresa) && t.estado === 'Activo');
 
   const sub = allSubcontratistas.find(s => normalizarEmpresa(s.empresa) === normalizarEmpresa(empresa));
-  return `
+  return tabs + `
     ${esRestringido ? '' : `
     <div class="subcont-rut-row">
       <span>RUT empresa: <b>${sub && sub.rut ? esc(sub.rut) : 'Sin registrar'}</b></span>

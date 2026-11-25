@@ -978,6 +978,20 @@ body.is-offline #app { padding-top: 30px; }
 /* .action-btn también se usa en enlaces <a> (ej. abrir Drive/Sheets). */
 a.action-btn { text-decoration: none; }
 
+/* ── Pestañas "Prevención" / "Documentación laboral" arriba del detalle de
+   Subcontratistas (ver tabsSubcontratista/renderSubcontratistaDetalleHTML
+   en app.js) — mismo lenguaje visual que .chip (píldora, se marca sólida al
+   estar activa), pero ocupando el ancho completo entre las dos. ── */
+.subcont-tabs { display: flex; gap: 8px; margin-bottom: 14px; }
+.subcont-tab {
+  flex: 1; padding: 10px 6px; border-radius: var(--radius-md);
+  border: 1.5px solid var(--line); background: #fff; color: var(--ink-soft);
+  font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;
+  text-align: center;
+}
+.subcont-tab.active { background: var(--accent); color: #fff; border-color: var(--accent); box-shadow: 0 3px 8px rgba(var(--accent-rgb),0.3); }
+.subcont-tab:active:not(.active) { background: var(--neutral-soft); }
+
 .subcont-rut-row {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
   font-size: 13px; color: var(--ink); margin-bottom: 10px;

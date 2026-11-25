@@ -135,6 +135,7 @@ function doPost(e) {
     if (accion === 'notificarContacto') return respuesta(notificarContacto(body.correoDestino, body.empresa));
     if (accion === 'notificarRechazoDocumento') return respuesta(notificarRechazoDocumento(body.empresa, body.item, body.motivo));
     if (accion === 'notificarAprobacionDocumento') return respuesta(notificarAprobacionDocumento(body.empresa, body.item));
+    if (accion === 'actualizarContactoLaboral') return respuesta(actualizarContactoLaboral(correo, body));
     return respuesta({ error: 'Acción desconocida: ' + accion });
   } catch (err) {
     return respuesta({ error: String(err.message || err) });
@@ -281,6 +282,22 @@ function listarTrabajadores(correo, empresa) {
 // todavía no se redesplegó esta versión, la app (ver
 // cargarDatosProxySubcontratista en app.js) cae sola al camino viejo de 3
 // llamadas — no hace falta coordinar el despliegue con nada más.
+// RUT/correo/teléfono de contacto de la empresa (columnas C/D/E de
+// SUBCONTRATISTAS — ver rowToSubcontratista en app.js) — se incluye en
+// cargarInicial para que el módulo "Documentación laboral" de una cuenta
+// proxy (sin acceso directo al Sheet) también pueda mostrar y editar el
+// contacto (ver actualizarContactoLaboral más abajo y
+// editarContactoLaboralSubcontratista en app.js).
+function buscarSubInfo(empresa) {
+  const datos = hojaSubcontratistas().getDataRange().getValues();
+  for (let i = 1; i < datos.length; i++) {
+    if (normalizarEmpresa(datos[i][0]) === normalizarEmpresa(empresa)) {
+      return { rut: datos[i][2] || '', correoContacto: datos[i][3] || '', telefonoContacto: datos[i][4] || '' };
+    }
+  }
+  return { rut: '', correoContacto: '', telefonoContacto: '' };
+}
+
 function cargarInicial(correo) {
   const u = buscarUsuarioSubcontratista(correo);
   if (!u) return { subcontratista: false };
@@ -304,7 +321,7 @@ function cargarInicial(correo) {
     if (normalizarEmpresa(fila[4]) === normalizarEmpresa(empresa)) filasTrab.push(fila);
   }
 
-  return { subcontratista: true, empresa: empresa, documentos: filasDocs, trabajadores: filasTrab };
+  return { subcontratista: true, empresa: empresa, documentos: filasDocs, trabajadores: filasTrab, subInfo: buscarSubInfo(empresa) };
 }
 
 // Todos los correos dados de alta como "subcontratista" de una empresa —
@@ -467,6 +484,24 @@ function subirDocumento(correo, body) {
   ]);
 
   return { nombre: archivo.getName(), link: link };
+}
+
+// Correo/teléfono de contacto para documentación laboral (columnas D/E de
+// SUBCONTRATISTAS) — a diferencia del RUT (solo lo edita el admin, con
+// acceso directo al Sheet), este dato también lo puede editar la propia
+// cuenta subcontratista — ver editarContactoLaboralSubcontratista en
+// app.js, camino proxy.
+function actualizarContactoLaboral(correo, body) {
+  const empresa = body.empresa;
+  verificarPertenece(correo, empresa);
+  const datos = hojaSubcontratistas().getDataRange().getValues();
+  for (let i = 1; i < datos.length; i++) {
+    if (normalizarEmpresa(datos[i][0]) === normalizarEmpresa(empresa)) {
+      hojaSubcontratistas().getRange(i + 1, 4, 1, 2).setValues([[body.correo || '', body.telefono || '']]);
+      return { ok: true };
+    }
+  }
+  throw new Error('No se encontró la empresa "' + empresa + '" en SUBCONTRATISTAS');
 }
 
 // Agrega un trabajador nuevo a TRABAJADORES desde la vista restringida de
