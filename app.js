@@ -274,6 +274,9 @@ const PROTOCOLOS_MINSAL_SUGERIDOS = ['Radiación UV', 'MMC', 'PLANESI', 'TMRT', 
 // aparte para no repetir el string literal (ver IRL_POR_CARGO más abajo).
 const ITEM_IRL_ACTIVIDADES_TRABAJADOR = 'IRL — Actividades a desarrollar';
 const DOCS_TRABAJADOR = [
+  'Contrato de trabajo',
+  'Anexo de contrato (si corresponde)',
+  'Pacto de horas extraordinarias (si corresponde)',
   'Exámenes ocupacionales (altura física sobre 1,8 m o espacios confinados, según corresponda)',
   'Registro difusión Plan de gestión del riesgo y desastre',
   'Difusión Política SSO',
