@@ -277,6 +277,7 @@ const DOCS_TRABAJADOR = [
   'Contrato de trabajo',
   'Anexo de contrato (si corresponde)',
   'Pacto de horas extraordinarias (si corresponde)',
+  'Liquidaciones de sueldo',
   'Exámenes ocupacionales (altura física sobre 1,8 m o espacios confinados, según corresponda)',
   'Registro difusión Plan de gestión del riesgo y desastre',
   'Difusión Política SSO',
