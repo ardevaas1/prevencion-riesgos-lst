@@ -769,6 +769,31 @@ body.is-offline #app { padding-top: 30px; }
 .doc-name { font-size: 13px; font-weight: 500; }
 .doc-date { font-size: 11px; color: #aaa; margin-top: 1px; }
 
+/* ── Un archivo subido en Subcontratistas (ver filaArchivoSubcontratista en
+   app.js) — reemplaza al viejo .doc-row (una sola línea angosta con todo
+   junto). Con más de un archivo en el mismo ítem (ej. reemplazo tras un
+   rechazo) antes no se notaba dónde terminaba uno y empezaba el otro; acá
+   cada archivo es su propia tarjeta chica, separada de la siguiente. ── */
+.subcont-doc-card {
+  border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px;
+  margin-top: 8px;
+}
+.subcont-doc-card:first-child { margin-top: 0; }
+.subcont-doc-nombre {
+  display: flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 600;
+  color: #1565c0; text-decoration: none; word-break: break-word;
+}
+.subcont-doc-nombre svg { flex-shrink: 0; }
+.subcont-doc-meta { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+.subcont-doc-fecha { font-size: 11px; color: #999; }
+.subcont-doc-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.subcont-doc-actions:empty { display: none; }
+.subcont-doc-actions .badge { border: none; cursor: pointer; }
+.subcont-doc-card .subcont-motivo-rechazo {
+  margin-top: 8px; padding: 8px 10px; background: var(--neutral-soft); border-radius: 8px;
+  font-size: 12px; line-height: 1.4;
+}
+
 /* ── Módulo Subcontratistas: cada sección agrupada en su propia tarjeta,
    con estado visual (check verde/circulo vacío) e indicador de avance por
    sección — antes eran filas sueltas flotando directo sobre el fondo, sin

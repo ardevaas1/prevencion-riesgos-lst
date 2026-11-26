@@ -6893,6 +6893,32 @@ async function notificarAprobacionDocumento(empresa, descripcion) {
   try { await llamarWebAppSubcontratista('notificarAprobacionDocumento', { empresa, item: descripcion }); }
   catch (e) { console.warn('No se pudo notificar la aprobación a ' + empresa, e); }
 }
+// Una fila = un archivo subido a cualquier ítem de Subcontratistas (Carpeta
+// de empresa, Control mensual, checklist por trabajador, Documentación
+// laboral, Documentos generales, Herramientas, Protocolos Minsal...) — antes
+// cada archivo era una sola línea angosta (nombre + fecha + badges + Ver/
+// Aprobar/Rechazar/Eliminar, todo junto y con wrap) sin separación del
+// siguiente archivo del mismo ítem; con más de un archivo subido (ej. el
+// mismo documento re-subido tras un rechazo) no se entendía de un vistazo
+// qué fecha/estado/motivo correspondía a cuál. Ahora cada archivo es su
+// propia tarjeta: nombre arriba, fecha+estado en su propia línea, acciones
+// abajo separadas por una línea punteada, motivo/nota en su propio recuadro.
+// `label` es opcional — por defecto usa el nombre del archivo subido
+// (d.archivo); bloqueProtocolosMinsalTrabajador pasa d.item en su lugar
+// porque ahí el nombre que importa es el que escribió el subcontratista
+// (ej. "Radiación UV"), no el nombre del PDF.
+function filaArchivoSubcontratista(d, empresa, label) {
+  return `
+    <div class="subcont-doc-card">
+      <a class="subcont-doc-nombre" href="${esc(d.link)}" target="_blank">${ic('documento',13)} ${esc(label != null ? label : (d.archivo || 'Ver'))}</a>
+      <div class="subcont-doc-meta">
+        <span class="subcont-doc-fecha">${esc((d.fecha||'').split(',')[0] || d.fecha)}</span>
+        ${badgeEstadoDocSubcontratista(d)}
+      </div>
+      <div class="subcont-doc-actions">${accionesRevisionDocSubcontratista(d)}${botonEliminarDocSubcontratista(d, empresa)}</div>
+      ${motivoRechazoHtml(d)}${notaAprobacionHtml(d)}
+    </div>`;
+}
 // Cada ítem del checklist admite más de un archivo (ya no "uno vigente que
 // reemplaza al anterior"), pero mostrar todos los archivos y botones
 // siempre destapados para los 20 ítems de Carpeta de empresa se veía
@@ -6924,10 +6950,7 @@ function filaChecklistSubcontratista(empresa, categoria, item, periodo, nombreTr
       <div class="subcont-doctrab-body">
         <div class="subcont-doctrab-inner">
           ${notaExtraHtml || ''}
-          ${docs.map(d => `
-            <div class="doc-row"><a class="badge blue" href="${esc(d.link)}" target="_blank">${ic('documento',12)} ${esc(d.archivo || 'Ver')}</a><span style="font-size:11px;color:#888;">${esc((d.fecha||'').split(',')[0] || d.fecha)}</span>${badgeEstadoDocSubcontratista(d)}${accionesRevisionDocSubcontratista(d)}${botonEliminarDocSubcontratista(d, empresa)}</div>
-            ${motivoRechazoHtml(d)}${notaAprobacionHtml(d)}
-          `).join('')}
+          ${docs.map(d => filaArchivoSubcontratista(d, empresa)).join('')}
           ${!esViewer() ? `<label class="upload-label" style="margin-top:8px;">+ Subir archivo (puedes elegir varios)<input type="file" multiple style="display:none" onchange="onSubirDocSubcontratista(this,'${esc(empresa)}','${categoria}','${esc(item)}','${periodo||''}'${nombreTrabajador ? `,'${esc(nombreTrabajador)}'` : ''})"></label>` : ''}
         </div>
       </div>
@@ -7015,10 +7038,7 @@ function bloqueProtocolosMinsalTrabajador(empresa, categoriaMinsal, nombreTrabaj
       </div>
       <div class="subcont-doctrab-body">
         <div class="subcont-doctrab-inner">
-          ${docs.length ? docs.map(d => `
-            <div class="doc-row"><a class="badge blue" href="${esc(d.link)}" target="_blank">${ic('documento',12)} ${esc(d.item)}</a><span style="font-size:11px;color:#888;">${esc((d.fecha||'').split(',')[0] || d.fecha)}</span>${badgeEstadoDocSubcontratista(d)}${accionesRevisionDocSubcontratista(d)}${botonEliminarDocSubcontratista(d, empresa)}</div>
-            ${motivoRechazoHtml(d)}${notaAprobacionHtml(d)}
-          `).join('') : '<div class="empty-sub" style="padding:6px 0;">Sin protocolos subidos</div>'}
+          ${docs.length ? docs.map(d => filaArchivoSubcontratista(d, empresa, d.item)).join('') : '<div class="empty-sub" style="padding:6px 0;">Sin protocolos subidos</div>'}
           ${!esViewer() ? `
           <form onsubmit="onSubirProtocoloMinsalTrabajador(event,'${esc(empresa)}','${categoriaMinsal}','${esc(nombreTrabajador)}')" style="margin-top:10px;">
             <div class="form-group" style="margin-bottom:8px;">
@@ -7069,10 +7089,7 @@ function bloqueDocTrabajador(empresa, t) {
             : filaChecklistSubcontratista(empresa, categoria, item, null, t.nombre, item === ITEM_IRL_ACTIVIDADES_TRABAJADOR ? notaPlantillaIrl(t) : null)
           ).join('')}
           <div class="subcont-row-nombre" style="margin-top:16px;font-size:12px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.02em;">Otros documentos</div>
-          ${otros.length ? otros.map(d => `
-            <div class="doc-row"><a class="badge blue" href="${esc(d.link)}" target="_blank">${ic('documento',12)} ${esc(d.archivo)}</a><span style="font-size:11px;color:#888;">${esc((d.fecha||'').split(',')[0] || d.fecha)}</span>${badgeEstadoDocSubcontratista(d)}${accionesRevisionDocSubcontratista(d)}${botonEliminarDocSubcontratista(d, empresa)}</div>
-            ${motivoRechazoHtml(d)}${notaAprobacionHtml(d)}
-          `).join('') : '<div class="empty-sub" style="padding:6px 0;">Sin archivos adicionales</div>'}
+          ${otros.length ? otros.map(d => filaArchivoSubcontratista(d, empresa)).join('') : '<div class="empty-sub" style="padding:6px 0;">Sin archivos adicionales</div>'}
           ${!esViewer() ? `<label class="upload-label" style="margin-top:8px;">+ Subir archivo adicional (puedes elegir varios)<input type="file" multiple style="display:none" onchange="onSubirRespaldoTrabajador(this,'${esc(empresa)}','${categoria}','${esc(t.nombre)}')"></label>` : ''}
         </div>
       </div>
@@ -7093,10 +7110,7 @@ function filaGlobalSubcontratista(item, esRestringido, empresaEnPantalla) {
       </div>
       <div class="subcont-doctrab-body">
         <div class="subcont-doctrab-inner">
-          ${docs.map(d => `
-            <div class="doc-row"><a class="badge blue" href="${esc(d.link)}" target="_blank">${ic('documento',12)} ${esc(d.archivo || 'Ver')}</a><span style="font-size:11px;color:#888;">${esc((d.fecha||'').split(',')[0] || d.fecha)}</span>${badgeEstadoDocSubcontratista(d)}${accionesRevisionDocSubcontratista(d)}${botonEliminarDocSubcontratista(d, empresaEnPantalla)}</div>
-            ${motivoRechazoHtml(d)}${notaAprobacionHtml(d)}
-          `).join('')}
+          ${docs.map(d => filaArchivoSubcontratista(d, empresaEnPantalla)).join('')}
           ${!esRestringido && !esViewer() ? `<label class="upload-label" style="margin-top:8px;">+ Subir archivo (puedes elegir varios)<input type="file" multiple style="display:none" onchange="onSubirDocGlobalSubcontratista(this,'${esc(item)}')"></label>` : ''}
         </div>
       </div>
@@ -7315,10 +7329,7 @@ function renderSubcontratistaDetalleHTML(empresa, esRestringido) {
 
     <div class="subcont-section">
       <div class="subcont-section-head">${chipSeccionSubcontratista('obra')}<div class="subcont-section-title">Control de herramientas y extensiones eléctricas</div></div>
-      ${herramientas.length ? herramientas.map(d => `
-        <div class="doc-row"><a class="badge blue" href="${esc(d.link)}" target="_blank">${ic('documento',12)} ${esc(d.archivo)}</a><span style="font-size:11px;color:#888;">${esc((d.fecha||'').split(',')[0] || d.fecha)}</span>${badgeEstadoDocSubcontratista(d)}${accionesRevisionDocSubcontratista(d)}${botonEliminarDocSubcontratista(d, empresa)}</div>
-        ${motivoRechazoHtml(d)}${notaAprobacionHtml(d)}
-      `).join('') : '<div class="empty-sub" style="padding:8px 0;">Sin archivos subidos</div>'}
+      ${herramientas.length ? herramientas.map(d => filaArchivoSubcontratista(d, empresa)).join('') : '<div class="empty-sub" style="padding:8px 0;">Sin archivos subidos</div>'}
       ${!esViewer() ? `<label class="upload-label" style="margin-top:10px;">+ Subir archivo (puedes elegir varios)<input type="file" multiple style="display:none" onchange="onSubirDocSubcontratista(this,'${esc(empresa)}','herramientas','','')"></label>` : ''}
     </div>
 
