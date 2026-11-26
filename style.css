@@ -843,6 +843,40 @@ body.is-offline #app { padding-top: 30px; }
    motivoRechazoHtml en app.js). */
 .subcont-motivo-rechazo { font-size: 11px; color: #c62828; margin-top: 3px; }
 
+/* ── Procedimientos de Trabajo Seguro — Riesgos Críticos: a diferencia del
+   resto del detalle de Subcontratistas, acá cada fila muestra TODAS sus
+   acciones siempre visibles (no es un .subcont-doctrab colapsable, puede
+   haber muchos procedimientos con nombre libre) — con el badge de estado
+   compitiendo en la misma línea que Ver/Aprobar/Rechazar/Eliminar se veía
+   muy apretado. Cada procedimiento pasa a ser su propia tarjeta, con la
+   fila de acciones separada abajo por una línea punteada. ── */
+.subcont-proc-card {
+  border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px;
+  margin-bottom: 12px;
+}
+.subcont-proc-card:last-child { margin-bottom: 0; }
+.subcont-proc-top { display: flex; align-items: flex-start; gap: 12px; }
+.subcont-proc-top .subcont-row-icon { width: 36px; height: 36px; flex-shrink: 0; }
+.subcont-proc-top .subcont-row-icon svg { width: 18px !important; height: 18px !important; }
+.subcont-proc-info { flex: 1; min-width: 0; padding-top: 2px; }
+.subcont-proc-nombre { font-weight: 700; font-size: 15px; color: var(--ink); line-height: 1.35; }
+.subcont-proc-fecha { font-size: 12px; color: #999; margin-top: 3px; }
+.subcont-proc-estado { flex-shrink: 0; }
+.subcont-proc-estado .badge { font-size: 12px; padding: 5px 11px; }
+.subcont-proc-actions {
+  display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px;
+  padding-top: 12px; border-top: 1px dashed #eee;
+}
+.subcont-proc-actions .badge {
+  font-size: 12.5px; padding: 7px 13px; border: none; cursor: pointer;
+}
+.subcont-proc-motivo-wrap:empty { display: none; }
+.subcont-proc-motivo-wrap .subcont-motivo-rechazo {
+  margin-top: 12px; padding: 10px 12px; background: var(--neutral-soft); border-radius: 10px;
+  font-size: 12.5px; line-height: 1.4;
+}
+.subcont-proc-motivo-wrap .subcont-motivo-rechazo + .subcont-motivo-rechazo { margin-top: 8px; }
+
 /* ── Bloque colapsable reutilizado en varios lados del módulo
    Subcontratistas (Documentación trabajadores, ítems de Carpeta de
    empresa/Control mensual, Reglamento — ver bloqueDocTrabajador,

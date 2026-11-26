@@ -7261,20 +7261,22 @@ function renderSubcontratistaDetalleHTML(empresa, esRestringido) {
         <span class="subcont-progress${procedimientosCriticos.length ? ' completo' : ''}">${procedimientosCriticos.length}</span>
       </div>
       ${procedimientosCriticos.length ? procedimientosCriticos.map(d => `
-        <div class="subcont-row">
-          ${iconoEstadoDoc(true, d.estado === 'Rechazado')}
-          <div class="subcont-row-body">
-            <div class="subcont-row-nombre">${esc(d.item)}</div>
-            <div class="subcont-row-fecha">Subido ${esc((d.fecha||'').split(',')[0] || d.fecha)}</div>
+        <div class="subcont-proc-card">
+          <div class="subcont-proc-top">
+            ${iconoEstadoDoc(true, d.estado === 'Rechazado')}
+            <div class="subcont-proc-info">
+              <div class="subcont-proc-nombre">${esc(d.item)}</div>
+              <div class="subcont-proc-fecha">Subido ${esc((d.fecha||'').split(',')[0] || d.fecha)}</div>
+            </div>
+            <div class="subcont-proc-estado">${badgeEstadoDocSubcontratista(d)}</div>
           </div>
-          <div class="subcont-row-actions">
-            ${badgeEstadoDocSubcontratista(d)}
+          <div class="subcont-proc-actions">
             <a class="badge blue" href="${esc(d.link)}" target="_blank">${ic('documento',12)} ${esc(d.archivo || 'Ver')}</a>
             ${accionesRevisionDocSubcontratista(d)}
             ${botonEliminarDocSubcontratista(d, empresa)}
           </div>
+          <div class="subcont-proc-motivo-wrap">${motivoRechazoHtml(d)}${notaAprobacionHtml(d)}</div>
         </div>
-        ${motivoRechazoHtml(d)}${notaAprobacionHtml(d)}
       `).join('') : '<div class="empty-sub" style="padding:8px 0;">Sin procedimientos subidos</div>'}
       ${!esViewer() ? `
       <form onsubmit="onSubirProcedimientoCritico(event,'${esc(empresa)}')" style="margin-top:10px;">
