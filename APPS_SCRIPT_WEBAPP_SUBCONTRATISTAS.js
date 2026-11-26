@@ -136,6 +136,11 @@ function doPost(e) {
     if (accion === 'notificarRechazoDocumento') return respuesta(notificarRechazoDocumento(body.empresa, body.item, body.motivo));
     if (accion === 'notificarAprobacionDocumento') return respuesta(notificarAprobacionDocumento(body.empresa, body.item));
     if (accion === 'actualizarContactoLaboral') return respuesta(actualizarContactoLaboral(correo, body));
+    if (accion === 'aprobarDocumentoRrhh') return respuesta(aprobarDocumentoRrhh(correo, body));
+    if (accion === 'rechazarDocumentoRrhh') return respuesta(rechazarDocumentoRrhh(correo, body));
+    if (accion === 'editarMotivoRechazoRrhh') return respuesta(editarMotivoRechazoRrhh(correo, body));
+    if (accion === 'editarNotaAprobacionRrhh') return respuesta(editarNotaAprobacionRrhh(correo, body));
+    if (accion === 'eliminarDocumentoRrhh') return respuesta(eliminarDocumentoRrhh(correo, body));
     return respuesta({ error: 'Acción desconocida: ' + accion });
   } catch (err) {
     return respuesta({ error: String(err.message || err) });
@@ -193,6 +198,89 @@ function buscarUsuarioSubcontratista(correo) {
     }
   }
   return null;
+}
+// Mismo criterio que buscarUsuarioSubcontratista, para el rol "rrhh" — a
+// diferencia de ese rol, "rrhh" no pertenece a una sola Empresa (ver
+// renderDocumentacionLaboralHTML/mostrarModoRrhh en app.js: revisa
+// Documentación laboral de CUALQUIER empresa subcontratista), por eso acá
+// no hace falta devolver "empresa".
+function buscarUsuarioRrhh(correo) {
+  const datos = hojaUsuarios().getDataRange().getValues();
+  for (let i = 1; i < datos.length; i++) {
+    const fila = datos[i];
+    const filaCorreo = (fila[0] || '').toString().trim().toLowerCase();
+    const filaRol = (fila[1] || '').toString().trim().toLowerCase();
+    if (filaCorreo === correo && filaRol === 'rrhh') return { numeroFila: i + 1 };
+  }
+  return null;
+}
+function verificarEsRrhh(correo) {
+  const u = buscarUsuarioRrhh(correo);
+  if (!u) throw new Error('Esta cuenta no tiene permiso de RRHH');
+  return u;
+}
+// Mismo criterio que esCategoriaLaboral en app.js — identifica si un
+// documento pertenece al dominio "Documentación laboral" (las únicas
+// categorías que una cuenta rrhh puede tocar vía proxy — ver
+// aprobarDocumentoRrhh y las demás acciones *Rrhh más abajo).
+function esCategoriaLaboralGS(categoria) {
+  categoria = (categoria || '').toString();
+  return categoria === 'laboral_empresa' || categoria === 'laboral_mensual' || categoria.indexOf('laboraltrab_') === 0;
+}
+// Trae la fila completa de SUBCONTRATISTAS_DOCS por su número de fila real
+// del Sheet (1-based) y confirma que es un documento de Documentación
+// laboral — defensa en profundidad: aunque la app ya filtra qué le muestra
+// a una cuenta rrhh, este chequeo evita que alguien arme a mano un
+// llamado directo al endpoint para tocar un documento de Prevención.
+function obtenerDocLaboralOFallar(filaNum) {
+  const datos = hojaSubDocs().getDataRange().getValues();
+  const idx = filaNum - 1;
+  if (idx < 1 || idx >= datos.length) throw new Error('Documento no encontrado');
+  const row = datos[idx];
+  const categoria = (row[1] || '').toString();
+  if (!esCategoriaLaboralGS(categoria)) throw new Error('Esta cuenta no puede revisar este documento');
+  return { empresa: row[0] || '', categoria: categoria, item: row[2] || '', link: row[5] || '' };
+}
+// Extrae el ID de archivo de un link de Drive con el formato que arma
+// subirDocumento ("https://drive.google.com/file/d/<ID>/view").
+function idDriveDesdeLink(link) {
+  const m = (link || '').toString().match(/\/d\/([^/]+)/);
+  return m ? m[1] : null;
+}
+function aprobarDocumentoRrhh(correo, body) {
+  verificarEsRrhh(correo);
+  const info = obtenerDocLaboralOFallar(body.fila);
+  hojaSubDocs().getRange(body.fila, 9, 1, 2).setValues([['Aprobado', '']]);
+  try { notificarAprobacionDocumento(info.empresa, info.item || 'Documento'); } catch (e) { /* best-effort */ }
+  return { ok: true };
+}
+function rechazarDocumentoRrhh(correo, body) {
+  verificarEsRrhh(correo);
+  if (!body.motivo) throw new Error('Falta el motivo');
+  const info = obtenerDocLaboralOFallar(body.fila);
+  hojaSubDocs().getRange(body.fila, 9, 1, 2).setValues([['Rechazado', body.motivo]]);
+  try { notificarRechazoDocumento(info.empresa, info.item || 'Documento', body.motivo); } catch (e) { /* best-effort */ }
+  return { ok: true };
+}
+function editarMotivoRechazoRrhh(correo, body) {
+  verificarEsRrhh(correo);
+  obtenerDocLaboralOFallar(body.fila);
+  hojaSubDocs().getRange(body.fila, 10).setValue(body.motivo || '');
+  return { ok: true };
+}
+function editarNotaAprobacionRrhh(correo, body) {
+  verificarEsRrhh(correo);
+  obtenerDocLaboralOFallar(body.fila);
+  hojaSubDocs().getRange(body.fila, 11).setValue(body.nota || '');
+  return { ok: true };
+}
+function eliminarDocumentoRrhh(correo, body) {
+  verificarEsRrhh(correo);
+  const info = obtenerDocLaboralOFallar(body.fila);
+  hojaSubDocs().deleteRow(body.fila);
+  const id = idDriveDesdeLink(info.link);
+  if (id) { try { DriveApp.getFileById(id).setTrashed(true); } catch (e) { /* best-effort */ } }
+  return { ok: true };
 }
 
 // Deja registro de la última vez que esta cuenta se conectó (columna E de
@@ -300,28 +388,67 @@ function buscarSubInfo(empresa) {
 
 function cargarInicial(correo) {
   const u = buscarUsuarioSubcontratista(correo);
-  if (!u) return { subcontratista: false };
-  registrarConexion(u.numeroFila);
-  const empresa = u.empresa;
+  if (u) {
+    registrarConexion(u.numeroFila);
+    const empresa = u.empresa;
 
-  const datosDocs = hojaSubDocs().getDataRange().getValues();
-  const filasDocs = [];
-  for (let i = 1; i < datosDocs.length; i++) {
-    const fila = datosDocs[i];
-    if (normalizarEmpresa(fila[0]) === normalizarEmpresa(empresa) || fila[0] === '__GLOBAL__') {
-      fila[3] = normalizarPeriodo(fila[3]); // Periodo — ver normalizarPeriodo
-      filasDocs.push(fila);
+    const datosDocs = hojaSubDocs().getDataRange().getValues();
+    const filasDocs = [];
+    for (let i = 1; i < datosDocs.length; i++) {
+      const fila = datosDocs[i];
+      if (normalizarEmpresa(fila[0]) === normalizarEmpresa(empresa) || fila[0] === '__GLOBAL__') {
+        fila[3] = normalizarPeriodo(fila[3]); // Periodo — ver normalizarPeriodo
+        filasDocs.push(fila);
+      }
     }
+
+    const datosTrab = hojaTrabajadores().getDataRange().getValues();
+    const filasTrab = [];
+    for (let i = 1; i < datosTrab.length; i++) {
+      const fila = datosTrab[i];
+      if (normalizarEmpresa(fila[4]) === normalizarEmpresa(empresa)) filasTrab.push(fila);
+    }
+
+    return { subcontratista: true, modo: 'subcontratista', empresa: empresa, documentos: filasDocs, trabajadores: filasTrab, subInfo: buscarSubInfo(empresa) };
   }
 
-  const datosTrab = hojaTrabajadores().getDataRange().getValues();
-  const filasTrab = [];
-  for (let i = 1; i < datosTrab.length; i++) {
-    const fila = datosTrab[i];
-    if (normalizarEmpresa(fila[4]) === normalizarEmpresa(empresa)) filasTrab.push(fila);
+  // Cuenta "rrhh" (ver buscarUsuarioRrhh) — a diferencia de subcontratista,
+  // no pertenece a una sola empresa: necesita TODAS las empresas (para el
+  // listado de mostrarModoRrhh en app.js), TODOS los documentos de
+  // Documentación laboral de CUALQUIER empresa (esCategoriaLaboralGS) y
+  // TODOS los trabajadores activos (para el checklist por trabajador de
+  // cada empresa). A cada documento se le agrega al final su número de
+  // fila REAL del Sheet (no alcanza con la posición en este array filtrado,
+  // a diferencia del camino de subcontratista de arriba, porque acá SÍ hace
+  // falta para poder aprobar/rechazar/eliminar — ver rowToSubDocProxyRrhh y
+  // aprobarDocumentoRrhh/rechazarDocumentoRrhh/eliminarDocumentoRrhh).
+  const uR = buscarUsuarioRrhh(correo);
+  if (uR) {
+    registrarConexion(uR.numeroFila);
+
+    const datosSubs = hojaSubcontratistas().getDataRange().getValues();
+    const filasSubs = datosSubs.slice(1);
+
+    const datosDocs = hojaSubDocs().getDataRange().getValues();
+    const filasDocsLaboral = [];
+    for (let i = 1; i < datosDocs.length; i++) {
+      const fila = datosDocs[i];
+      const categoria = (fila[1] || '').toString();
+      if (esCategoriaLaboralGS(categoria)) {
+        const copia = fila.slice();
+        copia[3] = normalizarPeriodo(copia[3]);
+        copia.push(i + 1); // número de fila real del Sheet (1-based)
+        filasDocsLaboral.push(copia);
+      }
+    }
+
+    const datosTrab = hojaTrabajadores().getDataRange().getValues();
+    const filasTrab = datosTrab.slice(1);
+
+    return { subcontratista: false, modo: 'rrhh', subcontratistas: filasSubs, documentos: filasDocsLaboral, trabajadores: filasTrab };
   }
 
-  return { subcontratista: true, empresa: empresa, documentos: filasDocs, trabajadores: filasTrab, subInfo: buscarSubInfo(empresa) };
+  return { subcontratista: false };
 }
 
 // Todos los correos dados de alta como "subcontratista" de una empresa —

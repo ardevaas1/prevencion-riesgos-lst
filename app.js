@@ -1974,11 +1974,22 @@ function allSubcontratistasDesdeProxy(empresa, subInfo) {
 async function cargarDatosProxySubcontratista() {
   try {
     const r = await llamarWebAppSubcontratista('cargarInicial', {});
+    // Cuenta "rrhh" sin acceso directo al Sheet (ver buscarUsuarioRrhh en
+    // APPS_SCRIPT_WEBAPP_SUBCONTRATISTAS.js) — a diferencia de
+    // subcontratista, trae TODAS las empresas y SOLO los documentos de
+    // Documentación laboral de cualquiera de ellas, cada uno con su número
+    // de fila real del Sheet ya incluido (ver rowToSubDocProxyRrhh).
+    if (r.modo === 'rrhh') {
+      return { modo: 'rrhh', subcontratistasFilas: r.subcontratistas || [], documentosFilas: r.documentos || [], trabajadoresFilas: r.trabajadores || [] };
+    }
     if (!r.subcontratista) return { subcontratista: false };
-    return { subcontratista: true, empresa: r.empresa, documentosFilas: r.documentos || [], trabajadoresFilas: r.trabajadores || [], subInfo: r.subInfo || null };
+    return { subcontratista: true, modo: 'subcontratista', empresa: r.empresa, documentosFilas: r.documentos || [], trabajadoresFilas: r.trabajadores || [], subInfo: r.subInfo || null };
   } catch (e) {
     if (!/Acci[oó]n desconocida/i.test(e.message || '')) throw e;
   }
+  // Camino viejo de respaldo (Web App sin redesplegar todavía): solo
+  // soporta cuentas subcontratista, no rrhh — una cuenta rrhh que llegue
+  // hasta acá simplemente no encuentra acceso hasta que se redespliegue.
   const chequeo = await llamarWebAppSubcontratista('verificarAcceso', {});
   if (!chequeo.subcontratista) return { subcontratista: false };
   const [docs, trab] = await Promise.all([
@@ -1988,7 +1999,7 @@ async function cargarDatosProxySubcontratista() {
   // Versión vieja de la Web App (sin redesplegar todavía), sin "subInfo": el
   // contacto laboral simplemente queda "Sin registrar" hasta que se
   // redespliegue — no bloquea el resto.
-  return { subcontratista: true, empresa: chequeo.empresa, documentosFilas: docs.filas, trabajadoresFilas: trab.filas, subInfo: null };
+  return { subcontratista: true, modo: 'subcontratista', empresa: chequeo.empresa, documentosFilas: docs.filas, trabajadoresFilas: trab.filas, subInfo: null };
 }
 
 // Registra "actividad" de una cuenta subcontratista — a pedido del cliente,
@@ -2496,6 +2507,16 @@ async function cargarTodo(silencioso) {
     // intento fallido cada vez — se va derecho por la Web App.
     if (subcontratistaUsaProxy) {
       const r = await cargarDatosProxySubcontratista();
+      if (r.modo === 'rrhh') {
+        userRole = 'rrhh';
+        miEmpresaSubcontratista = null;
+        allSubcontratistas = r.subcontratistasFilas.map((fila,i) => rowToSubcontratista(fila,i));
+        allSubDocs = r.documentosFilas.map(rowToSubDocProxyRrhh);
+        allTrabajadores = r.trabajadoresFilas.map((fila,i) => rowToTrabajador(fila,i));
+        accesoDeterminado = true;
+        if (!silencioso) splash(100, '¡Listo!'); else toast('Datos actualizados ✓', 'ok');
+        return;
+      }
       if (!r.subcontratista) {
         forzarCierreSesion('Tu cuenta (' + userEmail + ') ya no está autorizada para usar esta aplicación.', true);
         return;
@@ -2528,13 +2549,23 @@ async function cargarTodo(silencioso) {
       // de Editor — se verifica por ahí antes de darnos por vencidos.
       if (!CONFIG.SUBCONTRATISTAS_WEBAPP_URL) throw errAccesoDirecto;
       const r = await cargarDatosProxySubcontratista();
-      if (!r.subcontratista) throw errAccesoDirecto;
+      if (r.modo !== 'rrhh' && !r.subcontratista) throw errAccesoDirecto;
       subcontratistaUsaProxy = true;
       // Para que la PRÓXIMA carga de esta misma cuenta se salte el intento
       // de acceso directo (ver el inicio de arrancarApp) — guarda el correo,
       // no solo true/false, para no arrastrar el atajo a otra cuenta que
       // inicie sesión después en el mismo navegador.
       localStorage.setItem(PROXY_SUBCONTRATISTA_KEY, userEmail);
+      if (r.modo === 'rrhh') {
+        userRole = 'rrhh';
+        miEmpresaSubcontratista = null;
+        allSubcontratistas = r.subcontratistasFilas.map((fila,i) => rowToSubcontratista(fila,i));
+        allSubDocs = r.documentosFilas.map(rowToSubDocProxyRrhh);
+        allTrabajadores = r.trabajadoresFilas.map((fila,i) => rowToTrabajador(fila,i));
+        accesoDeterminado = true;
+        if (!silencioso) splash(100, '¡Listo!'); else toast('Datos actualizados ✓', 'ok');
+        return;
+      }
       miEmpresaSubcontratista = r.empresa;
       userRole = 'subcontratista';
       allSubDocs = r.documentosFilas.map((fila,i) => rowToSubDoc(fila,i));
@@ -2736,6 +2767,19 @@ function rowToSubcontratista(r, i) {
 }
 function rowToSubDoc(r, i) {
   return { fila: i+2, empresa: r[0]||'', categoria: r[1]||'', item: r[2]||'', periodo: r[3]||'',
+    archivo: r[4]||'', link: r[5]||'', fecha: r[6]||'', subidoPor: r[7]||'',
+    estado: r[8]||'', motivoRechazo: r[9]||'', nota: r[10]||'' };
+}
+// Mismo mapeo que rowToSubDoc, pero para los documentos que trae una cuenta
+// rrhh por el proxy (ver cargarInicial → modo "rrhh" en
+// APPS_SCRIPT_WEBAPP_SUBCONTRATISTAS.js): como ahí se filtra por categoría
+// (solo Documentación laboral), la posición DENTRO de este array ya no
+// coincide con la fila real del Sheet, así que el servidor manda esa fila
+// real como último elemento de cada fila — acá sí hace falta que sea
+// exacta, porque aprobar/rechazar/eliminar (ver aprobarDocSubcontratista y
+// las demás) la usan para identificar qué fila escribir.
+function rowToSubDocProxyRrhh(r) {
+  return { fila: r[11], empresa: r[0]||'', categoria: r[1]||'', item: r[2]||'', periodo: r[3]||'',
     archivo: r[4]||'', link: r[5]||'', fecha: r[6]||'', subidoPor: r[7]||'',
     estado: r[8]||'', motivoRechazo: r[9]||'', nota: r[10]||'' };
 }
@@ -6722,7 +6766,11 @@ async function editarMotivoRechazoDocSubcontratista(fila, motivoActual) {
   if (motivo === null) return;
   if (!motivo.trim()) { toast('Escribe un motivo', 'error'); return; }
   try {
-    await actualizarRangoSheet(`'${CONFIG.SHEET_SUBCONTRATISTAS_DOCS}'!J${fila}`, [[motivo.trim()]]);
+    if (subcontratistaUsaProxy) {
+      await llamarWebAppSubcontratista('editarMotivoRechazoRrhh', { fila, motivo: motivo.trim() });
+    } else {
+      await actualizarRangoSheet(`'${CONFIG.SHEET_SUBCONTRATISTAS_DOCS}'!J${fila}`, [[motivo.trim()]]);
+    }
     toast('Motivo actualizado ✓', 'ok');
     await cargarTodo(true);
     refrescarDetalleSubcontratista(doc.empresa);
@@ -6752,7 +6800,11 @@ async function editarNotaAprobacionDocSubcontratista(fila, notaActual) {
   const nota = prompt('Nota (visible solo para el equipo interno):', notaActual || '');
   if (nota === null) return;
   try {
-    await actualizarRangoSheet(`'${CONFIG.SHEET_SUBCONTRATISTAS_DOCS}'!K${fila}`, [[nota.trim()]]);
+    if (subcontratistaUsaProxy) {
+      await llamarWebAppSubcontratista('editarNotaAprobacionRrhh', { fila, nota: nota.trim() });
+    } else {
+      await actualizarRangoSheet(`'${CONFIG.SHEET_SUBCONTRATISTAS_DOCS}'!K${fila}`, [[nota.trim()]]);
+    }
     toast('Nota guardada ✓', 'ok');
     await cargarTodo(true);
     refrescarDetalleSubcontratista(doc.empresa);
@@ -6761,9 +6813,9 @@ async function editarNotaAprobacionDocSubcontratista(fila, notaActual) {
 // Aprobar/Rechazar un documento — separado por dominio (ver
 // puedeRevisarDocSubcontratista): un admin de Prevención solo revisa lo que
 // NO es Documentación laboral, RRHH solo revisa lo que SÍ lo es, y
-// superadmin revisa cualquiera. Nunca pasa por la Web App/proxy (ver
-// onEliminarDocSubcontratista): estas cuentas siempre tienen acceso directo
-// al Sheet.
+// superadmin revisa cualquiera. Un admin/superadmin siempre tiene acceso
+// directo al Sheet; una cuenta rrhh sin ese acceso pasa por la Web App
+// (ver aprobarDocumentoRrhh/rechazarDocumentoRrhh).
 function accionesRevisionDocSubcontratista(doc) {
   if (!doc || !puedeRevisarDocSubcontratista(doc)) return '';
   return `<button type="button" class="badge green" style="border:none;cursor:pointer;" onclick="aprobarDocSubcontratista(${doc.fila})">Aprobar</button>
@@ -6773,8 +6825,15 @@ async function aprobarDocSubcontratista(fila) {
   const doc = allSubDocs.find(d => d.fila === fila);
   if (!puedeRevisarDocSubcontratista(doc)) { toast('No tienes permiso para aprobar este documento', 'error'); return; }
   try {
-    await actualizarRangoSheet(`'${CONFIG.SHEET_SUBCONTRATISTAS_DOCS}'!I${fila}:J${fila}`, [['Aprobado', '']]);
-    if (doc) await notificarAprobacionDocumento(doc.empresa, descripcionDocSubcontratista(doc));
+    if (subcontratistaUsaProxy) {
+      // El servidor (Apps Script) ya manda el correo de aviso como parte de
+      // esta misma acción — ver aprobarDocumentoRrhh, no llamar de nuevo a
+      // notificarAprobacionDocumento acá o se duplicaría el correo.
+      await llamarWebAppSubcontratista('aprobarDocumentoRrhh', { fila });
+    } else {
+      await actualizarRangoSheet(`'${CONFIG.SHEET_SUBCONTRATISTAS_DOCS}'!I${fila}:J${fila}`, [['Aprobado', '']]);
+      if (doc) await notificarAprobacionDocumento(doc.empresa, descripcionDocSubcontratista(doc));
+    }
     toast('Documento aprobado ✓ — se avisó por correo a la empresa', 'ok');
     await cargarTodo(true);
     refrescarDetalleSubcontratista(doc.empresa);
@@ -6798,8 +6857,15 @@ async function rechazarDocSubcontratista(fila) {
   if (!motivo.trim()) { toast('Escribe un motivo', 'error'); return; }
   const motivoFinal = motivo.trim();
   try {
-    await actualizarRangoSheet(`'${CONFIG.SHEET_SUBCONTRATISTAS_DOCS}'!I${fila}:J${fila}`, [['Rechazado', motivoFinal]]);
-    if (doc) await notificarRechazoDocumento(doc.empresa, descripcionDocSubcontratista(doc), motivoFinal);
+    if (subcontratistaUsaProxy) {
+      // Mismo criterio que aprobarDocSubcontratista: el servidor ya manda
+      // el correo de aviso como parte de esta acción (ver
+      // rechazarDocumentoRrhh) — no duplicarlo acá.
+      await llamarWebAppSubcontratista('rechazarDocumentoRrhh', { fila, motivo: motivoFinal });
+    } else {
+      await actualizarRangoSheet(`'${CONFIG.SHEET_SUBCONTRATISTAS_DOCS}'!I${fila}:J${fila}`, [['Rechazado', motivoFinal]]);
+      if (doc) await notificarRechazoDocumento(doc.empresa, descripcionDocSubcontratista(doc), motivoFinal);
+    }
     toast('Documento rechazado', 'ok');
     await cargarTodo(true);
     refrescarDetalleSubcontratista(doc.empresa);
@@ -7638,23 +7704,28 @@ async function onSubirDocGlobalSubcontratista(inputEl, item) {
     if (empresaSubcontratistaActual) abrirDetalleSubcontratista(empresaSubcontratistaActual);
   } catch (e) { toast(e.message, 'error'); marcarSubiendoArchivo(inputEl, false); }
 }
-// Borra un documento subido en Subcontratistas — a propósito NO tiene
-// equivalente en la Web App de Apps Script (llamarWebAppSubcontratista):
-// solo lo puede usar quien pueda revisar ESE documento (ver
-// puedeRevisarDocSubcontratista — mismo criterio de dominio que
-// aprobar/rechazar), y esas cuentas siempre tienen acceso directo al
-// Sheet, nunca pasan por el proxy de cuentas restringidas.
+// Borra un documento subido en Subcontratistas — solo lo puede usar quien
+// pueda revisar ESE documento (ver puedeRevisarDocSubcontratista, mismo
+// criterio de dominio que aprobar/rechazar). Un admin/superadmin siempre
+// tiene acceso directo al Sheet; una cuenta rrhh sin ese acceso pasa por
+// la Web App (ver eliminarDocumentoRrhh en
+// APPS_SCRIPT_WEBAPP_SUBCONTRATISTAS.js), que de paso mueve el archivo a
+// la papelera de Drive del lado del servidor.
 async function onEliminarDocSubcontratista(fila, empresa) {
   const doc = allSubDocs.find(d => d.fila === fila);
   if (!puedeRevisarDocSubcontratista(doc)) { toast('No tienes permiso para eliminar este documento', 'error'); return; }
   if (!confirm('¿Eliminar este documento? No se puede deshacer.')) return;
   try {
-    await eliminarFilaSheet(CONFIG.SHEET_SUBCONTRATISTAS_DOCS, fila);
-    // Best-effort: si por lo que sea no se puede mover a la papelera de
-    // Drive (permiso, archivo ya borrado a mano, etc.) no importa — lo que
-    // de verdad saca el documento de la app es la fila del Sheet, ya
-    // borrada arriba.
-    if (doc && doc.link) trashArchivoDrive(doc.link).catch(() => {});
+    if (subcontratistaUsaProxy) {
+      await llamarWebAppSubcontratista('eliminarDocumentoRrhh', { fila });
+    } else {
+      await eliminarFilaSheet(CONFIG.SHEET_SUBCONTRATISTAS_DOCS, fila);
+      // Best-effort: si por lo que sea no se puede mover a la papelera de
+      // Drive (permiso, archivo ya borrado a mano, etc.) no importa — lo que
+      // de verdad saca el documento de la app es la fila del Sheet, ya
+      // borrada arriba.
+      if (doc && doc.link) trashArchivoDrive(doc.link).catch(() => {});
+    }
     toast('Documento eliminado ✓', 'ok');
     await cargarTodo(true);
     refrescarDetalleSubcontratista(empresa);
