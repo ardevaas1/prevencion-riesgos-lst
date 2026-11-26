@@ -6925,7 +6925,7 @@ function filaChecklistSubcontratista(empresa, categoria, item, periodo, nombreTr
         <div class="subcont-doctrab-inner">
           ${notaExtraHtml || ''}
           ${docs.map(d => `
-            <div class="doc-row"><a class="badge blue" href="${esc(d.link)}" target="_blank">${ic('documento',12)} Ver</a><span style="font-size:11px;color:#888;">${esc((d.fecha||'').split(',')[0] || d.fecha)}</span>${badgeEstadoDocSubcontratista(d)}${accionesRevisionDocSubcontratista(d)}${botonEliminarDocSubcontratista(d, empresa)}</div>
+            <div class="doc-row"><a class="badge blue" href="${esc(d.link)}" target="_blank">${ic('documento',12)} ${esc(d.archivo || 'Ver')}</a><span style="font-size:11px;color:#888;">${esc((d.fecha||'').split(',')[0] || d.fecha)}</span>${badgeEstadoDocSubcontratista(d)}${accionesRevisionDocSubcontratista(d)}${botonEliminarDocSubcontratista(d, empresa)}</div>
             ${motivoRechazoHtml(d)}${notaAprobacionHtml(d)}
           `).join('')}
           ${!esViewer() ? `<label class="upload-label" style="margin-top:8px;">+ Subir archivo (puedes elegir varios)<input type="file" multiple style="display:none" onchange="onSubirDocSubcontratista(this,'${esc(empresa)}','${categoria}','${esc(item)}','${periodo||''}'${nombreTrabajador ? `,'${esc(nombreTrabajador)}'` : ''})"></label>` : ''}
@@ -7094,7 +7094,7 @@ function filaGlobalSubcontratista(item, esRestringido, empresaEnPantalla) {
       <div class="subcont-doctrab-body">
         <div class="subcont-doctrab-inner">
           ${docs.map(d => `
-            <div class="doc-row"><a class="badge blue" href="${esc(d.link)}" target="_blank">${ic('documento',12)} Ver</a><span style="font-size:11px;color:#888;">${esc((d.fecha||'').split(',')[0] || d.fecha)}</span>${badgeEstadoDocSubcontratista(d)}${accionesRevisionDocSubcontratista(d)}${botonEliminarDocSubcontratista(d, empresaEnPantalla)}</div>
+            <div class="doc-row"><a class="badge blue" href="${esc(d.link)}" target="_blank">${ic('documento',12)} ${esc(d.archivo || 'Ver')}</a><span style="font-size:11px;color:#888;">${esc((d.fecha||'').split(',')[0] || d.fecha)}</span>${badgeEstadoDocSubcontratista(d)}${accionesRevisionDocSubcontratista(d)}${botonEliminarDocSubcontratista(d, empresaEnPantalla)}</div>
             ${motivoRechazoHtml(d)}${notaAprobacionHtml(d)}
           `).join('')}
           ${!esRestringido && !esViewer() ? `<label class="upload-label" style="margin-top:8px;">+ Subir archivo (puedes elegir varios)<input type="file" multiple style="display:none" onchange="onSubirDocGlobalSubcontratista(this,'${esc(item)}')"></label>` : ''}
@@ -7269,7 +7269,7 @@ function renderSubcontratistaDetalleHTML(empresa, esRestringido) {
           </div>
           <div class="subcont-row-actions">
             ${badgeEstadoDocSubcontratista(d)}
-            <a class="badge blue" href="${esc(d.link)}" target="_blank">${ic('documento',12)} Ver</a>
+            <a class="badge blue" href="${esc(d.link)}" target="_blank">${ic('documento',12)} ${esc(d.archivo || 'Ver')}</a>
             ${accionesRevisionDocSubcontratista(d)}
             ${botonEliminarDocSubcontratista(d, empresa)}
           </div>
