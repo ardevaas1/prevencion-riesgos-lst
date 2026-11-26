@@ -545,11 +545,42 @@ let userRole  = null;
 // mostrar (ver toggle de esViewer() en el render de cada pantalla) y como
 // última barrera dentro de cada función que efectivamente escribe datos
 // (bloquearSiViewer), por si algún botón quedara visible por error.
-function esViewer() { return userRole === 'viewer'; }
+// "rrhh" cuenta como solo-lectura PARA TODO ESTO (igual que "viewer"): su
+// único permiso de escritura es aprobar/rechazar/anotar la Documentación
+// laboral de Subcontratistas, que no pasa por acá — ver
+// puedeRevisarDocSubcontratista más abajo, que es un chequeo aparte.
+function esViewer() { return userRole === 'viewer' || userRole === 'rrhh'; }
 function bloquearSiViewer() {
   if (!esViewer()) return false;
   toast('Tu cuenta es de solo lectura', 'error');
   return true;
+}
+// "superadmin" (el dueño de la cuenta) puede todo lo que puede "admin" —
+// ver puedeRevisarDocSubcontratista para el único permiso que SÍ distingue
+// entre ambos (aprobar/rechazar Documentación laboral, reservado a
+// rrhh/superadmin).
+function esAdminCompleto() { return userRole === 'admin' || userRole === 'superadmin'; }
+// Categorías del módulo "Documentación laboral" (ver
+// LABORAL_INGRESO_CONTABILIDAD/LABORAL_INGRESO_RRHH_EMPRESA/LABORAL_MENSUAL/
+// categoriaLaboralTrabajador) — nunca empiezan igual que las de Prevención,
+// así que alcanza con el prefijo para distinguir el "dominio" de un
+// documento.
+function esCategoriaLaboral(categoria) {
+  categoria = categoria || '';
+  return categoria === 'laboral_empresa' || categoria === 'laboral_mensual' || categoria.indexOf('laboraltrab_') === 0;
+}
+// Quién puede aprobar/rechazar/anotar un documento de Subcontratistas — a
+// pedido del cliente, separado por "dominio" desde que existen dos equipos
+// distintos revisando: Prevención (rol "admin", ve todo MENOS Documentación
+// laboral) y RRHH (rol "rrhh", ve SOLO Documentación laboral) —
+// "superadmin" ve y revisa ambos dominios, es la única cuenta sin esta
+// restricción.
+function puedeRevisarDocSubcontratista(doc) {
+  if (!doc) return false;
+  if (userRole === 'superadmin') return true;
+  if (userRole === 'rrhh') return esCategoriaLaboral(doc.categoria);
+  if (userRole === 'admin') return !esCategoriaLaboral(doc.categoria);
+  return false;
 }
 
 // Si el correo logueado aparece en USUARIOS con Rol="subcontratista", queda
@@ -2515,14 +2546,20 @@ async function cargarTodo(silencioso) {
     allUsuarios = usuarios.map((r,i) => rowToUsuario(r,i));
     const cuenta = allUsuarios.find(u => u.correo === (userEmail||'').toLowerCase());
     // Sin fila en USUARIOS, o con una fila cuyo Rol no es ninguno de los tres
-    // reconocidos (admin/viewer/subcontratista) → ni siquiera entra. Un Rol
-    // vacío o mal escrito NO cae a viewer por defecto: se trata igual que no
-    // estar en la lista, porque el acceso (a cualquier nivel, incluido solo
-    // lectura) siempre tiene que ser una decisión a propósito, nunca algo que
-    // se herede por estar la fila ahí sin completar. Esto también aplica a un
-    // supervisor (Trabajadores.Es Supervisor) sin su propia fila acá — el
-    // filtro por obra no reemplaza estar en la lista de USUARIOS.
-    const ROLES_VALIDOS = ['admin', 'viewer', 'subcontratista'];
+    // reconocidos (admin/viewer/subcontratista/rrhh/superadmin) → ni siquiera
+    // entra. Un Rol vacío o mal escrito NO cae a viewer por defecto: se trata
+    // igual que no estar en la lista, porque el acceso (a cualquier nivel,
+    // incluido solo lectura) siempre tiene que ser una decisión a propósito,
+    // nunca algo que se herede por estar la fila ahí sin completar. Esto
+    // también aplica a un supervisor (Trabajadores.Es Supervisor) sin su
+    // propia fila acá — el filtro por obra no reemplaza estar en la lista de
+    // USUARIOS.
+    // "rrhh" (ej. Hugo) y "superadmin" son roles nuevos — ver esViewer,
+    // esAdminCompleto y puedeRevisarDocSubcontratista: "rrhh" solo puede
+    // aprobar/rechazar la Documentación laboral de Subcontratistas (el resto
+    // de la app le queda de solo lectura, igual que "viewer"); "superadmin"
+    // puede todo lo que puede "admin" más lo que puede "rrhh".
+    const ROLES_VALIDOS = ['admin', 'viewer', 'subcontratista', 'rrhh', 'superadmin'];
     if (!cuenta || !ROLES_VALIDOS.includes(cuenta.rol)) {
       forzarCierreSesion('Tu cuenta (' + userEmail + ') no está autorizada para usar esta aplicación.', true);
       return;
@@ -6573,11 +6610,15 @@ function iconoEstadoDoc(subido, hayRechazo) {
     ? '<svg viewBox="0 0 24 24" fill="none" style="width:14px;height:14px"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>'
     : '<svg viewBox="0 0 24 24" fill="none" style="width:8px;height:8px"><circle cx="12" cy="12" r="8" fill="currentColor"/></svg>'}</div>`;
 }
-// El botón "Eliminar" de un documento SOLO lo ve un admin (userRole ===
-// 'admin') — ni un viewer ni una cuenta subcontratista lo ven nunca, así el
+// El botón "Eliminar" de un documento SOLO lo ve un admin/superadmin — ni un
+// viewer, rrhh, ni una cuenta subcontratista lo ven nunca, así el
 // subcontratista puede subir/reemplazar lo suyo pero nunca borrar nada.
+// A diferencia de aprobar/rechazar, Eliminar NO está separado por dominio
+// (Prevención/Documentación laboral): no se pidió esa restricción y borrar
+// es mucho más riesgoso que solo revisar, así que se deja en manos de
+// cualquier admin/superadmin sea cual sea el documento.
 function botonEliminarDocSubcontratista(doc, empresa) {
-  if (!doc || userRole !== 'admin') return '';
+  if (!doc || !esAdminCompleto()) return '';
   return `<button type="button" class="badge red" style="border:none;cursor:pointer;" onclick="onEliminarDocSubcontratista(${doc.fila},'${esc(empresa)}')">Eliminar</button>`;
 }
 // Estado de revisión de un documento subido por el subcontratista — lo
@@ -6592,15 +6633,16 @@ function badgeEstadoDocSubcontratista(doc) {
 function motivoRechazoHtml(doc) {
   if (!doc || doc.estado !== 'Rechazado' || !doc.motivoRechazo) return '';
   return `<div class="subcont-motivo-rechazo">Motivo del rechazo: ${esc(doc.motivoRechazo)}
-    ${userRole === 'admin' ? ` <a href="javascript:void(0)" onclick="editarMotivoRechazoDocSubcontratista(${doc.fila},'${esc(doc.motivoRechazo).replace(/'/g, "\\'")}')" style="font-size:11px;">Editar</a>` : ''}</div>`;
+    ${puedeRevisarDocSubcontratista(doc) ? ` <a href="javascript:void(0)" onclick="editarMotivoRechazoDocSubcontratista(${doc.fila},'${esc(doc.motivoRechazo).replace(/'/g, "\\'")}')" style="font-size:11px;">Editar</a>` : ''}</div>`;
 }
 // Corrige el motivo de un rechazo YA hecho (ej. un error de tipeo) sin
 // tener que rechazar el documento de nuevo — eso reenviaría el correo de
 // aviso otra vez. Mismo criterio de acceso que rechazarDocSubcontratista
-// (solo admin); escribe directo en la columna J, sin tocar el Estado
-// (columna I, que ya es "Rechazado").
+// (ver puedeRevisarDocSubcontratista); escribe directo en la columna J, sin
+// tocar el Estado (columna I, que ya es "Rechazado").
 async function editarMotivoRechazoDocSubcontratista(fila, motivoActual) {
-  if (userRole !== 'admin') { toast('Solo un administrador puede editar el motivo', 'error'); return; }
+  const doc = allSubDocs.find(d => d.fila === fila);
+  if (!puedeRevisarDocSubcontratista(doc)) { toast('No tienes permiso para editar este motivo', 'error'); return; }
   const motivo = prompt('Editar motivo del rechazo:', motivoActual || '');
   if (motivo === null) return;
   if (!motivo.trim()) { toast('Escribe un motivo', 'error'); return; }
@@ -6617,10 +6659,12 @@ async function editarMotivoRechazoDocSubcontratista(fila, motivoActual) {
 // K de SUBCONTRATISTAS_DOCS, separada del motivo de rechazo (columna J)
 // para no mezclar los dos usos en la misma celda.
 function notaAprobacionHtml(doc) {
-  // Admin-only de punta a punta (no solo el link de editar): es una nota
-  // interna del equipo de prevención, no un aviso para la empresa
-  // subcontratista — por eso tampoco dispara ningún correo al guardarla.
-  if (!doc || doc.estado !== 'Aprobado' || userRole !== 'admin') return '';
+  // Visible/editable solo para quien puede revisar ESE documento (ver
+  // puedeRevisarDocSubcontratista) — es una nota interna del equipo que lo
+  // aprobó (Prevención o RRHH, según el dominio), no un aviso para la
+  // empresa subcontratista — por eso tampoco dispara ningún correo al
+  // guardarla.
+  if (!doc || doc.estado !== 'Aprobado' || !puedeRevisarDocSubcontratista(doc)) return '';
   if (!doc.nota) {
     return `<div class="subcont-motivo-rechazo" style="color:var(--ink-soft);"><a href="javascript:void(0)" onclick="editarNotaAprobacionDocSubcontratista(${doc.fila},'')" style="font-size:11px;">+ Agregar nota</a></div>`;
   }
@@ -6628,7 +6672,8 @@ function notaAprobacionHtml(doc) {
     <a href="javascript:void(0)" onclick="editarNotaAprobacionDocSubcontratista(${doc.fila},'${esc(doc.nota).replace(/'/g, "\\'")}')" style="font-size:11px;">Editar</a></div>`;
 }
 async function editarNotaAprobacionDocSubcontratista(fila, notaActual) {
-  if (userRole !== 'admin') { toast('Solo un administrador puede agregar una nota', 'error'); return; }
+  const doc = allSubDocs.find(d => d.fila === fila);
+  if (!puedeRevisarDocSubcontratista(doc)) { toast('No tienes permiso para agregar una nota', 'error'); return; }
   const nota = prompt('Nota (visible solo para el equipo interno):', notaActual || '');
   if (nota === null) return;
   try {
@@ -6638,18 +6683,20 @@ async function editarNotaAprobacionDocSubcontratista(fila, notaActual) {
     if (empresaSubcontratistaActual) abrirDetalleSubcontratista(empresaSubcontratistaActual);
   } catch (e) { toast(e.message, 'error'); }
 }
-// Aprobar/Rechazar un documento — SOLO lo ve un admin, mismo criterio que
-// botonEliminarDocSubcontratista. Nunca pasa por la Web App/proxy (ver
-// onEliminarDocSubcontratista): un admin siempre tiene acceso directo al
-// Sheet.
+// Aprobar/Rechazar un documento — separado por dominio (ver
+// puedeRevisarDocSubcontratista): un admin de Prevención solo revisa lo que
+// NO es Documentación laboral, RRHH solo revisa lo que SÍ lo es, y
+// superadmin revisa cualquiera. Nunca pasa por la Web App/proxy (ver
+// onEliminarDocSubcontratista): estas cuentas siempre tienen acceso directo
+// al Sheet.
 function accionesRevisionDocSubcontratista(doc) {
-  if (!doc || userRole !== 'admin') return '';
+  if (!doc || !puedeRevisarDocSubcontratista(doc)) return '';
   return `<button type="button" class="badge green" style="border:none;cursor:pointer;" onclick="aprobarDocSubcontratista(${doc.fila})">Aprobar</button>
     <button type="button" class="badge red" style="border:none;cursor:pointer;" onclick="rechazarDocSubcontratista(${doc.fila})">Rechazar</button>`;
 }
 async function aprobarDocSubcontratista(fila) {
-  if (userRole !== 'admin') { toast('Solo un administrador puede aprobar documentos', 'error'); return; }
   const doc = allSubDocs.find(d => d.fila === fila);
+  if (!puedeRevisarDocSubcontratista(doc)) { toast('No tienes permiso para aprobar este documento', 'error'); return; }
   try {
     await actualizarRangoSheet(`'${CONFIG.SHEET_SUBCONTRATISTAS_DOCS}'!I${fila}:J${fila}`, [['Aprobado', '']]);
     if (doc) await notificarAprobacionDocumento(doc.empresa, descripcionDocSubcontratista(doc));
@@ -6669,12 +6716,12 @@ function descripcionDocSubcontratista(doc) {
   return 'Documento';
 }
 async function rechazarDocSubcontratista(fila) {
-  if (userRole !== 'admin') { toast('Solo un administrador puede rechazar documentos', 'error'); return; }
+  const doc = allSubDocs.find(d => d.fila === fila);
+  if (!puedeRevisarDocSubcontratista(doc)) { toast('No tienes permiso para rechazar este documento', 'error'); return; }
   const motivo = prompt('¿Por qué se rechaza este documento?');
   if (motivo === null) return;
   if (!motivo.trim()) { toast('Escribe un motivo', 'error'); return; }
   const motivoFinal = motivo.trim();
-  const doc = allSubDocs.find(d => d.fila === fila);
   try {
     await actualizarRangoSheet(`'${CONFIG.SHEET_SUBCONTRATISTAS_DOCS}'!I${fila}:J${fila}`, [['Rechazado', motivoFinal]]);
     if (doc) await notificarRechazoDocumento(doc.empresa, descripcionDocSubcontratista(doc), motivoFinal);
@@ -6973,6 +7020,11 @@ function renderDocumentacionLaboralHTML(empresa, esRestringido) {
   const subidosMensualLaboral = contarSubidosSubcontratista(empresa, 'laboral_mensual', LABORAL_MENSUAL, mesControlSubcontratista);
   const trabajadoresEmpresa = allTrabajadores.filter(t => normalizarEmpresa(t.empresa) === normalizarEmpresa(empresa) && t.estado === 'Activo');
   return `
+    <div class="subcont-recordatorio">
+      ${ic('alerta',16)}
+      <div>El plazo para adjuntar la Documentación mensual (sección B) es hasta el día <b>15 de cada mes</b>. Ante cualquier consulta, escribe a <b>hcaniulef@lst.cl</b>.</div>
+    </div>
+
     <div class="subcont-section">
       <div class="subcont-section-head">
         ${chipSeccionSubcontratista('carpeta')}
@@ -7136,7 +7188,7 @@ function renderSubcontratistaDetalleHTML(empresa, esRestringido) {
         // correos están autorizados, no hace falta que vea cuándo se
         // conectó cada uno.
         let actividad = '';
-        if (userRole === 'admin') {
+        if (esAdminCompleto()) {
           const ultimo = ultimoDocDeCorreoSubcontratista(empresa, c.correo);
           actividad = `<div style="font-size:12px;color:var(--ink-soft);margin-top:2px;">
             Última conexión: ${c.conexion ? esc(c.conexion) : 'nunca'}
@@ -7513,10 +7565,10 @@ async function onSubirDocGlobalSubcontratista(inputEl, item) {
 }
 // Borra un documento subido en Subcontratistas — a propósito NO tiene
 // equivalente en la Web App de Apps Script (llamarWebAppSubcontratista):
-// solo lo puede usar un admin, y un admin siempre tiene acceso directo al
-// Sheet, nunca pasa por el proxy de cuentas restringidas.
+// solo lo puede usar un admin/superadmin, y esas cuentas siempre tienen
+// acceso directo al Sheet, nunca pasan por el proxy de cuentas restringidas.
 async function onEliminarDocSubcontratista(fila, empresa) {
-  if (userRole !== 'admin') { toast('Solo un administrador puede eliminar documentos', 'error'); return; }
+  if (!esAdminCompleto()) { toast('Solo un administrador puede eliminar documentos', 'error'); return; }
   const doc = allSubDocs.find(d => d.fila === fila);
   if (!confirm('¿Eliminar este documento? No se puede deshacer.')) return;
   try {
