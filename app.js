@@ -748,12 +748,13 @@ function forzarCierreSesion(mensaje, noAutorizada) {
   localStorage.removeItem(EMAIL_KEY);
   localStorage.removeItem(OBRA_ACTIVA_KEY);
   localStorage.removeItem(PROXY_SUBCONTRATISTA_KEY);
-  userEmail = null; userRole = null; miEmpresaSubcontratista = null; subcontratistaUsaProxy = false;
+  userEmail = null; userRole = null; miEmpresaSubcontratista = null; subcontratistaUsaProxy = false; empresaRrhhActual = null;
   obraActiva = null;
   document.getElementById('main').classList.add('hidden');
   document.getElementById('desktop-sidebar').classList.add('dt-oculto');
   document.getElementById('desktop-main').classList.add('dt-oculto');
   document.getElementById('subcontratista-root').classList.add('hidden');
+  document.getElementById('rrhh-root').classList.add('hidden');
   document.getElementById('splash').classList.add('hidden');
   mostrarLogin(mensaje, false);
   document.getElementById('login-btn').classList.toggle('hidden', !!noAutorizada);
@@ -6524,6 +6525,20 @@ async function editarContactoLaboralSubcontratista(empresa) {
   } catch (e) { toast(e.message, 'error'); }
 }
 let empresaSubcontratistaActual = null;
+// Repinta el detalle de una empresa subcontratista en el lugar correcto
+// según en qué "modo" está la cuenta logueada: el panel normal de admin
+// (abrirDetalleSubcontratista), la pantalla fija de la propia cuenta
+// subcontratista (mostrarModoSubcontratista) o la pantalla fija de RRHH
+// (mostrarModoRrhh, ver empresaRrhhActual más abajo) — las tres pintan el
+// mismo contenido (renderDocumentacionLaboralHTML/filaChecklistSubcontratista)
+// en un lugar distinto del DOM, así que cada acción que necesite refrescar
+// después de guardar (aprobar/rechazar/anotar/cambiar de mes) pasa por acá
+// en vez de repetir el if/else en cada función.
+function refrescarDetalleSubcontratista(empresa) {
+  if (userRole === 'rrhh') { mostrarModoRrhh(); return; }
+  if (miEmpresaSubcontratista) { mostrarModoSubcontratista(empresa); return; }
+  abrirDetalleSubcontratista(empresa);
+}
 let mesControlSubcontratista = new Date().toISOString().slice(0,7);
 // Qué pestaña del detalle de Subcontratistas está visible — "prevencion"
 // (todo lo de siempre) o "laboral" (ver renderDocumentacionLaboralHTML),
@@ -6584,6 +6599,67 @@ function mostrarModoSubcontratista(empresa) {
   document.getElementById('subcontratista-root-email-2').textContent = userEmail || '';
   body.innerHTML = renderSubcontratistaDetalleHTML(empresa, true);
   restaurarEstadoAbiertoSubcontratista(raiz, body, estado);
+}
+// ============================================================
+// MODO RRHH — pantalla fija y restringida (sin #main/sidebar, igual que
+// mostrarModoSubcontratista) para el rol "rrhh": a pedido del cliente, esa
+// cuenta no debe ver NADA MÁS de la app (ni Inicio, ni el resto de
+// módulos, ni la pestaña Prevención de cada empresa) — solo puede entrar a
+// la Documentación laboral de CUALQUIER empresa subcontratista para
+// aprobar/rechazar/anotar (ver puedeRevisarDocSubcontratista). A
+// diferencia del modo subcontratista (fijo a UNA empresa), acá primero se
+// elige la empresa de una lista — por eso hace falta un estado aparte
+// (empresaRrhhActual: null = lista, con valor = detalle de esa empresa).
+let empresaRrhhActual = null;
+function mostrarModoRrhh() {
+  const raiz = document.getElementById('rrhh-root');
+  const body = document.getElementById('rrhh-root-body');
+  const estado = capturarEstadoAbiertoSubcontratista(raiz, body);
+  raiz.classList.remove('hidden');
+  document.getElementById('rrhh-root-email').textContent = userEmail || '';
+  document.getElementById('rrhh-root-email-2').textContent = userEmail || '';
+  body.innerHTML = renderRrhhBodyHTML();
+  restaurarEstadoAbiertoSubcontratista(raiz, body, estado);
+}
+function abrirEmpresaRrhh(empresa) {
+  empresaRrhhActual = empresa;
+  mostrarModoRrhh();
+}
+function volverListaRrhh() {
+  empresaRrhhActual = null;
+  mostrarModoRrhh();
+}
+// Documentos de Documentación laboral sin revisar (ni Aprobado ni
+// Rechazado) de una empresa — para que RRHH vea de un vistazo, en el
+// listado, en qué empresas hay algo pendiente.
+function pendientesLaboralSubcontratista(empresa) {
+  return allSubDocs.filter(d => normalizarEmpresa(d.empresa) === normalizarEmpresa(empresa)
+    && esCategoriaLaboral(d.categoria) && d.estado !== 'Aprobado' && d.estado !== 'Rechazado').length;
+}
+function renderRrhhBodyHTML() {
+  if (empresaRrhhActual) {
+    const empresa = empresaRrhhActual;
+    return `
+      <button type="button" class="action-btn" style="margin-bottom:14px;" onclick="volverListaRrhh()">‹ Volver al listado</button>
+      <div class="sec-label" style="margin-top:0;">${esc(empresa)}</div>
+      ${renderDocumentacionLaboralHTML(empresa, true)}
+    `;
+  }
+  if (!allSubcontratistas.length) {
+    return '<div class="empty-sub">Sin subcontratistas registrados todavía</div>';
+  }
+  return allSubcontratistas.map(s => {
+    const pendientes = pendientesLaboralSubcontratista(s.empresa);
+    return `
+    <div class="card card--default" onclick="abrirEmpresaRrhh('${esc(s.empresa)}')">
+      <div class="card-icon modulo-icon--cont">${ic('subcontratistas',18)}</div>
+      <div class="card-body">
+        <div class="card-title">${esc(s.empresa)}</div>
+        <div class="card-sub">${pendientes ? pendientes + ' documento(s) sin revisar' : 'Sin pendientes'}</div>
+      </div>
+      <div class="card-chevron"><svg viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+    </div>`;
+  }).join('');
 }
 
 function docsSubcontratista(empresa, categoria, item, periodo) {
@@ -6650,7 +6726,7 @@ async function editarMotivoRechazoDocSubcontratista(fila, motivoActual) {
     await actualizarRangoSheet(`'${CONFIG.SHEET_SUBCONTRATISTAS_DOCS}'!J${fila}`, [[motivo.trim()]]);
     toast('Motivo actualizado ✓', 'ok');
     await cargarTodo(true);
-    if (empresaSubcontratistaActual) abrirDetalleSubcontratista(empresaSubcontratistaActual);
+    refrescarDetalleSubcontratista(doc.empresa);
   } catch (e) { toast(e.message, 'error'); }
 }
 // Nota libre del admin sobre un documento Aprobado (ej. "válido solo para
@@ -6680,7 +6756,7 @@ async function editarNotaAprobacionDocSubcontratista(fila, notaActual) {
     await actualizarRangoSheet(`'${CONFIG.SHEET_SUBCONTRATISTAS_DOCS}'!K${fila}`, [[nota.trim()]]);
     toast('Nota guardada ✓', 'ok');
     await cargarTodo(true);
-    if (empresaSubcontratistaActual) abrirDetalleSubcontratista(empresaSubcontratistaActual);
+    refrescarDetalleSubcontratista(doc.empresa);
   } catch (e) { toast(e.message, 'error'); }
 }
 // Aprobar/Rechazar un documento — separado por dominio (ver
@@ -6702,7 +6778,7 @@ async function aprobarDocSubcontratista(fila) {
     if (doc) await notificarAprobacionDocumento(doc.empresa, descripcionDocSubcontratista(doc));
     toast('Documento aprobado ✓ — se avisó por correo a la empresa', 'ok');
     await cargarTodo(true);
-    if (empresaSubcontratistaActual) abrirDetalleSubcontratista(empresaSubcontratistaActual);
+    refrescarDetalleSubcontratista(doc.empresa);
   } catch (e) { toast(e.message, 'error'); }
 }
 // Nombre legible de un documento para mostrarlo en el correo de rechazo —
@@ -6727,7 +6803,7 @@ async function rechazarDocSubcontratista(fila) {
     if (doc) await notificarRechazoDocumento(doc.empresa, descripcionDocSubcontratista(doc), motivoFinal);
     toast('Documento rechazado', 'ok');
     await cargarTodo(true);
-    if (empresaSubcontratistaActual) abrirDetalleSubcontratista(empresaSubcontratistaActual);
+    refrescarDetalleSubcontratista(doc.empresa);
   } catch (e) { toast(e.message, 'error'); }
 }
 // Le avisa por correo a las cuentas subcontratista de esa empresa que uno de
@@ -7585,7 +7661,7 @@ async function onEliminarDocSubcontratista(fila, empresa) {
 }
 function onCambioMesSubcontratista(valor, empresa, esRestringido) {
   mesControlSubcontratista = valor;
-  if (esRestringido) mostrarModoSubcontratista(empresa); else abrirDetalleSubcontratista(empresa);
+  refrescarDetalleSubcontratista(empresa);
 }
 // Le avisa por correo a un contacto recién agregado que ya tiene acceso —
 // best-effort: si falla (o no hay Web App configurada) no bloquea el alta,
@@ -10615,7 +10691,16 @@ async function arrancarApp() {
     localStorage.setItem(OBRA_ACTIVA_KEY, obraActiva);
   }
 
-  if (miEmpresaSubcontratista) {
+  // Una cuenta "rrhh" tampoco ve Inicio ni el resto de los módulos — igual
+  // de restringida que una cuenta subcontratista, solo que acá puede
+  // entrar a la Documentación laboral de CUALQUIER empresa (ver
+  // mostrarModoRrhh/empresaRrhhActual), no a una sola fija.
+  if (userRole === 'rrhh') {
+    mostrarModoRrhh();
+    const root = document.getElementById('rrhh-root');
+    root.classList.add('app-enter');
+    setTimeout(() => root.classList.remove('app-enter'), 500);
+  } else if (miEmpresaSubcontratista) {
     mostrarModoSubcontratista(miEmpresaSubcontratista);
     const root = document.getElementById('subcontratista-root');
     root.classList.add('app-enter');

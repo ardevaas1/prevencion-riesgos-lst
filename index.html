@@ -669,6 +669,33 @@
   </div>
 </div>
 
+<!-- ===== MODO RRHH ═════════════════════════════════
+     Pantalla fija e independiente del resto de la app, igual que
+     #subcontratista-root: una cuenta autorizada solo como "rrhh"
+     (USUARIOS.Rol="rrhh") nunca ve #main/#desktop-sidebar/#desktop-main —
+     arrancarApp() la trae acá directo y esta es su única pantalla mientras
+     dure la sesión. A diferencia de #subcontratista-root (fijo a UNA
+     empresa), acá primero elige la empresa de una lista — ver
+     mostrarModoRrhh/empresaRrhhActual en app.js. ===== -->
+<div id="rrhh-root" class="subcontratista-root hidden">
+  <div class="header">
+    <div class="header-bg header--cont" style="opacity:1;"></div>
+    <div class="header-bg"></div>
+    <div class="logo-badge"><img src="logo.png" class="header-logo" alt="LST"></div>
+    <div class="header-center">
+      <div class="header-title">Documentación laboral</div>
+      <div class="header-sub" id="rrhh-root-email"></div>
+    </div>
+    <div class="header-btn" onclick="cargarTodo(true).then(()=>mostrarModoRrhh())">↻</div>
+  </div>
+  <div class="subcontratista-root-content">
+    <div id="rrhh-root-body"></div>
+    <div class="sec-label" style="margin-top:24px;">Sesión</div>
+    <div class="account-chip"><span class="account-chip-avatar">G</span><span class="account-chip-email" id="rrhh-root-email-2"></span></div>
+    <button class="action-btn action-btn--salir" style="margin-top:8px;" onclick="signOut()"><svg viewBox="0 0 24 24" fill="none" class="inline-ic"><path d="M9 21H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 17l5-5-5-5M21 12H9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg> Cerrar sesión</button>
+  </div>
+</div>
+
 <!-- ===== PANEL: Nuevo Trabajador ===== -->
 <div class="panel hidden" id="panel-form-trabajador">
   <div class="panel-bar"><div class="pnl-back" onclick="closePanel('panel-form-trabajador')">‹ Volver</div><div class="pnl-title">Nuevo trabajador</div><div></div></div>
