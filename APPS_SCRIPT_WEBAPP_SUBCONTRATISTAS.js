@@ -60,7 +60,7 @@ const RAIZ_DRIVE_ID = '1evnqIfGtNCO_hQq9rwgBWMZgk647zMIe'; // mismo ID que DRIVE
 // — se usa solo para armar el link del correo de bienvenida (ver
 // notificarContacto). Si la dejas vacía, el correo se manda igual, solo que
 // sin el link directo.
-const APP_URL = '';
+const APP_URL = 'https://ardevaas1.github.io/prevencion-riesgos-lst/';
 // Empresa mandante — MISMOS valores que EMPRESA_PRINCIPAL_NOMBRE/RUT en
 // config.js (Apps Script no puede leer ese archivo, así que se duplica
 // acá). Usado por el portal de fiscalización (buscarDocumentosFiscalizacion)
