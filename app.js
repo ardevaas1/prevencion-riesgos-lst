@@ -6686,15 +6686,14 @@ function iconoEstadoDoc(subido, hayRechazo) {
     ? '<svg viewBox="0 0 24 24" fill="none" style="width:14px;height:14px"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>'
     : '<svg viewBox="0 0 24 24" fill="none" style="width:8px;height:8px"><circle cx="12" cy="12" r="8" fill="currentColor"/></svg>'}</div>`;
 }
-// El botón "Eliminar" de un documento SOLO lo ve un admin/superadmin — ni un
-// viewer, rrhh, ni una cuenta subcontratista lo ven nunca, así el
-// subcontratista puede subir/reemplazar lo suyo pero nunca borrar nada.
-// A diferencia de aprobar/rechazar, Eliminar NO está separado por dominio
-// (Prevención/Documentación laboral): no se pidió esa restricción y borrar
-// es mucho más riesgoso que solo revisar, así que se deja en manos de
-// cualquier admin/superadmin sea cual sea el documento.
+// El botón "Eliminar" de un documento — mismo criterio de dominio que
+// aprobar/rechazar (ver puedeRevisarDocSubcontratista): un admin de
+// Prevención NO puede eliminar un documento de Documentación laboral (ni
+// al revés para rrhh), solo quien puede revisar ESE documento. Un viewer
+// o una cuenta subcontratista nunca lo ven, así el subcontratista puede
+// subir/reemplazar lo suyo pero nunca borrar nada.
 function botonEliminarDocSubcontratista(doc, empresa) {
-  if (!doc || !esAdminCompleto()) return '';
+  if (!doc || !puedeRevisarDocSubcontratista(doc)) return '';
   return `<button type="button" class="badge red" style="border:none;cursor:pointer;" onclick="onEliminarDocSubcontratista(${doc.fila},'${esc(empresa)}')">Eliminar</button>`;
 }
 // Estado de revisión de un documento subido por el subcontratista — lo
@@ -7641,11 +7640,13 @@ async function onSubirDocGlobalSubcontratista(inputEl, item) {
 }
 // Borra un documento subido en Subcontratistas — a propósito NO tiene
 // equivalente en la Web App de Apps Script (llamarWebAppSubcontratista):
-// solo lo puede usar un admin/superadmin, y esas cuentas siempre tienen
-// acceso directo al Sheet, nunca pasan por el proxy de cuentas restringidas.
+// solo lo puede usar quien pueda revisar ESE documento (ver
+// puedeRevisarDocSubcontratista — mismo criterio de dominio que
+// aprobar/rechazar), y esas cuentas siempre tienen acceso directo al
+// Sheet, nunca pasan por el proxy de cuentas restringidas.
 async function onEliminarDocSubcontratista(fila, empresa) {
-  if (!esAdminCompleto()) { toast('Solo un administrador puede eliminar documentos', 'error'); return; }
   const doc = allSubDocs.find(d => d.fila === fila);
+  if (!puedeRevisarDocSubcontratista(doc)) { toast('No tienes permiso para eliminar este documento', 'error'); return; }
   if (!confirm('¿Eliminar este documento? No se puede deshacer.')) return;
   try {
     await eliminarFilaSheet(CONFIG.SHEET_SUBCONTRATISTAS_DOCS, fila);
@@ -7656,7 +7657,7 @@ async function onEliminarDocSubcontratista(fila, empresa) {
     if (doc && doc.link) trashArchivoDrive(doc.link).catch(() => {});
     toast('Documento eliminado ✓', 'ok');
     await cargarTodo(true);
-    if (empresa) abrirDetalleSubcontratista(empresa);
+    refrescarDetalleSubcontratista(empresa);
   } catch (e) { toast(e.message, 'error'); }
 }
 function onCambioMesSubcontratista(valor, empresa, esRestringido) {
