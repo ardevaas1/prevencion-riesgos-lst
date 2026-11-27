@@ -204,19 +204,35 @@ function buscarUsuarioSubcontratista(correo) {
 // renderDocumentacionLaboralHTML/mostrarModoRrhh en app.js: revisa
 // Documentación laboral de CUALQUIER empresa subcontratista), por eso acá
 // no hace falta devolver "empresa".
+// "rrhh_viewer" es la variante de solo-lectura de "rrhh" (ve lo mismo, no
+// puede aprobar/rechazar/anotar/eliminar nada — ver esRolRrhh/
+// puedeRevisarDocSubcontratista en app.js). soloLectura le avisa a
+// cargarInicial qué variante es, para que la app sepa con qué rol
+// mostrarla; verificarPuedeEscribirRrhh es quien de verdad bloquea del
+// lado del servidor las 5 acciones de escritura si es de solo lectura.
 function buscarUsuarioRrhh(correo) {
   const datos = hojaUsuarios().getDataRange().getValues();
   for (let i = 1; i < datos.length; i++) {
     const fila = datos[i];
     const filaCorreo = (fila[0] || '').toString().trim().toLowerCase();
     const filaRol = (fila[1] || '').toString().trim().toLowerCase();
-    if (filaCorreo === correo && filaRol === 'rrhh') return { numeroFila: i + 1 };
+    if (filaCorreo === correo && filaRol === 'rrhh') return { numeroFila: i + 1, soloLectura: false };
+    if (filaCorreo === correo && filaRol === 'rrhh_viewer') return { numeroFila: i + 1, soloLectura: true };
   }
   return null;
 }
 function verificarEsRrhh(correo) {
   const u = buscarUsuarioRrhh(correo);
   if (!u) throw new Error('Esta cuenta no tiene permiso de RRHH');
+  return u;
+}
+// Usan esta, en vez de verificarEsRrhh, las 5 acciones que efectivamente
+// escriben (aprobar/rechazar/editar motivo/anotar/eliminar) — una cuenta
+// "rrhh_viewer" pasa verificarEsRrhh (puede cargar y ver los datos) pero
+// nunca esta.
+function verificarPuedeEscribirRrhh(correo) {
+  const u = verificarEsRrhh(correo);
+  if (u.soloLectura) throw new Error('Tu cuenta es de solo lectura');
   return u;
 }
 // Mismo criterio que esCategoriaLaboral en app.js — identifica si un
@@ -248,14 +264,14 @@ function idDriveDesdeLink(link) {
   return m ? m[1] : null;
 }
 function aprobarDocumentoRrhh(correo, body) {
-  verificarEsRrhh(correo);
+  verificarPuedeEscribirRrhh(correo);
   const info = obtenerDocLaboralOFallar(body.fila);
   hojaSubDocs().getRange(body.fila, 9, 1, 2).setValues([['Aprobado', '']]);
   try { notificarAprobacionDocumento(info.empresa, info.item || 'Documento'); } catch (e) { /* best-effort */ }
   return { ok: true };
 }
 function rechazarDocumentoRrhh(correo, body) {
-  verificarEsRrhh(correo);
+  verificarPuedeEscribirRrhh(correo);
   if (!body.motivo) throw new Error('Falta el motivo');
   const info = obtenerDocLaboralOFallar(body.fila);
   hojaSubDocs().getRange(body.fila, 9, 1, 2).setValues([['Rechazado', body.motivo]]);
@@ -263,19 +279,19 @@ function rechazarDocumentoRrhh(correo, body) {
   return { ok: true };
 }
 function editarMotivoRechazoRrhh(correo, body) {
-  verificarEsRrhh(correo);
+  verificarPuedeEscribirRrhh(correo);
   obtenerDocLaboralOFallar(body.fila);
   hojaSubDocs().getRange(body.fila, 10).setValue(body.motivo || '');
   return { ok: true };
 }
 function editarNotaAprobacionRrhh(correo, body) {
-  verificarEsRrhh(correo);
+  verificarPuedeEscribirRrhh(correo);
   obtenerDocLaboralOFallar(body.fila);
   hojaSubDocs().getRange(body.fila, 11).setValue(body.nota || '');
   return { ok: true };
 }
 function eliminarDocumentoRrhh(correo, body) {
-  verificarEsRrhh(correo);
+  verificarPuedeEscribirRrhh(correo);
   const info = obtenerDocLaboralOFallar(body.fila);
   hojaSubDocs().deleteRow(body.fila);
   const id = idDriveDesdeLink(info.link);
@@ -445,7 +461,7 @@ function cargarInicial(correo) {
     const datosTrab = hojaTrabajadores().getDataRange().getValues();
     const filasTrab = datosTrab.slice(1);
 
-    return { subcontratista: false, modo: 'rrhh', subcontratistas: filasSubs, documentos: filasDocsLaboral, trabajadores: filasTrab };
+    return { subcontratista: false, modo: 'rrhh', soloLectura: uR.soloLectura, subcontratistas: filasSubs, documentos: filasDocsLaboral, trabajadores: filasTrab };
   }
 
   return { subcontratista: false };

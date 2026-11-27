@@ -549,7 +549,17 @@ let userRole  = null;
 // único permiso de escritura es aprobar/rechazar/anotar la Documentación
 // laboral de Subcontratistas, que no pasa por acá — ver
 // puedeRevisarDocSubcontratista más abajo, que es un chequeo aparte.
-function esViewer() { return userRole === 'viewer' || userRole === 'rrhh'; }
+// "rrhh_viewer" es la variante de solo-lectura de "rrhh" — ve exactamente
+// lo mismo (la Documentación laboral de cualquier empresa subcontratista,
+// nada más de la app) pero sin poder aprobar/rechazar/anotar/eliminar nada
+// (ver esRolRrhh y puedeRevisarDocSubcontratista, que a propósito NO
+// incluye "rrhh_viewer").
+function esViewer() { return userRole === 'viewer' || userRole === 'rrhh' || userRole === 'rrhh_viewer'; }
+// Cualquier variante del rol RRHH (ver mostrarModoRrhh/arrancarApp): ambas
+// quedan fijas a la pantalla de Documentación laboral, nada más de la app
+// — la diferencia entre ellas es solo si puede o no escribir (ver
+// puedeRevisarDocSubcontratista).
+function esRolRrhh() { return userRole === 'rrhh' || userRole === 'rrhh_viewer'; }
 function bloquearSiViewer() {
   if (!esViewer()) return false;
   toast('Tu cuenta es de solo lectura', 'error');
@@ -1980,7 +1990,7 @@ async function cargarDatosProxySubcontratista() {
     // Documentación laboral de cualquiera de ellas, cada uno con su número
     // de fila real del Sheet ya incluido (ver rowToSubDocProxyRrhh).
     if (r.modo === 'rrhh') {
-      return { modo: 'rrhh', subcontratistasFilas: r.subcontratistas || [], documentosFilas: r.documentos || [], trabajadoresFilas: r.trabajadores || [] };
+      return { modo: 'rrhh', soloLectura: !!r.soloLectura, subcontratistasFilas: r.subcontratistas || [], documentosFilas: r.documentos || [], trabajadoresFilas: r.trabajadores || [] };
     }
     if (!r.subcontratista) return { subcontratista: false };
     return { subcontratista: true, modo: 'subcontratista', empresa: r.empresa, documentosFilas: r.documentos || [], trabajadoresFilas: r.trabajadores || [], subInfo: r.subInfo || null };
@@ -2508,7 +2518,7 @@ async function cargarTodo(silencioso) {
     if (subcontratistaUsaProxy) {
       const r = await cargarDatosProxySubcontratista();
       if (r.modo === 'rrhh') {
-        userRole = 'rrhh';
+        userRole = r.soloLectura ? 'rrhh_viewer' : 'rrhh';
         miEmpresaSubcontratista = null;
         allSubcontratistas = r.subcontratistasFilas.map((fila,i) => rowToSubcontratista(fila,i));
         allSubDocs = r.documentosFilas.map(rowToSubDocProxyRrhh);
@@ -2557,7 +2567,7 @@ async function cargarTodo(silencioso) {
       // inicie sesión después en el mismo navegador.
       localStorage.setItem(PROXY_SUBCONTRATISTA_KEY, userEmail);
       if (r.modo === 'rrhh') {
-        userRole = 'rrhh';
+        userRole = r.soloLectura ? 'rrhh_viewer' : 'rrhh';
         miEmpresaSubcontratista = null;
         allSubcontratistas = r.subcontratistasFilas.map((fila,i) => rowToSubcontratista(fila,i));
         allSubDocs = r.documentosFilas.map(rowToSubDocProxyRrhh);
@@ -2586,12 +2596,14 @@ async function cargarTodo(silencioso) {
     // también aplica a un supervisor (Trabajadores.Es Supervisor) sin su
     // propia fila acá — el filtro por obra no reemplaza estar en la lista de
     // USUARIOS.
-    // "rrhh" (ej. Hugo) y "superadmin" son roles nuevos — ver esViewer,
-    // esAdminCompleto y puedeRevisarDocSubcontratista: "rrhh" solo puede
-    // aprobar/rechazar la Documentación laboral de Subcontratistas (el resto
-    // de la app le queda de solo lectura, igual que "viewer"); "superadmin"
-    // puede todo lo que puede "admin" más lo que puede "rrhh".
-    const ROLES_VALIDOS = ['admin', 'viewer', 'subcontratista', 'rrhh', 'superadmin'];
+    // "rrhh" (ej. Hugo), "rrhh_viewer" y "superadmin" son roles nuevos — ver
+    // esViewer, esRolRrhh, esAdminCompleto y puedeRevisarDocSubcontratista:
+    // "rrhh" solo puede aprobar/rechazar la Documentación laboral de
+    // Subcontratistas (el resto de la app le queda de solo lectura, igual
+    // que "viewer"); "rrhh_viewer" ve exactamente lo mismo que "rrhh" pero
+    // sin poder aprobar/rechazar/anotar/eliminar nada; "superadmin" puede
+    // todo lo que puede "admin" más lo que puede "rrhh".
+    const ROLES_VALIDOS = ['admin', 'viewer', 'subcontratista', 'rrhh', 'rrhh_viewer', 'superadmin'];
     if (!cuenta || !ROLES_VALIDOS.includes(cuenta.rol)) {
       forzarCierreSesion('Tu cuenta (' + userEmail + ') no está autorizada para usar esta aplicación.', true);
       return;
@@ -6579,7 +6591,7 @@ let empresaSubcontratistaActual = null;
 // después de guardar (aprobar/rechazar/anotar/cambiar de mes) pasa por acá
 // en vez de repetir el if/else en cada función.
 function refrescarDetalleSubcontratista(empresa) {
-  if (userRole === 'rrhh') { mostrarModoRrhh(); return; }
+  if (esRolRrhh()) { mostrarModoRrhh(); return; }
   if (miEmpresaSubcontratista) { mostrarModoSubcontratista(empresa); return; }
   abrirDetalleSubcontratista(empresa);
 }
@@ -10780,7 +10792,7 @@ async function arrancarApp() {
   // de restringida que una cuenta subcontratista, solo que acá puede
   // entrar a la Documentación laboral de CUALQUIER empresa (ver
   // mostrarModoRrhh/empresaRrhhActual), no a una sola fija.
-  if (userRole === 'rrhh') {
+  if (esRolRrhh()) {
     mostrarModoRrhh();
     const root = document.getElementById('rrhh-root');
     root.classList.add('app-enter');
