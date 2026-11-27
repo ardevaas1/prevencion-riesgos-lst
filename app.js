@@ -2127,6 +2127,45 @@ const MODULOS_DESC = {
   miper: 'Sube la Matriz de Riesgos (IPER DS44) de cada obra',
   capacitacionds44: 'Curso obligatorio art.16 — vigencia 2 años',
 };
+// Nombre legible de cada rol interno (ver ROLES_VALIDOS) — para el listado
+// de "Usuarios de la app" en Inicio (ver renderUsuariosApp) y el selector
+// de "Invitar". No incluye "subcontratista": esas cuentas se gestionan
+// aparte, desde "Correos autorizados" dentro de cada empresa.
+const ETIQUETAS_ROL = {
+  admin: 'Admin (Prevención)', viewer: 'Viewer (solo lectura)',
+  rrhh: 'RRHH (aprueba Documentación laboral)', rrhh_viewer: 'RRHH (solo lectura)',
+  superadmin: 'Superadmin (todo)',
+};
+// Apartado en Inicio, solo para admin/superadmin (ver esAdminCompleto):
+// lista los usuarios internos ya dados de alta (todos salvo
+// "subcontratista", que se gestiona por empresa) y deja invitar a uno
+// nuevo sin tener que editar USUARIOS a mano — ver onInvitarUsuarioApp.
+function renderUsuariosApp() {
+  const seccion = document.getElementById('seccion-usuarios-app');
+  if (!seccion) return;
+  seccion.classList.toggle('hidden', !esAdminCompleto());
+  if (!esAdminCompleto()) return;
+  const internos = allUsuarios.filter(u => u.rol !== 'subcontratista');
+  setListHTML('usuarios-app', internos.length ? internos.map(u => `
+    <div class="doc-row" style="display:block;"><span>${esc(u.correo)}</span>
+      <div style="font-size:11px;color:var(--ink-soft);margin-top:2px;">${esc(ETIQUETAS_ROL[u.rol] || u.rol)}</div>
+    </div>`).join('') : '<div class="empty-sub">Sin usuarios internos todavía</div>');
+}
+async function onInvitarUsuarioApp(ev) {
+  ev.preventDefault();
+  if (!esAdminCompleto()) { toast('Solo un administrador puede invitar usuarios', 'error'); return; }
+  const f = ev.target;
+  const correo = f.correo.value.trim().toLowerCase();
+  const rol = f.rol.value;
+  if (!correo || !rol) return;
+  if (allUsuarios.some(u => u.correo === correo)) { toast('Ese correo ya está registrado', 'error'); return; }
+  try {
+    await appendSheetDeterministico(CONFIG.SHEET_USUARIOS, 'D', [[correo, rol, '', '']]);
+    toast('Usuario agregado ✓', 'ok');
+    f.reset();
+    await cargarTodo(true);
+  } catch (e) { toast(e.message, 'error'); }
+}
 // Mismas 3 categorías y mismo orden que el sidebar de escritorio (ver
 // .desktop-nav-group-label en index.html) — así Inicio (celular y, desde
 // este pulido, también escritorio) se organiza igual que la navegación
@@ -2507,6 +2546,7 @@ let allCapacitacionDs44 = [];
 // tiene ese campo en el modelo de datos.
 function renderModulosPrincipales() {
   renderModulosHome();
+  renderUsuariosApp();
   renderDashboard();
   renderTrabajadores(); renderInspecciones(); renderIncidentes(); renderProcedimientos(); renderEpp(); renderCharlas(); renderHcr();
   renderSubcontratistas();
