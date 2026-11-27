@@ -405,8 +405,10 @@
 
       <!-- Solo admin/superadmin (ver renderUsuariosApp en app.js) — invitar
            a alguien a la app agrega su fila directo en USUARIOS con el rol
-           elegido, sin tener que editar el Sheet a mano. -->
-      <div id="seccion-usuarios-app" class="hidden">
+           elegido, sin tener que editar el Sheet a mano. Repetida en
+           #dt-page-inicio (escritorio usa su propio bloque de contenido,
+           no el mismo DOM) — por eso se selecciona por clase, no por id. -->
+      <div class="seccion-usuarios-app hidden">
         <div class="sec-label" style="margin-top:24px;">Usuarios de la app</div>
         <div data-list="usuarios-app"></div>
         <form onsubmit="onInvitarUsuarioApp(event)" style="margin-top:10px;">
@@ -604,6 +606,31 @@
     <div data-list="stats-seguridad"></div>
 
     <div data-list="modulos-home"></div>
+
+    <!-- Solo admin/superadmin (ver renderUsuariosApp en app.js) — misma
+         sección que la versión celular de Inicio (#page-inicio), repetida
+         acá porque escritorio usa su propio bloque de contenido
+         (#dt-page-inicio), no el mismo DOM. -->
+    <div class="seccion-usuarios-app hidden">
+      <div class="sec-label" style="margin-top:24px;">Usuarios de la app</div>
+      <div data-list="usuarios-app"></div>
+      <form onsubmit="onInvitarUsuarioApp(event)" style="margin-top:10px;">
+        <div class="form-group" style="margin-bottom:8px;">
+          <input name="correo" type="email" placeholder="correo@empresa.com" required style="width:100%;padding:10px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit;box-sizing:border-box;">
+        </div>
+        <div class="form-group" style="margin-bottom:8px;">
+          <select name="rol" required style="width:100%;padding:10px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit;box-sizing:border-box;">
+            <option value="">— Elige un rol —</option>
+            <option value="admin">Admin (Prevención)</option>
+            <option value="viewer">Viewer (solo lectura)</option>
+            <option value="rrhh">RRHH (aprueba Documentación laboral)</option>
+            <option value="rrhh_viewer">RRHH (solo lectura)</option>
+            <option value="superadmin">Superadmin (todo)</option>
+          </select>
+        </div>
+        <button class="btn-add" type="submit">+ Invitar</button>
+      </form>
+    </div>
 
     <div class="sec-label" style="margin-top:24px;">Accesos directos</div>
     <a class="action-btn" id="dt-link-drive" href="#" target="_blank" rel="noopener"></a>

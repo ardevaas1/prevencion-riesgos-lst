@@ -624,9 +624,15 @@ function subirDocumento(correo, body) {
   // notificarRechazoDocumento más abajo).
   compartirArchivoSinNotificar(archivo.getId(), correosSubcontratistaDeEmpresa(empresa));
 
+  // La columna "Archivo" guarda el nombre con el que la persona subió el
+  // documento desde su computador (body.nombreOriginal), no el nombre
+  // generado con fecha/hora que se usa para el archivo en Drive
+  // (archivo.getName()) — antes se mostraba ese nombre generado y era
+  // difícil distinguir un documento de otro (ver filaArchivoSubcontratista
+  // en app.js, que es quien muestra esta columna).
   hojaSubDocs().appendRow([
     empresa, body.categoria || '', body.item || '', body.periodo || '',
-    archivo.getName(), link, new Date().toLocaleString('es-CL'), correo
+    body.nombreOriginal || archivo.getName(), link, new Date().toLocaleString('es-CL'), correo
   ]);
 
   return { nombre: archivo.getName(), link: link };

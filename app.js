@@ -2141,9 +2141,10 @@ const ETIQUETAS_ROL = {
 // "subcontratista", que se gestiona por empresa) y deja invitar a uno
 // nuevo sin tener que editar USUARIOS a mano — ver onInvitarUsuarioApp.
 function renderUsuariosApp() {
-  const seccion = document.getElementById('seccion-usuarios-app');
-  if (!seccion) return;
-  seccion.classList.toggle('hidden', !esAdminCompleto());
+  // Por clase, no por id: la sección está repetida en la versión celular
+  // (#page-inicio) y de escritorio (#dt-page-inicio) de Inicio, que son
+  // bloques de DOM distintos — ver el comentario en index.html.
+  document.querySelectorAll('.seccion-usuarios-app').forEach(el => el.classList.toggle('hidden', !esAdminCompleto()));
   if (!esAdminCompleto()) return;
   const internos = allUsuarios.filter(u => u.rol !== 'subcontratista');
   setListHTML('usuarios-app', internos.length ? internos.map(u => `
@@ -7516,7 +7517,7 @@ async function onSubirDocSubcontratista(inputEl, empresa, categoria, item, perio
           empresa, categoria, item: item || '', periodo: periodo || '',
           subcarpeta: item || 'Herramientas',
           ...(nombreTrabajador ? { carpetaTrabajador: nombreTrabajador } : {}),
-          nombreArchivo: `${prefix}_${fecha}_${hora}.${extension}`,
+          nombreArchivo: `${prefix}_${fecha}_${hora}.${extension}`, nombreOriginal: file.name,
           mimeType: file.type || 'application/octet-stream', contenidoBase64: b64,
         });
         if (esListadoTrabajadores) {
@@ -7531,7 +7532,7 @@ async function onSubirDocSubcontratista(inputEl, empresa, categoria, item, perio
           ? await uploadFileSubcontratistaTrabajadorItem(file, empresa, nombreTrabajador, item || 'Herramientas', prefix)
           : await uploadFileSubcontratista(file, empresa, prefix, item || 'Herramientas');
         await appendSheetDeterministico(CONFIG.SHEET_SUBCONTRATISTAS_DOCS, 'K', [[
-          empresa, categoria, item || '', periodo || '', up.name, up.link,
+          empresa, categoria, item || '', periodo || '', file.name, up.link,
           new Date().toLocaleString('es-CL'), userEmail || '', '', '', ''
         ]]);
         if (esListadoTrabajadores) {
@@ -7594,13 +7595,13 @@ async function onSubirProcedimientoCritico(ev, empresa) {
         await llamarWebAppSubcontratista('subirDocumento', {
           empresa, categoria: 'procedimientos_criticos', item: nombre, periodo: '',
           subcarpeta: 'Procedimientos de trabajo seguro riesgos críticos',
-          nombreArchivo: `${prefix}_${fecha}_${hora}.${extension}`,
+          nombreArchivo: `${prefix}_${fecha}_${hora}.${extension}`, nombreOriginal: file.name,
           mimeType: file.type || 'application/octet-stream', contenidoBase64: b64,
         });
       } else {
         const up = await uploadFileSubcontratista(file, empresa, prefix, 'Procedimientos de trabajo seguro riesgos críticos');
         await appendSheetDeterministico(CONFIG.SHEET_SUBCONTRATISTAS_DOCS, 'K', [[
-          empresa, 'procedimientos_criticos', nombre, '', up.name, up.link,
+          empresa, 'procedimientos_criticos', nombre, '', file.name, up.link,
           new Date().toLocaleString('es-CL'), userEmail || '', '', '', ''
         ]]);
       }
@@ -7642,13 +7643,13 @@ async function onSubirProtocoloMinsalTrabajador(ev, empresa, categoriaMinsal, no
         await llamarWebAppSubcontratista('subirDocumento', {
           empresa, categoria: categoriaMinsal, item: nombre, periodo: '',
           carpetaTrabajador: nombreTrabajador, subcarpeta: 'Protocolos Minsal',
-          nombreArchivo: `${prefix}_${fecha}_${hora}.${extension}`,
+          nombreArchivo: `${prefix}_${fecha}_${hora}.${extension}`, nombreOriginal: file.name,
           mimeType: file.type || 'application/octet-stream', contenidoBase64: b64,
         });
       } else {
         const up = await uploadFileSubcontratistaTrabajadorItem(file, empresa, nombreTrabajador, 'Protocolos Minsal', prefix);
         await appendSheetDeterministico(CONFIG.SHEET_SUBCONTRATISTAS_DOCS, 'K', [[
-          empresa, categoriaMinsal, nombre, '', up.name, up.link,
+          empresa, categoriaMinsal, nombre, '', file.name, up.link,
           new Date().toLocaleString('es-CL'), userEmail || '', '', '', ''
         ]]);
       }
@@ -7683,13 +7684,13 @@ async function subirRespaldoTrabajadorArchivo(empresa, categoria, nombreTrabajad
     await llamarWebAppSubcontratista('subirDocumento', {
       empresa, categoria, item: '', periodo: '',
       carpetaTrabajador: nombreTrabajador,
-      nombreArchivo: `${prefix}_${fecha}_${hora}.${extension}`,
+      nombreArchivo: `${prefix}_${fecha}_${hora}.${extension}`, nombreOriginal: file.name,
       mimeType: file.type || 'application/octet-stream', contenidoBase64: b64,
     });
   } else {
     const up = await uploadFileSubcontratistaTrabajador(file, empresa, nombreTrabajador, prefix);
     await appendSheetDeterministico(CONFIG.SHEET_SUBCONTRATISTAS_DOCS, 'K', [[
-      empresa, categoria, '', '', up.name, up.link,
+      empresa, categoria, '', '', file.name, up.link,
       new Date().toLocaleString('es-CL'), userEmail || '', '', '', ''
     ]]);
   }
@@ -7796,7 +7797,7 @@ async function onSubirDocGlobalSubcontratista(inputEl, item) {
     for (const file of files) {
       const up = await uploadFileSubcontratista(file, '__GLOBAL__', item.replace(/\s+/g, '-'), item);
       await appendSheetDeterministico(CONFIG.SHEET_SUBCONTRATISTAS_DOCS, 'K', [[
-        '__GLOBAL__', 'global', item, '', up.name, up.link,
+        '__GLOBAL__', 'global', item, '', file.name, up.link,
         new Date().toLocaleString('es-CL'), userEmail || '', '', '', ''
       ]]);
     }
