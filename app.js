@@ -598,6 +598,13 @@ function puedeRevisarDocSubcontratista(doc) {
 // la app muestra únicamente la pantalla fija de esa empresa (mostrarModoSubcontratista),
 // sin sidebar, sin Inicio y sin acceso a ningún otro módulo (ver arrancarApp).
 let miEmpresaSubcontratista = null;
+// Área de ESTE contacto en concreto dentro de su propia empresa (columna F
+// de USUARIOS) — vacío ve Prevención Y Documentación laboral (como
+// siempre), "prevencion"/"administracion" lo deja fijo a esa única pestaña
+// (ver mostrarModoSubcontratista/tabsSubcontratista) — a pedido del
+// cliente, para separar dentro de una misma empresa subcontratista a
+// quienes ven Prevención de quienes ven solo la parte administrativa.
+let miAreaSubcontratista = '';
 // Fila (1-based) de la cuenta subcontratista actual en USUARIOS — solo se
 // usa para registrarActividadSubcontratista (acceso directo). Ver
 // cargarTodo, donde queda asignada junto con miEmpresaSubcontratista.
@@ -758,7 +765,7 @@ function forzarCierreSesion(mensaje, noAutorizada) {
   localStorage.removeItem(EMAIL_KEY);
   localStorage.removeItem(OBRA_ACTIVA_KEY);
   localStorage.removeItem(PROXY_SUBCONTRATISTA_KEY);
-  userEmail = null; userRole = null; miEmpresaSubcontratista = null; subcontratistaUsaProxy = false; empresaRrhhActual = null;
+  userEmail = null; userRole = null; miEmpresaSubcontratista = null; miAreaSubcontratista = ''; subcontratistaUsaProxy = false; empresaRrhhActual = null;
   obraActiva = null;
   document.getElementById('main').classList.add('hidden');
   document.getElementById('desktop-sidebar').classList.add('dt-oculto');
@@ -1993,7 +2000,7 @@ async function cargarDatosProxySubcontratista() {
       return { modo: 'rrhh', soloLectura: !!r.soloLectura, subcontratistasFilas: r.subcontratistas || [], documentosFilas: r.documentos || [], trabajadoresFilas: r.trabajadores || [] };
     }
     if (!r.subcontratista) return { subcontratista: false };
-    return { subcontratista: true, modo: 'subcontratista', empresa: r.empresa, documentosFilas: r.documentos || [], trabajadoresFilas: r.trabajadores || [], subInfo: r.subInfo || null };
+    return { subcontratista: true, modo: 'subcontratista', empresa: r.empresa, area: r.area || '', documentosFilas: r.documentos || [], trabajadoresFilas: r.trabajadores || [], subInfo: r.subInfo || null };
   } catch (e) {
     if (!/Acci[oó]n desconocida/i.test(e.message || '')) throw e;
   }
@@ -2009,7 +2016,7 @@ async function cargarDatosProxySubcontratista() {
   // Versión vieja de la Web App (sin redesplegar todavía), sin "subInfo": el
   // contacto laboral simplemente queda "Sin registrar" hasta que se
   // redespliegue — no bloquea el resto.
-  return { subcontratista: true, modo: 'subcontratista', empresa: chequeo.empresa, documentosFilas: docs.filas, trabajadoresFilas: trab.filas, subInfo: null };
+  return { subcontratista: true, modo: 'subcontratista', empresa: chequeo.empresa, area: chequeo.area || '', documentosFilas: docs.filas, trabajadoresFilas: trab.filas, subInfo: null };
 }
 
 // Registra "actividad" de una cuenta subcontratista — a pedido del cliente,
@@ -2532,6 +2539,7 @@ async function cargarTodo(silencioso) {
         return;
       }
       miEmpresaSubcontratista = r.empresa;
+      miAreaSubcontratista = r.area || '';
       userRole = 'subcontratista';
       allSubDocs = r.documentosFilas.map((fila,i) => rowToSubDoc(fila,i));
       // Trabajadores de su propia empresa (para el checklist de Exámenes
@@ -2551,7 +2559,7 @@ async function cargarTodo(silencioso) {
     // que esa cuenta de todas formas nunca va a ver en la interfaz).
     let usuarios;
     try {
-      usuarios = await fetchSheet(`'${CONFIG.SHEET_USUARIOS}'!A2:E20000`);
+      usuarios = await fetchSheet(`'${CONFIG.SHEET_USUARIOS}'!A2:F20000`);
     } catch (errAccesoDirecto) {
       // Sin acceso directo al Sheet: si hay una Web App configurada
       // (ver config.js SUBCONTRATISTAS_WEBAPP_URL), puede que esta cuenta
@@ -2577,6 +2585,7 @@ async function cargarTodo(silencioso) {
         return;
       }
       miEmpresaSubcontratista = r.empresa;
+      miAreaSubcontratista = r.area || '';
       userRole = 'subcontratista';
       allSubDocs = r.documentosFilas.map((fila,i) => rowToSubDoc(fila,i));
       allTrabajadores = r.trabajadoresFilas.map((fila,i) => rowToTrabajador(fila,i));
@@ -2609,6 +2618,7 @@ async function cargarTodo(silencioso) {
       return;
     }
     miEmpresaSubcontratista = (cuenta.rol === 'subcontratista') ? cuenta.empresa : null;
+    miAreaSubcontratista = (cuenta.rol === 'subcontratista') ? (cuenta.area || '') : '';
     miFilaEnUsuarios = cuenta.fila;
     userRole = cuenta.rol;
     // "Última conexión" (ver registrarActividadSubcontratista más abajo) se
@@ -2771,7 +2781,7 @@ function rowToEpp(r, i) {
 }
 function rowToUsuario(r, i) {
   return { fila: i+2, correo: (r[0]||'').trim().toLowerCase(), rol: (r[1]||'').trim().toLowerCase(),
-    nombre: r[2]||'', empresa: r[3]||'', conexion: r[4]||'' };
+    nombre: r[2]||'', empresa: r[3]||'', conexion: r[4]||'', area: (r[5]||'').trim().toLowerCase() };
 }
 function rowToSubcontratista(r, i) {
   return { fila: i+2, empresa: r[0]||'', fechaAlta: r[1]||'', rut: r[2]||'',
@@ -6646,6 +6656,13 @@ function abrirDetalleSubcontratista(empresa) {
 // Pantalla fija de la cuenta subcontratista — sin panel, sin "Volver"
 // (no hay a dónde volver: esta ES toda su app).
 function mostrarModoSubcontratista(empresa) {
+  // Un contacto con Área fija (ver miAreaSubcontratista) siempre entra a su
+  // única pestaña permitida, sin importar en cuál haya quedado la última
+  // vez (pestanaSubcontratista es compartida con el resto del módulo) —
+  // tabsSubcontratista ni siquiera le muestra el selector, así que no tiene
+  // forma de cambiarla desde acá.
+  if (miAreaSubcontratista === 'prevencion') pestanaSubcontratista = 'prevencion';
+  else if (miAreaSubcontratista === 'administracion') pestanaSubcontratista = 'laboral';
   const raiz = document.getElementById('subcontratista-root');
   const body = document.getElementById('subcontratista-root-body');
   const estado = capturarEstadoAbiertoSubcontratista(raiz, body);
@@ -7167,6 +7184,14 @@ function chipSeccionSubcontratista(icono) {
 // visible a la vez (ver pestanaSubcontratista) para no mezclar ambos
 // checklists en una sola pantalla larguísima.
 function tabsSubcontratista(empresa, esRestringido) {
+  // Un contacto con Área fija ("prevencion"/"administracion" — ver
+  // miAreaSubcontratista/editarAreaCorreoSubcontratista) no ve el selector
+  // de pestañas en absoluto: no tiene otra pestaña a la que cambiarse, así
+  // que mostrarle el selector solo invitaría a tocar algo que de todas
+  // formas no la va a llevar a ningún lado. Esto solo aplica a la cuenta
+  // restringida (esRestringido) — un admin viendo el detalle siempre ve
+  // ambas pestañas, el Área es por contacto, no por empresa.
+  if (esRestringido && miAreaSubcontratista) return '';
   return `
     <div class="subcont-tabs">
       <button type="button" class="subcont-tab${pestanaSubcontratista !== 'laboral' ? ' active' : ''}" onclick="cambiarPestanaSubcontratista('prevencion','${esc(empresa)}',${esRestringido})">Prevención</button>
@@ -7361,7 +7386,18 @@ function renderSubcontratistaDetalleHTML(empresa, esRestringido) {
             ${ultimo ? ` · Último subido: ${esc(ultimo.item || ultimo.categoria)} (${esc((ultimo.fecha||'').split(',')[0] || ultimo.fecha)})` : ' · Sin documentos subidos'}
           </div>`;
         }
-        return `<div class="doc-row" style="display:block;"><span>${esc(c.correo)}</span>${actividad}</div>`;
+        // Área de este contacto en concreto (ver miAreaSubcontratista) — a
+        // pedido del cliente, para que dentro de una misma empresa
+        // subcontratista los de Prevención no vean Documentación laboral y
+        // viceversa. Vacío ("Ambas") es el valor de siempre, sin cambios.
+        const area = `<div style="margin-top:4px;">
+          ${!esViewer() ? `<select onchange="editarAreaCorreoSubcontratista('${esc(c.correo)}','${esc(empresa)}',this.value)" style="font-size:11px;padding:3px 6px;border-radius:6px;border:1px solid var(--line);font-family:inherit;color:var(--ink-soft);">
+            <option value=""${!c.area ? ' selected' : ''}>Ve Prevención y Documentación laboral</option>
+            <option value="prevencion"${c.area === 'prevencion' ? ' selected' : ''}>Ve solo Prevención</option>
+            <option value="administracion"${c.area === 'administracion' ? ' selected' : ''}>Ve solo Documentación laboral</option>
+          </select>` : `<span style="font-size:11px;color:var(--ink-soft);">${c.area === 'prevencion' ? 'Ve solo Prevención' : c.area === 'administracion' ? 'Ve solo Documentación laboral' : 'Ve Prevención y Documentación laboral'}</span>`}
+        </div>`;
+        return `<div class="doc-row" style="display:block;"><span>${esc(c.correo)}</span>${actividad}${area}</div>`;
       }).join('') || '<div class="empty-sub">Sin correos asignados todavía</div>'}
       ${!esViewer() ? `<form onsubmit="onAgregarCorreoSubcontratista(event,'${esc(empresa)}')" style="display:flex;gap:8px;margin-top:10px;">
         <input name="correo" type="email" placeholder="correo@empresa.com" required style="flex:1;padding:10px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit;">
@@ -7778,6 +7814,22 @@ async function onAgregarCorreoSubcontratista(ev, empresa) {
     await appendSheetDeterministico(CONFIG.SHEET_USUARIOS, 'D', [[correo, 'subcontratista', '', empresa]]);
     notificarNuevoContacto(correo, empresa);
     toast('Correo agregado ✓', 'ok');
+    await cargarTodo(true);
+    abrirDetalleSubcontratista(empresa);
+  } catch (e) { toast(e.message, 'error'); }
+}
+// Área de un contacto subcontratista en concreto (columna F de USUARIOS) —
+// "" ve Prevención y Documentación laboral (de siempre), "prevencion"/
+// "administracion" lo deja fijo a esa única pestaña (ver
+// miAreaSubcontratista/tabsSubcontratista/mostrarModoSubcontratista).
+// Admin-only, como el resto de la gestión de "Correos autorizados".
+async function editarAreaCorreoSubcontratista(correo, empresa, area) {
+  if (bloquearSiViewer()) return;
+  const u = allUsuarios.find(x => x.correo === correo);
+  if (!u) return;
+  try {
+    await actualizarRangoSheet(`'${CONFIG.SHEET_USUARIOS}'!F${u.fila}`, [[area]]);
+    toast('Área actualizada ✓', 'ok');
     await cargarTodo(true);
     abrirDetalleSubcontratista(empresa);
   } catch (e) { toast(e.message, 'error'); }

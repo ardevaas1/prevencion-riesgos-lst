@@ -185,8 +185,11 @@ function normalizarPeriodo(v) {
 }
 
 // Busca la fila de USUARIOS para ese correo y confirma que su Rol es
-// "subcontratista". Devuelve su Empresa (columna D) y el número de fila
-// (1-based, igual que lo usa setValue más abajo) o null si no calza.
+// "subcontratista". Devuelve su Empresa (columna D), su Área (columna F —
+// ver editarAreaCorreoSubcontratista en app.js: vacío = ve Prevención Y
+// Documentación laboral, "prevencion"/"administracion" = ve solo esa) y el
+// número de fila (1-based, igual que lo usa setValue más abajo) o null si
+// no calza.
 function buscarUsuarioSubcontratista(correo) {
   const datos = hojaUsuarios().getDataRange().getValues();
   for (let i = 1; i < datos.length; i++) {
@@ -194,7 +197,7 @@ function buscarUsuarioSubcontratista(correo) {
     const filaCorreo = (fila[0] || '').toString().trim().toLowerCase();
     const filaRol = (fila[1] || '').toString().trim().toLowerCase();
     if (filaCorreo === correo && filaRol === 'subcontratista') {
-      return { empresa: (fila[3] || '').toString(), numeroFila: i + 1 };
+      return { empresa: (fila[3] || '').toString(), area: (fila[5] || '').toString().trim().toLowerCase(), numeroFila: i + 1 };
     }
   }
   return null;
@@ -324,7 +327,7 @@ function verificarAcceso(correo) {
   const u = buscarUsuarioSubcontratista(correo);
   if (!u) return { subcontratista: false };
   registrarConexion(u.numeroFila);
-  return { subcontratista: true, empresa: u.empresa };
+  return { subcontratista: true, empresa: u.empresa, area: u.area };
 }
 
 // Llamada aparte, liviana, desde CUALQUIER clic dentro de la app mientras
@@ -425,7 +428,7 @@ function cargarInicial(correo) {
       if (normalizarEmpresa(fila[4]) === normalizarEmpresa(empresa)) filasTrab.push(fila);
     }
 
-    return { subcontratista: true, modo: 'subcontratista', empresa: empresa, documentos: filasDocs, trabajadores: filasTrab, subInfo: buscarSubInfo(empresa) };
+    return { subcontratista: true, modo: 'subcontratista', empresa: empresa, area: u.area, documentos: filasDocs, trabajadores: filasTrab, subInfo: buscarSubInfo(empresa) };
   }
 
   // Cuenta "rrhh" (ver buscarUsuarioRrhh) — a diferencia de subcontratista,
