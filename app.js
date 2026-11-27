@@ -2146,6 +2146,10 @@ function renderUsuariosApp() {
   // bloques de DOM distintos — ver el comentario en index.html.
   document.querySelectorAll('.seccion-usuarios-app').forEach(el => el.classList.toggle('hidden', !esAdminCompleto()));
   if (!esAdminCompleto()) return;
+  // Un admin (no superadmin) puede invitar a cualquier rol interno salvo
+  // "superadmin" — esa opción solo la ve/usa quien ya es superadmin (ver
+  // también el chequeo del lado de onInvitarUsuarioApp).
+  document.querySelectorAll('.opt-superadmin').forEach(el => el.hidden = userRole !== 'superadmin');
   const internos = allUsuarios.filter(u => u.rol !== 'subcontratista');
   setListHTML('usuarios-app', internos.length ? internos.map(u => `
     <div class="doc-row" style="display:block;"><span>${esc(u.correo)}</span>
@@ -2159,6 +2163,7 @@ async function onInvitarUsuarioApp(ev) {
   const correo = f.correo.value.trim().toLowerCase();
   const rol = f.rol.value;
   if (!correo || !rol) return;
+  if (rol === 'superadmin' && userRole !== 'superadmin') { toast('Solo un superadmin puede invitar a otro superadmin', 'error'); return; }
   if (allUsuarios.some(u => u.correo === correo)) { toast('Ese correo ya está registrado', 'error'); return; }
   try {
     await appendSheetDeterministico(CONFIG.SHEET_USUARIOS, 'D', [[correo, rol, '', '']]);
